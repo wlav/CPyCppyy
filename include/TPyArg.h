@@ -1,8 +1,5 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen   Aug 2013
-
-#ifndef ROOT_TPyArg
-#define ROOT_TPyArg
+#ifndef CPYCPPYY_TPYARG
+#define CPYCPPYY_TPYARG
 
 //////////////////////////////////////////////////////////////////////////////
 //                                                                          //
@@ -11,10 +8,6 @@
 // Morphing argument type from evaluating python expressions.               //
 //                                                                          //
 //////////////////////////////////////////////////////////////////////////////
-
-
-// ROOT
-#include "Rtypes.h"
 
 // Python
 struct _object;
@@ -47,10 +40,8 @@ public:
    static void CallDestructor( PyObject*& pyself, PyObject* pymeth, const std::vector<TPyArg>& args );
    static void CallDestructor( PyObject*& pyself );
 
-   ClassDef(TPyArg,1)   //Python morphing argument type
-
 private:
    mutable PyObject* fPyObject;        //! converted C++ value as python object
 };
 
-#endif
+#endif // !CPYCPPYY_TPYARG

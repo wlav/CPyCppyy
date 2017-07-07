@@ -1,13 +1,11 @@
-// Author: Wim Lavrijsen, Apr 2005
-
 // Bindings
-#include "PyROOT.h"
+#include "CPyCppyy.h"
 #include "TFunctionHolder.h"
 #include "ObjectProxy.h"
 
 
 //- public members --------------------------------------------------------------
-PyObject* PyROOT::TFunctionHolder::PreProcessArgs(
+PyObject* CPyCppyy::TFunctionHolder::PreProcessArgs(
       ObjectProxy*& self, PyObject* args, PyObject* )
 {
 // no self means called as a free function; all ok
@@ -34,7 +32,7 @@ PyObject* PyROOT::TFunctionHolder::PreProcessArgs(
 ////////////////////////////////////////////////////////////////////////////////
 /// preliminary check in case keywords are accidently used (they are ignored otherwise)
 
-PyObject* PyROOT::TFunctionHolder::Call(
+PyObject* CPyCppyy::TFunctionHolder::Call(
       ObjectProxy*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt )
 {
    if ( kwds != 0 && PyDict_Size( kwds ) ) {

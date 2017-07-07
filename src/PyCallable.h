@@ -1,14 +1,11 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, Aug 2004
-
-#ifndef PYROOT_PYCALLABLE_H
-#define PYROOT_PYCALLABLE_H
+#ifndef CPYCPPYY_PYCALLABLE_H
+#define CPYCPPYY_PYCALLABLE_H
 
 // Bindings
 #include "TCallContext.h"
 
 
-namespace PyROOT {
+namespace CPyCppyy {
 
    class ObjectProxy;
 
@@ -36,6 +33,6 @@ namespace PyROOT {
          ObjectProxy*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt = 0 ) = 0;
    };
 
-} // namespace PyROOT
+} // namespace CPyCppyy
 
-#endif // !PYROOT_PYCALLABLE_H
+#endif // !CPYCPPYY_PYCALLABLE_H

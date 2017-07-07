@@ -1,7 +1,5 @@
-// Author: Wim Lavrijsen, Jan 2005
-
 // Bindings
-#include "PyROOT.h"
+#include "CPyCppyy.h"
 #include "TemplateProxy.h"
 #include "MethodProxy.h"
 #include "TFunctionHolder.h"
@@ -10,19 +8,15 @@
 #include "PyStrings.h"
 #include "Utility.h"
 
-// ROOT
-#include "TClass.h"
-#include "TMethod.h"
 
-
-namespace PyROOT {
+namespace CPyCppyy {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Initialize the proxy for the given 'pyclass.'
 
 void TemplateProxy::Set( const std::string& name, PyObject* pyclass )
 {
-   fPyName       = PyROOT_PyUnicode_FromString( const_cast< char* >( name.c_str() ) );
+   fPyName       = CPyCppyy_PyUnicode_FromString( const_cast< char* >( name.c_str() ) );
    Py_XINCREF( pyclass );
    fPyClass      = pyclass;
    fSelf         = NULL;
@@ -102,8 +96,8 @@ namespace {
       if ( pytmpl->fTemplated ) {
          PyObject* doc2 = PyObject_GetAttrString( (PyObject*)pytmpl->fTemplated, "__doc__" );
          if ( doc && doc2 ) {
-            PyROOT_PyUnicode_AppendAndDel( &doc, PyROOT_PyUnicode_FromString( "\n" ));
-            PyROOT_PyUnicode_AppendAndDel( &doc, doc2 );
+            CPyCppyy_PyUnicode_AppendAndDel( &doc, CPyCppyy_PyUnicode_FromString( "\n" ));
+            CPyCppyy_PyUnicode_AppendAndDel( &doc, doc2 );
          } else if ( !doc && doc2 ) {
             doc = doc2;
          }
@@ -112,7 +106,7 @@ namespace {
       if ( doc )
          return doc;
 
-      return PyROOT_PyUnicode_FromString( TemplateProxy_Type.tp_doc );
+      return CPyCppyy_PyUnicode_FromString( TemplateProxy_Type.tp_doc );
    }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -188,7 +182,7 @@ namespace {
       Py_ssize_t nArgs = PyTuple_GET_SIZE( args );
       if ( nArgs == 0 ) {
          PyErr_Format( PyExc_TypeError, "template method \'%s\' with no arguments must be explicit",
-            PyROOT_PyUnicode_AsString( pytmpl->fPyName ) );
+            CPyCppyy_PyUnicode_AsString( pytmpl->fPyName ) );
          return 0;
       }
 
@@ -239,7 +233,7 @@ namespace {
 #endif
       // special case for arrays
          PyObject* pytc = PyObject_GetAttr( itemi, PyStrings::gTypeCode );
-         if ( ! ( pytc && PyROOT_PyUnicode_Check( pytc ) ) ) {
+         if ( ! ( pytc && CPyCppyy_PyUnicode_Check( pytc ) ) ) {
          // normal case (not an array)
             PyErr_Clear();
             PyObject* tp = (PyObject*)Py_TYPE( itemi );
@@ -247,7 +241,7 @@ namespace {
             PyTuple_SET_ITEM( tpArgs, i, tp );
          } else {
          // array, build up a pointer type
-            char tc = ((char*)PyROOT_PyUnicode_AsString( pytc ))[0];
+            char tc = ((char*)CPyCppyy_PyUnicode_AsString( pytc ))[0];
             const char* ptrname = 0;
             switch ( tc ) {
                case 'b': ptrname = "char*";           break;
@@ -276,7 +270,9 @@ namespace {
 
       PyObject* clName = PyObject_GetAttr( pytmpl->fPyClass, PyStrings::gCppName );
       if ( ! clName ) clName = PyObject_GetAttr( pytmpl->fPyClass, PyStrings::gName );
-      TClass* klass = TClass::GetClass( PyROOT_PyUnicode_AsString( clName ) );
+   // TODO: use Cppyy.cxx ...
+   /*
+      TClass* klass = TClass::GetClass( CPyCppyy_PyUnicode_AsString( clName ) );
       Py_DECREF( clName );
       const std::string& tmplname = pytmpl->fNonTemplated->fMethodInfo->fName;
 
@@ -284,7 +280,7 @@ namespace {
       if ( ! isType && ! ( nStrings == nArgs ) ) {    // no types among args and not all strings
          PyObject* pyname_v2 = Utility::BuildTemplateName( NULL, tpArgs, 0 );
          if ( pyname_v2 ) {
-            std::string mname = PyROOT_PyUnicode_AsString( pyname_v2 );
+            std::string mname = CPyCppyy_PyUnicode_AsString( pyname_v2 );
             Py_DECREF( pyname_v2 );
             std::string proto = mname.substr( 1, mname.size() - 2 );
          // the following causes instantiation as necessary
@@ -314,7 +310,7 @@ namespace {
 
    // case 4b/5: instantiating obj->method< t0, t1, ... >( a0, a1, ... )
       if ( pyname_v1 ) {
-         std::string mname = PyROOT_PyUnicode_AsString( pyname_v1 );
+         std::string mname = CPyCppyy_PyUnicode_AsString( pyname_v1 );
        // the following causes instantiation as necessary
          TMethod* cppmeth = klass ? klass->GetMethodAny( mname.c_str() ) : 0;
          if ( cppmeth ) {    // overload stops here
@@ -330,10 +326,11 @@ namespace {
          }
          Py_DECREF( pyname_v1 );
       }
+   */
 
    // moderately generic error message, but should be clear enough
       PyErr_Format( PyExc_TypeError, "can not resolve method template call for \'%s\'",
-         PyROOT_PyUnicode_AsString( pytmpl->fPyName ) );
+         CPyCppyy_PyUnicode_AsString( pytmpl->fPyName ) );
       return 0;
    }
 
@@ -434,4 +431,4 @@ PyTypeObject TemplateProxy_Type = {
 #endif
 };
 
-} // namespace PyROOT
+} // namespace CPyCppyy

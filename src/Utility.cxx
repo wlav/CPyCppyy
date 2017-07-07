@@ -1,8 +1,5 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, Apr 2004
-
 // Bindings
-#include "PyROOT.h"
+#include "CPyCppyy.h"
 #include "PyStrings.h"
 #include "Utility.h"
 #include "ObjectProxy.h"
@@ -10,24 +7,8 @@
 #include "TFunctionHolder.h"
 #include "TCustomPyTypes.h"
 #include "TemplateProxy.h"
-#include "RootWrapper.h"
+#include "CPyCppyyHelpers.h"
 #include "PyCallable.h"
-
-// ROOT
-#include "TApplication.h"
-#include "TROOT.h"
-#include "TSystem.h"
-#include "TObject.h"
-#include "TClassEdit.h"
-#include "TClassRef.h"
-#include "TCollection.h"
-#include "TDataType.h"
-#include "TFunction.h"
-#include "TFunctionTemplate.h"
-#include "TMethod.h"
-#include "TMethodArg.h"
-#include "TError.h"
-#include "TInterpreter.h"
 
 // Standard
 #include <stdlib.h>
@@ -41,15 +22,15 @@
 
 
 //- data _____________________________________________________________________
-dict_lookup_func PyROOT::gDictLookupOrg = 0;
-Bool_t PyROOT::gDictLookupActive = kFALSE;
+dict_lookup_func CPyCppyy::gDictLookupOrg = 0;
+Bool_t CPyCppyy::gDictLookupActive = kFALSE;
 
 typedef std::map< std::string, std::string > TC2POperatorMapping_t;
 static TC2POperatorMapping_t gC2POperatorMapping;
 
 namespace {
 
-   using namespace PyROOT::Utility;
+   using namespace CPyCppyy::Utility;
 
    struct InitOperatorMapping_t {
    public:
@@ -63,7 +44,7 @@ namespace {
 
          gC2POperatorMapping[ "[]" ]  = "__getitem__";
          gC2POperatorMapping[ "()" ]  = "__call__";
-         gC2POperatorMapping[ "/" ]   = PYROOT__div__;
+         gC2POperatorMapping[ "/" ]   = CPYCPPYY__div__;
          gC2POperatorMapping[ "%" ]   = "__mod__";
          gC2POperatorMapping[ "**" ]  = "__pow__";
          gC2POperatorMapping[ "<<" ]  = "__lshift__";
@@ -75,7 +56,7 @@ namespace {
          gC2POperatorMapping[ "+=" ]  = "__iadd__";
          gC2POperatorMapping[ "-=" ]  = "__isub__";
          gC2POperatorMapping[ "*=" ]  = "__imul__";
-         gC2POperatorMapping[ "/=" ]  = PYROOT__idiv__;
+         gC2POperatorMapping[ "/=" ]  = CPYCPPYY__idiv__;
          gC2POperatorMapping[ "%=" ]  = "__imod__";
          gC2POperatorMapping[ "**=" ] = "__ipow__";
          gC2POperatorMapping[ "<<=" ] = "__ilshift__";
@@ -96,7 +77,7 @@ namespace {
          gC2POperatorMapping[ "const char *" ] = gC2POperatorMapping[ "const char*" ];
          gC2POperatorMapping[ "char *" ]       = gC2POperatorMapping[ "char*" ];
          gC2POperatorMapping[ "int" ]          = "__int__";
-         gC2POperatorMapping[ "long" ]         = PYROOT__long__;
+         gC2POperatorMapping[ "long" ]         = CPYCPPYY__long__;
          gC2POperatorMapping[ "double" ]       = "__float__";
 
       // the following type mappings are "okay"; the assumption is that they
@@ -104,10 +85,10 @@ namespace {
       // they are, that it is done consistently)
          gC2POperatorMapping[ "short" ]              = "__int__";
          gC2POperatorMapping[ "unsigned short" ]     = "__int__";
-         gC2POperatorMapping[ "unsigned int" ]       = PYROOT__long__;
-         gC2POperatorMapping[ "unsigned long" ]      = PYROOT__long__;
-         gC2POperatorMapping[ "long long" ]          = PYROOT__long__;
-         gC2POperatorMapping[ "unsigned long long" ] = PYROOT__long__;
+         gC2POperatorMapping[ "unsigned int" ]       = CPYCPPYY__long__;
+         gC2POperatorMapping[ "unsigned long" ]      = CPYCPPYY__long__;
+         gC2POperatorMapping[ "long long" ]          = CPYCPPYY__long__;
+         gC2POperatorMapping[ "unsigned long long" ] = CPYCPPYY__long__;
          gC2POperatorMapping[ "float" ]              = "__float__";
 
          gC2POperatorMapping[ "->" ]  = "__follow__";       // not an actual python operator
@@ -123,12 +104,14 @@ namespace {
 
    std::once_flag sOperatorTemplateFlag;
    void InitOperatorTemplate() {
+   /* TODO: move to Cppyy.cxx
       gROOT->ProcessLine(
          "namespace _pyroot_internal { template<class C1, class C2>"
          " bool is_equal(const C1& c1, const C2& c2){ return (bool)(c1 == c2); } }" );
       gROOT->ProcessLine(
          "namespace _pyroot_internal { template<class C1, class C2>"
          " bool is_not_equal(const C1& c1, const C2& c2){ return (bool)(c1 != c2); } }" );
+   */
    }
 
    inline void RemoveConst( std::string& cleanName ) {
@@ -142,7 +125,7 @@ namespace {
 
 
 //- public functions ---------------------------------------------------------
-ULong_t PyROOT::PyLongOrInt_AsULong( PyObject* pyobject )
+ULong_t CPyCppyy::PyLongOrInt_AsULong( PyObject* pyobject )
 {
 // Convert <pybject> to C++ unsigned long, with bounds checking, allow int -> ulong.
    ULong_t ul = PyLong_AsUnsignedLong( pyobject );
@@ -163,7 +146,7 @@ ULong_t PyROOT::PyLongOrInt_AsULong( PyObject* pyobject )
 ////////////////////////////////////////////////////////////////////////////////
 /// Convert <pyobject> to C++ unsigned long long, with bounds checking.
 
-ULong64_t PyROOT::PyLongOrInt_AsULong64( PyObject* pyobject )
+ULong64_t CPyCppyy::PyLongOrInt_AsULong64( PyObject* pyobject )
 {
    ULong64_t ull = PyLong_AsUnsignedLongLong( pyobject );
    if ( PyErr_Occurred() && PyInt_Check( pyobject ) ) {
@@ -183,7 +166,7 @@ ULong64_t PyROOT::PyLongOrInt_AsULong64( PyObject* pyobject )
 ////////////////////////////////////////////////////////////////////////////////
 /// Add the given function to the class under name 'label'.
 
-Bool_t PyROOT::Utility::AddToClass(
+Bool_t CPyCppyy::Utility::AddToClass(
       PyObject* pyclass, const char* label, PyCFunction cfunc, int flags )
 {
 // use list for clean-up (.so's are unloaded only at interpreter shutdown)
@@ -216,7 +199,7 @@ Bool_t PyROOT::Utility::AddToClass(
 ////////////////////////////////////////////////////////////////////////////////
 /// Add the given function to the class under name 'label'.
 
-Bool_t PyROOT::Utility::AddToClass( PyObject* pyclass, const char* label, const char* func )
+Bool_t CPyCppyy::Utility::AddToClass( PyObject* pyclass, const char* label, const char* func )
 {
    PyObject* pyfunc = PyObject_GetAttrString( pyclass, const_cast< char* >( func ) );
    if ( ! pyfunc )
@@ -231,7 +214,7 @@ Bool_t PyROOT::Utility::AddToClass( PyObject* pyclass, const char* label, const 
 ////////////////////////////////////////////////////////////////////////////////
 /// Add the given function to the class under name 'label'.
 
-Bool_t PyROOT::Utility::AddToClass( PyObject* pyclass, const char* label, PyCallable* pyfunc )
+Bool_t CPyCppyy::Utility::AddToClass( PyObject* pyclass, const char* label, PyCallable* pyfunc )
 {
    MethodProxy* method =
       (MethodProxy*)PyObject_GetAttrString( pyclass, const_cast< char* >( label ) );
@@ -258,7 +241,7 @@ Bool_t PyROOT::Utility::AddToClass( PyObject* pyclass, const char* label, PyCall
 /// Helper to add base class methods to the derived class one (this covers the
 /// 'using' cases, which the dictionary does not provide).
 
-Bool_t PyROOT::Utility::AddUsingToClass( PyObject* pyclass, const char* method )
+Bool_t CPyCppyy::Utility::AddUsingToClass( PyObject* pyclass, const char* method )
 {
    MethodProxy* derivedMethod =
          (MethodProxy*)PyObject_GetAttrString( pyclass, const_cast< char* >( method ) );
@@ -312,7 +295,7 @@ Bool_t PyROOT::Utility::AddUsingToClass( PyObject* pyclass, const char* method )
 /// exists as a global overload; a label must be given if the operator is not in
 /// gC2POperatorMapping (i.e. if it is ambiguous at the member level).
 
-Bool_t PyROOT::Utility::AddBinaryOperator(
+Bool_t CPyCppyy::Utility::AddBinaryOperator(
    PyObject* left, PyObject* right, const char* op, const char* label, const char* alt )
 {
 // this should be a given, nevertheless ...
@@ -333,12 +316,12 @@ Bool_t PyROOT::Utility::AddBinaryOperator(
 ////////////////////////////////////////////////////////////////////////////////
 /// Install binary operator op in pyclass, working on two instances of pyclass.
 
-Bool_t PyROOT::Utility::AddBinaryOperator(
+Bool_t CPyCppyy::Utility::AddBinaryOperator(
    PyObject* pyclass, const char* op, const char* label, const char* alt )
 {
    PyObject* pyname = PyObject_GetAttr( pyclass, PyStrings::gCppName );
    if ( ! pyname ) pyname = PyObject_GetAttr( pyclass, PyStrings::gName );
-   std::string cname = Cppyy::ResolveName( PyROOT_PyUnicode_AsString( pyname ) );
+   std::string cname = Cppyy::ResolveName( CPyCppyy_PyUnicode_AsString( pyname ) );
    Py_DECREF( pyname ); pyname = 0;
 
    return AddBinaryOperator( pyclass, cname, cname, op, label, alt );
@@ -348,35 +331,34 @@ Bool_t PyROOT::Utility::AddBinaryOperator(
 /// Helper to find a function with matching signature in 'funcs'.
 
 static inline Cppyy::TCppMethod_t FindAndAddOperator( const std::string& lcname, const std::string& rcname,
-     const char* op, TClass* klass = 0 ) {
+     const char* op, void* klass = 0 ) {
    std::string opname = "operator";
    opname += op;
    std::string proto = lcname + ", " + rcname;
 
 // case of global namespace
-   if ( ! klass )
-      return (Cppyy::TCppMethod_t)gROOT->GetGlobalFunctionWithPrototype( opname.c_str(), proto.c_str() );
+// TODO: Cppyy.cxx ...
+//   if ( ! klass )
+//      return (Cppyy::TCppMethod_t)gROOT->GetGlobalFunctionWithPrototype( opname.c_str(), proto.c_str() );
 
 // case of specific namespace
-   return (Cppyy::TCppMethod_t)klass->GetMethodWithPrototype( opname.c_str(), proto.c_str() );
+   return (Cppyy::TCppMethod_t)0; // TODO: klass->GetMethodWithPrototype( opname.c_str(), proto.c_str() );
 }
 
-Bool_t PyROOT::Utility::AddBinaryOperator( PyObject* pyclass, const std::string& lcname,
+Bool_t CPyCppyy::Utility::AddBinaryOperator( PyObject* pyclass, const std::string& lcname,
    const std::string& rcname, const char* op, const char* label, const char* alt )
 {
 // Find a global function with a matching signature and install the result on pyclass;
 // in addition, __gnu_cxx, std::__1, and _pyroot_internal are searched pro-actively (as
 // there's AFAICS no way to unearth using information).
 
-// This function can be called too early when setting up some of the ROOT core classes,
-// which in turn can trigger the creation of a (default) TApplication. Wait with looking
-// for binary operators '!=' and '==' (which are set early in Pythonize.cxx) until fully
-// initialized. Other operators are expected to have entered from user code.
-   if ( !gApplication && (strcmp( op, "==" ) == 0 || strcmp( op, "!=" ) == 0) )
+   if ( strcmp( op, "==" ) == 0 || strcmp( op, "!=" ) == 0 )
       return kFALSE;
 
+#if 0
 // For GNU on clang, search the internal __gnu_cxx namespace for binary operators (is
 // typically the case for STL iterators operator==/!=.
+// TODO: use Cppyy.cxx
    static TClassRef gnucxx( "__gnu_cxx" );
    static bool gnucxx_exists = (bool)gnucxx.GetClass();
 
@@ -450,7 +432,7 @@ Bool_t PyROOT::Utility::AddBinaryOperator( PyObject* pyclass, const std::string&
       if ( ok && alt )
          return AddToClass( pyclass, alt, label );
    }
-
+#endif
    return kFALSE;
 }
 
@@ -459,20 +441,20 @@ Bool_t PyROOT::Utility::AddBinaryOperator( PyObject* pyclass, const std::string&
 /// for a class as in MakeRootTemplateClass in RootModule.cxx) or for method lookup
 /// (as in TemplatedMemberHook, below).
 
-PyObject* PyROOT::Utility::BuildTemplateName( PyObject* pyname, PyObject* args, int argoff )
+PyObject* CPyCppyy::Utility::BuildTemplateName( PyObject* pyname, PyObject* args, int argoff )
 {
    if ( pyname )
-      pyname = PyROOT_PyUnicode_FromString( PyROOT_PyUnicode_AsString( pyname ) );
+      pyname = CPyCppyy_PyUnicode_FromString( CPyCppyy_PyUnicode_AsString( pyname ) );
    else
-      pyname = PyROOT_PyUnicode_FromString( "" );
-   PyROOT_PyUnicode_AppendAndDel( &pyname, PyROOT_PyUnicode_FromString( "<" ) );
+      pyname = CPyCppyy_PyUnicode_FromString( "" );
+   CPyCppyy_PyUnicode_AppendAndDel( &pyname, CPyCppyy_PyUnicode_FromString( "<" ) );
 
    Py_ssize_t nArgs = PyTuple_GET_SIZE( args );
    for ( int i = argoff; i < nArgs; ++i ) {
    // add type as string to name
       PyObject* tn = PyTuple_GET_ITEM( args, i );
-      if ( PyROOT_PyUnicode_Check( tn ) ) {
-         PyROOT_PyUnicode_Append( &pyname, tn );
+      if ( CPyCppyy_PyUnicode_Check( tn ) ) {
+         CPyCppyy_PyUnicode_Append( &pyname, tn );
       } else if (PyObject_HasAttr( tn, PyStrings::gName ) ) {
          // __cppname__ provides a better name for C++ classes (namespaces)
          PyObject* tpName;
@@ -482,17 +464,17 @@ PyObject* PyROOT::Utility::BuildTemplateName( PyObject* pyname, PyObject* args, 
             tpName = PyObject_GetAttr( tn, PyStrings::gName );
          }
          // special case for strings
-         if ( strcmp( PyROOT_PyUnicode_AsString( tpName ), "str" ) == 0 ) {
+         if ( strcmp( CPyCppyy_PyUnicode_AsString( tpName ), "str" ) == 0 ) {
             Py_DECREF( tpName );
-            tpName = PyROOT_PyUnicode_FromString( "std::string" );
+            tpName = CPyCppyy_PyUnicode_FromString( "std::string" );
          }
-         PyROOT_PyUnicode_AppendAndDel( &pyname, tpName );
+         CPyCppyy_PyUnicode_AppendAndDel( &pyname, tpName );
       } else if ( PyInt_Check( tn ) || PyLong_Check( tn ) || PyFloat_Check( tn ) ) {
          // last ditch attempt, works for things like int values; since this is a
          // source of errors otherwise, it is limited to specific types and not
          // generally used (str(obj) can print anything ...)
          PyObject* pystr = PyObject_Str( tn );
-         PyROOT_PyUnicode_AppendAndDel( &pyname, pystr );
+         CPyCppyy_PyUnicode_AppendAndDel( &pyname, pystr );
       } else {
          Py_DECREF( pyname );
          PyErr_SetString( PyExc_SyntaxError, "could not get __cppname__ from provided template argument. Is it a str, class, type or int?" );
@@ -501,14 +483,14 @@ PyObject* PyROOT::Utility::BuildTemplateName( PyObject* pyname, PyObject* args, 
 
    // add a comma, as needed
       if ( i != nArgs - 1 )
-         PyROOT_PyUnicode_AppendAndDel( &pyname, PyROOT_PyUnicode_FromString( ", " ) );
+         CPyCppyy_PyUnicode_AppendAndDel( &pyname, CPyCppyy_PyUnicode_FromString( ", " ) );
    }
 
 // close template name; prevent '>>', which should be '> >'
-   if ( PyROOT_PyUnicode_AsString( pyname )[ PyROOT_PyUnicode_GetSize( pyname ) - 1 ] == '>' )
-      PyROOT_PyUnicode_AppendAndDel( &pyname, PyROOT_PyUnicode_FromString( " >" ) );
+   if ( CPyCppyy_PyUnicode_AsString( pyname )[ CPyCppyy_PyUnicode_GetSize( pyname ) - 1 ] == '>' )
+      CPyCppyy_PyUnicode_AppendAndDel( &pyname, CPyCppyy_PyUnicode_FromString( " >" ) );
    else
-      PyROOT_PyUnicode_AppendAndDel( &pyname, PyROOT_PyUnicode_FromString( ">" ) );
+      CPyCppyy_PyUnicode_AppendAndDel( &pyname, CPyCppyy_PyUnicode_FromString( ">" ) );
 
    return pyname;
 }
@@ -516,7 +498,7 @@ PyObject* PyROOT::Utility::BuildTemplateName( PyObject* pyname, PyObject* args, 
 ////////////////////////////////////////////////////////////////////////////////
 /// Initialize a proxy class for use by python, and add it to the ROOT module.
 
-Bool_t PyROOT::Utility::InitProxy( PyObject* module, PyTypeObject* pytype, const char* name )
+Bool_t CPyCppyy::Utility::InitProxy( PyObject* module, PyTypeObject* pytype, const char* name )
 {
 // finalize proxy type
    if ( PyType_Ready( pytype ) < 0 )
@@ -536,7 +518,7 @@ Bool_t PyROOT::Utility::InitProxy( PyObject* module, PyTypeObject* pytype, const
 ////////////////////////////////////////////////////////////////////////////////
 /// Retrieve a linear buffer pointer from the given pyobject.
 
-int PyROOT::Utility::GetBuffer( PyObject* pyobject, char tc, int size, void*& buf, Bool_t check )
+int CPyCppyy::Utility::GetBuffer( PyObject* pyobject, char tc, int size, void*& buf, Bool_t check )
 {
 // special case: don't handle character strings here (yes, they're buffers, but not quite)
    if ( PyBytes_Check( pyobject ) )
@@ -574,7 +556,7 @@ int PyROOT::Utility::GetBuffer( PyObject* pyobject, char tc, int size, void*& bu
       // determine buffer compatibility (use "buf" as a status flag)
          PyObject* pytc = PyObject_GetAttr( pyobject, PyStrings::gTypeCode );
          if ( pytc != 0 ) {     // for array objects
-            if ( PyROOT_PyUnicode_AsString( pytc )[0] != tc )
+            if ( CPyCppyy_PyUnicode_AsString( pytc )[0] != tc )
                buf = 0;         // no match
             Py_DECREF( pytc );
          } else if ( seqmeths->sq_length &&
@@ -590,9 +572,9 @@ int PyROOT::Utility::GetBuffer( PyObject* pyobject, char tc, int size, void*& bu
          // clarify error message
             PyObject* pytype = 0, *pyvalue = 0, *pytrace = 0;
             PyErr_Fetch( &pytype, &pyvalue, &pytrace );
-            PyObject* pyvalue2 = PyROOT_PyUnicode_FromFormat(
+            PyObject* pyvalue2 = CPyCppyy_PyUnicode_FromFormat(
                (char*)"%s and given element size (%ld) do not match needed (%d)",
-               PyROOT_PyUnicode_AsString( pyvalue ),
+               CPyCppyy_PyUnicode_AsString( pyvalue ),
                seqmeths->sq_length ? (Long_t)(buflen / (*(seqmeths->sq_length))( pyobject )) : (Long_t)buflen,
                size );
             Py_DECREF( pyvalue );
@@ -609,7 +591,7 @@ int PyROOT::Utility::GetBuffer( PyObject* pyobject, char tc, int size, void*& bu
 ////////////////////////////////////////////////////////////////////////////////
 /// Map the given C++ operator name on the python equivalent.
 
-std::string PyROOT::Utility::MapOperatorName( const std::string& name, Bool_t bTakesParams )
+std::string CPyCppyy::Utility::MapOperatorName( const std::string& name, Bool_t bTakesParams )
 {
    if ( 8 < name.size() && name.substr( 0, 8 ) == "operator" ) {
       std::string op = name.substr( 8, std::string::npos );
@@ -618,7 +600,7 @@ std::string PyROOT::Utility::MapOperatorName( const std::string& name, Bool_t bT
       std::string::size_type start = 0, end = op.size();
       while ( start < end && isspace( op[ start ] ) ) ++start;
       while ( start < end && isspace( op[ end-1 ] ) ) --end;
-      op = TClassEdit::ResolveTypedef( op.substr( start, end - start ).c_str(), true );
+      op = "TODO"; //TClassEdit::ResolveTypedef( op.substr( start, end - start ).c_str(), true );
 
    // map C++ operator to python equivalent, or made up name if no equivalent exists
       TC2POperatorMapping_t::iterator pop = gC2POperatorMapping.find( op );
@@ -655,7 +637,7 @@ std::string PyROOT::Utility::MapOperatorName( const std::string& name, Bool_t bT
 ////////////////////////////////////////////////////////////////////////////////
 /// Break down the compound of a fully qualified type name.
 
-const std::string PyROOT::Utility::Compound( const std::string& name )
+const std::string CPyCppyy::Utility::Compound( const std::string& name )
 {
    std::string cleanName = name;
    RemoveConst( cleanName );
@@ -679,7 +661,7 @@ const std::string PyROOT::Utility::Compound( const std::string& name )
 ////////////////////////////////////////////////////////////////////////////////
 /// Extract size from an array type, if available.
 
-Py_ssize_t PyROOT::Utility::ArraySize( const std::string& name )
+Py_ssize_t CPyCppyy::Utility::ArraySize( const std::string& name )
 {
    std::string cleanName = name;
    RemoveConst( cleanName );
@@ -699,7 +681,7 @@ Py_ssize_t PyROOT::Utility::ArraySize( const std::string& name )
 /// Retrieve the class name from the given python object (which may be just an
 /// instance of the class).
 
-const std::string PyROOT::Utility::ClassName( PyObject* pyobj )
+const std::string CPyCppyy::Utility::ClassName( PyObject* pyobj )
 {
    std::string clname = "<unknown>";
    PyObject* pyclass = PyObject_GetAttr( pyobj, PyStrings::gClass );
@@ -707,12 +689,12 @@ const std::string PyROOT::Utility::ClassName( PyObject* pyobj )
       PyObject* pyname = PyObject_GetAttr( pyclass, PyStrings::gCppName );
 
       if ( pyname != 0 ) {
-         clname = PyROOT_PyUnicode_AsString( pyname );
+         clname = CPyCppyy_PyUnicode_AsString( pyname );
          Py_DECREF( pyname );
       } else {
          pyname = PyObject_GetAttr( pyclass, PyStrings::gName );
          if ( pyname != 0 ) {
-            clname = PyROOT_PyUnicode_AsString( pyname );
+            clname = CPyCppyy_PyUnicode_AsString( pyname );
             Py_DECREF( pyname );
          } else {
             PyErr_Clear();
@@ -726,179 +708,13 @@ const std::string PyROOT::Utility::ClassName( PyObject* pyobj )
    return clname;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Translate CINT error/warning into python equivalent.
-
-void PyROOT::Utility::ErrMsgCallback( char* /* msg */ )
-{
-// TODO (Cling): this function is probably not going to be used anymore and
-// may need removing at some point for cleanup
-
-/* Commented out for Cling ---
-
-// ignore the "*** Interpreter error recovered ***" message
-   if ( strstr( msg, "error recovered" ) )
-      return;
-
-// ignore CINT-style FILE/LINE messages
-   if ( strstr( msg, "FILE:" ) )
-      return;
-
-// get file name and line number
-   char* errFile = (char*)G__stripfilename( G__get_ifile()->name );
-   int errLine = G__get_ifile()->line_number;
-
-// ignore ROOT-style FILE/LINE messages
-   char buf[256];
-   snprintf( buf, 256, "%s:%d:", errFile, errLine );
-   if ( strstr( msg, buf ) )
-      return;
-
-// strip newline, if any
-   int len = strlen( msg );
-   if ( msg[ len-1 ] == '\n' )
-      msg[ len-1 ] = '\0';
-
-// concatenate message if already in error processing mode (e.g. if multiple CINT errors)
-   if ( PyErr_Occurred() ) {
-      PyObject *etype, *value, *trace;
-      PyErr_Fetch( &etype, &value, &trace );           // clears current exception
-
-   // need to be sure that error can be added; otherwise leave earlier error in place
-      if ( PyROOT_PyUnicode_Check( value ) ) {
-         if ( ! PyErr_GivenExceptionMatches( etype, PyExc_IndexError ) )
-            PyROOT_PyUnicode_AppendAndDel( &value, PyROOT_PyUnicode_FromString( (char*)"\n  " ) );
-         PyROOT_PyUnicode_AppendAndDel( &value, PyROOT_PyUnicode_FromString( msg ) );
-      }
-
-      PyErr_Restore( etype, value, trace );
-      return;
-   }
-
-// else, translate known errors and warnings, or simply accept the default
-   char* format = (char*)"(file \"%s\", line %d) %s";
-   char* p = 0;
-   if ( ( p = strstr( msg, "Syntax Error:" ) ) )
-      PyErr_Format( PyExc_SyntaxError, format, errFile, errLine, p+14 );
-   else if ( ( p = strstr( msg, "Error: Array" ) ) )
-      PyErr_Format( PyExc_IndexError, format, errFile, errLine, p+12 );
-   else if ( ( p = strstr( msg, "Error:" ) ) )
-      PyErr_Format( PyExc_RuntimeError, format, errFile, errLine, p+7 );
-   else if ( ( p = strstr( msg, "Exception:" ) ) )
-      PyErr_Format( PyExc_RuntimeError, format, errFile, errLine, p+11 );
-   else if ( ( p = strstr( msg, "Limitation:" ) ) )
-      PyErr_Format( PyExc_NotImplementedError, format, errFile, errLine, p+12 );
-   else if ( ( p = strstr( msg, "Internal Error: malloc" ) ) )
-      PyErr_Format( PyExc_MemoryError, format, errFile, errLine, p+23 );
-   else if ( ( p = strstr( msg, "Internal Error:" ) ) )
-      PyErr_Format( PyExc_SystemError, format, errFile, errLine, p+16 );
-   else if ( ( p = strstr( msg, "Warning:" ) ) )
-// either printout or raise exception, depending on user settings
-      PyErr_WarnExplicit( NULL, p+9, errFile, errLine, (char*)"CINT", NULL );
-   else if ( ( p = strstr( msg, "Note:" ) ) )
-      fprintf( stdout, "Note: (file \"%s\", line %d) %s\n", errFile, errLine, p+6 );
-   else   // unknown: printing it to screen is the safest action
-      fprintf( stdout, "Message: (file \"%s\", line %d) %s\n", errFile, errLine, msg );
-
- --- Commented out for Cling */
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// Translate ROOT error/warning to python.
-
-void PyROOT::Utility::ErrMsgHandler( int level, Bool_t abort, const char* location, const char* msg )
-{
-// initialization from gEnv (the default handler will return w/o msg b/c level too low)
-   if ( gErrorIgnoreLevel == kUnset )
-      ::DefaultErrorHandler( kUnset - 1, kFALSE, "", "" );
-
-   if ( level < gErrorIgnoreLevel )
-      return;
-
-// turn warnings into python warnings
-   if (level >= kError)
-      ::DefaultErrorHandler( level, abort, location, msg );
-   else if ( level >= kWarning ) {
-      static const char* emptyString = "";
-      if (!location) location = emptyString;
-      // This warning might be triggered while holding the ROOT lock, while
-      // some othe rtherad is holding the GIL and waiting for the ROOT lock.
-      // That will trigger a deadlock.
-      // So if ROOT is in MT mode, use ROOT's error handler that doesn't take
-      // the GIL.
-      if (!gGlobalMutex) {
-         // either printout or raise exception, depending on user settings
-         PyErr_WarnExplicit( NULL, (char*)msg, (char*)location, 0, (char*)"ROOT", NULL );
-      } else {
-         ::DefaultErrorHandler( level, abort, location, msg );
-      }
-   }
-   else
-      ::DefaultErrorHandler( level, abort, location, msg );
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// Compile a function on the fly and return a function pointer for use on C-APIs.
-/// The callback should take a (void*)pyfunc and the (Long_t)user as well as the
-/// rest of the declare signature. It should also live in namespace PyROOT
-
-void* PyROOT::Utility::CreateWrapperMethod( PyObject* pyfunc, Long_t user,
-   const char* retType, const std::vector<std::string>& signature, const char* callback )
-{
-   static Long_t s_fid = 0;
-
-   if ( ! PyCallable_Check( pyfunc ) )
-      return 0;
-
-// keep  alive (TODO: manage this intelligently)
-   Py_INCREF( pyfunc );
-
-   Long_t fid = s_fid++;
-
-// basic function name part
-   std::ostringstream funcName;
-   funcName << "pyrootGenFun" << fid;
-
-// build-up a signature
-   std::ostringstream sigDecl, argsig;
-   std::vector<std::string>::size_type nargs = signature.size();
-   for ( std::vector<std::string>::size_type i = 0; i < nargs; ++i ) {
-      sigDecl << signature[i] << " a" << i;
-      argsig << ", a" << i;
-      if ( i != nargs-1 ) sigDecl << ", ";
-   }
-
-// create full definition
-   std::ostringstream declCode;
-   declCode << "namespace PyROOT { "
-               << retType << " " << callback << "(void*, Long_t, " << sigDecl.str() << "); }\n"
-            << retType << " " << funcName.str() << "(" << sigDecl.str()
-            << ") { void* v0 = (void*)" << (void*)pyfunc << "; "
-            << "return PyROOT::" << callback << "(v0, " << user << argsig.str() << "); }";
-
-// body compilation
-   gInterpreter->LoadText( declCode.str().c_str() );
-
-// func-ptr retrieval code
-   std::ostringstream fptrCode;
-   fptrCode << "void* pyrootPtrVar" << fid << " = (void*)" << funcName.str()
-            << "; pyrootPtrVar" << fid << ";";
-
-// retrieve function pointer
-   void* fptr = (void*)gInterpreter->ProcessLineSynch( fptrCode.str().c_str() );
-   if ( fptr == 0 )
-      PyErr_SetString( PyExc_SyntaxError, "could not generate C++ callback wrapper" );
-
-   return fptr;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Re-acquire the GIL before calling PyErr_Occurred() in case it has been
 /// released; note that the p2.2 code assumes that there are no callbacks in
 /// C++ to python (or at least none returning errors).
 
-PyObject* PyROOT::Utility::PyErr_Occurred_WithGIL()
+PyObject* CPyCppyy::Utility::PyErr_Occurred_WithGIL()
 {
 #if PY_VERSION_HEX >= 0x02030000
    PyGILState_STATE gstate = PyGILState_Ensure();
@@ -911,47 +727,4 @@ PyObject* PyROOT::Utility::PyErr_Occurred_WithGIL()
 #endif
 
    return e;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-namespace {
-   static int (*sOldInputHook)() = NULL;
-   static PyThreadState* sInputHookEventThreadState = NULL;
-
-   static int EventInputHook()
-   {
-   // This method is supposed to be called from CPython's command line and
-   // drives the GUI.
-      PyEval_RestoreThread( sInputHookEventThreadState );
-      gSystem->ProcessEvents();
-      PyEval_SaveThread();
-
-      if ( sOldInputHook ) return sOldInputHook();
-         return 0;
-   }
-
-} // unnamed namespace
-
-PyObject* PyROOT::Utility::InstallGUIEventInputHook()
-{
-// Install the method hook for sending events to the GUI
-   if ( PyOS_InputHook && PyOS_InputHook != &EventInputHook )
-      sOldInputHook = PyOS_InputHook;
-
-   sInputHookEventThreadState = PyThreadState_Get();
-
-   PyOS_InputHook = (int (*)())&EventInputHook;
-   Py_INCREF( Py_None );
-   return Py_None;
-}
-
-PyObject* PyROOT::Utility::RemoveGUIEventInputHook()
-{
-// Remove event hook, if it was installed
-   PyOS_InputHook = sOldInputHook;
-   sInputHookEventThreadState = NULL;
-
-   Py_INCREF( Py_None );
-   return Py_None;
 }

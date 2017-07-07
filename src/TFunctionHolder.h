@@ -1,13 +1,11 @@
-// Author: Wim Lavrijsen, Apr 2005
-
-#ifndef PYROOT_TFUNCTIONHOLDER_H
-#define PYROOT_TFUNCTIONHOLDER_H
+#ifndef CPYCPPYY_TFUNCTIONHOLDER_H
+#define CPYCPPYY_TFUNCTIONHOLDER_H
 
 // Bindings
 #include "TMethodHolder.h"
 
 
-namespace PyROOT {
+namespace CPyCppyy {
 
    class TFunctionHolder : public TMethodHolder {
    public:
@@ -20,6 +18,6 @@ namespace PyROOT {
          ObjectProxy*&, PyObject* args, PyObject* kwds, TCallContext* ctx = 0 );
    };
 
-} // namespace PyROOT
+} // namespace CPyCppyy
 
-#endif // !PYROOT_TFUNCTIONHOLDER_H
+#endif // !CPYCPPYY_TFUNCTIONHOLDER_H

@@ -1,8 +1,5 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, Jan 2005
-
 // Bindings
-#include "PyROOT.h"
+#include "CPyCppyy.h"
 #include "structmember.h"    // from Python
 #if PY_VERSION_HEX >= 0x02050000
 #include "code.h"            // from Python
@@ -24,7 +21,7 @@
 #include <vector>
 
 
-namespace PyROOT {
+namespace CPyCppyy {
 
 // TODO: only used here, but may be better off integrated with Pythonize.cxx callbacks
    class TPythonCallback : public PyCallable {
@@ -47,8 +44,8 @@ namespace PyROOT {
          fCallable = 0;
       }
 
-      virtual PyObject* GetSignature() { return PyROOT_PyUnicode_FromString( "*args, **kwargs" ); } ;
-      virtual PyObject* GetPrototype() { return PyROOT_PyUnicode_FromString( "<callback>" ); } ;
+      virtual PyObject* GetSignature() { return CPyCppyy_PyUnicode_FromString( "*args, **kwargs" ); } ;
+      virtual PyObject* GetPrototype() { return CPyCppyy_PyUnicode_FromString( "<callback>" ); } ;
       virtual PyObject* GetDocString() {
          if ( PyObject_HasAttrString( fCallable, "__doc__" )) {
             return PyObject_GetAttrString( fCallable, "__doc__" );
@@ -194,15 +191,15 @@ namespace {
 //= PyROOT method proxy object behaviour =====================================
    PyObject* mp_name( MethodProxy* pymeth, void* )
    {
-      return PyROOT_PyUnicode_FromString( pymeth->GetName().c_str() );
+      return CPyCppyy_PyUnicode_FromString( pymeth->GetName().c_str() );
    }
 
 ////////////////////////////////////////////////////////////////////////////////
 
    PyObject* mp_module( MethodProxy* /* pymeth */, void* )
    {
-      Py_INCREF( PyStrings::gROOTns );
-      return PyStrings::gROOTns;
+      Py_INCREF( PyStrings::gThisModule );
+      return PyStrings::gThisModule;
    }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -221,10 +218,10 @@ namespace {
          return doc;
 
    // overloaded method
-      PyObject* separator = PyROOT_PyUnicode_FromString( "\n" );
+      PyObject* separator = CPyCppyy_PyUnicode_FromString( "\n" );
       for ( Int_t i = 1; i < nMethods; ++i ) {
-         PyROOT_PyUnicode_Append( &doc, separator );
-         PyROOT_PyUnicode_AppendAndDel( &doc, methods[i]->GetDocString() );
+         CPyCppyy_PyUnicode_Append( &doc, separator );
+         CPyCppyy_PyUnicode_AppendAndDel( &doc, methods[i]->GetDocString() );
       }
       Py_DECREF( separator );
 
@@ -309,8 +306,8 @@ namespace {
       if ( !co_varnames ) {
       // TODO: static methods need no 'self' (but is harmless otherwise)
          co_varnames = PyTuple_New( 1 /* self */ + 1 /* fake */ );
-         PyTuple_SET_ITEM( co_varnames, 0, PyROOT_PyUnicode_FromString( "self" ) );
-         PyTuple_SET_ITEM( co_varnames, 1, PyROOT_PyUnicode_FromString( "*args" ) );
+         PyTuple_SET_ITEM( co_varnames, 0, CPyCppyy_PyUnicode_FromString( "self" ) );
+         PyTuple_SET_ITEM( co_varnames, 1, CPyCppyy_PyUnicode_FromString( "*args" ) );
       }
 
       int co_argcount = PyTuple_Size( co_varnames );
@@ -632,7 +629,7 @@ namespace {
          // this should not happen; set an error to prevent core dump and report
             PyObject* sig = methods[i]->GetPrototype();
             PyErr_Format( PyExc_SystemError, "%s =>\n    %s",
-               PyROOT_PyUnicode_AsString( sig ), (char*)"NULL result without error in mp_call" );
+               CPyCppyy_PyUnicode_AsString( sig ), (char*)"NULL result without error in mp_call" );
             Py_DECREF( sig );
          }
          PyError_t e;
@@ -642,9 +639,9 @@ namespace {
       }
 
    // first summarize, then add details
-      PyObject* value = PyROOT_PyUnicode_FromFormat(
+      PyObject* value = CPyCppyy_PyUnicode_FromFormat(
          "none of the %d overloaded methods succeeded. Full details:", nMethods );
-      PyObject* separator = PyROOT_PyUnicode_FromString( "\n  " );
+      PyObject* separator = CPyCppyy_PyUnicode_FromString( "\n  " );
 
    // if this point is reached, none of the overloads succeeded: notify user
       PyObject* exc_type = NULL;
@@ -653,8 +650,8 @@ namespace {
             if ( ! exc_type ) exc_type = e->fType;
             else if ( exc_type != e->fType ) exc_type = PyExc_TypeError;
          }
-         PyROOT_PyUnicode_Append( &value, separator );
-         PyROOT_PyUnicode_Append( &value, e->fValue );
+         CPyCppyy_PyUnicode_Append( &value, separator );
+         CPyCppyy_PyUnicode_Append( &value, e->fValue );
       }
 
       Py_DECREF( separator );
@@ -771,13 +768,13 @@ namespace {
    PyObject* mp_disp( MethodProxy* pymeth, PyObject* sigarg )
    {
    // Select and call a specific C++ overload, based on its signature.
-      if ( ! PyROOT_PyUnicode_Check( sigarg ) ) {
+      if ( ! CPyCppyy_PyUnicode_Check( sigarg ) ) {
          PyErr_Format( PyExc_TypeError, "disp() argument 1 must be string, not %.50s",
                        sigarg == Py_None ? "None" : Py_TYPE(sigarg)->tp_name );
          return 0;
       }
 
-      PyObject* sig1 = PyROOT_PyUnicode_FromFormat( "(%s)", PyROOT_PyUnicode_AsString( sigarg ) );
+      PyObject* sig1 = CPyCppyy_PyUnicode_FromFormat( "(%s)", CPyCppyy_PyUnicode_AsString( sigarg ) );
 
       MethodProxy::Methods_t& methods = pymeth->fMethodInfo->fMethods;
       for ( Int_t i = 0; i < (Int_t)methods.size(); ++i ) {
@@ -803,7 +800,7 @@ namespace {
       }
 
       Py_DECREF( sig1 );
-      PyErr_Format( PyExc_LookupError, "signature \"%s\" not found", PyROOT_PyUnicode_AsString( sigarg ) );
+      PyErr_Format( PyExc_LookupError, "signature \"%s\" not found", CPyCppyy_PyUnicode_AsString( sigarg ) );
       return 0;
    }
 
@@ -885,11 +882,11 @@ PyTypeObject MethodProxy_Type = {
 #endif
 };
 
-} // namespace PyROOT
+} // namespace CPyCppyy
 
 
 //- public members -----------------------------------------------------------
-void PyROOT::MethodProxy::Set( const std::string& name, std::vector< PyCallable* >& methods )
+void CPyCppyy::MethodProxy::Set( const std::string& name, std::vector< PyCallable* >& methods )
 {
 // Fill in the data of a freshly created method proxy.
    fMethodInfo->fName = name;
@@ -910,7 +907,7 @@ void PyROOT::MethodProxy::Set( const std::string& name, std::vector< PyCallable*
 ////////////////////////////////////////////////////////////////////////////////
 /// Fill in the data of a freshly created method proxy.
 
-void PyROOT::MethodProxy::AddMethod( PyCallable* pc )
+void CPyCppyy::MethodProxy::AddMethod( PyCallable* pc )
 {
    fMethodInfo->fMethods.push_back( pc );
    fMethodInfo->fFlags &= ~TCallContext::kIsSorted;
@@ -918,7 +915,7 @@ void PyROOT::MethodProxy::AddMethod( PyCallable* pc )
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void PyROOT::MethodProxy::AddMethod( MethodProxy* meth )
+void CPyCppyy::MethodProxy::AddMethod( MethodProxy* meth )
 {
    fMethodInfo->fMethods.insert( fMethodInfo->fMethods.end(),
       meth->fMethodInfo->fMethods.begin(), meth->fMethodInfo->fMethods.end() );
@@ -928,7 +925,7 @@ void PyROOT::MethodProxy::AddMethod( MethodProxy* meth )
 ////////////////////////////////////////////////////////////////////////////////
 /// Destructor (this object is reference counted).
 
-PyROOT::MethodProxy::MethodInfo_t::~MethodInfo_t()
+CPyCppyy::MethodProxy::MethodInfo_t::~MethodInfo_t()
 {
    for ( Methods_t::iterator it = fMethods.begin(); it != fMethods.end(); ++it ) {
       delete *it;

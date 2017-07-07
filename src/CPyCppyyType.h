@@ -1,11 +1,5 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, Jan 2005
-
-#ifndef PYROOT_PYROOTTYPE_H
-#define PYROOT_PYROOTTYPE_H
-
-// ROOT
-#include "DllImport.h"
+#ifndef CPYCPPYY_CPYCPPYYTYPE_H
+#define CPYCPPYY_CPYCPPYYTYPE_H
 
 #if PY_MAJOR_VERSION == 2 && PY_MINOR_VERSION == 2
 
@@ -25,39 +19,39 @@ typedef struct {
 #endif
 
 
-namespace PyROOT {
+namespace CPyCppyy {
 
-/** Type object to hold TClassRef instance (this is only semantically a presentation
-    of PyRootType instances, not in a C++ sense)
+/** Type object to hold class reference (this is only semantically a presentation
+    of CPyCppyyType instances, not in a C++ sense)
       @author  WLAV
-      @date    03/28/2008
+      @date    07/06/2017
       @version 1.0
  */
 
-   class PyRootClass {
+   class CPyCppyyClass {
    public:
-      PyHeapTypeObject fType;      // placeholder, in a single block with the TClassRef
+      PyHeapTypeObject fType;
       Cppyy::TCppType_t fCppType;
 
    private:
-      PyRootClass() {}
+      CPyCppyyClass() {}
    };
 
 //- metatype type and type verification --------------------------------------
-   R__EXTERN PyTypeObject PyRootType_Type;
+   extern PyTypeObject CPyCppyyType_Type;
 
    template< typename T >
-   inline Bool_t PyRootType_Check( T* object )
+   inline Bool_t CPyCppyyType_Check( T* object )
    {
-      return object && PyObject_TypeCheck( object, &PyRootType_Type );
+      return object && PyObject_TypeCheck( object, &CPyCppyyType_Type );
    }
 
    template< typename T >
-   inline Bool_t PyRootType_CheckExact( T* object )
+   inline Bool_t CPyCppyyType_CheckExact( T* object )
    {
-      return object && Py_TYPE(object) == &PyRootType_Type;
+      return object && Py_TYPE(object) == &CPyCppyyType_Type;
    }
 
-} // namespace PyROOT
+} // namespace CPyCppyy
 
-#endif // !PYROOT_PYROOTTYPE_H
+#endif // !CPYCPPYY_CPYCPPYYTYPE_H

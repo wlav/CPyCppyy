@@ -1,10 +1,5 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, Jan 2005
-#ifndef PYROOT_CONVERTERS_H
-#define PYROOT_CONVERTERS_H
-
-// ROOT
-#include "TString.h"
+#ifndef CPYCPPYY_CONVERTERS_H
+#define CPYCPPYY_CONVERTERS_H
 
 // Standard
 #include <limits.h>
@@ -12,7 +7,7 @@
 #include <map>
 
 
-namespace PyROOT {
+namespace CPyCppyy {
 
    struct TParameter;
    struct TCallContext;
@@ -27,7 +22,7 @@ namespace PyROOT {
       virtual Bool_t ToMemory( PyObject* value, void* address );
    };
 
-#define PYROOT_DECLARE_BASIC_CONVERTER( name )                                \
+#define CPYCPPYY_DECLARE_BASIC_CONVERTER( name )                                \
    class T##name##Converter : public TConverter {                             \
    public:                                                                    \
       virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );\
@@ -41,7 +36,7 @@ namespace PyROOT {
    }
 
 
-#define PYROOT_DECLARE_BASIC_CONVERTER2( name, base )                         \
+#define CPYCPPYY_DECLARE_BASIC_CONVERTER2( name, base )                         \
    class T##name##Converter : public T##base##Converter {                     \
    public:                                                                    \
       virtual PyObject* FromMemory( void* );                                  \
@@ -53,13 +48,13 @@ namespace PyROOT {
       virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );\
    }
 
-#define PYROOT_DECLARE_REF_CONVERTER( name )                                  \
+#define CPYCPPYY_DECLARE_REF_CONVERTER( name )                                  \
    class T##name##RefConverter : public TConverter {                          \
    public:                                                                    \
       virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );\
    };
 
-#define PYROOT_DECLARE_ARRAY_CONVERTER( name )                                \
+#define CPYCPPYY_DECLARE_ARRAY_CONVERTER( name )                                \
    class T##name##Converter : public TConverter {                             \
    public:                                                                    \
       T##name##Converter( Py_ssize_t size = -1 ) { fSize = size; }            \
@@ -77,24 +72,24 @@ namespace PyROOT {
    }
 
 // converters for built-ins
-   PYROOT_DECLARE_BASIC_CONVERTER( Long );
-   PYROOT_DECLARE_BASIC_CONVERTER( Bool );
-   PYROOT_DECLARE_BASIC_CONVERTER( Char );
-   PYROOT_DECLARE_BASIC_CONVERTER( UChar );
-   PYROOT_DECLARE_BASIC_CONVERTER( Short );
-   PYROOT_DECLARE_BASIC_CONVERTER( UShort );
-   PYROOT_DECLARE_BASIC_CONVERTER( Int );
-   PYROOT_DECLARE_BASIC_CONVERTER( ULong );
-   PYROOT_DECLARE_BASIC_CONVERTER2( UInt, ULong );
-   PYROOT_DECLARE_BASIC_CONVERTER( LongLong );
-   PYROOT_DECLARE_BASIC_CONVERTER( ULongLong );
-   PYROOT_DECLARE_BASIC_CONVERTER( Double );
-   PYROOT_DECLARE_BASIC_CONVERTER( Float );
-   PYROOT_DECLARE_BASIC_CONVERTER( LongDouble );
+   CPYCPPYY_DECLARE_BASIC_CONVERTER( Long );
+   CPYCPPYY_DECLARE_BASIC_CONVERTER( Bool );
+   CPYCPPYY_DECLARE_BASIC_CONVERTER( Char );
+   CPYCPPYY_DECLARE_BASIC_CONVERTER( UChar );
+   CPYCPPYY_DECLARE_BASIC_CONVERTER( Short );
+   CPYCPPYY_DECLARE_BASIC_CONVERTER( UShort );
+   CPYCPPYY_DECLARE_BASIC_CONVERTER( Int );
+   CPYCPPYY_DECLARE_BASIC_CONVERTER( ULong );
+   CPYCPPYY_DECLARE_BASIC_CONVERTER2( UInt, ULong );
+   CPYCPPYY_DECLARE_BASIC_CONVERTER( LongLong );
+   CPYCPPYY_DECLARE_BASIC_CONVERTER( ULongLong );
+   CPYCPPYY_DECLARE_BASIC_CONVERTER( Double );
+   CPYCPPYY_DECLARE_BASIC_CONVERTER( Float );
+   CPYCPPYY_DECLARE_BASIC_CONVERTER( LongDouble );
 
-   PYROOT_DECLARE_REF_CONVERTER( Int );
-   PYROOT_DECLARE_REF_CONVERTER( Long );
-   PYROOT_DECLARE_REF_CONVERTER( Double );
+   CPYCPPYY_DECLARE_REF_CONVERTER( Int );
+   CPYCPPYY_DECLARE_REF_CONVERTER( Long );
+   CPYCPPYY_DECLARE_REF_CONVERTER( Double );
 
    class TVoidConverter : public TConverter {
    public:
@@ -150,15 +145,15 @@ namespace PyROOT {
       Bool_t fKeepControl;
    };
 
-   PYROOT_DECLARE_ARRAY_CONVERTER( BoolArray );
-   PYROOT_DECLARE_ARRAY_CONVERTER( ShortArray );
-   PYROOT_DECLARE_ARRAY_CONVERTER( UShortArray );
-   PYROOT_DECLARE_ARRAY_CONVERTER( IntArray );
-   PYROOT_DECLARE_ARRAY_CONVERTER( UIntArray );
-   PYROOT_DECLARE_ARRAY_CONVERTER( LongArray );
-   PYROOT_DECLARE_ARRAY_CONVERTER( ULongArray );
-   PYROOT_DECLARE_ARRAY_CONVERTER( FloatArray );
-   PYROOT_DECLARE_ARRAY_CONVERTER( DoubleArray );
+   CPYCPPYY_DECLARE_ARRAY_CONVERTER( BoolArray );
+   CPYCPPYY_DECLARE_ARRAY_CONVERTER( ShortArray );
+   CPYCPPYY_DECLARE_ARRAY_CONVERTER( UShortArray );
+   CPYCPPYY_DECLARE_ARRAY_CONVERTER( IntArray );
+   CPYCPPYY_DECLARE_ARRAY_CONVERTER( UIntArray );
+   CPYCPPYY_DECLARE_ARRAY_CONVERTER( LongArray );
+   CPYCPPYY_DECLARE_ARRAY_CONVERTER( ULongArray );
+   CPYCPPYY_DECLARE_ARRAY_CONVERTER( FloatArray );
+   CPYCPPYY_DECLARE_ARRAY_CONVERTER( DoubleArray );
 
    class TLongLongArrayConverter : public TVoidArrayConverter {
    public:
@@ -254,9 +249,9 @@ namespace PyROOT {
       virtual PyObject* FromMemory( void* address );
    };
 
-   PYROOT_DECLARE_BASIC_CONVERTER( PyObject );
+   CPYCPPYY_DECLARE_BASIC_CONVERTER( PyObject );
 
-#define PYROOT_DECLARE_STRING_CONVERTER( name, strtype )                      \
+#define CPYCPPYY_DECLARE_STRING_CONVERTER( name, strtype )                      \
    class T##name##Converter : public TCppObjectConverter {                    \
    public:                                                                    \
       T##name##Converter( Bool_t keepControl = kTRUE );                       \
@@ -268,9 +263,10 @@ namespace PyROOT {
       strtype fBuffer;                                                        \
    }
 
-   PYROOT_DECLARE_STRING_CONVERTER( TString,   TString );
-   PYROOT_DECLARE_STRING_CONVERTER( STLString, std::string );
-   PYROOT_DECLARE_STRING_CONVERTER( STLStringView, std::string_view );
+   CPYCPPYY_DECLARE_STRING_CONVERTER( STLString, std::string );
+#if __cplusplus > 201402L
+   CPYCPPYY_DECLARE_STRING_CONVERTER( STLStringView, std::string_view );
+#endif
 
    class TNotImplementedConverter : public TConverter {
    public:
@@ -306,6 +302,6 @@ namespace PyROOT {
 // create converter from fully qualified type
    TConverter* CreateConverter( const std::string& fullType, Long_t size = -1 );
 
-} // namespace PyROOT
+} // namespace CPyCppyy
 
-#endif // !PYROOT_CONVERTERS_H
+#endif // !CPYCPPYY_CONVERTERS_H

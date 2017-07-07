@@ -1,23 +1,15 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, Apr 2004
-
 // Bindings
-#include "PyROOT.h"
+#include "CPyCppyy.h"
 #include "PyStrings.h"
 #include "TPython.h"
 #include "ObjectProxy.h"
 #include "MethodProxy.h"
-#include "RootWrapper.h"
-#include "TPyClassGenerator.h"
-
-// ROOT
-#include "TROOT.h"
-#include "TClassRef.h"
-#include "TObject.h"
+#include "CPyCppyyHelpers.h"
+//#include "TPyClassGenerator.h"
 
 // Standard
 #include <stdio.h>
-#include <Riostream.h>
+#include <iostream>
 #include <string>
 
 //______________________________________________________________________________
@@ -81,11 +73,10 @@
 
 
 //- data ---------------------------------------------------------------------
-ClassImp(TPython);
 static PyObject* gMainDict = 0;
 
-namespace PyROOT {
-   R__EXTERN PyObject* gRootModule;
+namespace CPyCppyy {
+   extern PyObject* gThisModule;
 }
 
 
@@ -136,7 +127,7 @@ Bool_t TPython::Initialize()
    }
 
 // python side class construction, managed by ROOT
-   gROOT->AddClassGenerator( new TPyClassGenerator );
+//   gROOT->AddClassGenerator( new TPyClassGenerator );
 
 // declare success ...
    isInitialized = kTRUE;
@@ -161,10 +152,11 @@ Bool_t TPython::Import( const char* mod_name )
 
 // allow finding to prevent creation of a python proxy for the C++ proxy
    Py_INCREF( mod );
-   PyModule_AddObject( PyROOT::gRootModule, mod_name, mod );
+   PyModule_AddObject( CPyCppyy::gThisModule, mod_name, mod );
 
 // force creation of the module as a namespace
-   TClass::GetClass( mod_name, kTRUE );
+// TODO: the following is broken (and should live in Cppyy.cxx)
+//   TClass::GetClass( mod_name, kTRUE );
 
    PyObject* dct = PyModule_GetDict( mod );
 
@@ -175,11 +167,11 @@ Bool_t TPython::Import( const char* mod_name )
       Py_INCREF( value );
 
    // collect classes
-      if ( PyClass_Check( value ) || PyObject_HasAttr( value, PyROOT::PyStrings::gBases ) ) {
+      if ( PyClass_Check( value ) || PyObject_HasAttr( value, CPyCppyy::PyStrings::gBases ) ) {
       // get full class name (including module)
-         PyObject* pyClName  = PyObject_GetAttr( value, PyROOT::PyStrings::gCppName );
+         PyObject* pyClName  = PyObject_GetAttr( value, CPyCppyy::PyStrings::gCppName );
          if( ! pyClName ) {
-            pyClName  = PyObject_GetAttr( value, PyROOT::PyStrings::gName );
+            pyClName  = PyObject_GetAttr( value, CPyCppyy::PyStrings::gName );
          }
 
          if ( PyErr_Occurred() )
@@ -188,10 +180,11 @@ Bool_t TPython::Import( const char* mod_name )
       // build full, qualified name
          std::string fullname = mod_name;
          fullname += ".";
-         fullname += PyROOT_PyUnicode_AsString( pyClName );
+         fullname += CPyCppyy_PyUnicode_AsString( pyClName );
 
       // force class creation (this will eventually call TPyClassGenerator)
-         TClass::GetClass( fullname.c_str(), kTRUE );
+      // TODO: the following is broken (and should live in Cppyy.cxx)
+      //         TClass::GetClass( fullname.c_str(), kTRUE );
 
          Py_XDECREF( pyClName );
       }
@@ -240,10 +233,10 @@ void TPython::LoadMacro( const char* name )
 
       if ( ! PySequence_Contains( old, value ) ) {
       // collect classes
-         if ( PyClass_Check( value ) || PyObject_HasAttr( value, PyROOT::PyStrings::gBases ) ) {
+         if ( PyClass_Check( value ) || PyObject_HasAttr( value, CPyCppyy::PyStrings::gBases ) ) {
          // get full class name (including module)
-            PyObject* pyModName = PyObject_GetAttr( value, PyROOT::PyStrings::gModule );
-            PyObject* pyClName  = PyObject_GetAttr( value, PyROOT::PyStrings::gName );
+            PyObject* pyModName = PyObject_GetAttr( value, CPyCppyy::PyStrings::gModule );
+            PyObject* pyClName  = PyObject_GetAttr( value, CPyCppyy::PyStrings::gName );
 
             if ( PyErr_Occurred() )
                PyErr_Clear();
@@ -251,16 +244,17 @@ void TPython::LoadMacro( const char* name )
          // need to check for both exact and derived (differences exist between older and newer
          // versions of python ... bug?)
             if ( (pyModName && pyClName) &&\
-                 ( (PyROOT_PyUnicode_CheckExact( pyModName ) && PyROOT_PyUnicode_CheckExact( pyClName )) ||\
-                   (PyROOT_PyUnicode_Check( pyModName ) && PyROOT_PyUnicode_Check( pyClName ))\
+                 ( (CPyCppyy_PyUnicode_CheckExact( pyModName ) && CPyCppyy_PyUnicode_CheckExact( pyClName )) ||\
+                   (CPyCppyy_PyUnicode_Check( pyModName ) && CPyCppyy_PyUnicode_Check( pyClName ))\
                  ) ) {
             // build full, qualified name
-               std::string fullname = PyROOT_PyUnicode_AsString( pyModName );
+               std::string fullname = CPyCppyy_PyUnicode_AsString( pyModName );
                fullname += '.';
-               fullname += PyROOT_PyUnicode_AsString( pyClName );
+               fullname += CPyCppyy_PyUnicode_AsString( pyClName );
 
             // force class creation (this will eventually call TPyClassGenerator)
-               TClass::GetClass( fullname.c_str(), kTRUE );
+            // the following is broken (and should live in Cppyy.cxx)
+            //TClass::GetClass( fullname.c_str(), kTRUE );
             }
 
             Py_XDECREF( pyClName );
@@ -395,27 +389,30 @@ const TPyReturn TPython::Eval( const char* expr )
    }
 
 // results that require no convserion
-   if ( result == Py_None || PyROOT::ObjectProxy_Check( result ) ||
+   if ( result == Py_None || CPyCppyy::ObjectProxy_Check( result ) ||
          PyBytes_Check( result ) ||
          PyFloat_Check( result ) || PyLong_Check( result ) || PyInt_Check( result ) )
       return TPyReturn( result );
 
 // explicit conversion for python type required
-   PyObject* pyclass = PyObject_GetAttr( result, PyROOT::PyStrings::gClass );
+   PyObject* pyclass = PyObject_GetAttr( result, CPyCppyy::PyStrings::gClass );
    if ( pyclass != 0 ) {
    // retrieve class name and the module in which it resides
-      PyObject* name = PyObject_GetAttr( pyclass, PyROOT::PyStrings::gName );
-      PyObject* module = PyObject_GetAttr( pyclass, PyROOT::PyStrings::gModule );
+      PyObject* name = PyObject_GetAttr( pyclass, CPyCppyy::PyStrings::gName );
+      PyObject* module = PyObject_GetAttr( pyclass, CPyCppyy::PyStrings::gModule );
 
    // concat name
       std::string qname =
-         std::string( PyROOT_PyUnicode_AsString( module ) ) + '.' + PyROOT_PyUnicode_AsString( name );
+         std::string( CPyCppyy_PyUnicode_AsString( module ) ) +\
+                      '.' + CPyCppyy_PyUnicode_AsString( name );
       Py_DECREF( module );
       Py_DECREF( name );
       Py_DECREF( pyclass );
 
    // locate ROOT style class with this name
-      TClass* klass = TClass::GetClass( qname.c_str() );
+   // TODO: use Cppyy.cxx ...
+   //TClass* klass = TClass::GetClass( qname.c_str() );
+      void* klass = nullptr;
 
    // construct general ROOT python object that pretends to be of class 'klass'
       if ( klass != 0 )
@@ -431,6 +428,8 @@ const TPyReturn TPython::Eval( const char* expr )
 ////////////////////////////////////////////////////////////////////////////////
 /// Bind a ROOT object with, at the python side, the name "label".
 
+#if 0
+// TODO: see whether this still makes sense
 Bool_t TPython::Bind( TObject* object, const char* label )
 {
 // check given address and setup
@@ -440,7 +439,7 @@ Bool_t TPython::Bind( TObject* object, const char* label )
 // bind object in the main namespace
    TClass* klass = object->IsA();
    if ( klass != 0 ) {
-      PyObject* bound = PyROOT::BindCppObject( (void*)object, klass->GetName() );
+      PyObject* bound = CPyCppyy::BindCppObject( (void*)object, klass->GetName() );
 
       if ( bound ) {
          Bool_t bOk = PyDict_SetItemString( gMainDict, const_cast< char* >( label ), bound ) == 0;
@@ -452,6 +451,7 @@ Bool_t TPython::Bind( TObject* object, const char* label )
 
    return kFALSE;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Enter an interactive python session (exit with ^D). State is preserved
@@ -478,7 +478,7 @@ Bool_t TPython::ObjectProxy_Check( PyObject* pyobject )
       return kFALSE;
 
 // detailed walk through inheritance hierarchy
-   return PyROOT::ObjectProxy_Check( pyobject );
+   return CPyCppyy::ObjectProxy_Check( pyobject );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -491,7 +491,7 @@ Bool_t TPython::ObjectProxy_CheckExact( PyObject* pyobject )
       return kFALSE;
 
 // direct pointer comparison of type member
-   return PyROOT::ObjectProxy_CheckExact( pyobject );
+   return CPyCppyy::ObjectProxy_CheckExact( pyobject );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -505,7 +505,7 @@ Bool_t TPython::MethodProxy_Check( PyObject* pyobject )
       return kFALSE;
 
 // detailed walk through inheritance hierarchy
-   return PyROOT::MethodProxy_Check( pyobject );
+   return CPyCppyy::MethodProxy_Check( pyobject );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -518,7 +518,7 @@ Bool_t TPython::MethodProxy_CheckExact( PyObject* pyobject )
       return kFALSE;
 
 // direct pointer comparison of type member
-   return PyROOT::MethodProxy_CheckExact( pyobject );
+   return CPyCppyy::MethodProxy_CheckExact( pyobject );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -531,11 +531,11 @@ void* TPython::ObjectProxy_AsVoidPtr( PyObject* pyobject )
       return 0;
 
 // check validity of cast
-   if ( ! PyROOT::ObjectProxy_Check( pyobject ) )
+   if ( ! CPyCppyy::ObjectProxy_Check( pyobject ) )
       return 0;
 
 // get held object (may be null)
-   return ((PyROOT::ObjectProxy*)pyobject)->GetObject();
+   return ((CPyCppyy::ObjectProxy*)pyobject)->GetObject();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -549,11 +549,11 @@ PyObject* TPython::ObjectProxy_FromVoidPtr(
       return 0;
 
 // perform cast (the call will check TClass and addr, and set python errors)
-   PyObject* pyobject = PyROOT::BindCppObjectNoCast( addr, Cppyy::GetScope( classname ), kFALSE );
+   PyObject* pyobject = CPyCppyy::BindCppObjectNoCast( addr, Cppyy::GetScope( classname ), kFALSE );
 
 // give ownership, for ref-counting, to the python side, if so requested
-   if ( python_owns && PyROOT::ObjectProxy_Check( pyobject ) )
-      ((PyROOT::ObjectProxy*)pyobject)->HoldOn();
+   if ( python_owns && CPyCppyy::ObjectProxy_Check( pyobject ) )
+      ((CPyCppyy::ObjectProxy*)pyobject)->HoldOn();
 
    return pyobject;
 }

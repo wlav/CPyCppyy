@@ -1,8 +1,5 @@
-// @(#)root/pyroot:$Name:  $:$Id$
-// Author: Scott Snyder, Apr 2004
-
-#ifndef ROOT_TPyException
-#define ROOT_TPyException
+#ifndef CPYCPPYY_TPyException
+#define CPYCPPYY_TPyException
 
 //////////////////////////////////////////////////////////////////////////////
 //                                                                          //
@@ -10,16 +7,16 @@
 //                                                                          //
 // Purpose: A C++ exception class for throwing python exceptions            //
 //          through C++ code.                                               //
-// Created: Apr, 2004, sss, from the version in D0's python_util.           //
+// Created: Apr, 2004, Scott Snyder, from the version in D0's python_util.  //
 //                                                                          //
 // The situation is:                                                        //
-//   - We're calling ROOT C++ code from python.                             //
+//   - We're calling C++ code from python.                                  //
 //   - The C++ code can call back to python.                                //
 //   - What to do then if the python callback throws an exception?          //
 //                                                                          //
-// We need to get the control flow back to where PyROOT makes the ROOT call.//
+// We need to get the control flow back to where CPyCppyy calls C++.        //
 // To do that we throw a TPyException.                                      //
-// We can then catch this exception when we do the ROOT call.               //
+// We can then catch this exception when we do the C++ call.                //
 //                                                                          //
 // Note that we don't need to save any state in the exception -- it's       //
 // already in the python error info variables.                              //
@@ -29,15 +26,11 @@
 //                                                                          //
 //////////////////////////////////////////////////////////////////////////////
 
-// ROOT
-#include "DllImport.h"
-#include "Rtypes.h"
-
 // Standard
 #include <exception>
 
 
-namespace PyROOT {
+namespace CPyCppyy {
 
 class TPyException : public std::exception {
 public:
@@ -49,19 +42,8 @@ public:
 
 // give reason for raised exception
    virtual const char* what() const noexcept;
-
-   ClassDef(TPyException,0)   //C++ exception for throwing python exceptions
 };
 
-} // namespace PyROOT
+} // namespace CPyCppyy
 
-#if defined(G__DICTIONARY) && defined(R__SOLARIS)
-// Force the inclusion of rw/math.h
-#include <limits>
-// Work around interaction between a struct named exception in math.h,
-// std::exception and the use of using namespace std;
-#if (__SUNPRO_CC < 0x5050)
-#define exception std::exception
-#endif
-#endif
-#endif
+#endif // !CPYCPPYY_TPyException

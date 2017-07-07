@@ -1,11 +1,8 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, Apr 2004
-
-#ifndef PYROOT_TPYBUFFERFACTORY_H
-#define PYROOT_TPYBUFFERFACTORY_H
+#ifndef CPYCPPYY_TPYBUFFERFACTORY_H
+#define CPYCPPYY_TPYBUFFERFACTORY_H
 
 
-namespace PyROOT {
+namespace CPyCppyy {
 
 /** Factory for python buffers of non-string type
       @author  WLAV
@@ -43,7 +40,7 @@ protected:
 
 typedef TPyBufferFactory BufFac_t;
 
-} // namespace PyROOT
+} // namespace CPyCppyy
 
 
-#endif // !PYROOT_TPYBUFFERFACTORY_H
+#endif // !CPYCPPYY_TPYBUFFERFACTORY_H

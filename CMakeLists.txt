@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.4.3 FATAL_ERROR)
 project (cppyy)
 
+set (CMAKE_CXX_STANDARD 14)
+set (CMAKE_CXX_STANDARD_REQUIRED ON)
+set (CMAKE_CXX_EXTENSIONS OFF)
+
 message(STATUS "Looking for python interpreter")
 #---First look for the python interpreter and fix the version of it for the libraries--
 find_package(PythonInterp)
@@ -24,4 +28,4 @@ include_directories ("${PROJECT_SOURCE_DIR}/include" "${PYTHON_INCLUDE_PATH}")
 
 file (GLOB cppyy_src src/*.cxx)
 
-add_library(libcppyy.so ${cppyy_src})
+add_library(cppyy SHARED ${cppyy_src})

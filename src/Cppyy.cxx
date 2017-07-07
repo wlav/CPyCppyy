@@ -1,7 +1,8 @@
 // Bindings
-#include "PyROOT.h"
+#include "CPyCppyy.h"
 #include "Cppyy.h"
 #include "TCallContext.h"
+#if 0
 
 // ROOT
 #include "TBaseClass.h"
@@ -1046,3 +1047,4 @@ Int_t Cppyy::GetDimensionSize( TCppScope_t scope, TCppIndex_t idata, int dimensi
    }
    return (Int_t)-1;
 }
+#endif

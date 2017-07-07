@@ -1,12 +1,10 @@
-// Author: Wim Lavrijsen, Dec 2006
-
 // Bindings
-#include "PyROOT.h"
+#include "CPyCppyy.h"
 #include "TTupleOfInstances.h"
-#include "RootWrapper.h"
+#include "CPyCppyyHelpers.h"
 
 
-namespace PyROOT {
+namespace CPyCppyy {
 
 //= support for C-style arrays of objects ====================================
 PyObject* TTupleOfInstances_New(
@@ -94,4 +92,4 @@ PyTypeObject TTupleOfInstances_Type = {
 #endif
 };
 
-} // namespace PyROOT
+} // namespace CPyCppyy

@@ -1,20 +1,11 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, Apr 2004
-
-#ifndef PYROOT_ROOTWRAPPER_H
-#define PYROOT_ROOTWRAPPER_H
-
-// ROOT
-class TGlobal;
+#ifndef CPYCPPYY_ROOTWRAPPER_H
+#define CPYCPPYY_ROOTWRAPPER_H
 
 // Standard
 #include <string>
 
 
-namespace PyROOT {
-
-// initialize ROOT
-   void InitRoot();
+namespace CPyCppyy {
 
 // construct a Python shadow class for the named C++ class
    PyObject* GetScopeProxy( Cppyy::TCppScope_t );
@@ -39,8 +30,8 @@ namespace PyROOT {
    }
 
    PyObject* BindCppObjectArray( Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, Int_t size );
-   PyObject* BindCppGlobal( TGlobal* );
+   PyObject* BindCppGlobal( void* );
 
-} // namespace PyROOT
+} // namespace CPyCppyy
 
-#endif // !PYROOT_ROOTWRAPPER_H
+#endif // !CPYCPPYY_ROOTWRAPPER_H

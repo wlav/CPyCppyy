@@ -1,18 +1,9 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, Jan 2005
-
 // Bindings
-#include "PyROOT.h"
+#include "CPyCppyy.h"
 #include "PyStrings.h"
 #include "ObjectProxy.h"
-#include "RootWrapper.h"
+#include "CPyCppyyHelpers.h"
 #include "Utility.h"
-
-// ROOT
-#include "TBufferFile.h"      // for pickling
-#include "TClass.h"           // id.
-#include "TObject.h"          // for gROOT life-check
-#include "TROOT.h"            // id.
 
 // Standard
 #include <algorithm>
@@ -34,32 +25,25 @@
 // ones as is the default.
 
 
-//- data _______________________________________________________________________
-namespace PyROOT {
-   R__EXTERN PyObject* gRootModule;    // needed for pickling
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Destroy the held C++ object, if owned; does not deallocate the proxy.
 
-void PyROOT::op_dealloc_nofree( ObjectProxy* pyobj ) {
-   if ( gROOT && !gROOT->TestBit( TObject::kInvalidObject ) ) {
-      if ( pyobj->fFlags & ObjectProxy::kIsValue ) {
-         if ( ! (pyobj->fFlags & ObjectProxy::kIsSmartPtr) ) {
-            Cppyy::CallDestructor( pyobj->ObjectIsA(), pyobj->GetObject() );
-            Cppyy::Deallocate( pyobj->ObjectIsA(), pyobj->GetObject() );
-         } else {
-            Cppyy::CallDestructor( pyobj->fSmartPtrType, pyobj->fSmartPtr );
-            Cppyy::Deallocate( pyobj->fSmartPtrType, pyobj->fSmartPtr );
-         }
+void CPyCppyy::op_dealloc_nofree( ObjectProxy* pyobj ) {
+   if ( pyobj->fFlags & ObjectProxy::kIsValue ) {
+      if ( ! (pyobj->fFlags & ObjectProxy::kIsSmartPtr) ) {
+         Cppyy::CallDestructor( pyobj->ObjectIsA(), pyobj->GetObject() );
+         Cppyy::Deallocate( pyobj->ObjectIsA(), pyobj->GetObject() );
+      } else {
+         Cppyy::CallDestructor( pyobj->fSmartPtrType, pyobj->fSmartPtr );
+         Cppyy::Deallocate( pyobj->fSmartPtrType, pyobj->fSmartPtr );
       }
-      else if ( pyobj->fObject && ( pyobj->fFlags & ObjectProxy::kIsOwner ) ) {
-         if ( ! (pyobj->fFlags & ObjectProxy::kIsSmartPtr) ) {
-            Cppyy::Destruct( pyobj->ObjectIsA(), pyobj->GetObject() );
-         } else {
-            Cppyy::Destruct( pyobj->fSmartPtrType, pyobj->fSmartPtr );
-         }
+   }
+   else if ( pyobj->fObject && ( pyobj->fFlags & ObjectProxy::kIsOwner ) ) {
+      if ( ! (pyobj->fFlags & ObjectProxy::kIsSmartPtr) ) {
+         Cppyy::Destruct( pyobj->ObjectIsA(), pyobj->GetObject() );
+      } else {
+         Cppyy::Destruct( pyobj->fSmartPtrType, pyobj->fSmartPtr );
       }
    }
    pyobj->fObject = NULL;
@@ -68,10 +52,10 @@ void PyROOT::op_dealloc_nofree( ObjectProxy* pyobj ) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-namespace PyROOT {
+namespace CPyCppyy {
 namespace {
 
-//= PyROOT object proxy null-ness checking ===================================
+//= CPyCppyy object proxy null-ness checking =================================
    PyObject* op_nonzero( ObjectProxy* self )
    {
    // Null of the proxy is determined by null-ness of the held C++ object.
@@ -80,7 +64,7 @@ namespace {
       return result;
    }
 
-//= PyROOT object explicit destruction =======================================
+//= CPyCppyy object explicit destruction =====================================
    PyObject* op_destruct( ObjectProxy* self )
    {
    // User access to force deletion of the object. Needed in case of a true
@@ -92,63 +76,14 @@ namespace {
       return Py_None;
    }
 
-//= PyROOT object proxy pickle support =======================================
-   PyObject* op_reduce( ObjectProxy* self )
-   {
-   // Turn the object proxy instance into a character stream and return for
-   // pickle, together with the callable object that can restore the stream
-   // into the object proxy instance.
-
-   // keep a borrowed reference around to the callable function for expanding;
-   // because it is borrowed, it means that there can be no pickling during the
-   // shutdown of the libPyROOT module
-      static PyObject* s_expand = PyDict_GetItemString(
-         PyModule_GetDict( gRootModule ),  const_cast< char* >( "_ObjectProxy__expand__" ) );
-
-   // TBuffer and its derived classes can't write themselves, but can be created
-   // directly from the buffer, so handle them in a special case
-      static Cppyy::TCppType_t s_bfClass = Cppyy::GetScope( "TBufferFile" );
-
-      TBufferFile* buff = 0;
-      if ( s_bfClass == self->ObjectIsA() ) {
-         buff = (TBufferFile*)self->GetObject();
-      } else {
-      // no cast is needed, but WriteObject taking a TClass argument is protected,
-      // so use WriteObjectAny()
-         static TBufferFile s_buff( TBuffer::kWrite );
-         s_buff.Reset();
-         if ( s_buff.WriteObjectAny( self->GetObject(),
-               TClass::GetClass( Cppyy::GetFinalName( self->ObjectIsA() ).c_str() ) ) != 1 ) {
-            PyErr_Format( PyExc_IOError,
-               "could not stream object of type %s", Cppyy::GetFinalName( self->ObjectIsA() ).c_str() );
-            return 0;
-         }
-         buff = &s_buff;
-      }
-
-   // use a string for the serialized result, as a python buffer will not copy
-   // the buffer contents; use a string for the class name, used when casting
-   // on reading back in (see RootModule.cxx:TObjectExpand)
-      PyObject* res2 = PyTuple_New( 2 );
-      PyTuple_SET_ITEM( res2, 0, PyBytes_FromStringAndSize( buff->Buffer(), buff->Length() ) );
-      PyTuple_SET_ITEM( res2, 1, PyBytes_FromString( Cppyy::GetFinalName( self->ObjectIsA() ).c_str() ) );
-
-      PyObject* result = PyTuple_New( 2 );
-      Py_INCREF( s_expand );
-      PyTuple_SET_ITEM( result, 0, s_expand );
-      PyTuple_SET_ITEM( result, 1, res2 );
-
-      return result;
-   }
-
-//= PyROOT object dispatch support ===========================================
+//= CPyCppyy object dispatch support =========================================
    PyObject* op_dispatch( PyObject* self, PyObject* args, PyObject* /* kdws */ )
    {
    // User-side __dispatch__ method to allow selection of a specific overloaded
    // method. The actual selection is in the disp() method of MethodProxy.
       PyObject *mname = 0, *sigarg = 0;
       if ( ! PyArg_ParseTuple( args, const_cast< char* >( "O!O!:__dispatch__" ),
-              &PyROOT_PyUnicode_Type, &mname, &PyROOT_PyUnicode_Type, &sigarg ) )
+              &CPyCppyy_PyUnicode_Type, &mname, &CPyCppyy_PyUnicode_Type, &sigarg ) )
          return 0;
 
    // get the named overload
@@ -170,14 +105,14 @@ namespace {
       return oload;
    }
 
-//= PyROOT smart pointer support =============================================
+//= CPyCppyy smart pointer support ===========================================
   PyObject* op_get_smart_ptr( ObjectProxy* self )
   {
      if ( !( self->fFlags & ObjectProxy::kIsSmartPtr ) ) {
         Py_RETURN_NONE;
      }
 
-     return (PyObject*)PyROOT::BindCppObject( self->fSmartPtr, self->fSmartPtrType );
+     return (PyObject*)CPyCppyy::BindCppObject( self->fSmartPtr, self->fSmartPtrType );
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -186,14 +121,13 @@ namespace {
       { (char*)"__nonzero__",  (PyCFunction)op_nonzero,  METH_NOARGS, NULL },
       { (char*)"__bool__",     (PyCFunction)op_nonzero,  METH_NOARGS, NULL }, // for p3
       { (char*)"__destruct__", (PyCFunction)op_destruct, METH_NOARGS, NULL },
-      { (char*)"__reduce__",   (PyCFunction)op_reduce,   METH_NOARGS, NULL },
       { (char*)"__dispatch__", (PyCFunction)op_dispatch, METH_VARARGS, (char*)"dispatch to selected overload" },
       { (char*)"_get_smart_ptr", (PyCFunction)op_get_smart_ptr, METH_NOARGS, (char*)"get associated smart pointer, if any" },
       { (char*)NULL, NULL, 0, NULL }
    };
 
 
-//= PyROOT object proxy construction/destruction =============================
+//= CPyCppyy object proxy construction/destruction ===========================
    ObjectProxy* op_new( PyTypeObject* subtype, PyObject*, PyObject* )
    {
    // Create a new object proxy (holder only).
@@ -266,15 +200,15 @@ namespace {
             const_cast< char* >( "GetName" ), const_cast< char* >( "" ) );
 
          if ( name ) {
-            if ( PyROOT_PyUnicode_GET_SIZE( name ) != 0 ) {
+            if ( CPyCppyy_PyUnicode_GET_SIZE( name ) != 0 ) {
                if ( pyobj->fFlags & ObjectProxy::kIsSmartPtr ) {
-                  PyObject* repr = PyROOT_PyUnicode_FromFormat( "<ROOT.%s object (\"%s\") at %p held by %s at %p>",
-                     clName.c_str(), PyROOT_PyUnicode_AsString( name ), pyobj->GetObject(), smartPtrName.c_str(), pyobj->fSmartPtr );
+                  PyObject* repr = CPyCppyy_PyUnicode_FromFormat( "<ROOT.%s object (\"%s\") at %p held by %s at %p>",
+                     clName.c_str(), CPyCppyy_PyUnicode_AsString( name ), pyobj->GetObject(), smartPtrName.c_str(), pyobj->fSmartPtr );
                   Py_DECREF( name );
                   return repr;
                } else {
-                  PyObject* repr = PyROOT_PyUnicode_FromFormat( "<ROOT.%s object (\"%s\") at %p>",
-                     clName.c_str(), PyROOT_PyUnicode_AsString( name ), pyobj->GetObject() );
+                  PyObject* repr = CPyCppyy_PyUnicode_FromFormat( "<ROOT.%s object (\"%s\") at %p>",
+                     clName.c_str(), CPyCppyy_PyUnicode_AsString( name ), pyobj->GetObject() );
                   Py_DECREF( name );
                   return repr;
                }
@@ -286,17 +220,17 @@ namespace {
 
    // get here if object has no method GetName() or name = ""
       if ( pyobj->fFlags & ObjectProxy::kIsSmartPtr ) {
-         return PyROOT_PyUnicode_FromFormat( const_cast< char* >( "<ROOT.%s object at %p held by %s at %p>" ),
+         return CPyCppyy_PyUnicode_FromFormat( const_cast< char* >( "<ROOT.%s object at %p held by %s at %p>" ),
             clName.c_str(), pyobj->GetObject(), smartPtrName.c_str(), pyobj->fSmartPtr );
       } else {
-         return PyROOT_PyUnicode_FromFormat( const_cast< char* >( "<ROOT.%s object at %p>" ),
+         return CPyCppyy_PyUnicode_FromFormat( const_cast< char* >( "<ROOT.%s object at %p>" ),
                                              clName.c_str(), pyobj->GetObject() );
       }
    }
 
 
-//= PyROOT type number stubs to allow dynamic overrides ======================
-#define PYROOT_STUB( name, op, pystring )                                     \
+//= CPyCppyy type number stubs to allow dynamic overrides ====================
+#define CPYCPPYY_STUB( name, op, pystring )                                     \
    PyObject* op_##name##_stub( PyObject* left, PyObject* right )              \
    {                                                                          \
       if ( ! ObjectProxy_Check( left ) ) {                                    \
@@ -318,10 +252,10 @@ namespace {
       return PyObject_CallMethodObjArgs( left, pystring, right, NULL );       \
    }
 
-PYROOT_STUB( add, +, PyStrings::gAdd )
-PYROOT_STUB( sub, -, PyStrings::gSub )
-PYROOT_STUB( mul, *, PyStrings::gMul )
-PYROOT_STUB( div, /, PyStrings::gDiv )
+CPYCPPYY_STUB( add, +, PyStrings::gAdd )
+CPYCPPYY_STUB( sub, -, PyStrings::gSub )
+CPYCPPYY_STUB( mul, *, PyStrings::gMul )
+CPYCPPYY_STUB( div, /, PyStrings::gDiv )
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -392,8 +326,8 @@ PYROOT_STUB( div, /, PyStrings::gDiv )
 
 //= PyROOT object proxy type =================================================
 PyTypeObject ObjectProxy_Type = {
-   PyVarObject_HEAD_INIT( &PyRootType_Type, 0 )
-   (char*)"ROOT.ObjectProxy", // tp_name
+   PyVarObject_HEAD_INIT( &CPyCppyyType_Type, 0 )
+   (char*)"cppyy.ObjectProxy",// tp_name
    sizeof(ObjectProxy),       // tp_basicsize
    0,                         // tp_itemsize
    (destructor)op_dealloc,    // tp_dealloc
@@ -451,4 +385,4 @@ PyTypeObject ObjectProxy_Type = {
 #endif
 };
 
-} // namespace PyROOT
+} // namespace CPyCppyy

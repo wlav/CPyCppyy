@@ -1,12 +1,9 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, Jan 2005
-
-#ifndef PYROOT_OBJECTPROXY_H
-#define PYROOT_OBJECTPROXY_H
+#ifndef CPYCPPYY_OBJECTPROXY_H
+#define CPYCPPYY_OBJECTPROXY_H
 
 //////////////////////////////////////////////////////////////////////////////
 //                                                                          //
-// PyROOT::ObjectProxy                                                      //
+// CpyCppyy::ObjectProxy                                                    //
 //                                                                          //
 // Python-side proxy, encapsulaties a C++ object.                           //
 //                                                                          //
@@ -14,20 +11,23 @@
 
 
 // Bindings
-#include "PyRootType.h"
+#include "CPyCppyyType.h"
 #include "Cppyy.h"
 #include "TCallContext.h"
 
-// ROOT
-#include "DllImport.h"
 
 // TODO: have an ObjectProxy derived or alternative type for smart pointers
 
-namespace PyROOT {
+namespace CPyCppyy {
 
    class ObjectProxy {
    public:
-      enum EFlags { kNone = 0x0, kIsOwner = 0x0001, kIsReference = 0x0002, kIsValue = 0x0004, kIsSmartPtr = 0x0008 };
+      enum EFlags {
+         kNone        = 0x0,
+         kIsOwner     = 0x0001,
+         kIsReference = 0x0002,
+         kIsValue     = 0x0004,
+         kIsSmartPtr  = 0x0008 };
 
    public:
       void Set( void* address, EFlags flags = kNone )
@@ -52,7 +52,8 @@ namespace PyROOT {
       // it has changed or has been freed.
          if ( fFlags & kIsSmartPtr ) {
          // TODO: this is icky and slow
-            std::vector< Cppyy::TCppMethod_t > methods = Cppyy::GetMethodsFromName( fSmartPtrType, "operator->" );
+            std::vector< Cppyy::TCppMethod_t > methods =
+               Cppyy::GetMethodsFromName( fSmartPtrType, "operator->" );
             std::vector<TParameter> args;
             return Cppyy::CallR( methods[0], fSmartPtr, &args );
          }
@@ -66,7 +67,7 @@ namespace PyROOT {
       Cppyy::TCppType_t ObjectIsA() const
       {
       // Retrieve a pointer to the C++ type; may return NULL.
-         return ((PyRootClass*)Py_TYPE(this))->fCppType;
+         return ((CPyCppyyClass*)Py_TYPE(this))->fCppType;
       }
 
       void HoldOn() { fFlags |= kIsOwner; }
@@ -85,7 +86,7 @@ namespace PyROOT {
 
 
 //- object proxy type and type verification ----------------------------------
-   R__EXTERN PyTypeObject ObjectProxy_Type;
+   extern PyTypeObject ObjectProxy_Type;
 
    template< typename T >
    inline Bool_t ObjectProxy_Check( T* object )
@@ -103,6 +104,6 @@ namespace PyROOT {
 //- helper for memory regulation (no PyTypeObject equiv. member in p2.2) -----
    void op_dealloc_nofree( ObjectProxy* );
 
-} // namespace PyROOT
+} // namespace CPyCppyy
 
-#endif // !PYROOT_OBJECTPROXY_H
+#endif // !CPYCPPYY_OBJECTPROXY_H

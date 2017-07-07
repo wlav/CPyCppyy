@@ -1,8 +1,5 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, Aug 2013
-
 // Bindings
-#include "PyROOT.h"
+#include "CPyCppyy.h"
 #include "TPyArg.h"
 
 
@@ -15,9 +12,6 @@
 // In principle, there should be no need to use this class directly: it relies
 // on implicit conversions.
 
-
-//- data ---------------------------------------------------------------------
-ClassImp(TPyArg);
 
 //- constructor dispatcher ---------------------------------------------------
 void TPyArg::CallConstructor( PyObject*& pyself, PyObject* pyclass, const std::vector<TPyArg>& args )
@@ -99,7 +93,7 @@ TPyArg::TPyArg( Double_t value )
 
 TPyArg::TPyArg( const char* value )
 {
-   fPyObject = PyROOT_PyUnicode_FromString( value );
+   fPyObject = CPyCppyy_PyUnicode_FromString( value );
 }
 
 ////////////////////////////////////////////////////////////////////////////////

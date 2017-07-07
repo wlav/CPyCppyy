@@ -1,11 +1,7 @@
-#ifndef PYROOT_TTUPLEOFINSTANCES_H
-#define PYROOT_TTUPLEOFINSTANCES_H
+#ifndef CPYCPPYY_TTUPLEOFINSTANCES_H
+#define CPYCPPYY_TTUPLEOFINSTANCES_H
 
-// ROOT
-#include "DllImport.h"
-
-
-namespace PyROOT {
+namespace CPyCppyy {
 
 /** Representation of C-style array of instances
       @author  WLAV
@@ -14,7 +10,7 @@ namespace PyROOT {
  */
 
 //- custom tuple type that can pass through C-style arrays -------------------
-   R__EXTERN PyTypeObject TTupleOfInstances_Type;
+   extern PyTypeObject TTupleOfInstances_Type;
 
    template< typename T >
    inline Bool_t TTupleOfInstances_Check( T* object )
@@ -31,6 +27,6 @@ namespace PyROOT {
    PyObject* TTupleOfInstances_New(
       Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, Py_ssize_t nelems );
 
-} // namespace PyROOT
+} // namespace CPyCppyy
 
-#endif // !PYROOT_TTUPLEOFINSTANCES_H
+#endif // !CPYCPPYY_TTUPLEOFINSTANCES_H

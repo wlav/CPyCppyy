@@ -1,24 +1,14 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, Jan 2005
-
-#ifndef PYROOT_PROPERTYPROXY_H
-#define PYROOT_PROPERTYPROXY_H
+#ifndef CPYCPPYY_PROPERTYPROXY_H
+#define CPYCPPYY_PROPERTYPROXY_H
 
 // Bindings
 #include "Converters.h"
-
-// ROOT
-#include "DllImport.h"
-#include "TClassRef.h"
-class TDataMember;
-class TEnumConstant;
-class TGlobal;
 
 // Standard
 #include <string>
 
 
-namespace PyROOT {
+namespace CPyCppyy {
 
    class ObjectProxy;
 
@@ -44,7 +34,7 @@ namespace PyROOT {
 
 
 //- property proxy type and type verification --------------------------------
-   R__EXTERN PyTypeObject PropertyProxy_Type;
+   extern PyTypeObject PropertyProxy_Type;
 
    template< typename T >
    inline Bool_t PropertyProxy_Check( T* object )
@@ -79,6 +69,6 @@ namespace PyROOT {
       return pyprop;
    }
 
-} // namespace PyROOT
+} // namespace CPyCppyy
 
-#endif // !PYROOT_PROPERTYPROXY_H
+#endif // !CPYCPPYY_PROPERTYPROXY_H

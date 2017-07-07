@@ -1,13 +1,11 @@
-// Author: Wim Lavrijsen, Oct 2005
-
-#ifndef PYROOT_TSETITEMHOLDER_H
-#define PYROOT_TSETITEMHOLDER_H
+#ifndef CPYCPPYY_TSETITEMHOLDER_H
+#define CPYCPPYY_TSETITEMHOLDER_H
 
 // Bindings
 #include "TMethodHolder.h"
 
 
-namespace PyROOT {
+namespace CPyCppyy {
 
    class TExecutor;
    class TMemberAdapter;
@@ -25,6 +23,6 @@ namespace PyROOT {
       virtual Bool_t InitExecutor_( TExecutor*&, TCallContext* ctxt = 0 );
    };
 
-} // namespace PyROOT
+} // namespace CPyCppyy
 
-#endif // !PYROOT_TSETITEMHOLDER_H
+#endif // !CPYCPPYY_TSETITEMHOLDER_H

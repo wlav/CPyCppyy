@@ -1,10 +1,7 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, Apr 2004
-
 // Bindings
-#include "PyROOT.h"
+#include "CPyCppyy.h"
 #include "PyStrings.h"
-#include "PyRootType.h"
+#include "CPyCppyyType.h"
 #include "ObjectProxy.h"
 #include "MethodProxy.h"
 #include "TemplateProxy.h"
@@ -12,16 +9,9 @@
 #include "TPyBufferFactory.h"
 #include "TCustomPyTypes.h"
 #include "TTupleOfInstances.h"
-#include "RootWrapper.h"
+#include "CPyCppyyHelpers.h"
 #include "TCallContext.h"
 #include "Utility.h"
-
-// ROOT
-#include "TObject.h"         // for FindObject
-#include "TROOT.h"           // for ProcessLine and FindObject
-
-
-#include "TBufferFile.h"     // for pickling
 
 // Standard
 #include <string>
@@ -47,12 +37,12 @@
       PyDictKeyEntry dk_entries[1];
    } PyDictKeysObject;
 
-#define PYROOT_GET_DICT_LOOKUP( mp )\
+#define CPYCPPYY_GET_DICT_LOOKUP( mp )\
    ((dict_lookup_func&)mp->ma_keys->dk_lookup)
 
 #else
 
-#define PYROOT_GET_DICT_LOOKUP( mp )\
+#define CPYCPPYY_GET_DICT_LOOKUP( mp )\
    ((dict_lookup_func&)mp->ma_lookup)
 
 #endif
@@ -136,13 +126,13 @@ static PyTypeObject PyNullPtr_t_Type = {
 #endif
 };
 
-PyObject _PyROOT_NullPtrStruct = {
+PyObject _CPyCppyy_NullPtrStruct = {
   _PyObject_EXTRA_INIT
   1, &PyNullPtr_t_Type
 };
 
-namespace PyROOT {
-   PyObject* gRootModule = 0;
+namespace CPyCppyy {
+   PyObject* gThisModule = 0;
    PyObject* gNullPtrObject = 0;
    std::vector<std::pair<Cppyy::TCppType_t, Cppyy::TCppType_t> > gPinnedTypes;
    std::vector<Cppyy::TCppType_t> gIgnorePinnings;
@@ -152,13 +142,13 @@ namespace PyROOT {
 //- private helpers ------------------------------------------------------------
 namespace {
 
-   using namespace PyROOT;
+   using namespace CPyCppyy;
 
 ////////////////////////////////////////////////////////////////////////////////
 
    PyObject* RootModuleResetCallback( PyObject*, PyObject* )
    {
-      gRootModule = 0;   // reference was borrowed
+      gThisModule = 0;   // reference was borrowed
       Py_INCREF( Py_None );
       return Py_None;
    }
@@ -169,13 +159,13 @@ namespace {
    PyObject* LookupCppEntity( PyObject* pyname, PyObject* args )
    {
       const char* cname = 0; long macro_ok = 0;
-      if ( pyname && PyROOT_PyUnicode_CheckExact( pyname ) )
-         cname = PyROOT_PyUnicode_AsString( pyname );
+      if ( pyname && CPyCppyy_PyUnicode_CheckExact( pyname ) )
+         cname = CPyCppyy_PyUnicode_AsString( pyname );
       else if ( ! ( args && PyArg_ParseTuple( args, const_cast< char* >( "s|l" ), &cname, &macro_ok ) ) )
          return 0;
 
    // we may have been destroyed if this code is called during shutdown
-      if ( !gRootModule ) {
+      if ( !gThisModule ) {
          PyErr_Format( PyExc_AttributeError, "%s", cname );
          return 0;
       }
@@ -185,7 +175,7 @@ namespace {
    // block search for privates
       if ( name.size() <= 2 || name.substr( 0, 2 ) != "__" ) {
       // 1st attempt: look in myself
-         PyObject* attr = PyObject_GetAttrString( gRootModule, const_cast< char* >( cname ) );
+         PyObject* attr = PyObject_GetAttrString( gThisModule, const_cast< char* >( cname ) );
          if ( attr != 0 )
             return attr;
 
@@ -201,31 +191,12 @@ namespace {
          if ( attr != 0 )
             return attr;
 
-      // 4th attempt: find existing object (e.g. from file)
-         PyErr_Clear();
-         TObject* object = gROOT->FindObject( name.c_str() );
-         if ( object != 0 )
-            return BindCppObject( object, object->IsA()->GetName() );
-
-      // 5th attempt: global enum (pretend int, TODO: is fine for C++98, not in C++11)
+      // 4th attempt: global enum (pretend int, TODO: is fine for C++98, not in C++11)
          if ( Cppyy::IsEnum( name ) ) {
             Py_INCREF( &PyInt_Type );
             return (PyObject*)&PyInt_Type;
          }
 
-      // 6th attempt: check macro's (debatable, but this worked in CINT)
-         if ( macro_ok ) {
-            PyErr_Clear();
-            std::ostringstream ismacro;
-            ismacro << "#ifdef " << name << "\n_pyroot_" << name << "=" << name
-                    << ";true;\n#else\nfalse;\n#endif";
-            if ( gROOT->ProcessLine( ismacro.str().c_str() ) ) {
-            // can now retrieve this as a global
-               attr = GetCppGlobal( "_pyroot_"+name );
-               if ( attr != 0 )
-                  return attr;
-            }
-         }
       }
 
    // still here? raise attribute error
@@ -242,7 +213,7 @@ namespace {
       return (*gDictLookupOrg)( mp, key, hash, value_addr );
    }
 
-#define PYROOT_ORGDICT_LOOKUP( mp, key, hash, value_addr )\
+#define CPYCPPYY_ORGDICT_LOOKUP( mp, key, hash, value_addr )\
    OrgDictLookup( mp, key, hash, value_addr )
 
    PyDictKeyEntry* RootLookDictString(
@@ -253,14 +224,14 @@ namespace {
        return (*gDictLookupOrg)( mp, key, hash );
    }
 
-#define PYROOT_ORGDICT_LOOKUP( mp, key, hash, value_addr )\
+#define CPYCPPYY_ORGDICT_LOOKUP( mp, key, hash, value_addr )\
    OrgDictLookup( mp, key, hash )
 
    PyDictEntry* RootLookDictString( PyDictObject* mp, PyObject* key, Long_t hash )
 #endif
    {
    // first search dictionary itself
-      PyDictEntry* ep = PYROOT_ORGDICT_LOOKUP( mp, key, hash, value_addr );
+      PyDictEntry* ep = CPYCPPYY_ORGDICT_LOOKUP( mp, key, hash, value_addr );
       if ( ! ep || (ep->me_key && ep->me_value) || gDictLookupActive )
          return ep;
 
@@ -273,7 +244,7 @@ namespace {
       gDictLookupActive = kTRUE;
 
    // ROOT globals (the round-about lookup is to prevent recursion)
-      PyObject* gval = PyDict_GetItem( PyModule_GetDict( gRootModule ), key );
+      PyObject* gval = PyDict_GetItem( PyModule_GetDict( gThisModule ), key );
       if ( gval ) {
          Py_INCREF( gval );
          ep->me_value = gval;
@@ -303,14 +274,14 @@ namespace {
          }
 
       // add reference to ROOT entity in the given dictionary
-         PYROOT_GET_DICT_LOOKUP( mp ) = gDictLookupOrg;     // prevent recursion
+         CPYCPPYY_GET_DICT_LOOKUP( mp ) = gDictLookupOrg;     // prevent recursion
          if ( PyDict_SetItem( (PyObject*)mp, key, val ) == 0 ) {
-            ep = PYROOT_ORGDICT_LOOKUP( mp, key, hash, value_addr );
+            ep = CPYCPPYY_ORGDICT_LOOKUP( mp, key, hash, value_addr );
          } else {
             ep->me_key   = 0;
             ep->me_value = 0;
          }
-         PYROOT_GET_DICT_LOOKUP( mp ) = RootLookDictString; // restore
+         CPYCPPYY_GET_DICT_LOOKUP( mp ) = RootLookDictString; // restore
 
       // done with val
          Py_DECREF( val );
@@ -322,12 +293,12 @@ namespace {
       // big risk that this lookup will result in a resize, so force it here
       // to be able to reset the lookup function; of course, this is nowhere
       // near fool-proof, but should cover interactive usage ...
-         PYROOT_GET_DICT_LOOKUP( mp ) = gDictLookupOrg;
+         CPYCPPYY_GET_DICT_LOOKUP( mp ) = gDictLookupOrg;
          const int maxinsert = 5;
          PyObject* buf[maxinsert];
          for ( int varmax = 1; varmax <= maxinsert; ++varmax ) {
             for ( int ivar = 0; ivar < varmax; ++ivar ) {
-               buf[ivar] = PyROOT_PyUnicode_FromFormat( "__ROOT_FORCE_RESIZE_%d", ivar );
+               buf[ivar] = CPyCppyy_PyUnicode_FromFormat( "__ROOT_FORCE_RESIZE_%d", ivar );
                PyDict_SetItem( (PyObject*)mp, buf[ivar], Py_None);
             }
             for ( int ivar = 0; ivar < varmax; ++ivar ) {
@@ -339,11 +310,11 @@ namespace {
          }
 
       // make sure the entry pointer is still valid by re-doing the lookup
-         ep = PYROOT_ORGDICT_LOOKUP( mp, key, hash, value_addr );
+         ep = CPYCPPYY_ORGDICT_LOOKUP( mp, key, hash, value_addr );
 
       // full reset of all lookup functions
-         gDictLookupOrg = PYROOT_GET_DICT_LOOKUP( mp );
-         PYROOT_GET_DICT_LOOKUP( mp ) = RootLookDictString; // restore
+         gDictLookupOrg = CPYCPPYY_GET_DICT_LOOKUP( mp );
+         CPYCPPYY_GET_DICT_LOOKUP( mp ) = RootLookDictString; // restore
       }
 #endif
 
@@ -370,7 +341,7 @@ namespace {
    // the default (lookdict_unicode_nodummy) and only if the resizing dictionary
    // has the generic lookdict function as dk_lookup for its keys, will this be
    // set on the new keys.
-      PYROOT_GET_DICT_LOOKUP( dict ) = RootLookDictString;
+      CPYCPPYY_GET_DICT_LOOKUP( dict ) = RootLookDictString;
 
       Py_INCREF( Py_None );
       return Py_None;
@@ -393,7 +364,7 @@ namespace {
       if ( ! pyname )
          return 0;
 
-      std::string name = PyROOT_PyUnicode_AsString( pyname );
+      std::string name = CPyCppyy_PyUnicode_AsString( pyname );
       Py_DECREF( pyname );
 
       return CreateScopeProxy( name );
@@ -407,7 +378,7 @@ namespace {
       ObjectProxy* pyobj = 0;
       PyObject* pyname = 0;
       if ( PyArg_ParseTuple( args, const_cast< char* >( "O|O!" ), &pyobj,
-             &PyROOT_PyUnicode_Type, &pyname ) &&
+             &CPyCppyy_PyUnicode_Type, &pyname ) &&
            ObjectProxy_Check( pyobj ) && pyobj->fObject ) {
 
          if ( pyname != 0 ) {
@@ -433,7 +404,7 @@ namespace {
             Py_XDECREF( pyprop );
 
             PyErr_Format( PyExc_TypeError,
-               "%s is not a valid data member", PyROOT_PyUnicode_AsString( pyname ) );
+               "%s is not a valid data member", CPyCppyy_PyUnicode_AsString( pyname ) );
             return 0;
          }
 
@@ -452,7 +423,7 @@ namespace {
       }
       if ( !PyErr_Occurred() ) {
          PyObject* str = PyObject_Str( dummy );
-         if ( str && PyROOT_PyUnicode_Check( str ) )
+         if ( str && CPyCppyy_PyUnicode_Check( str ) )
             PyErr_Format( PyExc_ValueError, "unknown object %s", PyBytes_AS_STRING( str ) );
          else
             PyErr_Format( PyExc_ValueError, "unknown object at %p", (void*)dummy );
@@ -494,7 +465,7 @@ namespace {
    // Return object proxy as an opaque CObject.
       void* addr = GetObjectProxyAddress( dummy, args );
       if ( addr )
-         return PyROOT_PyCapsule_New( (void*)(*(Long_t*)addr), NULL, NULL );
+         return CPyCppyy_PyCapsule_New( (void*)(*(Long_t*)addr), NULL, NULL );
 
       return 0;
    }
@@ -504,7 +475,7 @@ namespace {
 
    PyObject* BindObject_( void* addr, PyObject* pyname )
    {
-      if ( ! PyROOT_PyUnicode_Check( pyname ) ) {     // name given as string
+      if ( ! CPyCppyy_PyUnicode_Check( pyname ) ) {     // name given as string
          PyObject* nattr = PyObject_GetAttr( pyname, PyStrings::gCppName );
          if ( ! nattr ) nattr = PyObject_GetAttr( pyname, PyStrings::gName );
          if ( nattr )                        // object is actually a class
@@ -515,7 +486,7 @@ namespace {
          Py_INCREF( pyname );
       }
 
-      Cppyy::TCppType_t klass = (Cppyy::TCppType_t)Cppyy::GetScope( PyROOT_PyUnicode_AsString( pyname ) );
+      Cppyy::TCppType_t klass = (Cppyy::TCppType_t)Cppyy::GetScope( CPyCppyy_PyUnicode_AsString( pyname ) );
       Py_DECREF( pyname );
 
       if ( ! klass ) {
@@ -541,7 +512,7 @@ namespace {
 
    // try to convert first argument: either PyCapsule/CObject or long integer
       PyObject* pyaddr = PyTuple_GET_ITEM( args, 0 );
-      void* addr = PyROOT_PyCapsule_GetPointer( pyaddr, NULL );
+      void* addr = CPyCppyy_PyCapsule_GetPointer( pyaddr, NULL );
       if ( PyErr_Occurred() ) {
          PyErr_Clear();
 
@@ -582,51 +553,6 @@ namespace {
       }
 
       return BindObject_( 0, PyTuple_GET_ITEM( args, 0 ) );
-   }
-
-////////////////////////////////////////////////////////////////////////////////
-/// This method is a helper for (un)pickling of ObjectProxy instances.
-
-   PyObject* ObjectProxyExpand( PyObject*, PyObject* args )
-   {
-      PyObject* pybuf = 0, *pyname = 0;
-      if ( ! PyArg_ParseTuple( args, const_cast< char* >( "O!O!:__expand__" ),
-               &PyBytes_Type, &pybuf, &PyBytes_Type, &pyname ) )
-         return 0;
-
-      const char* clname = PyBytes_AS_STRING(pyname);
-
-   // make sure that ROOT.py is loaded and fully initialized by accessing on it
-      PyObject* mod = PyImport_ImportModule( (char*)"ROOT" );
-      if ( mod ) {
-         PyObject* dummy = PyObject_GetAttrString( mod, (char*)"kRed" );
-         Py_XDECREF( dummy );
-         Py_DECREF( mod );
-      }
-
-   // TBuffer and its derived classes can't write themselves, but can be created
-   // directly from the buffer, so handle them in a special case
-      void* newObj = 0;
-      if ( strcmp( clname, "TBufferFile" ) == 0 ) {
-         TBufferFile* buf = new TBufferFile( TBuffer::kWrite );
-         buf->WriteFastArray( PyBytes_AS_STRING(pybuf), PyBytes_GET_SIZE( pybuf ) );
-         newObj = buf;
-      } else {
-      // use the PyString macro's to by-pass error checking; do not adopt the buffer,
-      // as the local TBufferFile can go out of scope (there is no copying)
-         TBufferFile buf( TBuffer::kRead,
-            PyBytes_GET_SIZE( pybuf ), PyBytes_AS_STRING( pybuf ), kFALSE );
-         newObj = buf.ReadObjectAny( 0 );
-      }
-
-      PyObject* result = BindCppObject( newObj, clname );
-      if ( result ) {
-      // this object is to be owned by the interpreter, assuming that the call
-      // originated from there
-         ((ObjectProxy*)result)->HoldOn();
-      }
-
-      return result;
    }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -706,10 +632,10 @@ namespace {
 
    PyObject* SetTypePinning( PyObject*, PyObject* args )
    {
-      PyRootClass* derived = nullptr, *base = nullptr;
+      CPyCppyyClass* derived = nullptr, *base = nullptr;
       if ( ! PyArg_ParseTuple( args, const_cast< char* >( "O!O!" ),
-                               &PyRootType_Type, &derived,
-                               &PyRootType_Type, &base ) )
+                               &CPyCppyyType_Type, &derived,
+                               &CPyCppyyType_Type, &base ) )
          return nullptr;
       gPinnedTypes.push_back( std::make_pair( derived->fCppType, base->fCppType ) );
 
@@ -721,9 +647,9 @@ namespace {
 
    PyObject* IgnoreTypePinning( PyObject*, PyObject* args )
    {
-      PyRootClass* derived = nullptr;
+      CPyCppyyClass* derived = nullptr;
       if ( ! PyArg_ParseTuple( args, const_cast< char* >( "O!" ),
-                               &PyRootType_Type, &derived ) )
+                               &CPyCppyyType_Type, &derived ) )
          return nullptr;
       gIgnorePinnings.push_back( derived->fCppType );
 
@@ -736,10 +662,10 @@ namespace {
    PyObject* Cast( PyObject*, PyObject* args )
    {
       ObjectProxy* obj = nullptr;
-      PyRootClass* type = nullptr;
+      CPyCppyyClass* type = nullptr;
       if ( ! PyArg_ParseTuple( args, const_cast< char* >( "O!O!" ),
                                &ObjectProxy_Type, &obj,
-                               &PyRootType_Type, &type ) )
+                               &CPyCppyyType_Type, &type ) )
          return nullptr;
       // TODO: this misses an offset calculation, and reference type must not
       // be cast ...
@@ -752,9 +678,9 @@ namespace {
 
 //- data -----------------------------------------------------------------------
 static PyMethodDef gPyROOTMethods[] = {
-   { (char*) "CreateScopeProxy", (PyCFunction)PyROOT::CreateScopeProxy,
+   { (char*) "CreateScopeProxy", (PyCFunction)CPyCppyy::CreateScopeProxy,
      METH_VARARGS, (char*) "PyROOT internal function" },
-   { (char*) "GetCppGlobal", (PyCFunction)PyROOT::GetCppGlobal,
+   { (char*) "GetCppGlobal", (PyCFunction)CPyCppyy::GetCppGlobal,
      METH_VARARGS, (char*) "PyROOT internal function" },
    { (char*) "LookupCppEntity", (PyCFunction)LookupCppEntity,
      METH_VARARGS, (char*) "PyROOT internal function" },
@@ -762,7 +688,7 @@ static PyMethodDef gPyROOTMethods[] = {
      METH_VARARGS, (char*) "PyROOT internal function" },
    { (char*) "MakeRootTemplateClass", (PyCFunction)MakeRootTemplateClass,
      METH_VARARGS, (char*) "PyROOT internal function" },
-   { (char*) "_DestroyPyStrings", (PyCFunction)PyROOT::DestroyPyStrings,
+   { (char*) "_DestroyPyStrings", (PyCFunction)CPyCppyy::DestroyPyStrings,
      METH_NOARGS, (char*) "PyROOT internal function" },
    { (char*) "_ResetRootModule", (PyCFunction)RootModuleResetCallback,
      METH_NOARGS, (char*) "PyROOT internal function" },
@@ -776,8 +702,6 @@ static PyMethodDef gPyROOTMethods[] = {
      METH_VARARGS, (char*) "Create an object of given type, from given address" },
    { (char*) "MakeNullPointer", (PyCFunction)MakeNullPointer,
      METH_VARARGS, (char*) "Create a NULL pointer of the given type" },
-   { (char*) "_ObjectProxy__expand__", (PyCFunction)ObjectProxyExpand,
-     METH_VARARGS, (char*) "Helper method for pickling" },
    { (char*) "SetMemoryPolicy", (PyCFunction)SetMemoryPolicy,
      METH_VARARGS, (char*) "Determines object ownership model" },
    { (char*) "SetSignalPolicy", (PyCFunction)SetSignalPolicy,
@@ -786,10 +710,6 @@ static PyMethodDef gPyROOTMethods[] = {
      METH_VARARGS, (char*) "Modify held C++ object ownership" },
    { (char*) "AddSmartPtrType", (PyCFunction)AddSmartPtrType,
      METH_VARARGS, (char*) "Add a smart pointer to the list of known smart pointer types" },
-   { (char*) "InstallGUIEventInputHook", (PyCFunction)PyROOT::Utility::InstallGUIEventInputHook,
-     METH_NOARGS, (char*) "Install input hook to sent GUI events" },
-   { (char*) "RemoveGUIEventInputHook", (PyCFunction)PyROOT::Utility::RemoveGUIEventInputHook,
-     METH_NOARGS, (char*) "Remove input hook to sent GUI events" },
    { (char*) "SetTypePinning", (PyCFunction)SetTypePinning,
      METH_VARARGS, (char*) "Install a type pinning" },
    { (char*) "IgnoreTypePinning", (PyCFunction)IgnoreTypePinning,
@@ -835,18 +755,19 @@ static struct PyModuleDef moduledef = {
 ////////////////////////////////////////////////////////////////////////////////
 /// Initialization of extension module libPyROOT.
 
-#define PYROOT_INIT_ERROR return NULL
+#define CPYCPPYY_INIT_ERROR return NULL
 extern "C" PyObject* PyInit_libPyROOT()
 #else
-#define PYROOT_INIT_ERROR return
+#define CPYCPPYY_INIT_ERROR return
 extern "C" void initlibPyROOT()
 #endif
 {
-   using namespace PyROOT;
-
 // load commonly used python strings
-   if ( ! PyROOT::CreatePyStrings() )
-      PYROOT_INIT_ERROR;
+   if ( ! CPyCppyy::CreatePyStrings() )
+      CPYCPPYY_INIT_ERROR;
+
+// setup interpreter
+   PyEval_InitThreads();
 
 // prepare for lazyness
    PyObject* dict = PyDict_New();
@@ -859,14 +780,14 @@ extern "C" void initlibPyROOT()
 
 // setup PyROOT
 #if PY_VERSION_HEX >= 0x03000000
-   gRootModule = PyModule_Create( &moduledef );
+   gThisModule = PyModule_Create( &moduledef );
 #else
-   gRootModule = Py_InitModule( const_cast< char* >( "libPyROOT" ), gPyROOTMethods );
+   gThisModule = Py_InitModule( const_cast< char* >( "libPyROOT" ), gPyROOTMethods );
 #endif
-   if ( ! gRootModule )
-      PYROOT_INIT_ERROR;
+   if ( ! gThisModule )
+      CPYCPPYY_INIT_ERROR;
 
-// keep gRootModule, but do not increase its reference count even as it is borrowed,
+// keep gThisModule, but do not increase its reference count even as it is borrowed,
 // or a self-referencing cycle would be created
 
 // Pythonizations ...
@@ -874,78 +795,72 @@ extern "C" void initlibPyROOT()
    PyObject* gblList = PyList_New( 0 );
    PyDict_SetItemString( userPythonizations, "__global__", gblList );
    Py_DECREF( gblList );
-   PyModule_AddObject( gRootModule, "UserPythonizations", userPythonizations );
-   PyModule_AddObject( gRootModule, "UserExceptions",     PyDict_New() );
-   PyModule_AddObject( gRootModule, "PythonizationScope", PyROOT_PyUnicode_FromString( "__global__" ) );
+   PyModule_AddObject( gThisModule, "UserPythonizations", userPythonizations );
+   PyModule_AddObject( gThisModule, "UserExceptions",     PyDict_New() );
+   PyModule_AddObject( gThisModule, "PythonizationScope", CPyCppyy_PyUnicode_FromString( "__global__" ) );
 
 // inject meta type
-   if ( ! Utility::InitProxy( gRootModule, &PyRootType_Type, "PyRootType" ) )
-      PYROOT_INIT_ERROR;
+   if ( ! Utility::InitProxy( gThisModule, &CPyCppyyType_Type, "CPyCppyyType" ) )
+      CPYCPPYY_INIT_ERROR;
 
 // inject object proxy type
-   if ( ! Utility::InitProxy( gRootModule, &ObjectProxy_Type, "ObjectProxy" ) )
-      PYROOT_INIT_ERROR;
+   if ( ! Utility::InitProxy( gThisModule, &ObjectProxy_Type, "ObjectProxy" ) )
+      CPYCPPYY_INIT_ERROR;
 
 // inject method proxy type
-   if ( ! Utility::InitProxy( gRootModule, &MethodProxy_Type, "MethodProxy" ) )
-      PYROOT_INIT_ERROR;
+   if ( ! Utility::InitProxy( gThisModule, &MethodProxy_Type, "MethodProxy" ) )
+      CPYCPPYY_INIT_ERROR;
 
 // inject template proxy type
-   if ( ! Utility::InitProxy( gRootModule, &TemplateProxy_Type, "TemplateProxy" ) )
-      PYROOT_INIT_ERROR;
+   if ( ! Utility::InitProxy( gThisModule, &TemplateProxy_Type, "TemplateProxy" ) )
+      CPYCPPYY_INIT_ERROR;
 
 // inject property proxy type
-   if ( ! Utility::InitProxy( gRootModule, &PropertyProxy_Type, "PropertyProxy" ) )
-      PYROOT_INIT_ERROR;
+   if ( ! Utility::InitProxy( gThisModule, &PropertyProxy_Type, "PropertyProxy" ) )
+      CPYCPPYY_INIT_ERROR;
 
 // inject custom data types
-   if ( ! Utility::InitProxy( gRootModule, &TCustomFloat_Type, "Double" ) )
-      PYROOT_INIT_ERROR;
+   if ( ! Utility::InitProxy( gThisModule, &TCustomFloat_Type, "Double" ) )
+      CPYCPPYY_INIT_ERROR;
 
-   if ( ! Utility::InitProxy( gRootModule, &TCustomInt_Type, "Long" ) )
-      PYROOT_INIT_ERROR;
+   if ( ! Utility::InitProxy( gThisModule, &TCustomInt_Type, "Long" ) )
+      CPYCPPYY_INIT_ERROR;
 
-   if ( ! Utility::InitProxy( gRootModule, &TCustomFloat_Type, "double" ) )
-      PYROOT_INIT_ERROR;
+   if ( ! Utility::InitProxy( gThisModule, &TCustomFloat_Type, "double" ) )
+      CPYCPPYY_INIT_ERROR;
 
-   if ( ! Utility::InitProxy( gRootModule, &TCustomInt_Type, "long" ) )
-      PYROOT_INIT_ERROR;
+   if ( ! Utility::InitProxy( gThisModule, &TCustomInt_Type, "long" ) )
+      CPYCPPYY_INIT_ERROR;
 
-   if ( ! Utility::InitProxy( gRootModule, &TCustomInstanceMethod_Type, "InstanceMethod" ) )
-      PYROOT_INIT_ERROR;
+   if ( ! Utility::InitProxy( gThisModule, &TCustomInstanceMethod_Type, "InstanceMethod" ) )
+      CPYCPPYY_INIT_ERROR;
 
-   if ( ! Utility::InitProxy( gRootModule, &TTupleOfInstances_Type, "InstancesArray" ) )
-      PYROOT_INIT_ERROR;
+   if ( ! Utility::InitProxy( gThisModule, &TTupleOfInstances_Type, "InstancesArray" ) )
+      CPYCPPYY_INIT_ERROR;
 
-   if ( ! Utility::InitProxy( gRootModule, &PyNullPtr_t_Type, "nullptr_t" ) )
-      PYROOT_INIT_ERROR;
+   if ( ! Utility::InitProxy( gThisModule, &PyNullPtr_t_Type, "nullptr_t" ) )
+      CPYCPPYY_INIT_ERROR;
 
 // inject identifiable nullptr
-   gNullPtrObject = (PyObject*)&_PyROOT_NullPtrStruct;
+   gNullPtrObject = (PyObject*)&_CPyCppyy_NullPtrStruct;
    Py_INCREF( gNullPtrObject );
-   PyModule_AddObject( gRootModule, (char*)"nullptr", gNullPtrObject );
+   PyModule_AddObject( gThisModule, (char*)"nullptr", gNullPtrObject );
 
 // policy labels
-   PyModule_AddObject( gRootModule, (char*)"kMemoryHeuristics",
+   PyModule_AddObject( gThisModule, (char*)"kMemoryHeuristics",
       PyInt_FromLong( (int)TCallContext::kUseHeuristics ) );
-   PyModule_AddObject( gRootModule, (char*)"kMemoryStrict",
+   PyModule_AddObject( gThisModule, (char*)"kMemoryStrict",
       PyInt_FromLong( (int)TCallContext::kUseStrict ) );
-   PyModule_AddObject( gRootModule, (char*)"kSignalFast",
+   PyModule_AddObject( gThisModule, (char*)"kSignalFast",
       PyInt_FromLong( (int)TCallContext::kFast ) );
-   PyModule_AddObject( gRootModule, (char*)"kSignalSafe",
+   PyModule_AddObject( gThisModule, (char*)"kSignalSafe",
       PyInt_FromLong( (int)TCallContext::kSafe ) );
 
-// setup ROOT
-   PyROOT::InitRoot();
-
-// signal policy: don't abort interpreter in interactive mode
-   TCallContext::SetSignalPolicy( gROOT->IsBatch() ? TCallContext::kFast : TCallContext::kSafe );
-
-// inject ROOT namespace for convenience
-   PyModule_AddObject( gRootModule, (char*)"ROOT", CreateScopeProxy( "ROOT" ) );
+// inject gbl namespace
+   PyModule_AddObject( gThisModule, (char*)"gbl", CreateScopeProxy( "gbl" ) );
 
 #if PY_VERSION_HEX >= 0x03000000
-   Py_INCREF( gRootModule );
-   return gRootModule;
+   Py_INCREF( gThisModule );
+   return gThisModule;
 #endif
 }

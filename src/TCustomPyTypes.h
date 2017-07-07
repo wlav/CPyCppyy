@@ -1,13 +1,7 @@
-// Author: Wim Lavrijsen, Dec 2006
+#ifndef CPYCPPYY_TCUSTOMPYTYPES_H
+#define CPYCPPYY_TCUSTOMPYTYPES_H
 
-#ifndef PYROOT_TCUSTOMPYTYPES_H
-#define PYROOT_TCUSTOMPYTYPES_H
-
-// ROOT
-#include "DllImport.h"
-
-
-namespace PyROOT {
+namespace CPyCppyy {
 
 /** Custom builtins, detectable by type, for pass by ref
       @author  WLAV
@@ -16,7 +10,7 @@ namespace PyROOT {
  */
 
 //- custom float object type and type verification ---------------------------
-   R__EXTERN PyTypeObject TCustomFloat_Type;
+   extern PyTypeObject TCustomFloat_Type;
 
    template< typename T >
    inline Bool_t TCustomFloat_Check( T* object )
@@ -31,7 +25,7 @@ namespace PyROOT {
    }
 
 //- custom long object type and type verification ----------------------------
-   R__EXTERN PyTypeObject TCustomInt_Type;
+   extern PyTypeObject TCustomInt_Type;
 
    template< typename T >
    inline Bool_t TCustomInt_Check( T* object )
@@ -46,7 +40,7 @@ namespace PyROOT {
    }
 
 //- custom instance method object type and type verification -----------------
-   R__EXTERN PyTypeObject TCustomInstanceMethod_Type;
+   extern PyTypeObject TCustomInstanceMethod_Type;
 
    template< typename T >
    inline Bool_t TCustomInstanceMethod_Check( T* object )
@@ -62,6 +56,6 @@ namespace PyROOT {
 
    PyObject* TCustomInstanceMethod_New( PyObject* func, PyObject* self, PyObject* pyclass );
 
-} // namespace PyROOT
+} // namespace CPyCppyy
 
-#endif // !PYROOT_TCUSTOMPYTYPES_H
+#endif // !CPYCPPYY_TCUSTOMPYTYPES_H

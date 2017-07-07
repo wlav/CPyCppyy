@@ -1,13 +1,11 @@
-// Author: Wim Lavrijsen, Oct 2005
-
 // Bindings
-#include "PyROOT.h"
+#include "CPyCppyy.h"
 #include "TSetItemHolder.h"
 #include "Executors.h"
 
 
 //- protected members --------------------------------------------------------
-Bool_t PyROOT::TSetItemHolder::InitExecutor_( TExecutor*& executor, TCallContext* )
+Bool_t CPyCppyy::TSetItemHolder::InitExecutor_( TExecutor*& executor, TCallContext* )
 {
 // basic call will do
    if ( ! TMethodHolder::InitExecutor_( executor ) )
@@ -28,7 +26,7 @@ Bool_t PyROOT::TSetItemHolder::InitExecutor_( TExecutor*& executor, TCallContext
 ////////////////////////////////////////////////////////////////////////////////
 /// Prepare executor with a buffer for the return value.
 
-PyObject* PyROOT::TSetItemHolder::PreProcessArgs(
+PyObject* CPyCppyy::TSetItemHolder::PreProcessArgs(
       ObjectProxy*& self, PyObject* args, PyObject* kwds )
 {
    int nArgs = PyTuple_GET_SIZE( args );

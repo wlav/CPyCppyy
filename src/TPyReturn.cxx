@@ -1,14 +1,7 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, May 2004
-
 // Bindings
-#include "PyROOT.h"
+#include "CPyCppyy.h"
 #include "TPyReturn.h"
 #include "ObjectProxy.h"
-
-// ROOT
-#include "TObject.h"
-#include "TInterpreter.h"
 
 // Standard
 #include <stdexcept>
@@ -32,10 +25,6 @@
 //  root [3] double d = TPython::Eval( "1+3.1415" );
 //  root [4] d
 //  (double)4.14150000000000063e+00
-
-
-//- data ---------------------------------------------------------------------
-ClassImp(TPyReturn);
 
 
 //- constructors/destructor --------------------------------------------------
@@ -106,7 +95,7 @@ TPyReturn::operator const char*() const
    if ( fPyObject == Py_None )     // for void returns
       return 0;
 
-   const char* s = PyROOT_PyUnicode_AsString( fPyObject );
+   const char* s = CPyCppyy_PyUnicode_AsString( fPyObject );
    if ( PyErr_Occurred() ) {
       PyErr_Print();
       return 0;
@@ -176,9 +165,9 @@ TPyReturn::operator void*() const
    if ( fPyObject == Py_None )
       return 0;
 
-   if ( PyROOT::ObjectProxy_Check( fPyObject ) ) {
-      ((PyROOT::ObjectProxy*)fPyObject)->Release();
-      return ((PyROOT::ObjectProxy*)fPyObject)->GetObject();
+   if ( CPyCppyy::ObjectProxy_Check( fPyObject ) ) {
+      ((CPyCppyy::ObjectProxy*)fPyObject)->Release();
+      return ((CPyCppyy::ObjectProxy*)fPyObject)->GetObject();
    } else
       return fPyObject;                 // borrows reference
 }

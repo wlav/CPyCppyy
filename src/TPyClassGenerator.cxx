@@ -1,12 +1,12 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, May 2004
-
 // Bindings
-#include "PyROOT.h"
+#include "CPyCppyy.h"
 #include "PyStrings.h"
 #include "TPyClassGenerator.h"
 #include "TPyReturn.h"
 #include "Utility.h"
+
+// TODO: not sure if any of this still makes sense ...
+#if 0
 
 // ROOT
 #include "TClass.h"
@@ -284,3 +284,4 @@ TClass* TPyClassGenerator::GetClass( const std::type_info& typeinfo, Bool_t load
 {
    return GetClass( typeinfo.name(), load );
 }
+#endif

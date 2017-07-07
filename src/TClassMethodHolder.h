@@ -1,14 +1,11 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, Aug 2004
-
-#ifndef PYROOT_TCLASSMETHODHOLDER_H
-#define PYROOT_TCLASSMETHODHOLDER_H
+#ifndef CPYCPPYY_TCLASSMETHODHOLDER_H
+#define CPYCPPYY_TCLASSMETHODHOLDER_H
 
 // Bindings
 #include "TMethodHolder.h"
 
 
-namespace PyROOT {
+namespace CPyCppyy {
 
    class TClassMethodHolder : public TMethodHolder {
    public:
@@ -19,6 +16,6 @@ namespace PyROOT {
          ObjectProxy*&, PyObject* args, PyObject* kwds, TCallContext* ctxt = 0 );
    };
 
-} // namespace PyROOT
+} // namespace CPyCppyy
 
-#endif // !PYROOT_TCLASSMETHODHOLDER_H
+#endif // !CPYCPPYY_TCLASSMETHODHOLDER_H

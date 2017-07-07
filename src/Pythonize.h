@@ -1,18 +1,15 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, Jul 2004
-
-#ifndef PYROOT_PYTHONIZE_H
-#define PYROOT_PYTHONIZE_H
+#ifndef CPYCPPYY_PYTHONIZE_H
+#define CPYCPPYY_PYTHONIZE_H
 
 // Standard
 #include <string>
 
 
-namespace PyROOT {
+namespace CPyCppyy {
 
-// make the named ROOT class more python-like
+// make the named C++ class more python-like
    Bool_t Pythonize( PyObject* pyclass, const std::string& name );
 
-} // namespace PyROOT
+} // namespace CPyCppyy
 
-#endif // !PYROOT_PYTHONIZE_H
+#endif // !CPYCPPYY_PYTHONIZE_H

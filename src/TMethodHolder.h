@@ -1,8 +1,5 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, Apr 2004
-
-#ifndef PYROOT_TMETHODHOLDER_H
-#define PYROOT_TMETHODHOLDER_H
+#ifndef CPYCPPYY_TMETHODHOLDER_H
+#define CPYCPPYY_TMETHODHOLDER_H
 
 // Bindings
 #include "PyCallable.h"
@@ -12,7 +9,7 @@
 #include <vector>
 
 
-namespace PyROOT {
+namespace CPyCppyy {
 
    class TExecutor;
    class TConverter;
@@ -81,6 +78,6 @@ namespace PyROOT {
       Bool_t fIsInitialized;
    };
 
-} // namespace PyROOT
+} // namespace CPyCppyy
 
-#endif // !PYROOT_METHODHOLDER_H
+#endif // !CPYCPPYY_METHODHOLDER_H

@@ -1,8 +1,5 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, Apr 2004
-
 // Bindings
-#include "PyROOT.h"
+#include "CPyCppyy.h"
 #include "TPyBufferFactory.h"
 
 // Standard
@@ -44,20 +41,20 @@ namespace {
    std::map< PyObject*, PyObject* > gSizeCallbacks;
 
 // create buffer types and copy methods to be adjusted
-#define PYROOT_PREPARE_PYBUFFER_TYPE( name )                                 \
+#define CPYCPPYY_PREPARE_PYBUFFER_TYPE( name )                                 \
    PyTypeObject      Py##name##Buffer_Type;                                  \
    PySequenceMethods Py##name##Buffer_SeqMethods = *(PyBuffer_Type.tp_as_sequence);\
    PyMappingMethods  Py##name##Buffer_MapMethods;
 
-   PYROOT_PREPARE_PYBUFFER_TYPE( Bool )
-   PYROOT_PREPARE_PYBUFFER_TYPE( Short )
-   PYROOT_PREPARE_PYBUFFER_TYPE( UShort )
-   PYROOT_PREPARE_PYBUFFER_TYPE( Int )
-   PYROOT_PREPARE_PYBUFFER_TYPE( UInt )
-   PYROOT_PREPARE_PYBUFFER_TYPE( Long )
-   PYROOT_PREPARE_PYBUFFER_TYPE( ULong )
-   PYROOT_PREPARE_PYBUFFER_TYPE( Float )
-   PYROOT_PREPARE_PYBUFFER_TYPE( Double )
+   CPYCPPYY_PREPARE_PYBUFFER_TYPE( Bool )
+   CPYCPPYY_PREPARE_PYBUFFER_TYPE( Short )
+   CPYCPPYY_PREPARE_PYBUFFER_TYPE( UShort )
+   CPYCPPYY_PREPARE_PYBUFFER_TYPE( Int )
+   CPYCPPYY_PREPARE_PYBUFFER_TYPE( UInt )
+   CPYCPPYY_PREPARE_PYBUFFER_TYPE( Long )
+   CPYCPPYY_PREPARE_PYBUFFER_TYPE( ULong )
+   CPYCPPYY_PREPARE_PYBUFFER_TYPE( Float )
+   CPYCPPYY_PREPARE_PYBUFFER_TYPE( Double )
 
 // implement get, str, and length functions
    Py_ssize_t buffer_length( PyObject* self )
@@ -120,11 +117,11 @@ namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#define PYROOT_IMPLEMENT_PYBUFFER_METHODS( name, type, stype, F1, F2 )       \
+#define CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS( name, type, stype, F1, F2 )       \
    PyObject* name##_buffer_str( PyObject* self )                             \
    {                                                                         \
       Py_ssize_t l = buffer_length( self );                                  \
-      return PyROOT_PyUnicode_FromFormat( "<"#type" buffer, size " PY_SSIZE_T_FORMAT ">", l );\
+      return CPyCppyy_PyUnicode_FromFormat( "<"#type" buffer, size " PY_SSIZE_T_FORMAT ">", l );\
    }                                                                         \
                                                                              \
    PyObject* name##_buffer_item( PyObject* self, Py_ssize_t idx ) {          \
@@ -157,15 +154,15 @@ namespace {
       return 0;                                                              \
    }
 
-   PYROOT_IMPLEMENT_PYBUFFER_METHODS( Bool,   Bool_t,   Long_t,   PyBool_FromLong, PyInt_AsLong )
-   PYROOT_IMPLEMENT_PYBUFFER_METHODS( Short,  Short_t,  Long_t,   PyInt_FromLong, PyInt_AsLong )
-   PYROOT_IMPLEMENT_PYBUFFER_METHODS( UShort, UShort_t, Long_t,   PyInt_FromLong, PyInt_AsLong )
-   PYROOT_IMPLEMENT_PYBUFFER_METHODS( Int,    Int_t,    Long_t,   PyInt_FromLong, PyInt_AsLong )
-   PYROOT_IMPLEMENT_PYBUFFER_METHODS( UInt,   UInt_t,   Long_t,   PyInt_FromLong, PyInt_AsLong )
-   PYROOT_IMPLEMENT_PYBUFFER_METHODS( Long,   Long_t,   Long_t,   PyLong_FromLong, PyLong_AsLong )
-   PYROOT_IMPLEMENT_PYBUFFER_METHODS( ULong,  ULong_t,  ULong_t,  PyLong_FromUnsignedLong, PyLong_AsUnsignedLong )
-   PYROOT_IMPLEMENT_PYBUFFER_METHODS( Float,  Float_t,  Double_t, PyFloat_FromDouble, PyFloat_AsDouble )
-   PYROOT_IMPLEMENT_PYBUFFER_METHODS( Double, Double_t, Double_t, PyFloat_FromDouble, PyFloat_AsDouble )
+   CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS( Bool,   Bool_t,   Long_t,   PyBool_FromLong, PyInt_AsLong )
+   CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS( Short,  Short_t,  Long_t,   PyInt_FromLong, PyInt_AsLong )
+   CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS( UShort, UShort_t, Long_t,   PyInt_FromLong, PyInt_AsLong )
+   CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS( Int,    Int_t,    Long_t,   PyInt_FromLong, PyInt_AsLong )
+   CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS( UInt,   UInt_t,   Long_t,   PyInt_FromLong, PyInt_AsLong )
+   CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS( Long,   Long_t,   Long_t,   PyLong_FromLong, PyLong_AsLong )
+   CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS( ULong,  ULong_t,  ULong_t,  PyLong_FromUnsignedLong, PyLong_AsUnsignedLong )
+   CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS( Float,  Float_t,  Double_t, PyFloat_FromDouble, PyFloat_AsDouble )
+   CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS( Double, Double_t, Double_t, PyFloat_FromDouble, PyFloat_AsDouble )
 
    int pyroot_buffer_ass_subscript( PyObject* self, PyObject* idx, PyObject* val ) {
    // Assign the given value 'val' to the item at index 'idx.'
@@ -206,23 +203,23 @@ namespace {
    PyObject* buf_typecode( PyObject* pyobject, void* )
    {
       if ( PyObject_TypeCheck( pyobject, &PyBoolBuffer_Type ) )
-         return PyROOT_PyUnicode_FromString( (char*)"b" );
+         return CPyCppyy_PyUnicode_FromString( (char*)"b" );
       else if ( PyObject_TypeCheck( pyobject, &PyShortBuffer_Type ) )
-         return PyROOT_PyUnicode_FromString( (char*)"h" );
+         return CPyCppyy_PyUnicode_FromString( (char*)"h" );
       else if ( PyObject_TypeCheck( pyobject, &PyUShortBuffer_Type ) )
-         return PyROOT_PyUnicode_FromString( (char*)"H" );
+         return CPyCppyy_PyUnicode_FromString( (char*)"H" );
       else if ( PyObject_TypeCheck( pyobject, &PyIntBuffer_Type ) )
-         return PyROOT_PyUnicode_FromString( (char*)"i" );
+         return CPyCppyy_PyUnicode_FromString( (char*)"i" );
       else if ( PyObject_TypeCheck( pyobject, &PyUIntBuffer_Type ) )
-         return PyROOT_PyUnicode_FromString( (char*)"I" );
+         return CPyCppyy_PyUnicode_FromString( (char*)"I" );
       else if ( PyObject_TypeCheck( pyobject, &PyLongBuffer_Type ) )
-         return PyROOT_PyUnicode_FromString( (char*)"l" );
+         return CPyCppyy_PyUnicode_FromString( (char*)"l" );
       else if ( PyObject_TypeCheck( pyobject, &PyULongBuffer_Type ) )
-         return PyROOT_PyUnicode_FromString( (char*)"L" );
+         return CPyCppyy_PyUnicode_FromString( (char*)"L" );
       else if ( PyObject_TypeCheck( pyobject, &PyFloatBuffer_Type ) )
-         return PyROOT_PyUnicode_FromString( (char*)"f" );
+         return CPyCppyy_PyUnicode_FromString( (char*)"f" );
       else if ( PyObject_TypeCheck( pyobject, &PyDoubleBuffer_Type ) )
-         return PyROOT_PyUnicode_FromString( (char*)"d" );
+         return CPyCppyy_PyUnicode_FromString( (char*)"d" );
 
       PyErr_SetString( PyExc_TypeError, "received unknown buffer object" );
       return 0;
@@ -246,7 +243,7 @@ namespace {
 
 
 //- instance handler ------------------------------------------------------------
-PyROOT::TPyBufferFactory* PyROOT::TPyBufferFactory::Instance()
+CPyCppyy::TPyBufferFactory* CPyCppyy::TPyBufferFactory::Instance()
 {
 // singleton factory
    static TPyBufferFactory* fac = new TPyBufferFactory;
@@ -255,7 +252,7 @@ PyROOT::TPyBufferFactory* PyROOT::TPyBufferFactory::Instance()
 
 
 //- constructor/destructor ------------------------------------------------------
-#define PYROOT_INSTALL_PYBUFFER_METHODS( name, type )                           \
+#define CPYCPPYY_INSTALL_PYBUFFER_METHODS( name, type )                           \
    Py##name##Buffer_Type.tp_name            = (char*)"ROOT.Py"#name"Buffer";    \
    Py##name##Buffer_Type.tp_base            = &PyBuffer_Type;                   \
    Py##name##Buffer_Type.tp_as_buffer       = PyBuffer_Type.tp_as_buffer;       \
@@ -274,23 +271,23 @@ PyROOT::TPyBufferFactory* PyROOT::TPyBufferFactory::Instance()
    Py##name##Buffer_Type.tp_getset          = buffer_getset;                    \
    PyType_Ready( &Py##name##Buffer_Type );
 
-PyROOT::TPyBufferFactory::TPyBufferFactory()
+CPyCppyy::TPyBufferFactory::TPyBufferFactory()
 {
 // construct python buffer types
-   PYROOT_INSTALL_PYBUFFER_METHODS( Bool,   Bool_t )
-   PYROOT_INSTALL_PYBUFFER_METHODS( Short,  Short_t )
-   PYROOT_INSTALL_PYBUFFER_METHODS( UShort, UShort_t )
-   PYROOT_INSTALL_PYBUFFER_METHODS( Int,    Int_t )
-   PYROOT_INSTALL_PYBUFFER_METHODS( UInt,   UInt_t )
-   PYROOT_INSTALL_PYBUFFER_METHODS( Long,   Long_t )
-   PYROOT_INSTALL_PYBUFFER_METHODS( ULong,  ULong_t )
-   PYROOT_INSTALL_PYBUFFER_METHODS( Float,  Float_t )
-   PYROOT_INSTALL_PYBUFFER_METHODS( Double, Double_t )
+   CPYCPPYY_INSTALL_PYBUFFER_METHODS( Bool,   Bool_t )
+   CPYCPPYY_INSTALL_PYBUFFER_METHODS( Short,  Short_t )
+   CPYCPPYY_INSTALL_PYBUFFER_METHODS( UShort, UShort_t )
+   CPYCPPYY_INSTALL_PYBUFFER_METHODS( Int,    Int_t )
+   CPYCPPYY_INSTALL_PYBUFFER_METHODS( UInt,   UInt_t )
+   CPYCPPYY_INSTALL_PYBUFFER_METHODS( Long,   Long_t )
+   CPYCPPYY_INSTALL_PYBUFFER_METHODS( ULong,  ULong_t )
+   CPYCPPYY_INSTALL_PYBUFFER_METHODS( Float,  Float_t )
+   CPYCPPYY_INSTALL_PYBUFFER_METHODS( Double, Double_t )
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-PyROOT::TPyBufferFactory::~TPyBufferFactory()
+CPyCppyy::TPyBufferFactory::~TPyBufferFactory()
 {
 }
 
@@ -313,8 +310,8 @@ const char* getDoubleFormat() { return "d";}
 #endif
 
 //- public members --------------------------------------------------------------
-#define PYROOT_IMPLEMENT_PYBUFFER_FROM_MEMORY( name, type )                     \
-PyObject* PyROOT::TPyBufferFactory::PyBuffer_FromMemory( type* address, Py_ssize_t size )\
+#define CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY( name, type )                     \
+PyObject* CPyCppyy::TPyBufferFactory::PyBuffer_FromMemory( type* address, Py_ssize_t size )\
 {                                                                               \
    size = size < 0 ? INT_MAX : size;                                            \
    PyObject* buf = PyBuffer_FromReadWriteMemory( (void*)address, size );        \
@@ -327,7 +324,7 @@ PyObject* PyROOT::TPyBufferFactory::PyBuffer_FromMemory( type* address, Py_ssize
    return buf;                                                                  \
 }                                                                               \
                                                                                 \
-PyObject* PyROOT::TPyBufferFactory::PyBuffer_FromMemory( type* address, PyObject* scb )\
+PyObject* CPyCppyy::TPyBufferFactory::PyBuffer_FromMemory( type* address, PyObject* scb )\
 {                                                                               \
    PyObject* buf = PyBuffer_FromMemory( address, Py_ssize_t(0) );               \
    if ( buf != 0 && PyCallable_Check( scb ) ) {                                 \
@@ -337,12 +334,12 @@ PyObject* PyROOT::TPyBufferFactory::PyBuffer_FromMemory( type* address, PyObject
    return buf;                                                                  \
 }
 
-PYROOT_IMPLEMENT_PYBUFFER_FROM_MEMORY( Bool,   Bool_t )
-PYROOT_IMPLEMENT_PYBUFFER_FROM_MEMORY( Short,  Short_t )
-PYROOT_IMPLEMENT_PYBUFFER_FROM_MEMORY( UShort, UShort_t )
-PYROOT_IMPLEMENT_PYBUFFER_FROM_MEMORY( Int,    Int_t )
-PYROOT_IMPLEMENT_PYBUFFER_FROM_MEMORY( UInt,   UInt_t )
-PYROOT_IMPLEMENT_PYBUFFER_FROM_MEMORY( Long,   Long_t )
-PYROOT_IMPLEMENT_PYBUFFER_FROM_MEMORY( ULong,  ULong_t )
-PYROOT_IMPLEMENT_PYBUFFER_FROM_MEMORY( Float,  Float_t )
-PYROOT_IMPLEMENT_PYBUFFER_FROM_MEMORY( Double, Double_t )
+CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY( Bool,   Bool_t )
+CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY( Short,  Short_t )
+CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY( UShort, UShort_t )
+CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY( Int,    Int_t )
+CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY( UInt,   UInt_t )
+CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY( Long,   Long_t )
+CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY( ULong,  ULong_t )
+CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY( Float,  Float_t )
+CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY( Double, Double_t )

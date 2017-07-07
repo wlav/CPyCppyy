@@ -1,8 +1,5 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, Apr 2004
-
-#ifndef PYROOT_UTILITY_H
-#define PYROOT_UTILITY_H
+#ifndef CPYCPPYY_UTILITY_H
+#define CPYCPPYY_UTILITY_H
 
 // Standard
 #include <map>
@@ -10,12 +7,12 @@
 #include <vector>
 
 
-namespace PyROOT {
+namespace CPyCppyy {
 
    class PyCallable;
 
-   R__EXTERN dict_lookup_func gDictLookupOrg;
-   R__EXTERN Bool_t gDictLookupActive;
+   extern dict_lookup_func gDictLookupOrg;
+   extern Bool_t gDictLookupActive;
 
 // additional converter functions
    ULong_t PyLongOrInt_AsULong( PyObject* pyobject );
@@ -58,20 +55,8 @@ namespace PyROOT {
       Py_ssize_t ArraySize( const std::string& name );
       const std::string ClassName( PyObject* pyobj );
 
-   // CINT integration
-      void ErrMsgCallback( char* msg );
-      void ErrMsgHandler( int level, Bool_t abort, const char* location, const char* msg );
-
-   // create a wrapper for the python function with Cling; returns function pointer
-      void* CreateWrapperMethod( PyObject* pyfunc, Long_t user,
-         const char* retType, const std::vector<std::string>& signature, const char* callback );
-
    // for threading: save call to PyErr_Occurred()
       PyObject* PyErr_Occurred_WithGIL();
-
-   // for GUI driving; install/remove event callback
-      PyObject* InstallGUIEventInputHook();
-      PyObject* RemoveGUIEventInputHook();
 
    } // namespace Utility
 
@@ -82,6 +67,6 @@ namespace PyROOT {
       ~PyGILRAII(){PyGILState_Release(m_GILState);}
    };
 
-} // namespace PyROOT
+} // namespace CPyCppyy
 
-#endif // !PYROOT_UTILITY_H
+#endif // !CPYCPPYY_UTILITY_H

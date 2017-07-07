@@ -1,16 +1,11 @@
-// Author: Wim Lavrijsen, Jan 2008
-
-#ifndef PYROOT_TEMPLATEPROXY_H
-#define PYROOT_TEMPLATEPROXY_H
-
-// ROOT
-#include "DllImport.h"
+#ifndef CPYCPPYY_TEMPLATEPROXY_H
+#define CPYCPPYY_TEMPLATEPROXY_H
 
 // Standard
 #include <string>
 
 
-namespace PyROOT {
+namespace CPyCppyy {
 
    class PyCallable;
    class MethodProxy;
@@ -44,7 +39,7 @@ namespace PyROOT {
 
 
 //- template proxy type and type verification --------------------------------
-   R__EXTERN PyTypeObject TemplateProxy_Type;
+   extern PyTypeObject TemplateProxy_Type;
 
    template< typename T >
    inline Bool_t TemplateProxy_Check( T* object )
@@ -67,6 +62,6 @@ namespace PyROOT {
       return pytmpl;
    }
 
-} // namespace PyROOT
+} // namespace CPyCppyy
 
-#endif // !PYROOT_TEMPLATEPROXY_H
+#endif // !CPYCPPYY_TEMPLATEPROXY_H

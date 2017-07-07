@@ -1,68 +1,55 @@
-// Author: Wim Lavrijsen, Nov 2008
+#ifndef CPYCPPYY_PYSTRINGS_H
+#define CPYCPPYY_PYSTRINGS_H
 
-#ifndef PYROOT_PYSTRINGS_H
-#define PYROOT_PYSTRINGS_H
-
-// ROOT
-#include "DllImport.h"
-
-
-namespace PyROOT {
+namespace CPyCppyy {
 
 // python strings kept for performance reasons
 
    namespace PyStrings {
 
-      R__EXTERN PyObject* gBases;
-      R__EXTERN PyObject* gBase;
-      R__EXTERN PyObject* gClass;
-      R__EXTERN PyObject* gCppEq;
-      R__EXTERN PyObject* gCppNe;
-      R__EXTERN PyObject* gDeref;
-      R__EXTERN PyObject* gDict;
-      R__EXTERN PyObject* gEmptyString;
-      R__EXTERN PyObject* gEq;
-      R__EXTERN PyObject* gFollow;
-      R__EXTERN PyObject* gGetItem;
-      R__EXTERN PyObject* gInit;
-      R__EXTERN PyObject* gIter;
-      R__EXTERN PyObject* gLen;
-      R__EXTERN PyObject* gLifeLine;
-      R__EXTERN PyObject* gModule;
-      R__EXTERN PyObject* gMRO;
-      R__EXTERN PyObject* gName;
-      R__EXTERN PyObject* gCppName;
-      R__EXTERN PyObject* gNe;
-      R__EXTERN PyObject* gTypeCode;
+       extern PyObject* gBases;
+       extern PyObject* gBase;
+       extern PyObject* gClass;
+       extern PyObject* gCppEq;
+       extern PyObject* gCppNe;
+       extern PyObject* gDeref;
+       extern PyObject* gDict;
+       extern PyObject* gEmptyString;
+       extern PyObject* gEq;
+       extern PyObject* gFollow;
+       extern PyObject* gGetItem;
+       extern PyObject* gInit;
+       extern PyObject* gIter;
+       extern PyObject* gLen;
+       extern PyObject* gLifeLine;
+       extern PyObject* gModule;
+       extern PyObject* gMRO;
+       extern PyObject* gName;
+       extern PyObject* gCppName;
+       extern PyObject* gNe;
+       extern PyObject* gTypeCode;
 
-      R__EXTERN PyObject* gAdd;
-      R__EXTERN PyObject* gSub;
-      R__EXTERN PyObject* gMul;
-      R__EXTERN PyObject* gDiv;
+       extern PyObject* gAdd;
+       extern PyObject* gSub;
+       extern PyObject* gMul;
+       extern PyObject* gDiv;
 
-      R__EXTERN PyObject* gAt;
-      R__EXTERN PyObject* gBegin;
-      R__EXTERN PyObject* gEnd;
-      R__EXTERN PyObject* gFirst;
-      R__EXTERN PyObject* gSecond;
-      R__EXTERN PyObject* gSize;
-      R__EXTERN PyObject* gGetSize;
-      R__EXTERN PyObject* ggetSize;
-      R__EXTERN PyObject* gTemplate;
-      R__EXTERN PyObject* gVectorAt;
+       extern PyObject* gAt;
+       extern PyObject* gBegin;
+       extern PyObject* gEnd;
+       extern PyObject* gFirst;
+       extern PyObject* gSecond;
+       extern PyObject* gSize;
+       extern PyObject* gTemplate;
+       extern PyObject* gVectorAt;
 
-      R__EXTERN PyObject* gBranch;
-      R__EXTERN PyObject* gFitFCN;
-      R__EXTERN PyObject* gROOTns;
-      R__EXTERN PyObject* gSetBranchAddress;
-      R__EXTERN PyObject* gSetFCN;
-      R__EXTERN PyObject* gTClassDynCast;
+       extern PyObject* gThisModule;
 
    } // namespace PyStrings
 
    Bool_t CreatePyStrings();
    PyObject* DestroyPyStrings();
 
-} // namespace PyROOT
+} // namespace CPyCppyy
 
-#endif // !PYROOT_PYSTRINGS_H
+#endif // !CPYCPPYY_PYSTRINGS_H

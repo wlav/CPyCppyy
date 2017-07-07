@@ -1,8 +1,5 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen   May 2004
-
-#ifndef ROOT_TPyReturn
-#define ROOT_TPyReturn
+#ifndef CPYCPPYY_TPYRETURN
+#define CPYCPPYY_TPYRETURN
 
 //////////////////////////////////////////////////////////////////////////////
 //                                                                          //
@@ -12,9 +9,6 @@
 //                                                                          //
 //////////////////////////////////////////////////////////////////////////////
 
-
-// ROOT
-#include "Rtypes.h"
 
 // Python
 struct _object;
@@ -54,10 +48,8 @@ public:
 // used strictly for PyObject conversions
    operator PyObject*() const;
 
-   ClassDef(TPyReturn,1)   //Python morphing return object
-
 private:
    PyObject* fPyObject;            //! actual python object
 };
 
-#endif
+#endif // !CPYCPPYY_TPYRETURN

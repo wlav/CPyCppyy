@@ -1,8 +1,8 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen   May 2004
+#ifndef CPYCPPYY_TPYCLASSGENERATOR
+#define CPYCPPYY_TPYCLASSGENERATOR
 
-#ifndef ROOT_TPyClassGenerator
-#define ROOT_TPyClassGenerator
+// TODO: not sure if any of this still makes sense ...
+#if 0
 
 // ROOT
 #include "TClassGenerator.h"
@@ -16,4 +16,6 @@ public:
    virtual TClass* GetClass( const std::type_info& typeinfo, Bool_t load, Bool_t silent );
 };
 
-#endif // !ROOT_TPyClassGenerator
+#endif
+
+#endif // !CPYCPPYY_TPYCLASSGENERATOR

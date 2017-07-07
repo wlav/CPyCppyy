@@ -1,7 +1,5 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, Jan 2005
-#ifndef PYROOT_EXECUTORS_H
-#define PYROOT_EXECUTORS_H
+#ifndef CPYCPPYY_EXECUTORS_H
+#define CPYCPPYY_EXECUTORS_H
 
 // Bindings
 #include "TCallContext.h"
@@ -11,7 +9,7 @@
 #include <map>
 
 
-namespace PyROOT {
+namespace CPyCppyy {
 
    class TExecutor {
    public:
@@ -20,7 +18,7 @@ namespace PyROOT {
          Cppyy::TCppMethod_t, Cppyy::TCppObject_t, TCallContext* ) = 0;
    };
 
-#define PYROOT_DECLARE_BASIC_EXECUTOR( name )                                 \
+#define CPYCPPYY_DECLARE_BASIC_EXECUTOR( name )                                 \
    class T##name##Executor : public TExecutor {                               \
    public:                                                                    \
       virtual PyObject* Execute(                                              \
@@ -28,39 +26,38 @@ namespace PyROOT {
    }
 
 // executors for built-ins
-   PYROOT_DECLARE_BASIC_EXECUTOR( Bool );
-   PYROOT_DECLARE_BASIC_EXECUTOR( BoolConstRef );
-   PYROOT_DECLARE_BASIC_EXECUTOR( Char );
-   PYROOT_DECLARE_BASIC_EXECUTOR( CharConstRef );
-   PYROOT_DECLARE_BASIC_EXECUTOR( UChar );
-   PYROOT_DECLARE_BASIC_EXECUTOR( UCharConstRef );
-   PYROOT_DECLARE_BASIC_EXECUTOR( Short );
-   PYROOT_DECLARE_BASIC_EXECUTOR( Int );
-   PYROOT_DECLARE_BASIC_EXECUTOR( Long );
-   PYROOT_DECLARE_BASIC_EXECUTOR( ULong );
-   PYROOT_DECLARE_BASIC_EXECUTOR( LongLong );
-   PYROOT_DECLARE_BASIC_EXECUTOR( ULongLong );
-   PYROOT_DECLARE_BASIC_EXECUTOR( Float );
-   PYROOT_DECLARE_BASIC_EXECUTOR( Double );
-   PYROOT_DECLARE_BASIC_EXECUTOR( LongDouble );
-   PYROOT_DECLARE_BASIC_EXECUTOR( Void );
-   PYROOT_DECLARE_BASIC_EXECUTOR( CString );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( Bool );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( BoolConstRef );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( Char );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( CharConstRef );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( UChar );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( UCharConstRef );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( Short );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( Int );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( Long );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( ULong );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( LongLong );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( ULongLong );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( Float );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( Double );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( LongDouble );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( Void );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( CString );
 
 // pointer/array executors
-   PYROOT_DECLARE_BASIC_EXECUTOR( VoidArray );
-   PYROOT_DECLARE_BASIC_EXECUTOR( BoolArray );
-   PYROOT_DECLARE_BASIC_EXECUTOR( ShortArray );
-   PYROOT_DECLARE_BASIC_EXECUTOR( UShortArray );
-   PYROOT_DECLARE_BASIC_EXECUTOR( IntArray );
-   PYROOT_DECLARE_BASIC_EXECUTOR( UIntArray );
-   PYROOT_DECLARE_BASIC_EXECUTOR( LongArray );
-   PYROOT_DECLARE_BASIC_EXECUTOR( ULongArray );
-   PYROOT_DECLARE_BASIC_EXECUTOR( FloatArray );
-   PYROOT_DECLARE_BASIC_EXECUTOR( DoubleArray );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( VoidArray );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( BoolArray );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( ShortArray );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( UShortArray );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( IntArray );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( UIntArray );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( LongArray );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( ULongArray );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( FloatArray );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( DoubleArray );
 
 // special cases
-   PYROOT_DECLARE_BASIC_EXECUTOR( STLString );
-   PYROOT_DECLARE_BASIC_EXECUTOR( TGlobal );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( STLString );
 
    class TCppObjectExecutor : public TExecutor {
    public:
@@ -90,31 +87,31 @@ namespace PyROOT {
       PyObject* fAssignable;
    };
 
-   PYROOT_DECLARE_BASIC_EXECUTOR( Constructor );
-   PYROOT_DECLARE_BASIC_EXECUTOR( PyObject );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( Constructor );
+   CPYCPPYY_DECLARE_BASIC_EXECUTOR( PyObject );
 
-#define PYROOT_DECLARE_BASIC_REFEXECUTOR( name )                              \
+#define CPYCPPYY_DECLARE_BASIC_REFEXECUTOR( name )                              \
    class T##name##RefExecutor : public TRefExecutor {                         \
    public:                                                                    \
       virtual PyObject* Execute(                                              \
          Cppyy::TCppMethod_t, Cppyy::TCppObject_t, TCallContext* );           \
    }
 
-   PYROOT_DECLARE_BASIC_REFEXECUTOR( Bool );
-   PYROOT_DECLARE_BASIC_REFEXECUTOR( Char );
-   PYROOT_DECLARE_BASIC_REFEXECUTOR( UChar );
-   PYROOT_DECLARE_BASIC_REFEXECUTOR( Short );
-   PYROOT_DECLARE_BASIC_REFEXECUTOR( UShort );
-   PYROOT_DECLARE_BASIC_REFEXECUTOR( Int );
-   PYROOT_DECLARE_BASIC_REFEXECUTOR( UInt );
-   PYROOT_DECLARE_BASIC_REFEXECUTOR( Long );
-   PYROOT_DECLARE_BASIC_REFEXECUTOR( ULong );
-   PYROOT_DECLARE_BASIC_REFEXECUTOR( LongLong );
-   PYROOT_DECLARE_BASIC_REFEXECUTOR( ULongLong );
-   PYROOT_DECLARE_BASIC_REFEXECUTOR( Float );
-   PYROOT_DECLARE_BASIC_REFEXECUTOR( Double );
-   PYROOT_DECLARE_BASIC_REFEXECUTOR( LongDouble );
-   PYROOT_DECLARE_BASIC_REFEXECUTOR( STLString );
+   CPYCPPYY_DECLARE_BASIC_REFEXECUTOR( Bool );
+   CPYCPPYY_DECLARE_BASIC_REFEXECUTOR( Char );
+   CPYCPPYY_DECLARE_BASIC_REFEXECUTOR( UChar );
+   CPYCPPYY_DECLARE_BASIC_REFEXECUTOR( Short );
+   CPYCPPYY_DECLARE_BASIC_REFEXECUTOR( UShort );
+   CPYCPPYY_DECLARE_BASIC_REFEXECUTOR( Int );
+   CPYCPPYY_DECLARE_BASIC_REFEXECUTOR( UInt );
+   CPYCPPYY_DECLARE_BASIC_REFEXECUTOR( Long );
+   CPYCPPYY_DECLARE_BASIC_REFEXECUTOR( ULong );
+   CPYCPPYY_DECLARE_BASIC_REFEXECUTOR( LongLong );
+   CPYCPPYY_DECLARE_BASIC_REFEXECUTOR( ULongLong );
+   CPYCPPYY_DECLARE_BASIC_REFEXECUTOR( Float );
+   CPYCPPYY_DECLARE_BASIC_REFEXECUTOR( Double );
+   CPYCPPYY_DECLARE_BASIC_REFEXECUTOR( LongDouble );
+   CPYCPPYY_DECLARE_BASIC_REFEXECUTOR( STLString );
 
 // special cases
    class TCppObjectRefExecutor : public TRefExecutor {
@@ -193,6 +190,6 @@ namespace PyROOT {
    TExecutor* CreateExecutor( const std::string& fullType,
                               Bool_t manage_smart_ptr = kTRUE );
 
-} // namespace PyROOT
+} // namespace CPyCppyy
 
-#endif // !PYROOT_EXECUTORS_H
+#endif // !CPYCPPYY_EXECUTORS_H

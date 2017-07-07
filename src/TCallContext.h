@@ -1,11 +1,11 @@
-#ifndef PYROOT_TCALLCONTEXT_H
-#define PYROOT_TCALLCONTEXT_H
+#ifndef CPYCPPYY_TCALLCONTEXT_H
+#define CPYCPPYY_TCALLCONTEXT_H
 
 // Standard
 #include <vector>
 
 
-namespace PyROOT {
+namespace CPyCppyy {
 
 // general place holder for function parameters
    struct TParameter {
@@ -91,6 +91,6 @@ namespace PyROOT {
       return TCallContext::sMemoryPolicy == TCallContext::kUseStrict;
    }
 
-} // namespace PyROOT
+} // namespace CPyCppyy
 
-#endif // !PYROOT_TCALLCONTEXT_H
+#endif // !CPYCPPYY_TCALLCONTEXT_H

@@ -1,8 +1,5 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, Apr 2004
-
-#ifndef PYROOT_PYROOT_H
-#define PYROOT_PYROOT_H
+#ifndef CPYCPPYY_CPYCPPYY_H
+#define CPYCPPYY_CPYCPPYY_H
 
 #ifdef _WIN32
 // Disable warning C4275: non dll-interface class
@@ -36,7 +33,47 @@
 
 
 #include "Python.h"
-#include "Rtypes.h"
+
+// selected ROOT types from RtypesCore.h
+typedef char           Char_t;      //Signed Character 1 byte (char)
+typedef unsigned char  UChar_t;     //Unsigned Character 1 byte (unsigned char)
+typedef short          Short_t;     //Signed Short integer 2 bytes (short)
+typedef unsigned short UShort_t;    //Unsigned Short integer 2 bytes (unsigned short)
+#ifdef R__INT16
+typedef long           Int_t;       //Signed integer 4 bytes
+typedef unsigned long  UInt_t;      //Unsigned integer 4 bytes
+#else
+typedef int            Int_t;       //Signed integer 4 bytes (int)
+typedef unsigned int   UInt_t;      //Unsigned integer 4 bytes (unsigned int)
+#endif
+#ifdef R__B64    // Note: Long_t and ULong_t are currently not portable types
+typedef int            Seek_t;      //File pointer (int)
+typedef long           Long_t;      //Signed long integer 8 bytes (long)
+typedef unsigned long  ULong_t;     //Unsigned long integer 8 bytes (unsigned long)
+#else
+typedef int            Seek_t;      //File pointer (int)
+typedef long           Long_t;      //Signed long integer 4 bytes (long)
+typedef unsigned long  ULong_t;     //Unsigned long integer 4 bytes (unsigned long)
+#endif
+typedef float          Float_t;     //Float 4 bytes (float)
+typedef float          Float16_t;   //Float 4 bytes written with a truncated mantissa
+typedef double         Double_t;    //Double 8 bytes
+typedef double         Double32_t;  //Double 8 bytes in memory, written as a 4 bytes float
+typedef long double    LongDouble_t;//Long Double
+typedef char           Text_t;      //General string (char)
+typedef bool           Bool_t;      //Boolean (0=false, 1=true) (bool)
+typedef unsigned char  Byte_t;      //Byte (8 bits) (unsigned char)
+#if defined(R__WIN32) && !defined(__CINT__)
+typedef __int64          Long64_t;  //Portable signed long integer 8 bytes
+typedef unsigned __int64 ULong64_t; //Portable unsigned long integer 8 bytes
+#else
+typedef long long          Long64_t; //Portable signed long integer 8 bytes
+typedef unsigned long long ULong64_t;//Portable unsigned long integer 8 bytes
+#endif
+
+const Bool_t kTRUE  = true;
+const Bool_t kFALSE = false;
+
 
 // for 3.3 support
 #if PY_VERSION_HEX < 0x03030000
@@ -61,54 +98,54 @@
 
 #define PyBytes_Type    PyString_Type
 
-#define PyROOT_PyUnicode_Check              PyString_Check
-#define PyROOT_PyUnicode_CheckExact         PyString_CheckExact
-#define PyROOT_PyUnicode_AsString           PyString_AS_STRING
-#define PyROOT_PyUnicode_AsStringChecked    PyString_AsString
-#define PyROOT_PyUnicode_GET_SIZE           PyString_GET_SIZE
-#define PyROOT_PyUnicode_GetSize            PyString_Size
-#define PyROOT_PyUnicode_FromFormat         PyString_FromFormat
-#define PyROOT_PyUnicode_FromString         PyString_FromString
-#define PyROOT_PyUnicode_InternFromString   PyString_InternFromString
-#define PyROOT_PyUnicode_Append             PyString_Concat
-#define PyROOT_PyUnicode_AppendAndDel       PyString_ConcatAndDel
-#define PyROOT_PyUnicode_FromStringAndSize  PyString_FromStringAndSize
+#define CPyCppyy_PyUnicode_Check              PyString_Check
+#define CPyCppyy_PyUnicode_CheckExact         PyString_CheckExact
+#define CPyCppyy_PyUnicode_AsString           PyString_AS_STRING
+#define CPyCppyy_PyUnicode_AsStringChecked    PyString_AsString
+#define CPyCppyy_PyUnicode_GET_SIZE           PyString_GET_SIZE
+#define CPyCppyy_PyUnicode_GetSize            PyString_Size
+#define CPyCppyy_PyUnicode_FromFormat         PyString_FromFormat
+#define CPyCppyy_PyUnicode_FromString         PyString_FromString
+#define CPyCppyy_PyUnicode_InternFromString   PyString_InternFromString
+#define CPyCppyy_PyUnicode_Append             PyString_Concat
+#define CPyCppyy_PyUnicode_AppendAndDel       PyString_ConcatAndDel
+#define CPyCppyy_PyUnicode_FromStringAndSize  PyString_FromStringAndSize
 
-#define PyROOT_PyUnicode_Type PyString_Type
+#define CPyCppyy_PyUnicode_Type PyString_Type
 
-static inline PyObject* PyROOT_PyCapsule_New( void* cobj, const char* /* name */, void (*destr)(void *) )
+static inline PyObject* CPyCppyy_PyCapsule_New( void* cobj, const char* /* name */, void (*destr)(void *) )
 {
    return PyCObject_FromVoidPtr( cobj, destr );
 }
-#define PyROOT_PyCapsule_CheckExact    PyCObject_Check
-static inline void* PyROOT_PyCapsule_GetPointer( PyObject* capsule, const char* /* name */ )
+#define CPyCppyy_PyCapsule_CheckExact    PyCObject_Check
+static inline void* CPyCppyy_PyCapsule_GetPointer( PyObject* capsule, const char* /* name */ )
 {
    return (void*)PyCObject_AsVoidPtr( capsule );
 }
 
-#define PYROOT__long__ "__long__"
-#define PYROOT__idiv__ "__idiv__"
-#define PYROOT__div__  "__div__"
-#define PYROOT__next__ "next"
+#define CPYCPPYY__long__ "__long__"
+#define CPYCPPYY__idiv__ "__idiv__"
+#define CPYCPPYY__div__  "__div__"
+#define CPYCPPYY__next__ "next"
 
 #endif  // ! 3.0
 
 // for 3.0 support (backwards compatibility, really)
 #if PY_VERSION_HEX >= 0x03000000
-#define PyROOT_PyUnicode_Check              PyUnicode_Check
-#define PyROOT_PyUnicode_CheckExact         PyUnicode_CheckExact
-#define PyROOT_PyUnicode_AsString           _PyUnicode_AsString
-#define PyROOT_PyUnicode_AsStringChecked    _PyUnicode_AsString
-#define PyROOT_PyUnicode_GetSize            PyUnicode_GetSize
-#define PyROOT_PyUnicode_GET_SIZE           PyUnicode_GET_SIZE
-#define PyROOT_PyUnicode_FromFormat         PyUnicode_FromFormat
-#define PyROOT_PyUnicode_FromString         PyUnicode_FromString
-#define PyROOT_PyUnicode_InternFromString   PyUnicode_InternFromString
-#define PyROOT_PyUnicode_Append             PyUnicode_Append
-#define PyROOT_PyUnicode_AppendAndDel       PyUnicode_AppendAndDel
-#define PyROOT_PyUnicode_FromStringAndSize  PyUnicode_FromStringAndSize
+#define CPyCppyy_PyUnicode_Check              PyUnicode_Check
+#define CPyCppyy_PyUnicode_CheckExact         PyUnicode_CheckExact
+#define CPyCppyy_PyUnicode_AsString           _PyUnicode_AsString
+#define CPyCppyy_PyUnicode_AsStringChecked    _PyUnicode_AsString
+#define CPyCppyy_PyUnicode_GetSize            PyUnicode_GetSize
+#define CPyCppyy_PyUnicode_GET_SIZE           PyUnicode_GET_SIZE
+#define CPyCppyy_PyUnicode_FromFormat         PyUnicode_FromFormat
+#define CPyCppyy_PyUnicode_FromString         PyUnicode_FromString
+#define CPyCppyy_PyUnicode_InternFromString   PyUnicode_InternFromString
+#define CPyCppyy_PyUnicode_Append             PyUnicode_Append
+#define CPyCppyy_PyUnicode_AppendAndDel       PyUnicode_AppendAndDel
+#define CPyCppyy_PyUnicode_FromStringAndSize  PyUnicode_FromStringAndSize
 
-#define PyROOT_PyUnicode_Type PyUnicode_Type
+#define CPyCppyy_PyUnicode_Type PyUnicode_Type
 
 #define PyIntObject          PyLongObject
 #define PyInt_Check          PyLong_Check
@@ -121,14 +158,14 @@ static inline void* PyROOT_PyCapsule_GetPointer( PyObject* capsule, const char* 
 
 #define PyInt_Type      PyLong_Type
 
-#define PyROOT_PyCapsule_New           PyCapsule_New
-#define PyROOT_PyCapsule_CheckExact    PyCapsule_CheckExact
-#define PyROOT_PyCapsule_GetPointer    PyCapsule_GetPointer
+#define CPyCppyy_PyCapsule_New           PyCapsule_New
+#define CPyCppyy_PyCapsule_CheckExact    PyCapsule_CheckExact
+#define CPyCppyy_PyCapsule_GetPointer    PyCapsule_GetPointer
 
-#define PYROOT__long__ "__int__"
-#define PYROOT__idiv__ "__itruediv__"
-#define PYROOT__div__  "__truediv__"
-#define PYROOT__next__ "__next__"
+#define CPYCPPYY__long__ "__int__"
+#define CPYCPPYY__idiv__ "__itruediv__"
+#define CPYCPPYY__div__  "__truediv__"
+#define CPYCPPYY__next__ "__next__"
 
 #define Py_TPFLAGS_HAVE_RICHCOMPARE 0
 #define Py_TPFLAGS_CHECKTYPES 0
@@ -139,9 +176,9 @@ static inline void* PyROOT_PyCapsule_GetPointer( PyObject* capsule, const char* 
 #endif  // ! 3.0
 
 #if PY_VERSION_HEX >= 0x03020000
-#define PyROOT_PySliceCast   PyObject*
+#define CPyCppyy_PySliceCast   PyObject*
 #else
-#define PyROOT_PySliceCast   PySliceObject*
+#define CPyCppyy_PySliceCast   PySliceObject*
 #endif  // >= 3.2
 
 // feature of 3.0 not in 2.5 and earlier
@@ -208,4 +245,4 @@ inline Py_ssize_t PyNumber_AsSsize_t( PyObject* obj, PyObject* ) {
 // C++ version of the cppyy API
 #include "Cppyy.h"
 
-#endif // !PYROOT_PYROOT_H
+#endif // !CPYCPPYY_CPYCPPYY_H

@@ -1,13 +1,10 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, Aug 2004
-
 // Bindings
-#include "PyROOT.h"
+#include "CPyCppyy.h"
 #include "TClassMethodHolder.h"
 
 
 //- public members --------------------------------------------------------------
-PyObject* PyROOT::TClassMethodHolder::Call(
+PyObject* CPyCppyy::TClassMethodHolder::Call(
       ObjectProxy*&, PyObject* args, PyObject* kwds, TCallContext* ctxt )
 {
 // preliminary check in case keywords are accidently used (they are ignored otherwise)

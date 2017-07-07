@@ -3,17 +3,6 @@
 
 import sys, string
 
-### helper to get the version number from root-config
-def get_version():
-   try:
-      import commands
-      stat, output = commands.getstatusoutput("root-config --version")
-      if stat == 0:
-         return output
-   except Exception:
-      pass
-   # semi-sensible default in case of failure ...
-   return "6.03/XY"
 
 ### PyPy has 'cppyy' builtin (if enabled, that is)
 if 'cppyy' in sys.builtin_module_names:
@@ -50,7 +39,7 @@ if 'cppyy' in sys.builtin_module_names:
 else:
    _builtin_cppyy = False
 
-   # load PyROOT C++ extension module, special case for linux and Sun
+   # load CPyCppyy C++ extension module, special case for linux and Sun
    needsGlobal =  ( 0 <= sys.platform.find( 'linux' ) ) or\
                   ( 0 <= sys.platform.find( 'sunos' ) )
    if needsGlobal:
@@ -58,15 +47,12 @@ else:
       dlflags = sys.getdlopenflags()
       sys.setdlopenflags( 0x100 | 0x2 )    # RTLD_GLOBAL | RTLD_NOW
 
-   import libPyROOT as _backend
+   import libcppyy as _backend
 
    # reset dl flags if needed
    if needsGlobal:
       sys.setdlopenflags( dlflags )
    del needsGlobal
-
-# PyCintex tests rely on this, but they should not:
-sys.modules[ __name__ ].libPyROOT = _backend
 
 if not _builtin_cppyy:
    _backend.SetMemoryPolicy( _backend.kMemoryStrict )
@@ -127,7 +113,7 @@ if not _builtin_cppyy:
             if type(arg) == str:
                arg = ','.join( map( lambda x: x.strip(), arg.split(',') ) )
             newargs.append( arg )
-         result = _backend.MakeRootTemplateClass( *newargs )
+         result = _backend.MakeCppTemplateClass( *newargs )
 
        # special case pythonization (builtin_map is not available from the C-API)
          if 'push_back' in result.__dict__:
@@ -195,31 +181,6 @@ if not _builtin_cppyy:
 else:
    _global_cpp = _backend
  
-def Namespace( name ):
-   if not name:
-      return _global_cpp
-   try:
-      return _backend.LookupCppEntity( name )
-   except AttributeError:
-      pass
- # to help auto-loading, simply declare the namespace
-   _backend.gInterpreter.Declare( 'namespace %s {}' % name )
-   return _backend.LookupCppEntity( name )
-makeNamespace = Namespace
-
-def makeClass( name ) :
-   return _backend.CreateScopeProxy( name )
- 
-def getAllClasses() :
-   TClassTable = makeClass( 'TClassTable' )
-   TClassTable.Init()
-   classes = []
-   while True :
-      c = TClassTable.Next()
-      if c : classes.append( c )
-      else : break
-   return classes
-
 def add_smart_pointer(typename):
    """Add a smart pointer to the list of known smart pointer types.
    """
@@ -228,13 +189,7 @@ def add_smart_pointer(typename):
 #--- Global namespace and global objects -------------------------------
 gbl  = _global_cpp
 sys.modules['cppyy.gbl'] = gbl
-NULL = 0
-class double(float): pass
-class short(int): pass
-class long_int(int): pass
-class unsigned_short(int): pass
-class unsigned_int(int): pass
-class unsigned_long(int): pass
+
 
 #--- Copy over locally defined names ------------------------------------
 if _builtin_cppyy:

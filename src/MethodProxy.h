@@ -1,11 +1,5 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, Jan 2005
-
-#ifndef PYROOT_METHODPROXY_H
-#define PYROOT_METHODPROXY_H
-
-// ROOT
-#include "DllImport.h"
+#ifndef CPYCPPYY_METHODPROXY_H
+#define CPYCPPYY_METHODPROXY_H
 
 // Bindings
 #include "PyCallable.h"
@@ -16,7 +10,7 @@
 #include <vector>
 
 
-namespace PyROOT {
+namespace CPyCppyy {
 
    class MethodProxy {
    public:
@@ -57,7 +51,7 @@ namespace PyROOT {
 
 
 //- method proxy type and type verification ----------------------------------
-   R__EXTERN PyTypeObject MethodProxy_Type;
+   extern PyTypeObject MethodProxy_Type;
 
    template< typename T >
    inline Bool_t MethodProxy_Check( T* object )
@@ -89,6 +83,6 @@ namespace PyROOT {
       return MethodProxy_New( name, p );
    }
 
-} // namespace PyROOT
+} // namespace CPyCppyy
 
-#endif // !PYROOT_METHODPROXY_H
+#endif // !CPYCPPYY_METHODPROXY_H

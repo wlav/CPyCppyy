@@ -1,19 +1,15 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, Apr 2004
-
 // Bindings
-#include "PyROOT.h"
+#include "CPyCppyy.h"
 #include "TConstructorHolder.h"
 #include "Executors.h"
 #include "ObjectProxy.h"
-#include "TMemoryRegulator.h"
 
 // Standard
 #include <string>
 
 
 //- protected members --------------------------------------------------------
-Bool_t PyROOT::TConstructorHolder::InitExecutor_( TExecutor*& executor, TCallContext* )
+Bool_t CPyCppyy::TConstructorHolder::InitExecutor_( TExecutor*& executor, TCallContext* )
 {
 // pick up special case new object executor
    executor = CreateExecutor( "__init__" );
@@ -21,18 +17,18 @@ Bool_t PyROOT::TConstructorHolder::InitExecutor_( TExecutor*& executor, TCallCon
 }
 
 //- public members -----------------------------------------------------------
-PyObject* PyROOT::TConstructorHolder::GetDocString()
+PyObject* CPyCppyy::TConstructorHolder::GetDocString()
 {
 // GetMethod() may return an empty function if this is just a special case place holder
    const std::string& clName = Cppyy::GetFinalName( this->GetScope() );
-   return PyROOT_PyUnicode_FromFormat( "%s::%s%s",
+   return CPyCppyy_PyUnicode_FromFormat( "%s::%s%s",
       clName.c_str(), clName.c_str(), this->GetMethod() ? this->GetSignatureString().c_str() : "()" );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// preliminary check in case keywords are accidently used (they are ignored otherwise)
 
-PyObject* PyROOT::TConstructorHolder::Call(
+PyObject* CPyCppyy::TConstructorHolder::Call(
       ObjectProxy*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt )
 {
    if ( kwds != 0 && PyDict_Size( kwds ) ) {
@@ -75,6 +71,8 @@ PyObject* PyROOT::TConstructorHolder::Call(
    // decided by the method proxy (which carries a creator flag) upon return
       self->Set( (void*)address );
 
+#if 0
+   // TODO: write own memory regulator
    // allow lookup upon destruction on the ROOT/CINT side for TObjects
       static Cppyy::TCppType_t sTObjectType = (Cppyy::TCppType_t)Cppyy::GetScope( "TObject" );
    // TODO: cache IsSubtype and offset results ...
@@ -83,6 +81,7 @@ PyObject* PyROOT::TConstructorHolder::Call(
             Cppyy::GetBaseOffset( GetScope(), sTObjectType, (void*)address, 1 /* up-cast */ ) );
          TMemoryRegulator::RegisterObject( self, object );
       }
+#endif
 
    // done with self
       Py_DECREF( self );

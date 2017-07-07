@@ -1,7 +1,5 @@
-// Author: Wim Lavrijsen, Dec 2006
-
 // Bindings
-#include "PyROOT.h"
+#include "CPyCppyy.h"
 #include "TCustomPyTypes.h"
 
 #if PY_VERSION_HEX >= 0x03000000
@@ -10,12 +8,12 @@
 #endif
 
 
-namespace PyROOT {
+namespace CPyCppyy {
 
 //= float type allowed for reference passing =================================
 PyTypeObject TCustomFloat_Type = {     // python float is a C/C++ double
    PyVarObject_HEAD_INIT( &PyType_Type, 0 )
-   (char*)"ROOT.double",      // tp_name
+   (char*)"cppyy.double",     // tp_name
    0,                         // tp_basicsize
    0,                         // tp_itemsize
    0,                         // tp_dealloc
@@ -35,7 +33,7 @@ PyTypeObject TCustomFloat_Type = {     // python float is a C/C++ double
    0,                         // tp_as_buffer
    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_CHECKTYPES |
       Py_TPFLAGS_BASETYPE,    // tp_flags
-   (char*)"PyROOT float object for pass by reference",     // tp_doc
+   (char*)"CPyCppyy float object for pass by reference",    // tp_doc
    0,                         // tp_traverse
    0,                         // tp_clear
    0,                         // tp_richcompare
@@ -74,7 +72,7 @@ PyTypeObject TCustomFloat_Type = {     // python float is a C/C++ double
 //= long type allowed for reference passing ==================================
 PyTypeObject TCustomInt_Type = {       // python int is a C/C++ long
    PyVarObject_HEAD_INIT( &PyType_Type, 0 )
-   (char*)"ROOT.long",        // tp_name
+   (char*)"cppyy.long",       // tp_name
    0,                         // tp_basicsize
    0,                         // tp_itemsize
    0,                         // tp_dealloc
@@ -94,7 +92,7 @@ PyTypeObject TCustomInt_Type = {       // python int is a C/C++ long
    0,                         // tp_as_buffer
    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_CHECKTYPES |
       Py_TPFLAGS_BASETYPE,    // tp_flags
-   (char*)"PyROOT long object for pass by reference",      // tp_doc
+   (char*)"CPyCppyy long object for pass by reference",     // tp_doc
    0,                         // tp_traverse
    0,                         // tp_clear
    0,                         // tp_richcompare
@@ -270,10 +268,10 @@ static PyObject* im_descr_get( PyObject* meth, PyObject* obj, PyObject* pyclass 
    return TCustomInstanceMethod_New( PyMethod_GET_FUNCTION( meth ), obj, pyclass );
 }
 
-//= PyROOT custom instance method type =======================================
+//= CPyCppyy custom instance method type =====================================
 PyTypeObject TCustomInstanceMethod_Type = {
    PyVarObject_HEAD_INIT( &PyType_Type, 0 )
-   (char*)"ROOT.InstanceMethod",      // tp_name
+   (char*)"cppyy.InstanceMethod",       // tp_name
    0,                         // tp_basicsize
    0,                         // tp_itemsize
    (destructor)im_dealloc,    // tp_dealloc
@@ -293,7 +291,7 @@ PyTypeObject TCustomInstanceMethod_Type = {
    0,                         // tp_as_buffer
    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_CHECKTYPES |
       Py_TPFLAGS_BASETYPE,    // tp_flags
-   (char*)"PyROOT custom instance method (internal)",     // tp_doc
+   (char*)"CPyCppyy custom instance method (internal)",    // tp_doc
    0,                         // tp_traverse
    0,                         // tp_clear
    0,                         // tp_richcompare
@@ -329,4 +327,4 @@ PyTypeObject TCustomInstanceMethod_Type = {
 #endif
 };
 
-} // namespace PyROOT
+} // namespace CPyCppyy

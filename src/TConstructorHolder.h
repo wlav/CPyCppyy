@@ -1,14 +1,11 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, Apr 2004
-
-#ifndef PYROOT_TCONSTRUCTORHOLDER_H
-#define PYROOT_TCONSTRUCTORHOLDER_H
+#ifndef CPYCPPYY_TCONSTRUCTORHOLDER_H
+#define CPYCPPYY_TCONSTRUCTORHOLDER_H
 
 // Bindings
 #include "TMethodHolder.h"
 
 
-namespace PyROOT {
+namespace CPyCppyy {
 
    class TConstructorHolder : public TMethodHolder {
    public:
@@ -26,6 +23,6 @@ namespace PyROOT {
       virtual Bool_t InitExecutor_( TExecutor*&, TCallContext* ctxt = 0 );
    };
 
-} // namespace PyROOT
+} // namespace CPyCppyy
 
-#endif // !PYROOT_TCONSTRUCTORHOLDER_H
+#endif // !CPYCPPYY_TCONSTRUCTORHOLDER_H

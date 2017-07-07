@@ -1,15 +1,12 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, Jan 2005
-
 // Bindings
-#include "PyROOT.h"
+#include "CPyCppyy.h"
 #include "PyStrings.h"
 #include "PropertyProxy.h"
 #include "ObjectProxy.h"
 #include "Utility.h"
 
 
-namespace PyROOT {
+namespace CPyCppyy {
 
    enum ETypeDetails {
       kNone           =    0,
@@ -184,11 +181,11 @@ PyTypeObject PropertyProxy_Type = {
 #endif
 };
 
-} // namespace PyROOT
+} // namespace CPyCppyy
 
 
 //- public members -----------------------------------------------------------
-void PyROOT::PropertyProxy::Set( Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t idata )
+void CPyCppyy::PropertyProxy::Set( Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t idata )
 {
    fEnclosingScope = scope;
    fName           = Cppyy::GetDatamemberName( scope, idata );
@@ -213,7 +210,7 @@ void PyROOT::PropertyProxy::Set( Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t id
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void PyROOT::PropertyProxy::Set( Cppyy::TCppScope_t scope, const std::string& name, void* address )
+void CPyCppyy::PropertyProxy::Set( Cppyy::TCppScope_t scope, const std::string& name, void* address )
 {
    fEnclosingScope = scope;
    fName           = name;
@@ -225,7 +222,7 @@ void PyROOT::PropertyProxy::Set( Cppyy::TCppScope_t scope, const std::string& na
 ////////////////////////////////////////////////////////////////////////////////
 /// class attributes, global properties
 
-void* PyROOT::PropertyProxy::GetAddress( ObjectProxy* pyobj ) {
+void* CPyCppyy::PropertyProxy::GetAddress( ObjectProxy* pyobj ) {
    if ( fProperty & kIsStaticData )
       return (void*)fOffset;
 
