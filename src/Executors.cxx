@@ -4,6 +4,7 @@
 #include "Executors.h"
 #include "ObjectProxy.h"
 #include "TPyBufferFactory.h"
+#include "TypeManip.h"
 #include "CPyCppyyHelpers.h"
 #include "Utility.h"
 
@@ -650,7 +651,7 @@ CPyCppyy::TExecutor* CPyCppyy::CreateExecutor(
 
 //-- nothing? ok, collect information about the type and possible qualifiers/decorators
    const std::string& cpd = Utility::Compound( resolvedType );
-   std::string realType = resolvedType; // TODO: remove TClassEdit::ShortType( resolvedType.c_str(), 1 );
+   std::string realType = TypeManip::clean_type( resolvedType );
 
 // const-ness (dropped by TClassEdit::ShortType) is in general irrelevant
    h = gExecFactories.find( realType + cpd );

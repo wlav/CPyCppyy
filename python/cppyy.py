@@ -47,7 +47,10 @@ else:
       dlflags = sys.getdlopenflags()
       sys.setdlopenflags( 0x100 | 0x2 )    # RTLD_GLOBAL | RTLD_NOW
 
+   import ctypes
+   c = ctypes.CDLL("libcppyy_backend.so", ctypes.RTLD_GLOBAL )
    import libcppyy as _backend
+   _backend.cpp_backend = c
 
    # reset dl flags if needed
    if needsGlobal:
@@ -91,7 +94,6 @@ def with_metaclass(meta, *bases):
     # metaclass for one level of class instantiation that replaces itself with
     # the actual metaclass.
     class metaclass(meta):
-
         def __new__(cls, name, this_bases, d):
             return meta(name, bases, d)
     return type.__new__(metaclass, 'temporary_class', (), {})

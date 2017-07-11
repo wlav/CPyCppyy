@@ -7,6 +7,7 @@
 #include "TPyBufferFactory.h"
 #include "TCustomPyTypes.h"
 #include "TTupleOfInstances.h"
+#include "TypeManip.h"
 #include "Utility.h"
 #include "CPyCppyyHelpers.h"
 
@@ -900,7 +901,7 @@ Bool_t CPyCppyy::TCppObjectConverter::SetArg(
          return kTRUE;
       }
 
-   // not a PyROOT object (TODO: handle SWIG etc.)
+   // not a cppyy object (TODO: handle SWIG etc.)
       return kFALSE;
    }
 
@@ -954,7 +955,7 @@ Bool_t CPyCppyy::TCppObjectConverter::ToMemory( PyObject* value, void* address )
          return kTRUE;
       }
 
-   // not a PyROOT object (TODO: handle SWIG etc.)
+   // not a cppyy object (TODO: handle SWIG etc.)
       return kFALSE;
    }
 
@@ -1048,7 +1049,7 @@ Bool_t CPyCppyy::TCppObjectPtrConverter<ISREFERENCE>::SetArg(
       PyObject* pyobject, TParameter& para, TCallContext* ctxt )
 {
    if ( ! ObjectProxy_Check( pyobject ) )
-      return kFALSE;              // not a PyROOT object (TODO: handle SWIG etc.)
+      return kFALSE;              // not a cppyy object (TODO: handle SWIG etc.)
 
    if ( Cppyy::IsSubtype( ((ObjectProxy*)pyobject)->ObjectIsA(), fClass ) ) {
    // depending on memory policy, some objects need releasing when passed into functions
@@ -1084,7 +1085,7 @@ template <bool ISREFERENCE>
 Bool_t CPyCppyy::TCppObjectPtrConverter<ISREFERENCE>::ToMemory( PyObject* value, void* address )
 {
    if ( ! ObjectProxy_Check( value ) )
-      return kFALSE;              // not a PyROOT object (TODO: handle SWIG etc.)
+      return kFALSE;              // not a cppyy object (TODO: handle SWIG etc.)
 
    if ( Cppyy::IsSubtype( ((ObjectProxy*)value)->ObjectIsA(), fClass ) ) {
    // depending on memory policy, some objects need releasing when passed into functions
@@ -1368,7 +1369,7 @@ CPyCppyy::TConverter* CPyCppyy::CreateConverter( const std::string& fullType, Lo
 
 //-- nothing? ok, collect information about the type and possible qualifiers/decorators
    const std::string& cpd = Utility::Compound( resolvedType );
-   std::string realType   = resolvedType; // TODO: remove TClassEdit::ShortType( resolvedType.c_str(), 1 );
+   std::string realType   = TypeManip::clean_type( resolvedType );
 
 // accept unqualified type (as python does not know about qualifiers)
    h = gConvFactories.find( realType + cpd );

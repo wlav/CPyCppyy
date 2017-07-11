@@ -352,7 +352,7 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 /// Create a binding for a templated class instantiation.
 
-   PyObject* MakeRootTemplateClass( PyObject*, PyObject* args )
+   PyObject* MakeCppTemplateClass( PyObject*, PyObject* args )
    {
    // args is class name + template arguments; build full instantiation
       Py_ssize_t nArgs = PyTuple_GET_SIZE( args );
@@ -678,21 +678,21 @@ namespace {
 
 
 //- data -----------------------------------------------------------------------
-static PyMethodDef gPyROOTMethods[] = {
+static PyMethodDef gCPyCppyyMethods[] = {
    { (char*) "CreateScopeProxy", (PyCFunction)CPyCppyy::CreateScopeProxy,
-     METH_VARARGS, (char*) "PyROOT internal function" },
+     METH_VARARGS, (char*) "cppyy internal function" },
    { (char*) "GetCppGlobal", (PyCFunction)CPyCppyy::GetCppGlobal,
-     METH_VARARGS, (char*) "PyROOT internal function" },
+     METH_VARARGS, (char*) "cppyy internal function" },
    { (char*) "LookupCppEntity", (PyCFunction)LookupCppEntity,
-     METH_VARARGS, (char*) "PyROOT internal function" },
+     METH_VARARGS, (char*) "cppyy internal function" },
    { (char*) "SetRootLazyLookup", (PyCFunction)SetRootLazyLookup,
-     METH_VARARGS, (char*) "PyROOT internal function" },
-   { (char*) "MakeRootTemplateClass", (PyCFunction)MakeRootTemplateClass,
-     METH_VARARGS, (char*) "PyROOT internal function" },
+     METH_VARARGS, (char*) "cppyy internal function" },
+   { (char*) "MakeCppTemplateClass", (PyCFunction)MakeCppTemplateClass,
+     METH_VARARGS, (char*) "cppyy internal function" },
    { (char*) "_DestroyPyStrings", (PyCFunction)CPyCppyy::DestroyPyStrings,
-     METH_NOARGS, (char*) "PyROOT internal function" },
+     METH_NOARGS, (char*) "cppyy internal function" },
    { (char*) "_ResetRootModule", (PyCFunction)RootModuleResetCallback,
-     METH_NOARGS, (char*) "PyROOT internal function" },
+     METH_NOARGS, (char*) "cppyy internal function" },
    { (char*) "AddressOf", (PyCFunction)AddressOf,
      METH_VARARGS, (char*) "Retrieve address of held object in a buffer" },
    { (char*) "addressof", (PyCFunction)addressof,
@@ -746,7 +746,7 @@ static struct PyModuleDef moduledef = {
    "libcppyy",
    NULL,
    sizeof(struct module_state),
-   gPyROOTMethods,
+   gCPyCppyyMethods,
    NULL,
    rootmodule_traverse,
    rootmodule_clear,
@@ -779,11 +779,11 @@ extern "C" void initlibcppyy()
 #endif
    Py_DECREF( dict );
 
-// setup PyROOT
+// setup this module
 #if PY_VERSION_HEX >= 0x03000000
    gThisModule = PyModule_Create( &moduledef );
 #else
-   gThisModule = Py_InitModule( const_cast< char* >( "libcppyy" ), gPyROOTMethods );
+   gThisModule = Py_InitModule( const_cast< char* >( "libcppyy" ), gCPyCppyyMethods );
 #endif
    if ( ! gThisModule )
       CPYCPPYY_INIT_ERROR;
