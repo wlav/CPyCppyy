@@ -1356,10 +1356,9 @@ CPyCppyy::TConverter* CPyCppyy::CreateConverter( const std::string& fullType, Lo
    if ( Cppyy::TCppScope_t klass = Cppyy::GetScope( realType ) ) {
       if ( Cppyy::IsSmartPtr( realType ) ) {
          const std::vector< Cppyy::TCppMethod_t > methods = Cppyy::GetMethodsFromName( klass, "operator->" );
-      /* TODO: remove TClassEdit usage
          if ( ! methods.empty() ) {
             Cppyy::TCppType_t rawPtrType = Cppyy::GetScope(
-               TClassEdit::ShortType( Cppyy::GetMethodResultType( methods[0] ).c_str(), 1 ) );
+               TypeManip::clean_type( Cppyy::GetMethodResultType( methods[0] ) ) );
             if ( rawPtrType ) {
                if ( cpd == "" ) {
                   result = new TSmartPtrCppObjectConverter( klass, rawPtrType, methods[0], control );
@@ -1373,7 +1372,6 @@ CPyCppyy::TConverter* CPyCppyy::CreateConverter( const std::string& fullType, Lo
                }
             }
          }
-   */
       }
 
       if ( ! result ) {

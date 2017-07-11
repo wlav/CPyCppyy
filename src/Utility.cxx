@@ -600,7 +600,7 @@ std::string CPyCppyy::Utility::MapOperatorName( const std::string& name, Bool_t 
       std::string::size_type start = 0, end = op.size();
       while ( start < end && isspace( op[ start ] ) ) ++start;
       while ( start < end && isspace( op[ end-1 ] ) ) --end;
-      op = "TODO"; //TClassEdit::ResolveTypedef( op.substr( start, end - start ).c_str(), true );
+      op = Cppyy::ResolveName( op.substr( start, end - start ) );
 
    // map C++ operator to python equivalent, or made up name if no equivalent exists
       TC2POperatorMapping_t::iterator pop = gC2POperatorMapping.find( op );

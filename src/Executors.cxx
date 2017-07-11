@@ -626,7 +626,7 @@ CPyCppyy::TExecutor* CPyCppyy::CreateExecutor(
    const std::string& cpd = Utility::Compound( resolvedType );
    std::string realType = TypeManip::clean_type( resolvedType );
 
-// const-ness (dropped by TClassEdit::ShortType) is in general irrelevant
+// const-ness (dropped by TypeManip::clean_type) is in general irrelevant
    h = gExecFactories.find( realType + cpd );
    if ( h != gExecFactories.end() )
       return (h->second)();
@@ -650,10 +650,9 @@ CPyCppyy::TExecutor* CPyCppyy::CreateExecutor(
    if ( Cppyy::TCppType_t klass = Cppyy::GetScope( realType ) ) {
       if ( manage_smart_ptr && Cppyy::IsSmartPtr( realType ) ) {
          const std::vector< Cppyy::TCppMethod_t > methods = Cppyy::GetMethodsFromName( klass, "operator->" );
-      /* TODO: remove use of TClassEdit
          if ( ! methods.empty() ) {
             Cppyy::TCppType_t rawPtrType = Cppyy::GetScope(
-               TClassEdit::ShortType( Cppyy::GetMethodResultType( methods[0] ).c_str(), 1 ) );
+               TypeManip::clean_type( Cppyy::GetMethodResultType( methods[0] ) ) );
             if ( rawPtrType ) {
                if ( cpd == "" ) {
                   result = new TCppObjectBySmartPtrExecutor( klass, rawPtrType, methods[0] );
@@ -662,12 +661,11 @@ CPyCppyy::TExecutor* CPyCppyy::CreateExecutor(
                } else if ( cpd == "&" ) {
                   result = new TCppObjectBySmartPtrRefExecutor( klass, rawPtrType, methods[0] );
                } // else if ( cpd == "**" ) {
-//               } else if ( cpd == "*&" || cpd == "&*" ) {
-  //             } else if ( cpd == "[]" ) {
-    //           } else {
-      //         }
+               //  } else if ( cpd == "*&" || cpd == "&*" ) {
+               //  } else if ( cpd == "[]" ) {
+               //  } else {
             }
-            }*/
+         }
       }
 
       if ( ! result ) {
