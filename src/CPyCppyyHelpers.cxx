@@ -693,8 +693,7 @@ PyObject* CPyCppyy::GetCppGlobal( PyObject*, PyObject* args )
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::GetCppGlobal( const std::string& name )
 {
-// try named global variable/enum (first ROOT, then Cling: sync is too slow)
-/* TODO: this should all be in Cppyy.cxx, no?
+// try named global variable/enum
    Cppyy::TCppIndex_t idata = Cppyy::GetDatamemberIndex( Cppyy::gGlobalScope, name );
    if ( 0 <= idata )
       return (PyObject*)PropertyProxy_New( Cppyy::gGlobalScope, idata );
@@ -709,13 +708,6 @@ PyObject* CPyCppyy::GetCppGlobal( const std::string& name )
       return (PyObject*)MethodProxy_New( name, overloads );
    }
 
-// allow lookup into std as if global (historic)
-   TDataMember* dm = TClass::GetClass( "std" )->GetDataMember( name.c_str() );
-   if ( dm ) {
-      Cppyy::TCppType_t klass = Cppyy::GetScope( dm->GetTrueTypeName() );
-      return BindCppObjectNoCast( (void*)dm->GetOffset(), klass, kFALSE );
-   }
-*/
 // nothing found
    PyErr_Format( PyExc_LookupError, "no such global: %s", name.c_str() );
    return 0;
