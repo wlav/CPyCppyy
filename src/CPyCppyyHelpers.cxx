@@ -14,6 +14,7 @@
 #include "TFunctionHolder.h"
 #include "TSetItemHolder.h"
 #include "TTupleOfInstances.h"
+#include "TypeManip.h"
 #include "Utility.h"
 
 // Standard
@@ -483,8 +484,7 @@ PyObject* CPyCppyy::CreateScopeProxy( const std::string& scope_name, PyObject* p
    const std::string& lookup = parent ? (scName+"::"+name) : name;
    Cppyy::TCppScope_t klass = Cppyy::GetScope( lookup );
 
-/* TODO: hide this direct gInterpreter access ...
-   if ( ! (Bool_t)klass && gInterpreter->CheckClassTemplate( lookup.c_str() ) ) {
+   if ( ! (Bool_t)klass && Cppyy::IsTemplate( lookup ) ) {
    // a "naked" templated class is requested: return callable proxy for instantiations
       PyObject* pytcl = PyObject_GetAttr( gThisModule, PyStrings::gTemplate );
       PyObject* pytemplate = PyObject_CallFunction(
@@ -498,20 +498,8 @@ PyObject* CPyCppyy::CreateScopeProxy( const std::string& scope_name, PyObject* p
       Py_XDECREF( parent );
       return pytemplate;
    }
-*/
 
    if ( ! (Bool_t)klass ) {   // if so, all options have been exhausted: it doesn't exist as such
-      if ( ! parent && scope_name.find( "ROOT::" ) == std::string::npos ) { // not already in ROOT::
-      // final attempt, for convenience, the "ROOT" namespace isn't required, try again ...
-         klass = Cppyy::GetScope( "ROOT::"+scope_name );
-         if ( (Bool_t)klass ) {
-            PyObject* rtns = PyObject_GetAttr( gThisModule, PyStrings::gThisModule );
-            PyObject* pyclass = CreateScopeProxy( scope_name, rtns );
-            Py_DECREF( rtns );
-            return pyclass;
-         }
-      }
-
       PyErr_Format( PyExc_TypeError, "requested class \'%s\' does not exist", lookup.c_str() );
       Py_XDECREF( parent );
       return 0;
@@ -583,7 +571,8 @@ PyObject* CPyCppyy::CreateScopeProxy( const std::string& scope_name, PyObject* p
    const std::string& actual = Cppyy::GetFinalName( klass );
 
 // first try to retrieve an existing class representation
-   PyObject* pyactual = CPyCppyy_PyUnicode_FromString( actual.c_str() ); // TODO: Cppyy::GetName(actual).c_str() );
+   PyObject* pyactual = CPyCppyy_PyUnicode_FromString(
+      TypeManip::clean_type( actual ).c_str() );
    PyObject* pyclass = force ? 0 : PyObject_GetAttr( parent, pyactual );
 
    Bool_t bClassFound = pyclass ? kTRUE : kFALSE;
@@ -618,17 +607,19 @@ PyObject* CPyCppyy::CreateScopeProxy( const std::string& scope_name, PyObject* p
       PyObject_SetAttrString( parent, const_cast< char* >( name.c_str() ), pyclass );
 
    if ( pyclass && ! bClassFound ) {
-   // store a ref from ROOT TClass to new python class
+   // store a ref from cppyy scope id to new python class
       gPyClasses[ klass ] = PyWeakref_NewRef( pyclass, NULL );
 
    // add a ref in the class to its scope
-      PyObject_SetAttrString( pyclass, "__scope__", CPyCppyy_PyUnicode_FromString( scName.c_str() ) );
+      PyObject_SetAttrString(
+         pyclass, "__scope__", CPyCppyy_PyUnicode_FromString( scName.c_str() ) );
    }
 
-   // add __cppname__ to keep the C++ name of the class/scope
-   PyObject_SetAttr( pyclass, PyStrings::gCppName, CPyCppyy_PyUnicode_FromString( actual.c_str() ) );
+// add __cppname__ to keep the C++ name of the class/scope
+   PyObject_SetAttr(
+      pyclass, PyStrings::gCppName, CPyCppyy_PyUnicode_FromString( actual.c_str() ) );
 
-   // add __module__  (see https://docs.python.org/3/c-api/typeobj.html#c.PyTypeObject.tp_name) 
+// add __module__  (see https://docs.python.org/3/c-api/typeobj.html#c.PyTypeObject.tp_name) 
    std::string module;
    if( parent == gThisModule) {
       module = "cppyy";
@@ -658,8 +649,7 @@ PyObject* CPyCppyy::CreateScopeProxy( const std::string& scope_name, PyObject* p
       }
    }
 
-
-   if ( pyclass && actual != "ROOT" ) {
+   if ( pyclass ) {
    // add to sys.modules to allow importing from this module
       std::string pyfullname = lookup;
       std::string::size_type pos = pyfullname.find( "::" );

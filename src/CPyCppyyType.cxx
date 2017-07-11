@@ -25,21 +25,20 @@ namespace {
       return PyType_Type.tp_alloc( metatype, nitems );
    }
 
-////////////////////////////////////////////////////////////////////////////////
-
+//----------------------------------------------------------------------------
    void meta_dealloc( CPyCppyyClass* pytype )
    {
    // TODO: no longer a reason for existing?
       return PyType_Type.tp_dealloc( (PyObject*)pytype );
    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Called when CPyCppyyType acts as a metaclass; since type_new always resets
-/// tp_alloc, and since it does not call tp_init on types, the metaclass is
-/// being fixed up here, and the class is initialized here as well.
-
+//----------------------------------------------------------------------------
    PyObject* pt_new( PyTypeObject* subtype, PyObject* args, PyObject* kwds )
    {
+   // Called when CPyCppyyType acts as a metaclass; since type_new always resets
+   // tp_alloc, and since it does not call tp_init on types, the metaclass is
+   // being fixed up here, and the class is initialized here as well.
+
    // fixup of metaclass (left permanent, and in principle only called once b/c
    // cppyy caches python classes)
       subtype->tp_alloc   = (allocfunc)meta_alloc;
@@ -95,7 +94,7 @@ namespace {
                char* cppname = CPyCppyy_PyUnicode_AsString( pycppname );
                Py_DECREF(pycppname);
                Cppyy::TCppScope_t scope = Cppyy::GetScope( cppname );
-            /* TODO: get of TClass usage
+            /* TODO: get rid of TClass usage
                TClass* klass = TClass::GetClass( cppname );
                if ( Cppyy::IsNamespace( scope ) ) {
 

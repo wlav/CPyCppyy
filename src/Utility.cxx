@@ -143,11 +143,10 @@ ULong_t CPyCppyy::PyLongOrInt_AsULong( PyObject* pyobject )
    return ul;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Convert <pyobject> to C++ unsigned long long, with bounds checking.
-
+//----------------------------------------------------------------------------
 ULong64_t CPyCppyy::PyLongOrInt_AsULong64( PyObject* pyobject )
 {
+// Convert <pyobject> to C++ unsigned long long, with bounds checking.
    ULong64_t ull = PyLong_AsUnsignedLongLong( pyobject );
    if ( PyErr_Occurred() && PyInt_Check( pyobject ) ) {
       PyErr_Clear();
@@ -163,12 +162,12 @@ ULong64_t CPyCppyy::PyLongOrInt_AsULong64( PyObject* pyobject )
    return ull;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Add the given function to the class under name 'label'.
-
+//----------------------------------------------------------------------------
 Bool_t CPyCppyy::Utility::AddToClass(
       PyObject* pyclass, const char* label, PyCFunction cfunc, int flags )
 {
+// Add the given function to the class under name 'label'.
+
 // use list for clean-up (.so's are unloaded only at interpreter shutdown)
    static std::list< PyMethodDef > s_pymeths;
 
@@ -196,11 +195,10 @@ Bool_t CPyCppyy::Utility::AddToClass(
    return kTRUE;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Add the given function to the class under name 'label'.
-
+//----------------------------------------------------------------------------
 Bool_t CPyCppyy::Utility::AddToClass( PyObject* pyclass, const char* label, const char* func )
 {
+// Add the given function to the class under name 'label'.
    PyObject* pyfunc = PyObject_GetAttrString( pyclass, const_cast< char* >( func ) );
    if ( ! pyfunc )
       return kFALSE;
@@ -211,11 +209,10 @@ Bool_t CPyCppyy::Utility::AddToClass( PyObject* pyclass, const char* label, cons
    return isOk;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Add the given function to the class under name 'label'.
-
+//----------------------------------------------------------------------------
 Bool_t CPyCppyy::Utility::AddToClass( PyObject* pyclass, const char* label, PyCallable* pyfunc )
 {
+// Add the given function to the class under name 'label'.
    MethodProxy* method =
       (MethodProxy*)PyObject_GetAttrString( pyclass, const_cast< char* >( label ) );
 
@@ -237,12 +234,11 @@ Bool_t CPyCppyy::Utility::AddToClass( PyObject* pyclass, const char* label, PyCa
    return kTRUE;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Helper to add base class methods to the derived class one (this covers the
-/// 'using' cases, which the dictionary does not provide).
-
+//----------------------------------------------------------------------------
 Bool_t CPyCppyy::Utility::AddUsingToClass( PyObject* pyclass, const char* method )
 {
+// Helper to add base class methods to the derived class one (this covers the
+// 'using' cases, which the dictionary does not provide).
    MethodProxy* derivedMethod =
          (MethodProxy*)PyObject_GetAttrString( pyclass, const_cast< char* >( method ) );
    if ( ! MethodProxy_Check( derivedMethod ) ) {
@@ -290,14 +286,14 @@ Bool_t CPyCppyy::Utility::AddUsingToClass( PyObject* pyclass, const char* method
    return kTRUE;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Install the named operator (op) into the left object's class if such a function
-/// exists as a global overload; a label must be given if the operator is not in
-/// gC2POperatorMapping (i.e. if it is ambiguous at the member level).
-
+//----------------------------------------------------------------------------
 Bool_t CPyCppyy::Utility::AddBinaryOperator(
    PyObject* left, PyObject* right, const char* op, const char* label, const char* alt )
 {
+// Install the named operator (op) into the left object's class if such a function
+// exists as a global overload; a label must be given if the operator is not in
+// gC2POperatorMapping (i.e. if it is ambiguous at the member level).
+
 // this should be a given, nevertheless ...
    if ( ! ObjectProxy_Check( left ) )
       return kFALSE;
@@ -313,12 +309,11 @@ Bool_t CPyCppyy::Utility::AddBinaryOperator(
    return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Install binary operator op in pyclass, working on two instances of pyclass.
-
+//----------------------------------------------------------------------------
 Bool_t CPyCppyy::Utility::AddBinaryOperator(
    PyObject* pyclass, const char* op, const char* label, const char* alt )
 {
+// Install binary operator op in pyclass, working on two instances of pyclass.
    PyObject* pyname = PyObject_GetAttr( pyclass, PyStrings::gCppName );
    if ( ! pyname ) pyname = PyObject_GetAttr( pyclass, PyStrings::gName );
    std::string cname = Cppyy::ResolveName( CPyCppyy_PyUnicode_AsString( pyname ) );
@@ -327,11 +322,10 @@ Bool_t CPyCppyy::Utility::AddBinaryOperator(
    return AddBinaryOperator( pyclass, cname, cname, op, label, alt );
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Helper to find a function with matching signature in 'funcs'.
-
+//----------------------------------------------------------------------------
 static inline Cppyy::TCppMethod_t FindAndAddOperator( const std::string& lcname, const std::string& rcname,
      const char* op, void* klass = 0 ) {
+// Helper to find a function with matching signature in 'funcs'.
    std::string opname = "operator";
    opname += op;
    std::string proto = lcname + ", " + rcname;
@@ -436,13 +430,12 @@ Bool_t CPyCppyy::Utility::AddBinaryOperator( PyObject* pyclass, const std::strin
    return kFALSE;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Helper to construct the "< type, type, ... >" part of a templated name (either
-/// for a class as in MakeRootTemplateClass in RootModule.cxx) or for method lookup
-/// (as in TemplatedMemberHook, below).
-
+//----------------------------------------------------------------------------
 PyObject* CPyCppyy::Utility::BuildTemplateName( PyObject* pyname, PyObject* args, int argoff )
 {
+// Helper to construct the "< type, type, ... >" part of a templated name (either
+// for a class as in MakeRootTemplateClass in RootModule.cxx) or for method lookup
+// (as in TemplatedMemberHook, below).
    if ( pyname )
       pyname = CPyCppyy_PyUnicode_FromString( CPyCppyy_PyUnicode_AsString( pyname ) );
    else
@@ -495,11 +488,11 @@ PyObject* CPyCppyy::Utility::BuildTemplateName( PyObject* pyname, PyObject* args
    return pyname;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Initialize a proxy class for use by python, and add it to the ROOT module.
-
+//----------------------------------------------------------------------------
 Bool_t CPyCppyy::Utility::InitProxy( PyObject* module, PyTypeObject* pytype, const char* name )
 {
+// Initialize a proxy class for use by python, and add it to the ROOT module.
+
 // finalize proxy type
    if ( PyType_Ready( pytype ) < 0 )
       return kFALSE;
@@ -515,11 +508,11 @@ Bool_t CPyCppyy::Utility::InitProxy( PyObject* module, PyTypeObject* pytype, con
    return kTRUE;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Retrieve a linear buffer pointer from the given pyobject.
-
+//----------------------------------------------------------------------------
 int CPyCppyy::Utility::GetBuffer( PyObject* pyobject, char tc, int size, void*& buf, Bool_t check )
 {
+// Retrieve a linear buffer pointer from the given pyobject.
+
 // special case: don't handle character strings here (yes, they're buffers, but not quite)
    if ( PyBytes_Check( pyobject ) )
       return 0;
@@ -588,11 +581,10 @@ int CPyCppyy::Utility::GetBuffer( PyObject* pyobject, char tc, int size, void*& 
    return 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Map the given C++ operator name on the python equivalent.
-
+//----------------------------------------------------------------------------
 std::string CPyCppyy::Utility::MapOperatorName( const std::string& name, Bool_t bTakesParams )
 {
+// Map the given C++ operator name on the python equivalent.
    if ( 8 < name.size() && name.substr( 0, 8 ) == "operator" ) {
       std::string op = name.substr( 8, std::string::npos );
 
@@ -634,11 +626,10 @@ std::string CPyCppyy::Utility::MapOperatorName( const std::string& name, Bool_t 
    return name;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Break down the compound of a fully qualified type name.
-
+//----------------------------------------------------------------------------
 const std::string CPyCppyy::Utility::Compound( const std::string& name )
 {
+// Break down the compound of a fully qualified type name.
    std::string cleanName = name;
    RemoveConst( cleanName );
 
@@ -658,11 +649,10 @@ const std::string CPyCppyy::Utility::Compound( const std::string& name )
    return compound;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Extract size from an array type, if available.
-
+//----------------------------------------------------------------------------
 Py_ssize_t CPyCppyy::Utility::ArraySize( const std::string& name )
 {
+// Extract size from an array type, if available.
    std::string cleanName = name;
    RemoveConst( cleanName );
 
@@ -677,12 +667,11 @@ Py_ssize_t CPyCppyy::Utility::ArraySize( const std::string& name )
    return -1;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Retrieve the class name from the given python object (which may be just an
-/// instance of the class).
-
+//----------------------------------------------------------------------------
 const std::string CPyCppyy::Utility::ClassName( PyObject* pyobj )
 {
+// Retrieve the class name from the given python object (which may be just an
+// instance of the class).
    std::string clname = "<unknown>";
    PyObject* pyclass = PyObject_GetAttr( pyobj, PyStrings::gClass );
    if ( pyclass != 0 ) {
@@ -708,14 +697,12 @@ const std::string CPyCppyy::Utility::ClassName( PyObject* pyobj )
    return clname;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// Re-acquire the GIL before calling PyErr_Occurred() in case it has been
-/// released; note that the p2.2 code assumes that there are no callbacks in
-/// C++ to python (or at least none returning errors).
-
+//----------------------------------------------------------------------------
 PyObject* CPyCppyy::Utility::PyErr_Occurred_WithGIL()
 {
+// Re-acquire the GIL before calling PyErr_Occurred() in case it has been
+// released; note that the p2.2 code assumes that there are no callbacks in
+// C++ to python (or at least none returning errors).
 #if PY_VERSION_HEX >= 0x02030000
    PyGILState_STATE gstate = PyGILState_Ensure();
    PyObject* e = PyErr_Occurred();

@@ -67,6 +67,7 @@ CPYCPPYY_IMPL_GILCALL( Double_t,     D )
 CPYCPPYY_IMPL_GILCALL( LongDouble_t, LD )
 CPYCPPYY_IMPL_GILCALL( void*,        R )
 
+// TODO: CallS may not have a use here; CallO is used instead for std::string
 static inline Char_t* GILCallS(
       Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CPyCppyy::TCallContext* ctxt ) {
    GILControl gc( ctxt );
@@ -314,7 +315,7 @@ PyObject* CPyCppyy::TCStringExecutor::Execute(
       Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt )
 {
 // execute <method> with argument <self, ctxt>, construct python string return value
-   char* result = (char*)GILCallS( method, self, ctxt );
+   char* result = (char*)GILCallR( method, self, ctxt );
    if ( ! result ) {
       Py_INCREF( PyStrings::gEmptyString );
       return PyStrings::gEmptyString;
@@ -362,6 +363,7 @@ PyObject* CPyCppyy::TSTLStringExecutor::Execute(
 {
 // execute <method> with argument <self, ctxt>, construct python string return value
 
+// TODO: make use of GILLCallS (?!)
    static Cppyy::TCppScope_t sSTLStringScope = Cppyy::GetScope( "std::string" );
    std::string* result = (std::string*)GILCallO( method, self, ctxt, sSTLStringScope );
    if ( ! result ) {
