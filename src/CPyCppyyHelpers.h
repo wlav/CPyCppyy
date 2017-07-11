@@ -30,7 +30,6 @@ namespace CPyCppyy {
    }
 
    PyObject* BindCppObjectArray( Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, Int_t size );
-   PyObject* BindCppGlobal( void* );
 
 } // namespace CPyCppyy
 
