@@ -33,10 +33,10 @@ PyObject* TTupleOfInstances_New(
    return arr;
 }
 
-//= PyROOT custom tuple-like array type ======================================
+//= CPyCppyy custom tuple-like array type ====================================
 PyTypeObject TTupleOfInstances_Type = {
    PyVarObject_HEAD_INIT( &PyType_Type, 0 )
-   (char*)"ROOT.InstancesArray",        // tp_name
+   (char*)"cppyy.InstancesArray", // tp_name
    0,                         // tp_basicsize
    0,                         // tp_itemsize
    0,                         // tp_dealloc
@@ -56,7 +56,7 @@ PyTypeObject TTupleOfInstances_Type = {
    0,                         // tp_as_buffer
    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_CHECKTYPES |
       Py_TPFLAGS_BASETYPE,    // tp_flags
-   (char*)"PyROOT long object for pass by reference",      // tp_doc
+   (char*)"cppyy long object for pass by reference",   // tp_doc
    0,                         // tp_traverse
    0,                         // tp_clear
    0,                         // tp_richcompare

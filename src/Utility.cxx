@@ -106,10 +106,10 @@ namespace {
    void InitOperatorTemplate() {
    /* TODO: move to Cppyy.cxx
       gROOT->ProcessLine(
-         "namespace _pyroot_internal { template<class C1, class C2>"
+         "namespace _pycppyy_internal { template<class C1, class C2>"
          " bool is_equal(const C1& c1, const C2& c2){ return (bool)(c1 == c2); } }" );
       gROOT->ProcessLine(
-         "namespace _pyroot_internal { template<class C1, class C2>"
+         "namespace _cpycppyy_internal { template<class C1, class C2>"
          " bool is_not_equal(const C1& c1, const C2& c2){ return (bool)(c1 != c2); } }" );
    */
    }
@@ -349,7 +349,7 @@ Bool_t CPyCppyy::Utility::AddBinaryOperator( PyObject* pyclass, const std::strin
    const std::string& rcname, const char* op, const char* label, const char* alt )
 {
 // Find a global function with a matching signature and install the result on pyclass;
-// in addition, __gnu_cxx, std::__1, and _pyroot_internal are searched pro-actively (as
+// in addition, __gnu_cxx, std::__1, and _cpycppyy_internal are searched pro-actively (as
 // there's AFAICS no way to unearth using information).
 
    if ( strcmp( op, "==" ) == 0 || strcmp( op, "!=" ) == 0 )
@@ -371,7 +371,7 @@ Bool_t CPyCppyy::Utility::AddBinaryOperator( PyObject* pyclass, const std::strin
 // operators are declared as friends only in classes, so then they're not found in the
 // global namespace. That's why there's this little helper.
    std::call_once( sOperatorTemplateFlag, InitOperatorTemplate );
-   static TClassRef _pr_int( "_pyroot_internal" );
+   static TClassRef _pr_int( "_cpycppyy_internal" );
 
    PyCallable* pyfunc = 0;
    if ( gnucxx_exists ) {
@@ -412,7 +412,7 @@ Bool_t CPyCppyy::Utility::AddBinaryOperator( PyObject* pyclass, const std::strin
       else { fname << "not_implemented<"; }
       fname  << lcname << ", " << rcname << ">";
       Cppyy::TCppMethod_t func = (Cppyy::TCppMethod_t)_pr_int->GetMethodAny( fname.str().c_str() );
-      if ( func ) pyfunc = new TFunctionHolder( Cppyy::GetScope( "_pyroot_internal" ), func );
+      if ( func ) pyfunc = new TFunctionHolder( Cppyy::GetScope( "_cpycppyy_internal" ), func );
    }
 
 // last chance: there could be a non-instantiated templated method

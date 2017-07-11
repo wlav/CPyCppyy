@@ -18,7 +18,7 @@ namespace CPyCppyy {
 
 namespace {
 
-//= PyROOT property proxy property behaviour =================================
+//= CPyCppyy property proxy property behaviour ===============================
    PyObject* pp_get( PropertyProxy* pyprop, ObjectProxy* pyobj, PyObject* )
    {
    // normal getter access
@@ -92,7 +92,7 @@ namespace {
       return errret;
    }
 
-//= PyROOT property proxy construction/destruction ===========================
+//= CPyCppyy property proxy construction/destruction =========================
    PropertyProxy* pp_new( PyTypeObject* pytype, PyObject*, PyObject* )
    {
    // Create and initialize a new property descriptor.
@@ -123,10 +123,10 @@ namespace {
 } // unnamed namespace
 
 
-//= PyROOT property proxy type ===============================================
+//= CPyCppyy property proxy type =============================================
 PyTypeObject PropertyProxy_Type = {
    PyVarObject_HEAD_INIT( &PyType_Type, 0 )
-   (char*)"ROOT.PropertyProxy",                  // tp_name
+   (char*)"cppyy.PropertyProxy",                  // tp_name
    sizeof(PropertyProxy),     // tp_basicsize
    0,                         // tp_itemsize
    (destructor)pp_dealloc,    // tp_dealloc
@@ -145,7 +145,7 @@ PyTypeObject PropertyProxy_Type = {
    0,                         // tp_setattro
    0,                         // tp_as_buffer
    Py_TPFLAGS_DEFAULT,        // tp_flags
-   (char*)"PyROOT property proxy (internal)",    // tp_doc
+   (char*)"cppyy property proxy (internal)",      // tp_doc
    0,                         // tp_traverse
    0,                         // tp_clear
    0,                         // tp_richcompare

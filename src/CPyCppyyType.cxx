@@ -1,6 +1,3 @@
-// @(#)root/pyroot:$Id$
-// Author: Wim Lavrijsen, Jan 2005
-
 // Bindings
 #include "CPyCppyy.h"
 #include "CPyCppyyType.h"
@@ -44,7 +41,7 @@ namespace {
    PyObject* pt_new( PyTypeObject* subtype, PyObject* args, PyObject* kwds )
    {
    // fixup of metaclass (left permanent, and in principle only called once b/c
-   // PyROOT caches python classes)
+   // cppyy caches python classes)
       subtype->tp_alloc   = (allocfunc)meta_alloc;
       subtype->tp_dealloc = (destructor)meta_dealloc;
 
@@ -64,7 +61,7 @@ namespace {
          result->fCppType = Cppyy::GetScope(
             CPyCppyy_PyUnicode_AsString( PyTuple_GET_ITEM( args, 0 ) ) );
       } else {
-      // coming here from PyROOT, use meta class name instead of given name,
+      // coming here from cppyy, use meta class name instead of given name,
       // so that it is safe to inherit python classes from the bound class
          result->fCppType = Cppyy::GetScope(
             std::string( subtype->tp_name ).substr( 0, mp-subtype->tp_name ).c_str() );
@@ -74,7 +71,7 @@ namespace {
    }
 
 
-//= PyROOT type metaclass behavior ===========================================
+//= CPyCppyy type metaclass behavior =========================================
    PyObject* pt_getattro( PyObject* pyclass, PyObject* pyname )
    {
    // normal type lookup

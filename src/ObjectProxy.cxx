@@ -202,12 +202,12 @@ namespace {
          if ( name ) {
             if ( CPyCppyy_PyUnicode_GET_SIZE( name ) != 0 ) {
                if ( pyobj->fFlags & ObjectProxy::kIsSmartPtr ) {
-                  PyObject* repr = CPyCppyy_PyUnicode_FromFormat( "<ROOT.%s object (\"%s\") at %p held by %s at %p>",
+                  PyObject* repr = CPyCppyy_PyUnicode_FromFormat( "<cppyy.gbl.%s object (\"%s\") at %p held by %s at %p>",
                      clName.c_str(), CPyCppyy_PyUnicode_AsString( name ), pyobj->GetObject(), smartPtrName.c_str(), pyobj->fSmartPtr );
                   Py_DECREF( name );
                   return repr;
                } else {
-                  PyObject* repr = CPyCppyy_PyUnicode_FromFormat( "<ROOT.%s object (\"%s\") at %p>",
+                  PyObject* repr = CPyCppyy_PyUnicode_FromFormat( "<cppyy.gbl.%s object (\"%s\") at %p>",
                      clName.c_str(), CPyCppyy_PyUnicode_AsString( name ), pyobj->GetObject() );
                   Py_DECREF( name );
                   return repr;
@@ -220,10 +220,10 @@ namespace {
 
    // get here if object has no method GetName() or name = ""
       if ( pyobj->fFlags & ObjectProxy::kIsSmartPtr ) {
-         return CPyCppyy_PyUnicode_FromFormat( const_cast< char* >( "<ROOT.%s object at %p held by %s at %p>" ),
+         return CPyCppyy_PyUnicode_FromFormat( const_cast< char* >( "<cppyy.gbl.%s object at %p held by %s at %p>" ),
             clName.c_str(), pyobj->GetObject(), smartPtrName.c_str(), pyobj->fSmartPtr );
       } else {
-         return CPyCppyy_PyUnicode_FromFormat( const_cast< char* >( "<ROOT.%s object at %p>" ),
+         return CPyCppyy_PyUnicode_FromFormat( const_cast< char* >( "<cppyy.gbl.%s object at %p>" ),
                                              clName.c_str(), pyobj->GetObject() );
       }
    }
@@ -324,7 +324,7 @@ CPYCPPYY_STUB( div, /, PyStrings::gDiv )
 } // unnamed namespace
 
 
-//= PyROOT object proxy type =================================================
+//= CPyCppyy object proxy type ===============================================
 PyTypeObject ObjectProxy_Type = {
    PyVarObject_HEAD_INIT( &CPyCppyyType_Type, 0 )
    (char*)"cppyy.ObjectProxy",// tp_name
@@ -349,7 +349,7 @@ PyTypeObject ObjectProxy_Type = {
       Py_TPFLAGS_BASETYPE |
       Py_TPFLAGS_HAVE_GC |
       Py_TPFLAGS_CHECKTYPES,  // tp_flags
-   (char*)"PyROOT object proxy (internal)",      // tp_doc
+   (char*)"cppyy object proxy (internal)",       // tp_doc
    0,                         // tp_traverse
    0,                         // tp_clear
    (richcmpfunc)op_richcompare,                  // tp_richcompare

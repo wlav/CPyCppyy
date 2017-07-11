@@ -188,7 +188,7 @@ namespace {
    }
 
 
-//= PyROOT method proxy object behaviour =====================================
+//= CPyCppyy method proxy object behaviour ===================================
    PyObject* mp_name( MethodProxy* pymeth, void* )
    {
       return CPyCppyy_PyUnicode_FromString( pymeth->GetName().c_str() );
@@ -323,7 +323,7 @@ namespace {
       PyObject* co_unused = PyTuple_New( 0 );
 
    // filename is made-up
-      PyObject* co_filename = PyString_FromString( "ROOT.py" );
+      PyObject* co_filename = PyString_FromString( "cppyy.py" );
 
    // name is the function name, also through __name__ on the function itself
       PyObject* co_name = PyString_FromString( pymeth->GetName().c_str() );
@@ -558,7 +558,7 @@ namespace {
       { (char*)NULL, NULL, NULL, NULL, NULL }
    };
 
-//= PyROOT method proxy function behavior ====================================
+//= CPyCppyy method proxy function behavior ==================================
    PyObject* mp_call( MethodProxy* pymeth, PyObject* args, PyObject* kwds )
    {
    // Call the appropriate overload of this method.
@@ -682,7 +682,7 @@ namespace {
    }
 
 
-//= PyROOT method proxy construction/destruction =================================
+//= CPyCppyy method proxy construction/destruction ===============================
    MethodProxy* mp_new( PyTypeObject*, PyObject*, PyObject* )
    {
    // Create a new method proxy object.
@@ -764,7 +764,7 @@ namespace {
    }
 
 
-//= PyROOT method proxy access to internals =================================
+//= CPyCppyy method proxy access to internals ===============================
    PyObject* mp_disp( MethodProxy* pymeth, PyObject* sigarg )
    {
    // Select and call a specific C++ overload, based on its signature.
@@ -804,7 +804,7 @@ namespace {
       return 0;
    }
 
-//= PyROOT method proxy access to internals =================================
+//= CPyCppyy method proxy access to internals ===============================
    PyObject* mp_add_overload( MethodProxy* pymeth, PyObject* new_overload )
    {
       TPythonCallback* cb = new TPythonCallback(new_overload);
@@ -824,10 +824,10 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
 
-//= PyROOT method proxy type =================================================
+//= CPyCppyy method proxy type ===============================================
 PyTypeObject MethodProxy_Type = {
    PyVarObject_HEAD_INIT( &PyType_Type, 0 )
-   (char*)"ROOT.MethodProxy", // tp_name
+   (char*)"cppyy.MethodProxy", // tp_name
    sizeof(MethodProxy),       // tp_basicsize
    0,                         // tp_itemsize
    (destructor)mp_dealloc,    // tp_dealloc
@@ -846,7 +846,7 @@ PyTypeObject MethodProxy_Type = {
    0,                         // tp_setattro
    0,                         // tp_as_buffer
    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,      // tp_flags
-   (char*)"PyROOT method proxy (internal)",      // tp_doc
+   (char*)"cppyy method proxy (internal)",       // tp_doc
    (traverseproc)mp_traverse, // tp_traverse
    (inquiry)mp_clear,         // tp_clear
    (richcmpfunc)mp_richcompare,                  // tp_richcompare

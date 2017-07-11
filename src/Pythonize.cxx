@@ -296,7 +296,7 @@ namespace {
 
    PyTypeObject VectorIter_Type = {
       PyVarObject_HEAD_INIT( &PyType_Type, 0 )
-      (char*)"ROOT.vectoriter",  // tp_name
+      (char*)"cppyy.vectoriter",  // tp_name
       sizeof(vectoriterobject),  // tp_basicsize
       0,
       (destructor)vectoriter_dealloc,            // tp_dealloc
@@ -531,7 +531,7 @@ static int PyObject_Compare( PyObject* one, PyObject* other ) {
       return CPyCppyy_PyUnicode_FromStringAndSize( s->c_str(), s->size() );
    }
 
-#define PYROOT_IMPLEMENT_STRING_PYTHONIZATION( type, name )                   \
+#define CPYCPPYY_IMPLEMENT_STRING_PYTHONIZATION( type, name )                 \
    inline PyObject* name##GetData( PyObject* self ) {                         \
       if ( CPyCppyy::ObjectProxy_Check( self ) ) {                            \
          type* obj = ((type*)((ObjectProxy*)self)->GetObject());              \
@@ -579,8 +579,8 @@ static int PyObject_Compare( PyObject* one, PyObject* other ) {
    }
 
    // Only define StlStringCompare:
-#define PYROOT_IMPLEMENT_STRING_PYTHONIZATION_CMP( type, name )               \
-   PYROOT_IMPLEMENT_STRING_PYTHONIZATION( type, name )                        \
+#define CPYCPPYY_IMPLEMENT_STRING_PYTHONIZATION_CMP( type, name )             \
+   CPYCPPYY_IMPLEMENT_STRING_PYTHONIZATION( type, name )                      \
    PyObject* name##StringCompare( PyObject* self, PyObject* obj )             \
    {                                                                          \
       PyObject* data = name##GetData( self );                                 \
@@ -594,7 +594,7 @@ static int PyObject_Compare( PyObject* one, PyObject* other ) {
       return PyInt_FromLong( result );                                        \
    }
 
-   PYROOT_IMPLEMENT_STRING_PYTHONIZATION_CMP( std::string, Stl )
+   CPYCPPYY_IMPLEMENT_STRING_PYTHONIZATION_CMP( std::string, Stl )
 
 
 //- STL iterator behavior ------------------------------------------------------

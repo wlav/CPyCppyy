@@ -284,7 +284,7 @@ Bool_t CPyCppyy::TLongRefConverter::SetArg(
 #endif
 
 #if PY_VERSION_HEX < 0x02050000
-   PyErr_SetString( PyExc_TypeError, "use ROOT.Long for pass-by-ref of longs" );
+   PyErr_SetString( PyExc_TypeError, "use cppyy.Long for pass-by-ref of longs" );
    return kFALSE;
 #endif
 
@@ -345,7 +345,7 @@ Bool_t CPyCppyy::TIntRefConverter::SetArg(
    };
 
 #if PY_VERSION_HEX < 0x02050000
-   PyErr_SetString( PyExc_TypeError, "use ROOT.Long for pass-by-ref of ints" );
+   PyErr_SetString( PyExc_TypeError, "use cppyy.Long for pass-by-ref of ints" );
 #else
    PyErr_SetString( PyExc_TypeError, "use ctypes.c_int for pass-by-ref of ints" );
 #endif
@@ -447,7 +447,7 @@ Bool_t CPyCppyy::TDoubleRefConverter::SetArg(
       return kTRUE;
    }
 
-   PyErr_SetString( PyExc_TypeError, "use ROOT.Double for pass-by-ref of doubles" );
+   PyErr_SetString( PyExc_TypeError, "use cppyy.Double for pass-by-ref of doubles" );
    return kFALSE;
 }
 
@@ -1158,7 +1158,7 @@ Bool_t CPyCppyy::TVoidPtrPtrConverter::SetArg(
 {
 // convert <pyobject> to C++ void**, set arg for call
    if ( ObjectProxy_Check( pyobject ) ) {
-   // this is a ROOT object, take and set its address
+   // this is a C++ object, take and set its address
       para.fValue.fVoidp = &((ObjectProxy*)pyobject)->fObject;
       para.fTypeCode = 'p';
       return kTRUE;

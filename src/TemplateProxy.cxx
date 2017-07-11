@@ -46,7 +46,7 @@ void TemplateProxy::AddTemplate( PyCallable* pc )
 
 namespace {
 
-//= PyROOT template proxy construction/destruction ===========================
+//= CPyCppyy template proxy construction/destruction =========================
    TemplateProxy* tpp_new( PyTypeObject*, PyObject*, PyObject* )
    {
    // Create a new empty template method proxy.
@@ -123,7 +123,7 @@ namespace {
       return 0;
    }
 
-//= PyROOT template proxy callable behavior ==================================
+//= CPyCppyy template proxy callable behavior ================================
    PyObject* tpp_call( TemplateProxy* pytmpl, PyObject* args, PyObject* kwds )
    {
    // Dispatcher to the actual member method, several uses possible; in order:
@@ -373,10 +373,10 @@ namespace {
 } // unnamed namespace
 
 
-//= PyROOT template proxy type ===============================================
+//= CPyCppyy template proxy type =============================================
 PyTypeObject TemplateProxy_Type = {
    PyVarObject_HEAD_INIT( &PyType_Type, 0 )
-   (char*)"ROOT.TemplateProxy", // tp_name
+   (char*)"cppyy.TemplateProxy", // tp_name
    sizeof(TemplateProxy),     // tp_basicsize
    0,                         // tp_itemsize
    (destructor)tpp_dealloc,   // tp_dealloc
@@ -395,7 +395,7 @@ PyTypeObject TemplateProxy_Type = {
    0,                         // tp_setattro
    0,                         // tp_as_buffer
    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC,      // tp_flags
-   (char*)"PyROOT template proxy (internal)",    // tp_doc
+   (char*)"cppyy template proxy (internal)",     // tp_doc
    (traverseproc)tpp_traverse,// tp_traverse
    (inquiry)tpp_clear,        // tp_clear
    0,                         // tp_richcompare

@@ -5,7 +5,6 @@
 #include "ObjectProxy.h"
 #include "MethodProxy.h"
 #include "CPyCppyyHelpers.h"
-//#include "TPyClassGenerator.h"
 
 // Standard
 #include <stdio.h>
@@ -66,7 +65,7 @@
 // successive switches.
 //
 // The API part provides (direct) C++ access to the bindings functionality of
-// PyROOT. It allows verifying that you deal with a PyROOT python object in the
+// CPyCppyy. It allows verifying that you deal with a CPyCppyy pyobject in the
 // first place (ObjectProxy_Check for ObjectProxy and any derived types, as well
 // as ObjectProxy_CheckExact for ObjectProxy's only); and it allows conversions
 // of void* to an ObjectProxy and vice versa.
@@ -126,9 +125,6 @@ Bool_t TPython::Initialize()
       Py_INCREF( gMainDict );
    }
 
-// python side class construction, managed by ROOT
-//   gROOT->AddClassGenerator( new TPyClassGenerator );
-
 // declare success ...
    isInitialized = kTRUE;
    return kTRUE;
@@ -183,7 +179,7 @@ Bool_t TPython::Import( const char* mod_name )
          fullname += CPyCppyy_PyUnicode_AsString( pyClName );
 
       // force class creation (this will eventually call TPyClassGenerator)
-      // TODO: the following is broken (and should live in Cppyy.cxx)
+      // TODO: the following is broken (and should live in Cppyy.cxx) to
       //         TClass::GetClass( fullname.c_str(), kTRUE );
 
          Py_XDECREF( pyClName );
@@ -218,9 +214,9 @@ void TPython::LoadMacro( const char* name )
 #if PY_VERSION_HEX < 0x03000000
    Exec( (std::string( "execfile(\"" ) + name + "\")").c_str() );
 #else
-   Exec( (std::string("__pyroot_f = open(\"" ) + name + "\"); "
-                      "exec(__pyroot_f.read()); "
-                      "__pyroot_f.close(); del __pyroot_f" ).c_str() );
+   Exec( (std::string("__cpycppyy_f = open(\"" ) + name + "\"); "
+                      "exec(__cpycppyy_f.read()); "
+                      "__cpycppyy_f.close(); del __cpycppyy_f" ).c_str() );
 #endif
 
 // obtain new __main__ contents

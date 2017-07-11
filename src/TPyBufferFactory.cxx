@@ -164,7 +164,7 @@ namespace {
    CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS( Float,  Float_t,  Double_t, PyFloat_FromDouble, PyFloat_AsDouble )
    CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS( Double, Double_t, Double_t, PyFloat_FromDouble, PyFloat_AsDouble )
 
-   int pyroot_buffer_ass_subscript( PyObject* self, PyObject* idx, PyObject* val ) {
+   int cpycppyy_buffer_ass_subscript( PyObject* self, PyObject* idx, PyObject* val ) {
    // Assign the given value 'val' to the item at index 'idx.'
       if ( PyIndex_Check( idx ) ) {
          Py_ssize_t i = PyNumber_AsSsize_t( idx, PyExc_IndexError );
@@ -252,8 +252,8 @@ CPyCppyy::TPyBufferFactory* CPyCppyy::TPyBufferFactory::Instance()
 
 
 //- constructor/destructor ------------------------------------------------------
-#define CPYCPPYY_INSTALL_PYBUFFER_METHODS( name, type )                           \
-   Py##name##Buffer_Type.tp_name            = (char*)"ROOT.Py"#name"Buffer";    \
+#define CPYCPPYY_INSTALL_PYBUFFER_METHODS( name, type )                         \
+   Py##name##Buffer_Type.tp_name            = (char*)"cppyy.Py"#name"Buffer";   \
    Py##name##Buffer_Type.tp_base            = &PyBuffer_Type;                   \
    Py##name##Buffer_Type.tp_as_buffer       = PyBuffer_Type.tp_as_buffer;       \
    Py##name##Buffer_SeqMethods.sq_item      = (ssizeargfunc)name##_buffer_item; \
@@ -263,7 +263,7 @@ CPyCppyy::TPyBufferFactory* CPyCppyy::TPyBufferFactory::Instance()
    if ( PyBuffer_Type.tp_as_mapping ) { /* p2.6 and later */                    \
       Py##name##Buffer_MapMethods.mp_length    = (lenfunc)buffer_length;        \
       Py##name##Buffer_MapMethods.mp_subscript = (binaryfunc)name##_buffer_subscript;\
-      Py##name##Buffer_MapMethods.mp_ass_subscript = (objobjargproc)pyroot_buffer_ass_subscript;\
+      Py##name##Buffer_MapMethods.mp_ass_subscript = (objobjargproc)cpycppyy_buffer_ass_subscript;\
       Py##name##Buffer_Type.tp_as_mapping      = &Py##name##Buffer_MapMethods;  \
    }                                                                            \
    Py##name##Buffer_Type.tp_str             = (reprfunc)name##_buffer_str;      \
