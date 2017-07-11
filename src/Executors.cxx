@@ -47,7 +47,7 @@ namespace {
 
 } // unnamed namespace
 
-#define CPYCPPYY_IMPL_GILCALL( rtype, tcode )                                   \
+#define CPYCPPYY_IMPL_GILCALL( rtype, tcode )                                 \
 static inline rtype GILCall##tcode(                                           \
       Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CPyCppyy::TCallContext* ctxt ) {\
    GILControl gc( ctxt );                                                     \
@@ -65,7 +65,14 @@ CPYCPPYY_IMPL_GILCALL( Float_t,      F )
 CPYCPPYY_IMPL_GILCALL( Double_t,     D )
 CPYCPPYY_IMPL_GILCALL( LongDouble_t, LD )
 CPYCPPYY_IMPL_GILCALL( void*,        R )
-CPYCPPYY_IMPL_GILCALL( Char_t*,      S )
+
+static inline Char_t* GILCallS(
+      Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CPyCppyy::TCallContext* ctxt ) {
+   GILControl gc( ctxt );
+// TODO: make use of getting the string length returned ...
+   size_t len;
+   return Cppyy::CallS( method, self, &ctxt->fArgs, &len );
+}
 
 static inline Cppyy::TCppObject_t GILCallO( Cppyy::TCppMethod_t method,
       Cppyy::TCppObject_t self, CPyCppyy::TCallContext* ctxt, Cppyy::TCppType_t klass ) {

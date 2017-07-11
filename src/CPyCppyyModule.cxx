@@ -19,6 +19,8 @@
 #include <utility>
 #include <vector>
 
+#include <iostream>
+
 
 //- from Python's dictobject.c -------------------------------------------------
 #if PY_VERSION_HEX >= 0x03030000
@@ -644,7 +646,6 @@ namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Add an exception to the type pinning for objects of type `derived'.
-
    PyObject* IgnoreTypePinning( PyObject*, PyObject* args )
    {
       CPyCppyyClass* derived = nullptr;
@@ -742,7 +743,7 @@ static int rootmodule_clear( PyObject* m )
 
 static struct PyModuleDef moduledef = {
    PyModuleDef_HEAD_INIT,
-   "libPyROOT",
+   "libcppyy",
    NULL,
    sizeof(struct module_state),
    gPyROOTMethods,
@@ -753,13 +754,13 @@ static struct PyModuleDef moduledef = {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// Initialization of extension module libPyROOT.
+/// Initialization of extension module libcppyy.
 
 #define CPYCPPYY_INIT_ERROR return NULL
-extern "C" PyObject* PyInit_libPyROOT()
+extern "C" PyObject* PyInit_libcppyy()
 #else
 #define CPYCPPYY_INIT_ERROR return
-extern "C" void initlibPyROOT()
+extern "C" void initlibcppyy()
 #endif
 {
 // load commonly used python strings
@@ -782,7 +783,7 @@ extern "C" void initlibPyROOT()
 #if PY_VERSION_HEX >= 0x03000000
    gThisModule = PyModule_Create( &moduledef );
 #else
-   gThisModule = Py_InitModule( const_cast< char* >( "libPyROOT" ), gPyROOTMethods );
+   gThisModule = Py_InitModule( const_cast< char* >( "libcppyy" ), gPyROOTMethods );
 #endif
    if ( ! gThisModule )
       CPYCPPYY_INIT_ERROR;
@@ -857,7 +858,8 @@ extern "C" void initlibPyROOT()
       PyInt_FromLong( (int)TCallContext::kSafe ) );
 
 // inject gbl namespace
-   PyModule_AddObject( gThisModule, (char*)"gbl", CreateScopeProxy( "gbl" ) );
+// TODO: decide how to handle gbl
+//   PyModule_AddObject( gThisModule, (char*)"gbl", CreateScopeProxy( "gbl" ) );
 
 #if PY_VERSION_HEX >= 0x03000000
    Py_INCREF( gThisModule );

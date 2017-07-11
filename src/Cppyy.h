@@ -1,5 +1,5 @@
-#ifndef PYROOT_CPPYY_H
-#define PYROOT_CPPYY_H
+#ifndef CPYCPPYY_CPPYY_H
+#define CPYCPPYY_CPPYY_H
 
 // Standard
 #include <string>
@@ -15,15 +15,13 @@ namespace Cppyy {
    typedef ptrdiff_t   TCppMethod_t;
 
    typedef Long_t      TCppIndex_t;
-   typedef void* (*TCppMethPtrGetter_t)( TCppObject_t );
+   typedef void*       TCppFuncAddr_t;
 
 // name to opaque C++ scope representation -----------------------------------
    TCppIndex_t GetNumScopes( TCppScope_t parent );
    std::string GetScopeName( TCppScope_t parent, TCppIndex_t iscope );
    std::string ResolveName( const std::string& cppitem_name );
    TCppScope_t GetScope( const std::string& scope_name );
-   std::string GetName( const std::string& scope_name );
-   TCppType_t  GetTemplate( const std::string& template_name );
    TCppType_t  GetActualClass( TCppType_t klass, TCppObject_t obj );
    size_t      SizeOf( TCppType_t klass );
 
@@ -50,12 +48,12 @@ namespace Cppyy {
    Double_t     CallD( TCppMethod_t method, TCppObject_t self, void* args );
    LongDouble_t CallLD( TCppMethod_t method, TCppObject_t self, void* args );
    void*        CallR( TCppMethod_t method, TCppObject_t self, void* args );
-   Char_t*      CallS( TCppMethod_t method, TCppObject_t self, void* args );
+   Char_t*      CallS( TCppMethod_t method, TCppObject_t self, void* args, size_t* length );
    TCppObject_t CallConstructor( TCppMethod_t method, TCppType_t type, void* args );
    void         CallDestructor( TCppType_t type, TCppObject_t self );
    TCppObject_t CallO( TCppMethod_t method, TCppObject_t self, void* args, TCppType_t result_type );
 
-   TCppMethPtrGetter_t GetMethPtrGetter( TCppScope_t scope, TCppIndex_t imeth );
+   TCppFuncAddr_t GetFunctionAddress( TCppScope_t scope, TCppIndex_t imeth );
 
 // handling of function argument buffer --------------------------------------
    void*  AllocateFunctionArgs( size_t nargs );
@@ -65,6 +63,7 @@ namespace Cppyy {
 
 // scope reflection information ----------------------------------------------
    Bool_t IsNamespace( TCppScope_t scope );
+   Bool_t IsTemplate( const std::string& template_name );
    Bool_t IsAbstract( TCppType_t type );
    Bool_t IsEnum( const std::string& type_name );
 
@@ -127,4 +126,4 @@ namespace Cppyy {
 
 } // namespace Cppyy
 
-#endif // ifndef PYROOT_CPPYY_H
+#endif // !CPYCPPYY_CPPYY_H

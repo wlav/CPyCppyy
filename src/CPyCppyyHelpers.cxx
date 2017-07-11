@@ -68,7 +68,7 @@ namespace {
          return 0;
       }
 
-      args = Py_BuildValue( (char*)"sO{}", Cppyy::GetName(name).c_str(), pybases );
+      args = Py_BuildValue( (char*)"sO{}", "fixme", pybases ); // TODO: Cppyy::GetName(name).c_str(), pybases );
       PyObject* pyclass = ((PyTypeObject*)pymeta)->tp_new( (PyTypeObject*)pymeta, args, NULL );
       Py_DECREF( args );
       Py_DECREF( pymeta );
@@ -590,7 +590,7 @@ PyObject* CPyCppyy::CreateScopeProxy( const std::string& scope_name, PyObject* p
    const std::string& actual = Cppyy::GetFinalName( klass );
 
 // first try to retrieve an existing class representation
-   PyObject* pyactual = CPyCppyy_PyUnicode_FromString( Cppyy::GetName(actual).c_str() );
+   PyObject* pyactual = CPyCppyy_PyUnicode_FromString( "fixme" ); // TODO: Cppyy::GetName(actual).c_str() );
    PyObject* pyclass = force ? 0 : PyObject_GetAttr( parent, pyactual );
 
    Bool_t bClassFound = pyclass ? kTRUE : kFALSE;
