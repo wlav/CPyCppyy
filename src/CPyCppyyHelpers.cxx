@@ -571,8 +571,7 @@ PyObject* CPyCppyy::CreateScopeProxy( const std::string& scope_name, PyObject* p
    const std::string& actual = Cppyy::GetFinalName( klass );
 
 // first try to retrieve an existing class representation
-   PyObject* pyactual = CPyCppyy_PyUnicode_FromString(
-      TypeManip::clean_type( actual ).c_str() );
+   PyObject* pyactual = CPyCppyy_PyUnicode_FromString( actual.c_str() );
    PyObject* pyclass = force ? 0 : PyObject_GetAttr( parent, pyactual );
 
    Bool_t bClassFound = pyclass ? kTRUE : kFALSE;

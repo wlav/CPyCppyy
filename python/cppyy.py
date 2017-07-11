@@ -60,10 +60,6 @@ else:
 if not _builtin_cppyy:
    _backend.SetMemoryPolicy( _backend.kMemoryStrict )
 
-#--- Enable Autoloading ignoring possible error for the time being
-try:    _backend.gInterpreter.EnableAutoLoading()
-except: pass
-
 ### -----------------------------------------------------------------------------
 ### -- metaclass helper from six ------------------------------------------------
 ### -- https://bitbucket.org/gutworth/six/src/8a545f4e906f6f479a6eb8837f31d03731597687/six.py?at=default#cl-800
@@ -131,16 +127,12 @@ if not _builtin_cppyy:
 
 
 #--- LoadDictionary function and aliases -----------------------------
-def loadDictionary(name):
+def load_reflection_info(name):
    # prepend "lib" 
    if sys.platform != 'win32' and name[:3] != 'lib':
        name = 'lib' + name
-   sc = _backend.gSystem.Load(name)
-   if sc == -1: raise RuntimeError("Error Loading dictionary")
-loadDict = loadDictionary
-
-def load_reflection_info(name):
-   sc = _backend.gSystem.Load(name)
+   sc = gbl.gSystem.Load(name)
+   if sc == -1: raise RuntimeError("error loading reflection info")
 
 
 #--- Other functions needed -------------------------------------------
@@ -168,12 +160,6 @@ if not _builtin_cppyy:
 
    class _global_cpp( with_metaclass( _ns_meta ) ):
       class std( with_metaclass( _stdmeta, object ) ):
-         stlclasses = ( 'complex', 'pair', \
-            'deque', 'list', 'queue', 'stack', 'vector', 'map', 'multimap', 'set', 'multiset' )
-
-         for name in stlclasses:
-            locals()[ name ] = Template( 'std::%s' % name )
-
          string = _backend.CreateScopeProxy( 'string' )
 
    def addressOf( obj ) :                  # Cintex-style
@@ -210,5 +196,8 @@ del _pythonization
 
 #--- CFFI style ---------------------------------------------------------
 def cppdef( src ):
-   _backend.gInterpreter.Declare( src )
+   gbl.gInterpreter.Declare( src )
 
+#--- Enable Autoloading ignoring possible error for the time being
+try:    gbl.gInterpreter.EnableAutoLoading()
+except: pass
