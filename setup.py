@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import os, glob
-from setuptools import setup, Extension
+from setuptools import setup, find_packages, Extension
 from codecs import open
 
 
@@ -44,7 +44,12 @@ setup(
         'Natural Language :: English'
     ],
 
+    install_requires=['PyPy-cppyy-backend'],
+
     keywords='C++ bindings',
+
+    package_dir={'': 'python'},
+    packages=find_packages('python'),
 
     ext_modules=[Extension('libcppyy',
         sources=glob.glob('src/*.cxx'),
