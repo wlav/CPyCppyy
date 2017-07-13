@@ -7,11 +7,51 @@ cppyy: C++ bindings for PyPy
 ============================
 
 cppyy is an automatic Python-C++ bindings generator designed for large scale
-programs that use modern C++.
-It is based on `Cling`_, the C++ interpreter, to match Python's dynamism and
+programs in high performance computing that use modern C++.
+Design and performance are described in this `PyHPC paper`_.
+
+cppyy is based on `Cling`_, the C++ interpreter, to match Python's dynamism and
 interactivity.
+Consider this session, showing dynamic, interactive, mixing of C++ and Python
+features:
+
+.. code-block:: python
+
+   >>> import cppyy
+   >>> cppyy.gbl.gInterpreter.Declare("""
+   ... class MyClass {
+   ... public:
+   ...     MyClass(int i) : m_data(i) {}
+   ...     int m_data;
+   ... };""")
+   True
+   >>> from cppyy.gbl import MyClass
+   >>> m = MyClass(42)
+   >>> cppyy.gbl.gInterpreter.Declare("""
+   ... void say_hello(MyClass* m) {
+   ...     std::cout << "Hello, the number is: " << m->m_data << std::endl;
+   ... }""")
+   True
+   >>> MyClass.say_hello = cppyy.gbl.say_hello
+   >>> m.say_hello()
+   Hello, the number is: 42
+   >>> m.m_data = 13
+   >>> m.say_hello()
+   Hello, the number is: 13
+   >>>
+
+cppyy seamlessly supports many advanced C++ features and is available for both
+`CPython`_ and `PyPy`_, reaching C++-like performance with the latter.
+cppyy makes judicious use of precompiled headers, dynamic loading, and lazy
+instantiation, to support C++ programs consisting of millions of lines of code
+and many thousands of classes.
+cppyy minimizes dependencies to allow its use in distributed, heterogeneous,
+development environments.
 
 .. _Cling: https://root.cern.ch/cling
+.. _`PyHPC paper`: http://conferences.computer.org/pyhpc/2016/papers/5220a027.pdf
+.. _`CPython`: http://python.org
+.. _`PyPy`: http://pypy.org
 
 
 Contents:
@@ -20,6 +60,7 @@ Contents:
    :maxdepth: 2
 
    installation
+   features
 
 
 Comments and bugs
