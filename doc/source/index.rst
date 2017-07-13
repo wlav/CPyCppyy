@@ -61,6 +61,7 @@ Contents:
 
    installation
    features
+   distribution
 
 
 Comments and bugs
