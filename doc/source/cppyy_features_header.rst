@@ -1,17 +1,23 @@
-File example.h
-==============
+File features.h
+===============
 
-::
+.. code-block:: C++
 
     #include <iostream>
     #include <vector>
 
+    //-----
+    unsigned int gUint = 0;
+
+    //-----
     class AbstractClass {
     public:
         virtual ~AbstractClass() {}
         virtual void abstract_method() = 0;
     };
 
+
+    //-----
     class ConcreteClass : AbstractClass {
     public:
         ConcreteClass(int n=42) : m_int(n) {}
@@ -43,17 +49,18 @@ File example.h
 
     public:
         int m_int;
+        double m_data[4];
     };
 
     namespace Namespace {
 
-       class ConcreteClass {
-       public:
-          class NestedClass {
-          public:
-             std::vector<int> m_v;
-          };
+        class ConcreteClass {
+        public:
+            class NestedClass {
+            public:
+                std::vector<int> m_v;
+            };
 
-       };
+        };
 
     } // namespace Namespace

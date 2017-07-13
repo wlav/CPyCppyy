@@ -70,7 +70,7 @@ separate linking step where these names are fixed (if the second option is not
 given, the library is assumed to be libproject_header.so).
 
 With the rootmap file in place, the above example can be rerun without explicit
-loading of the reflection info library::
+loading of the reflection info library:
 
 .. code-block:: python
 
@@ -81,6 +81,7 @@ loading of the reflection info library::
 
 Selection files
 ---------------
+.. _selection-files:
 
 Sometimes it is necessary to restrict or expand what genreflex will pick up
 from the header files.
@@ -91,5 +92,9 @@ These are XML specifications that allow exact or pattern matching to classes,
 functions, etc.
 See ``genreflex --help`` for a detailed specification and add
 ``--selection=project_selection.xml`` to the ``genreflex`` command line.
+
+With the aid of a selection file, a large project can be easily managed:
+simply ``#include`` all relevant headers into a single header file that is
+handed to ``genreflex``.
 
 .. _`selection files`: https://linux.die.net/man/1/genreflex

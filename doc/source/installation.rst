@@ -53,6 +53,7 @@ Running environment
 The default installation of the backend will be under
 $PYTHONHOME/site-packages/cppyy_backend/lib,
 which needs to be added to your dynamic loader path (LD_LIBRARY_PATH).
-If you need the dictionary and class map generation tools, you need to add
+If you need the dictionary and class map generation
+:doc:`tools <distribution>`, you need to add
 $PYTHONHOME/site-packages/cppyy_backend/bin to your executable path (PATH).
 

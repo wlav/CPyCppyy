@@ -1,7 +1,15 @@
 Features
 ========
 
+.. toctree::
+   :hidden:
+
+   cppyy_features_header
+
 The following is not meant to be an exhaustive list, but more of a show case.
+Most features will be fairly obvious: classes are classes with inheritance
+trees preserved, functions are functions, etc.
+
 C++ features are mapped onto Python in a way that is natural to C++ to prevent
 name clashes, duplication, and other ambiguities when mixing several large C++
 code bases.
@@ -13,11 +21,11 @@ been pythonized.
 Certain user-provided classes, such as smart pointers, are recognized and
 automatically pythonized as well.
 
-The example C++ code used can be found :doc:`here <cppyy_example>`.
+The example C++ code used can be found :doc:`here <cppyy_features_header>`.
 
-* **abstract classes**: Are represented as python classes, since they are
-  needed to complete the inheritance hierarchies, but will raise an exception
-  if an attempt is made to instantiate from them.
+* **abstract classes**: Are represented as Python classes, since they are
+  needed to complete the inheritance hierarchies, but will raise a
+  ``TypeError`` exception if an attempt is made to instantiate from them.
   Example:
 
   .. code-block:: python
@@ -35,9 +43,10 @@ The example C++ code used can be found :doc:`here <cppyy_example>`.
     >>>
 
 * **arrays**: Supported for builtin data types only, as used from module
-  ``array``.
+  ``array`` (or any other builtin-type array that implements the Python buffer
+  interface).
   Out-of-bounds checking is limited to those cases where the size is known at
-  compile time (and hence part of the reflection info).
+  compile time.
   Example:
 
   .. code-block:: python
@@ -47,11 +56,29 @@ The example C++ code used can be found :doc:`here <cppyy_example>`.
     >>> c = ConcreteClass()
     >>> c.array_method(array('d', [1., 2., 3., 4.]), 4)
     1 2 3 4
+    >>> c.m_data[4] # static size is 4, so out of bounds
+    Traceback (most recent call last):
+      File "<stdin>", line 1, in <module>
+    IndexError: buffer index out of range
     >>>
 
 * **builtin data types**: Map onto the expected equivalent python types, with
-  the caveat that there may be size differences, and thus it is possible that
-  exceptions are raised if an overflow is detected.
+  the caveats that there may be size differences, different precision or
+  rounding.
+  For example, a C++ ``float`` is returned as a Python ``float``, which is in
+  fact a C++ ``double``.
+  As another example, a C++ ``unsigned int`` becomes a Python ``long``, but
+  unsigned-ness is still honored:
+
+  .. code-block:: python
+
+    >>> type(cppyy.gbl.gUint)
+    <type 'long'>
+    >>> cppyy.gbl.gUint = -1
+    Traceback (most recent call last):
+      File "<stdin>", line 1, in <module>
+    ValueError: cannot convert negative integer to unsigned
+    >>>
 
 * **casting**: Is supposed to be unnecessary.
   Object pointer returns from functions provide the most derived class known
@@ -71,9 +98,17 @@ The example C++ code used can be found :doc:`here <cppyy_example>`.
     <class '__main__.ConcreteClass'>
     >>>
 
-  However, if need be, you can perform C++-style reinterpret_casts (i.e.
-  without taking offsets into account), by taking and rebinding the address
-  of an object:
+  As a consequence, if your C++ classes should only be used through their
+  interfaces, then no bindings should be provided to the concrete classes
+  (e.g. by excluding them using a :ref:`selection file <selection-files>`).
+  Otherwise, more functionality will be available in Python than in C++.
+
+  Sometimes you really, absolutely, do need to perform a cast.
+  For example, if the instance is bound by another tool or even a 3rd party,
+  hand-written, extension library.
+  Assuming the object supports the ``CObject`` abstraction, then a C++-style
+  reinterpret_cast (i.e. without implicitly taking offsets into account),
+  can be done by taking and rebinding the address of an object:
 
   .. code-block:: python
 
@@ -83,7 +118,7 @@ The example C++ code used can be found :doc:`here <cppyy_example>`.
     <class '__main__.AbstractClass'>
     >>>
 
-* **classes and structs**: Get mapped onto python classes, where they can be
+* **classes and structs**: Get mapped onto Python classes, where they can be
   instantiated as expected.
   If classes are inner classes or live in a namespace, their naming and
   location will reflect that.
@@ -277,7 +312,7 @@ The example C++ code used can be found :doc:`here <cppyy_example>`.
   For example, given the class ``std::vector<int>``, the meta-class part would
   be ``std.vector``.
   Then, to get the instantiation on ``int``, do ``std.vector(int)`` and to
-  create an instance of that class, do ``std.vector(int)()``::
+  create an instance of that class, do ``std.vector(int)()``:
 
   .. code-block:: python
 
@@ -315,9 +350,3 @@ The example C++ code used can be found :doc:`here <cppyy_example>`.
 
 * **unary operators**: Are supported if a python equivalent exists, and if the
   operator is defined in the C++ class.
-
-
-.. toctree::
-   :hidden:
-
-   cppyy_example

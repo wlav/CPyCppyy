@@ -340,7 +340,7 @@ epub_exclude_files = ['search.html']
 #epub_tocdup = True
 
 # Choose between 'default' and 'includehidden'.
-#epub_tocscope = 'default'
+epub_tocscope = 'default'
 
 # Fix unsupported image types using the Pillow.
 #epub_fix_images = False
