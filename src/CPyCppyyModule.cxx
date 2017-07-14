@@ -407,44 +407,15 @@ namespace {
          return (void*)&pyobj->fObject;
       }
 
-      PyErr_SetString( PyExc_ValueError, "invalid argument for AddressOf()" );
+      PyErr_SetString( PyExc_ValueError, "invalid argument for addressof()" );
       return 0;
    }
 
-   PyObject* _addressof_common( PyObject* dummy ) {
-      if ( dummy == Py_None || dummy == gNullPtrObject ) {
-         Py_INCREF( gNullPtrObject );
-         return gNullPtrObject;
-      }
-      if ( !PyErr_Occurred() ) {
-         PyObject* str = PyObject_Str( dummy );
-         if ( str && CPyCppyy_PyUnicode_Check( str ) )
-            PyErr_Format( PyExc_ValueError, "unknown object %s", PyBytes_AS_STRING( str ) );
-         else
-            PyErr_Format( PyExc_ValueError, "unknown object at %p", (void*)dummy );
-         Py_XDECREF( str );
-      }
-      return 0;
-   }
-
-   PyObject* AddressOf( PyObject* dummy, PyObject* args )
-   {
-   // Return object proxy address as an indexable buffer.
-      void* addr = GetObjectProxyAddress( dummy, args );
-      if ( addr )
-         return BufFac_t::Instance()->PyBuffer_FromMemory( (Long_t*)addr, sizeof(Long_t) );
-      if ( ! addr && PyTuple_Size( args ) ) {
-         Utility::GetBuffer( PyTuple_GetItem( args, 0 ), '*', 1, addr, kFALSE );
-         if ( addr )
-            return BufFac_t::Instance()->PyBuffer_FromMemory( (Long_t*)&addr, sizeof(Long_t) );
-      }
-      return 0;//_addressof_common( dummy );
-   }
-
-   PyObject* addressof( PyObject* dummy, PyObject* args )
+//----------------------------------------------------------------------------
+   PyObject* addressof( PyObject* pyobj, PyObject* args )
    {
    // Return object proxy address as a value (cppyy-style), or the same for an array.
-      void* addr = GetObjectProxyAddress( dummy, args );
+      void* addr = GetObjectProxyAddress( pyobj, args );
       if ( addr )
          return PyLong_FromLong( *(Long_t*)addr );
       else if ( PyTuple_Size( args ) ) {
@@ -452,9 +423,24 @@ namespace {
          Utility::GetBuffer( PyTuple_GetItem( args, 0 ), '*', 1, addr, kFALSE );
          if ( addr ) return PyLong_FromLong( (Long_t)addr );
       }
-      return _addressof_common( dummy );
+
+   // a few special cases
+      if ( pyobj == Py_None || pyobj == gNullPtrObject ) {
+         Py_INCREF( gNullPtrObject );
+         return gNullPtrObject;
+      }
+
+   // error message
+      PyObject* str = PyObject_Str( pyobj );
+      if ( str && CPyCppyy_PyUnicode_Check( str ) )
+         PyErr_Format( PyExc_ValueError, "unknown object %s", PyBytes_AS_STRING( str ) );
+      else
+         PyErr_Format( PyExc_ValueError, "unknown object at %p", (void*)pyobj );
+      Py_XDECREF( str );
+      return 0;
    }
 
+//----------------------------------------------------------------------------
    PyObject* AsCObject( PyObject* dummy, PyObject* args )
    {
    // Return object proxy as an opaque CObject.
@@ -677,8 +663,6 @@ static PyMethodDef gCPyCppyyMethods[] = {
      METH_NOARGS, (char*) "cppyy internal function" },
    { (char*) "_ResetRootModule", (PyCFunction)RootModuleResetCallback,
      METH_NOARGS, (char*) "cppyy internal function" },
-   { (char*) "AddressOf", (PyCFunction)AddressOf,
-     METH_VARARGS, (char*) "Retrieve address of held object in a buffer" },
    { (char*) "addressof", (PyCFunction)addressof,
      METH_VARARGS, (char*) "Retrieve address of held object as a value" },
    { (char*) "AsCObject", (PyCFunction)AsCObject,

@@ -176,7 +176,7 @@ static inline Int_t ExtractChar( PyObject* pyobject, const char* tname, Int_t lo
       if ( CPyCppyy_PyUnicode_GET_SIZE( pyobject ) == 1 )
          lchar = (Int_t)CPyCppyy_PyUnicode_AsChar( pyobject );
       else
-         PyErr_Format( PyExc_TypeError, "%s expected, got string of size " PY_SSIZE_T_FORMAT,
+         PyErr_Format( PyExc_ValueError, "%s expected, got string of size " PY_SSIZE_T_FORMAT,
              tname, CPyCppyy_PyUnicode_GET_SIZE( pyobject ) );
    } else if ( ! PyFloat_Check( pyobject ) ) {    // don't allow truncating conversion
       lchar = PyLong_AsLong( pyobject );

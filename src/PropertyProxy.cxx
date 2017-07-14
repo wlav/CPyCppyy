@@ -5,6 +5,8 @@
 #include "ObjectProxy.h"
 #include "Utility.h"
 
+#include <iostream>
+
 
 namespace CPyCppyy {
 
@@ -227,8 +229,10 @@ void* CPyCppyy::PropertyProxy::GetAddress( ObjectProxy* pyobj ) {
       return (void*)fOffset;
 
 // special case: non-static lookup through class
-   if ( ! pyobj )
+   if ( ! pyobj ) {
+      PyErr_SetString( PyExc_ReferenceError, "attribute access requires an instance" );
       return 0;
+   }
 
 // instance attributes; requires valid object for full address
    if ( ! ObjectProxy_Check( pyobj ) ) {

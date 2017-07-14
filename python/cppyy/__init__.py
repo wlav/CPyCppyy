@@ -29,12 +29,7 @@ if 'cppyy' in sys.builtin_module_names:
    class _Double(float): pass
    type(_backend).Double = _Double
 
-   def _AddressOf( self, obj ):
-      import array
-      return array.array('L', [_thismodule.addressof( obj )] )
-   type(_backend).AddressOf = _AddressOf
-
-   del _AddressOf, _Double, _LookupCppEntity, _CreateScopeProxy
+   del _Double, _LookupCppEntity, _CreateScopeProxy
 
 else:
    _builtin_cppyy = False
@@ -159,8 +154,6 @@ if not _builtin_cppyy:
       class std( with_metaclass( _stdmeta, object ) ):
          string = _backend.CreateScopeProxy( 'string' )
 
-   def addressOf( obj ) :                  # Cintex-style
-      return _backend.AddressOf( obj )[0]
    addressof = _backend.addressof          # cppyy-style
 
 else:

@@ -73,10 +73,10 @@ namespace {
 //= CPyCppyy type metaclass behavior =========================================
    PyObject* pt_getattro( PyObject* pyclass, PyObject* pyname )
    {
-   // normal type lookup
+   // normal type-based lookup
       PyObject* attr = PyType_Type.tp_getattro( pyclass, pyname );
 
-   // extra ROOT lookup in case of failure (e.g. for inner classes on demand)
+   // more elaborate search in case of failure (eg. for inner classes on demand)
       if ( ! attr && CPyCppyy_PyUnicode_CheckExact( pyname ) ) {
          PyObject *etype, *value, *trace;
          PyErr_Fetch( &etype, &value, &trace );         // clears current exception
@@ -90,7 +90,7 @@ namespace {
          // are available as "methods" even though they're not really that
             if ( ! attr && ! CPyCppyyType_CheckExact( pyclass ) && PyType_Check( pyclass ) ) {
                PyErr_Clear();
-                PyObject* pycppname = PyObject_GetAttr( pyclass, PyStrings::gCppName );
+               PyObject* pycppname = PyObject_GetAttr( pyclass, PyStrings::gCppName );
                char* cppname = CPyCppyy_PyUnicode_AsString( pycppname );
                Py_DECREF(pycppname);
                Cppyy::TCppScope_t scope = Cppyy::GetScope( cppname );
@@ -149,8 +149,7 @@ namespace {
 
             if ( ! attr && ! CPyCppyyType_Check( pyclass ) /* at global or module-level only */ ) {
                PyErr_Clear();
-            // get class name to look up CINT tag info ...
-               attr = GetCppGlobal( name /*, tag */ );
+            // get the attribute as a global               attr = GetCppGlobal( name /*, tag */ );
                if ( PropertyProxy_Check( attr ) ) {
                   PyObject_SetAttr( (PyObject*)Py_TYPE(pyclass), pyname, attr );
                   Py_DECREF( attr );
