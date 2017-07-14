@@ -15,6 +15,8 @@ class TestFRAGILE:
         import cppyy
         cls.fragile = cppyy.load_reflection_info(cls.test_dct)
 
+        raise Exception("currently crashes ...")
+
     def test01_load_failure(self):
         """Test failure to load dictionary"""
 

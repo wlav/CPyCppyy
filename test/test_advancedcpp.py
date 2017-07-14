@@ -26,25 +26,25 @@ class TestADVANCEDCPP:
             assert d.m_a == t(11)
             assert d.m_b == t(22)
             assert d.m_c == t(33)
-            d.destruct()
+            d.__destruct__()
 
             d = defaulter(0)
             assert d.m_a ==  t(0)
             assert d.m_b == t(22)
             assert d.m_c == t(33)
-            d.destruct()
+            d.__destruct__()
 
             d = defaulter(1, 2)
             assert d.m_a ==  t(1)
             assert d.m_b ==  t(2)
             assert d.m_c == t(33)
-            d.destruct()
+            d.__destruct__()
 
             d = defaulter(3, 4, 5)
             assert d.m_a ==  t(3)
             assert d.m_b ==  t(4)
             assert d.m_c ==  t(5)
-            d.destruct()
+            d.__destruct__()
         test_defaulter('short', int)
         test_defaulter('ushort', int)
         test_defaulter('int', int)
@@ -81,7 +81,7 @@ class TestADVANCEDCPP:
         assert b.m_db             == 11.11
         assert b.get_base_value() == 11.11
 
-        b.destruct()
+        b.__destruct__()
 
         d = derived_class()
         assert isinstance(d, derived_class)
@@ -108,7 +108,7 @@ class TestADVANCEDCPP:
         assert d.m_db                == 11.11
         assert d.get_base_value()    == 11.11
 
-        d.destruct()
+        d.__destruct__()
 
     def test03_namespaces(self):
         """Test access to namespaces and inner classes"""
@@ -213,7 +213,7 @@ class TestADVANCEDCPP:
         t1 = gbl.T1(int)()
         assert t1.m_t1        == 1
         assert t1.get_value() == 1
-        t1.destruct()
+        t1.__destruct__()
 
         #-----
         t1 = gbl.T1(int)(11)
@@ -222,14 +222,14 @@ class TestADVANCEDCPP:
         t1.m_t1 = 111
         assert t1.get_value() == 111
         assert t1.m_t1        == 111
-        t1.destruct()
+        t1.__destruct__()
 
         #-----
         t2 = gbl.T2(gbl.T1(int))(gbl.T1(int)(32))
         t2.m_t2.m_t1 = 32
         assert t2.m_t2.get_value() == 32
         assert t2.m_t2.m_t1        == 32
-        t2.destruct()
+        t2.__destruct__()
 
 
     def test05_abstract_classes(self):
@@ -249,6 +249,8 @@ class TestADVANCEDCPP:
 
     def test06_datamembers(self):
         """Test data member access when using virtual inheritence"""
+
+        raise Exception("currently crashes ...")
 
         import cppyy
         a_class   = cppyy.gbl.a_class
@@ -290,7 +292,7 @@ class TestADVANCEDCPP:
         b.m_db = 22.22
         assert b.m_db         == 22.22
 
-        b.destruct()
+        b.__destruct__()
 
         #-----
         c1 = c_class_1()
@@ -311,7 +313,7 @@ class TestADVANCEDCPP:
         assert c1.m_c         == 33
         assert c1.get_value() == 33
 
-        c1.destruct()
+        c1.__destruct__()
 
         #-----
         d = d_class()
@@ -339,7 +341,7 @@ class TestADVANCEDCPP:
         assert d.m_d          == 44
         assert d.get_value()  == 44
 
-        d.destruct()
+        d.__destruct__()
 
     def test07_pass_by_reference(self):
         """Test reference passing when using virtual inheritance"""
@@ -355,7 +357,7 @@ class TestADVANCEDCPP:
         b.m_a, b.m_b = 11, 22
         assert gbl.get_a(b) == 11
         assert gbl.get_b(b) == 22
-        b.destruct()
+        b.__destruct__()
 
         #-----
         c = c_class()
@@ -363,7 +365,7 @@ class TestADVANCEDCPP:
         assert gbl.get_a(c) == 11
         assert gbl.get_b(c) == 22
         assert gbl.get_c(c) == 33
-        c.destruct()
+        c.__destruct__()
 
         #-----
         d = d_class()
@@ -372,7 +374,7 @@ class TestADVANCEDCPP:
         assert gbl.get_b(d) == 22
         assert gbl.get_c(d) == 33
         assert gbl.get_d(d) == 44
-        d.destruct()
+        d.__destruct__()
 
     def test08_void_pointer_passing(self):
         """Test passing of variants of void pointer arguments"""
@@ -456,8 +458,8 @@ class TestADVANCEDCPP:
         assert not dd1a is dd2
         assert not dd1b is dd2
 
-        d2.destruct()
-        d1.destruct()
+        d2.__destruct__()
+        d1.__destruct__()
 
     def test11_multi_methods(self):
         """Test calling of methods from multiple inheritance"""
@@ -522,17 +524,19 @@ class TestADVANCEDCPP:
     def test13_actual_type_virtual_multi(self):
         """Test auto-downcast in adverse inheritance situation"""
 
+        raise Exception("currently crashes ...")
+
         import cppyy
 
         c1 = cppyy.gbl.create_c1()
         assert type(c1) == cppyy.gbl.c_class_1
         assert c1.m_c == 3
-        c1.destruct()
+        c1.__destruct__()
 
         c2 = cppyy.gbl.create_c2()
         assert type(c2) == cppyy.gbl.c_class_2
         assert c2.m_c == 3
-        c2.destruct()
+        c2.__destruct__()
 
     def test14_new_overloader(self):
         """Verify that class-level overloaded new/delete are called"""
@@ -542,7 +546,7 @@ class TestADVANCEDCPP:
         assert cppyy.gbl.new_overloader.s_instances == 0
         nl = cppyy.gbl.new_overloader()
         assert cppyy.gbl.new_overloader.s_instances == 1
-        nl.destruct()
+        nl.__destruct__()
 
         import gc
         gc.collect()
