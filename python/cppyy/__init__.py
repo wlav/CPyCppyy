@@ -128,9 +128,6 @@ if not _builtin_cppyy:
 
 #--- LoadDictionary function and aliases -----------------------------
 def load_reflection_info(name):
-   # prepend "lib" 
-   if sys.platform != 'win32' and name[:3] != 'lib':
-       name = 'lib' + name
    sc = gbl.gSystem.Load(name)
    if sc == -1: raise RuntimeError("error loading reflection info")
 
