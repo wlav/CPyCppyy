@@ -26,7 +26,7 @@ residing in ``libproject.so``, the following will generate a
 ``libProjectDict.so`` reflection dictionary::
 
     $ genreflex project_header.h
-    $ g++ -std=c++11 -fPIC -rdynamic -O2 -shared -I$CPPYYHOME/include project_header_rflx.cpp -o libProjectDict.so -L$CPPYYHOME/lib -lCling -L$PROJECTHOME/lib -lproject
+    $ g++ -std=c++11 -fPIC -rdynamic -O2 -shared -I$CPPYYHOME/include project_header_rflx.cpp -o libProjectDict.so -L$PROJECTHOME/lib -lproject
 
 Instead of loading the header text into Cling, you can now load the
 dictionary:
