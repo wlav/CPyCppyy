@@ -14,7 +14,7 @@ cppyy.cppdef("""
 
     class ConcreteClass : AbstractClass {
     public:
-        ConcreteClass(int n=42) : m_int(n) {}
+        ConcreteClass(int n=42) : m_int(n), m_const_int(17) {}
         ~ConcreteClass() {}
 
         virtual void abstract_method() {
@@ -42,8 +42,9 @@ cppyy.cppdef("""
         }
 
     public:
-        int m_int;
         double m_data[4];
+        int m_int;
+        const int m_const_int;
     };
 
     namespace Namespace {
@@ -64,7 +65,7 @@ print 'abstract class'
 from cppyy.gbl import AbstractClass, ConcreteClass
 try:
    a = AbstractClass()
-   raise "hell"
+   raise RuntimeError("failed to raise TypeError")
 except TypeError:
    pass
 assert issubclass(ConcreteClass, AbstractClass) == True
@@ -78,7 +79,7 @@ c = ConcreteClass()
 c.array_method(array('d', [1., 2., 3., 4.]), 4)
 try:
    c.m_data[4] # out of bounds
-   raise "hell"
+   raise RuntimeError("failed to raise IndexError")
 except IndexError:
    pass
 
@@ -86,7 +87,7 @@ print 'builtin data types'
 assert cppyy.gbl.gUint == 0
 try:
    cppyy.gbl.gUint = -1
-   raise "hell"
+   raise RuntimeError("failed to raise ValueError")
 except ValueError:
    pass
 
@@ -104,6 +105,16 @@ assert type(e) == cppyy.gbl.AbstractClass
 print 'classes and structs'
 from cppyy.gbl import ConcreteClass, Namespace
 assert ConcreteClass != Namespace.ConcreteClass
-n = Namespace.ConcreteClass.NestedClass()
-assert 'Namespace::ConcreteClass::NestedClass' in str(type(n))
+#n = Namespace.ConcreteClass.NestedClass()
+#assert 'Namespace::ConcreteClass::NestedClass' in str(type(n))
 
+print 'data members'
+from cppyy.gbl import ConcreteClass
+c = ConcreteClass()
+assert c.m_int == 42
+try:
+   c.m_const_int = 71
+   raise RuntimeError("failed to raise TypeError")
+except TypeError:
+   pass
+c.m_const_int = 71

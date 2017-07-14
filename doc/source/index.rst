@@ -18,7 +18,7 @@ features:
 .. code-block:: python
 
    >>> import cppyy
-   >>> cppyy.cppdef.Declare("""
+   >>> cppyy.cppdef("""
    ... class MyClass {
    ... public:
    ...     MyClass(int i) : m_data(i) {}
@@ -27,7 +27,7 @@ features:
    True
    >>> from cppyy.gbl import MyClass
    >>> m = MyClass(42)
-   >>> cppyy.cppdef.Declare("""
+   >>> cppyy.cppdef("""
    ... void say_hello(MyClass* m) {
    ...     std::cout << "Hello, the number is: " << m->m_data << std::endl;
    ... }""")

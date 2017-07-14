@@ -134,9 +134,10 @@ The example C++ code used can be found :doc:`here <cppyy_features_header>`.
     <class '__main__.Namespace::ConcreteClass::NestedClass'>
     >>>
 
-* **data members**: Public data members are represented as python properties
+* **data members**: Public data members are represented as Python properties
   and provide read and write access on instances as expected.
-  Private and protected data members are not accessible.
+  Private and protected data members are not accessible, const-ness is
+  respected.
   Example:
 
   .. code-block:: python
@@ -145,6 +146,10 @@ The example C++ code used can be found :doc:`here <cppyy_features_header>`.
     >>> c = ConcreteClass()
     >>> c.m_int
     42
+    >>> c.m_const_int = 71    # declared 'const int' in class definition
+    Traceback (most recent call last):
+      File "<stdin>", line 1, in <module>
+    TypeError: assignment to const data not allowed
     >>>
 
 * **default arguments**: C++ default arguments work as expected, but python

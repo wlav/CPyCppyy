@@ -20,7 +20,7 @@ File features.h
     //-----
     class ConcreteClass : AbstractClass {
     public:
-        ConcreteClass(int n=42) : m_int(n) {}
+        ConcreteClass(int n=42) : m_int(n), m_const_int(17) {}
         ~ConcreteClass() {}
 
         virtual void abstract_method() {
@@ -48,8 +48,9 @@ File features.h
         }
 
     public:
-        int m_int;
         double m_data[4];
+        int m_int;
+        const int m_const_int;
     };
 
     namespace Namespace {
