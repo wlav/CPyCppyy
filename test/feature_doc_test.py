@@ -1,6 +1,6 @@
 import cppyy
 
-cppyy.gbl.gInterpreter.Declare("""
+cppyy.cppdef("""
     #include <iostream>
     #include <vector>
 
