@@ -5,8 +5,6 @@
 #include "ObjectProxy.h"
 #include "Utility.h"
 
-#include <iostream>
-
 
 namespace CPyCppyy {
 

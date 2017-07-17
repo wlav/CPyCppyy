@@ -50,8 +50,8 @@ namespace {
    // initialization of class (based on name only, initially, which is lazy)
 
    // there's a snag here: if a python class is derived from the bound class,
-   // the name will not be known by TClassRef, hence we'll use the meta class
-   // name from the subtype, rather than given class name
+   // the name will not be known by the scope lookup, hence we'll use the meta
+   // class name from the subtype, rather than given class name
 
       const char* mp = strstr( subtype->tp_name, "_meta" );
       if ( ! mp ) {
@@ -60,10 +60,8 @@ namespace {
          result->fCppType = Cppyy::GetScope(
             CPyCppyy_PyUnicode_AsString( PyTuple_GET_ITEM( args, 0 ) ) );
       } else {
-      // coming here from cppyy, use meta class name instead of given name,
-      // so that it is safe to inherit python classes from the bound class
-         result->fCppType = Cppyy::GetScope(
-            std::string( subtype->tp_name ).substr( 0, mp-subtype->tp_name ).c_str() );
+      // coming here from cppyy, so the helper will set fCppType
+         result->fCppType = -1;
       }
 
       return (PyObject*)result;

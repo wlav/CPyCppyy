@@ -34,107 +34,107 @@ namespace CPyCppyy {
    extern std::vector<Cppyy::TCppType_t> gIgnorePinnings;
 }
 
-namespace {
-
 // to prevent having to walk scopes, track python classes by ROOT class
-   typedef std::map< Cppyy::TCppScope_t, PyObject* > PyClassMap_t;
-   PyClassMap_t gPyClasses;
-
-// helper for creating new ROOT python types
-   PyObject* CreateNewROOTPythonClass( const std::string& name, PyObject* pybases )
-   {
-   // Create a new python shadow class with the required hierarchy and meta-classes.
-      Py_XINCREF( pybases );
-      if ( ! pybases ) {
-         pybases = PyTuple_New( 1 );
-         Py_INCREF( (PyObject*)(void*)&CPyCppyy::ObjectProxy_Type );
-         PyTuple_SET_ITEM( pybases, 0, (PyObject*)(void*)&CPyCppyy::ObjectProxy_Type );
-      }
-
-      PyObject* pymetabases = PyTuple_New( PyTuple_GET_SIZE( pybases ) );
-      for ( int i = 0; i < PyTuple_GET_SIZE( pybases ); ++i ) {
-         PyObject* btype = (PyObject*)Py_TYPE( PyTuple_GetItem( pybases, i ) );
-         Py_INCREF( btype );
-         PyTuple_SET_ITEM( pymetabases, i, btype );
-      }
-
-      PyObject* args = Py_BuildValue( (char*)"sO{}", (name+"_meta").c_str(), pymetabases );
-      Py_DECREF( pymetabases );
-
-      PyObject* pymeta = PyType_Type.tp_new( &CPyCppyy::CPyCppyyType_Type, args, NULL );
-      Py_DECREF( args );
-      if ( ! pymeta ) {
-         PyErr_Print();
-         Py_DECREF( pybases );
-         return 0;
-      }
-
-      args = Py_BuildValue( (char*)"sO{}", name.c_str(), pybases ); // TODO: Cppyy::GetName(name).c_str(), pybases );
-      PyObject* pyclass = ((PyTypeObject*)pymeta)->tp_new( (PyTypeObject*)pymeta, args, NULL );
-      Py_DECREF( args );
-      Py_DECREF( pymeta );
-
-      Py_DECREF( pybases );
-
-      return pyclass;
-   }
-
-   inline void AddPropertyToClass1(
-      PyObject* pyclass, CPyCppyy::PropertyProxy* property, Bool_t isStatic )
-   {
-   // allow access at the instance level
-      PyObject_SetAttrString( pyclass,
-         const_cast< char* >( property->GetName().c_str() ), (PyObject*)property );
-
-   // allow access at the class level (always add after setting instance level)
-      if ( isStatic ) {
-         PyObject_SetAttrString( (PyObject*)Py_TYPE(pyclass),
-            const_cast< char* >( property->GetName().c_str() ), (PyObject*)property );
-      }
-    }
-
-   void AddPropertyToClass( PyObject* pyclass,
-         Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t idata )
-   {
-      CPyCppyy::PropertyProxy* property = CPyCppyy::PropertyProxy_New( scope, idata );
-      AddPropertyToClass1( pyclass, property, Cppyy::IsStaticData( scope, idata ) );
-      Py_DECREF( property );
-   }
-
-   void AddPropertyToClass( PyObject* pyclass,
-         Cppyy::TCppScope_t scope, const std::string& name, void* address )
-   {
-      CPyCppyy::PropertyProxy* property =
-         CPyCppyy::PropertyProxy_NewConstant( scope, name, address );
-      AddPropertyToClass1( pyclass, property, kTRUE );
-      Py_DECREF( property );
-   }
-
-
-} // unnamed namespace
+typedef std::map< Cppyy::TCppScope_t, PyObject* > PyClassMap_t;
+static PyClassMap_t gPyClasses;
 
 
 //- helpers --------------------------------------------------------------------
-namespace {
 
-   using namespace CPyCppyy;
-
-   inline void AddToGlobalScope(
-      const char* label, const char* /* hdr */, void* obj, Cppyy::TCppType_t klass )
-   {
-   // Bind the given object with the given class in the global scope with the
-   // given label for its reference.
-      PyModule_AddObject( gThisModule, const_cast< char* >( label ),
-         CPyCppyy::BindCppObjectNoCast( obj, klass ) );
+// helper for creating new C++ proxy python types
+static PyObject* CreateNewCppProxyClass( Cppyy::TCppScope_t klass, PyObject* pybases )
+{
+// Create a new python shadow class with the required hierarchy and meta-classes.
+   Py_XINCREF( pybases );
+   if ( ! pybases ) {
+      pybases = PyTuple_New( 1 );
+      Py_INCREF( (PyObject*)(void*)&CPyCppyy::ObjectProxy_Type );
+      PyTuple_SET_ITEM( pybases, 0, (PyObject*)(void*)&CPyCppyy::ObjectProxy_Type );
    }
 
-} // unnamed namespace
+   PyObject* pymetabases = PyTuple_New( PyTuple_GET_SIZE( pybases ) );
+   for ( int i = 0; i < PyTuple_GET_SIZE( pybases ); ++i ) {
+      PyObject* btype = (PyObject*)Py_TYPE( PyTuple_GetItem( pybases, i ) );
+      Py_INCREF( btype );
+      PyTuple_SET_ITEM( pymetabases, i, btype );
+   }
+
+   std::string name = Cppyy::GetScopedFinalName( klass );
+   PyObject* args = Py_BuildValue( (char*)"sO{}", (name+"_meta").c_str(), pymetabases );
+   Py_DECREF( pymetabases );
+
+   PyObject* pymeta = PyType_Type.tp_new( &CPyCppyy::CPyCppyyType_Type, args, NULL );
+   Py_DECREF( args );
+   if ( ! pymeta ) {
+      PyErr_Print();
+      Py_DECREF( pybases );
+      return 0;
+   }
+
+   args = Py_BuildValue( (char*)"sO{}", name.c_str(), pybases ); // TODO: Cppyy::GetName(name).c_str(), pybases );
+   PyObject* pyclass = ((PyTypeObject*)pymeta)->tp_new( (PyTypeObject*)pymeta, args, NULL );
+   if (((CPyCppyy::CPyCppyyClass*)pyclass)->fCppType == -1)
+      ((CPyCppyy::CPyCppyyClass*)pyclass)->fCppType = klass;
+   Py_DECREF( args );
+   Py_DECREF( pymeta );
+
+   Py_DECREF( pybases );
+
+   return pyclass;
+}
+
+static inline
+void AddPropertyToClass1(
+      PyObject* pyclass, CPyCppyy::PropertyProxy* property, Bool_t isStatic )
+{
+// allow access at the instance level
+   PyObject_SetAttrString( pyclass,
+      const_cast< char* >( property->GetName().c_str() ), (PyObject*)property );
+
+// allow access at the class level (always add after setting instance level)
+   if ( isStatic ) {
+      PyObject_SetAttrString( (PyObject*)Py_TYPE(pyclass),
+         const_cast< char* >( property->GetName().c_str() ), (PyObject*)property );
+   }
+}
+
+static inline
+void AddPropertyToClass( PyObject* pyclass,
+      Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t idata )
+{
+   CPyCppyy::PropertyProxy* property = CPyCppyy::PropertyProxy_New( scope, idata );
+   AddPropertyToClass1( pyclass, property, Cppyy::IsStaticData( scope, idata ) );
+   Py_DECREF( property );
+}
+
+static inline
+void AddPropertyToClass( PyObject* pyclass,
+      Cppyy::TCppScope_t scope, const std::string& name, void* address )
+{
+   CPyCppyy::PropertyProxy* property =
+      CPyCppyy::PropertyProxy_NewConstant( scope, name, address );
+   AddPropertyToClass1( pyclass, property, kTRUE );
+   Py_DECREF( property );
+}
+
+
+static inline
+void AddToGlobalScope(
+      const char* label, const char* /* hdr */, void* obj, Cppyy::TCppType_t klass )
+{
+// Bind the given object with the given class in the global scope with the
+// given label for its reference.
+   PyModule_AddObject( CPyCppyy::gThisModule, const_cast< char* >( label ),
+      CPyCppyy::BindCppObjectNoCast( obj, klass ) );
+}
 
 
 //- public functions ---------------------------------------------------------
 static int BuildScopeProxyDict( Cppyy::TCppScope_t scope, PyObject* pyclass ) {
 // Collect methods and data for the given scope, and add them to the given python
 // proxy object.
+
+   using namespace CPyCppyy;
 
 // some properties that'll affect building the dictionary
    Bool_t isNamespace = Cppyy::IsNamespace( scope );
@@ -343,6 +343,9 @@ static int BuildScopeProxyDict( Cppyy::TCppScope_t scope, PyObject* pyclass ) {
 static PyObject* BuildCppClassBases( Cppyy::TCppType_t klass )
 {
 // Build a tuple of python shadow classes of all the bases of the given 'klass'.
+
+   using namespace CPyCppyy;
+
    size_t nbases = Cppyy::GetNumBases( klass );
 
 // collect bases while removing duplicates
@@ -585,7 +588,7 @@ PyObject* CPyCppyy::CreateScopeProxy( const std::string& scope_name, PyObject* p
       PyObject* pybases = BuildCppClassBases( klass );
       if ( pybases != 0 ) {
       // create a fresh Python class, given bases, name, and empty dictionary
-         pyclass = CreateNewROOTPythonClass( actual, pybases );
+         pyclass = CreateNewCppProxyClass( klass, pybases );
          Py_DECREF( pybases );
       }
 
@@ -615,12 +618,12 @@ PyObject* CPyCppyy::CreateScopeProxy( const std::string& scope_name, PyObject* p
    }
 
 // add __cppname__ to keep the C++ name of the class/scope
-   PyObject_SetAttr(
-      pyclass, PyStrings::gCppName, CPyCppyy_PyUnicode_FromString( actual.c_str() ) );
+   PyObject_SetAttr( pyclass, PyStrings::gCppName,
+      CPyCppyy_PyUnicode_FromString( Cppyy::GetScopedFinalName( klass ).c_str() ) );
 
 // add __module__  (see https://docs.python.org/3/c-api/typeobj.html#c.PyTypeObject.tp_name) 
    std::string module;
-   if( parent == gThisModule) {
+   if( parent == gThisModule ) {
       module = "cppyy";
    } else {
       PyObject* _name_ =  PyObject_GetAttr(parent, PyStrings::gName);
@@ -640,7 +643,6 @@ PyObject* CPyCppyy::CreateScopeProxy( const std::string& scope_name, PyObject* p
    Py_DECREF( pyactual );
    Py_DECREF( parent );
 
-
    if ( ! bClassFound ) {               // add python-style features to newly minted classes
       if ( ! Pythonize( pyclass, actual ) ) {
          Py_XDECREF( pyclass );
@@ -648,8 +650,8 @@ PyObject* CPyCppyy::CreateScopeProxy( const std::string& scope_name, PyObject* p
       }
    }
 
-   if ( pyclass ) {
-   // add to sys.modules to allow importing from this module
+   if ( pyclass && Cppyy::IsNamespace( klass ) ) {
+   // add to sys.modules to allow importing from this namespace
       std::string pyfullname = lookup;
       std::string::size_type pos = pyfullname.find( "::" );
       while ( pos != std::string::npos ) {
