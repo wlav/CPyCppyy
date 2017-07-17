@@ -1,13 +1,37 @@
 """ Dynamic C++ bindings generator.
 """
 
-import sys, string
+import sys
 from . import _pythonization
+
+
+### helpers
+def _load_backend():
+    import ctypes
+    try:
+      # attempt to locate libcppyy_backend.so the normal way
+        c = ctypes.CDLL("libcppyy_backend.so", ctypes.RTLD_GLOBAL)
+    except OSError:
+      # try to locate it in the expected location
+        import os
+        for path in sys.path:
+            if os.path.exists(os.path.join(path, 'cppyy_backend/lib/libcppyy_backend.so')):
+              # preload dependencies
+                libpath = os.path.join(path, 'cppyy_backend/lib')
+                for dep in ['libCore.so', 'libThread.so', 'libRIO.so', 'libCling.so']:
+                    ctypes.CDLL(os.path.join(libpath, dep), ctypes.RTLD_GLOBAL)
+                c = ctypes.CDLL(os.path.join(libpath, 'libcppyy_backend.so'), ctypes.RTLD_GLOBAL)
+                break
+        else:
+            raise
+    return c
 
 
 ### PyPy has 'cppyy' builtin (if enabled, that is)
 if 'cppyy' in sys.builtin_module_names:
     _builtin_cppyy = True
+
+    c = _load_backend()
 
     import imp
     sys.modules[ __name__ ] = \
@@ -16,6 +40,7 @@ if 'cppyy' in sys.builtin_module_names:
 
     _thismodule = sys.modules[ __name__ ]
     _backend = _thismodule.gbl
+    _backend.cpp_backend = c
     _thismodule._backend = _backend
 
  # custom behavior that is not yet part of PyPy's cppyy
@@ -36,7 +61,13 @@ else:
     _builtin_cppyy = False
 
     import ctypes
-    c = ctypes.CDLL("libcppyy_backend.so", ctypes.RTLD_GLOBAL)
+    try:
+      # attempt to locate libcppyy_backend.so the normal way
+        c = ctypes.CDLL("libcppyy_backend.so", ctypes.RTLD_GLOBAL)
+    except OSError:
+      # try to locate it in the expected location
+        c = _load_backend()
+
     import libcppyy as _backend
     _backend.cpp_backend = c
 

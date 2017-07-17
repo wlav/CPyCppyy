@@ -688,12 +688,13 @@ PyObject* CPyCppyy::GetCppGlobal( const std::string& name )
       return (PyObject*)PropertyProxy_New( Cppyy::gGlobalScope, idata );
 
 // still here ... try functions (sync has been fixed, so is okay)
-   const std::vector< Cppyy::TCppMethod_t >& methods =
-      Cppyy::GetMethodsFromName( Cppyy::gGlobalScope, name );
+   const std::vector< Cppyy::TCppIndex_t >& methods =
+      Cppyy::GetMethodIndicesFromName( Cppyy::gGlobalScope, name );
    if ( ! methods.empty() ) {
       std::vector< PyCallable* > overloads;
       for ( auto method : methods )
-         overloads.push_back( new TFunctionHolder( Cppyy::gGlobalScope, method ) );
+         overloads.push_back( new TFunctionHolder(
+            Cppyy::gGlobalScope, Cppyy::GetMethod( Cppyy::gGlobalScope, method ) ) );
       return (PyObject*)MethodProxy_New( name, overloads );
    }
 

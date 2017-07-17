@@ -1355,17 +1355,19 @@ CPyCppyy::TConverter* CPyCppyy::CreateConverter( const std::string& fullType, Lo
    TConverter* result = 0;
    if ( Cppyy::TCppScope_t klass = Cppyy::GetScope( realType ) ) {
       if ( Cppyy::IsSmartPtr( realType ) ) {
-         const std::vector< Cppyy::TCppMethod_t > methods = Cppyy::GetMethodsFromName( klass, "operator->" );
+         const std::vector< Cppyy::TCppIndex_t > methods =
+            Cppyy::GetMethodIndicesFromName( klass, "operator->" );
          if ( ! methods.empty() ) {
+            Cppyy::TCppMethod_t method = Cppyy::GetMethod( klass, methods[0] );
             Cppyy::TCppType_t rawPtrType = Cppyy::GetScope(
-               TypeManip::clean_type( Cppyy::GetMethodResultType( methods[0] ) ) );
+               TypeManip::clean_type( Cppyy::GetMethodResultType( method ) ) );
             if ( rawPtrType ) {
                if ( cpd == "" ) {
-                  result = new TSmartPtrCppObjectConverter( klass, rawPtrType, methods[0], control );
+                  result = new TSmartPtrCppObjectConverter( klass, rawPtrType, method, control );
                } else if ( cpd == "&" ) {
-                  result = new TSmartPtrCppObjectConverter( klass, rawPtrType, methods[0] );
+                  result = new TSmartPtrCppObjectConverter( klass, rawPtrType, method );
                } else if ( cpd == "*" && size <= 0 ) {
-                  result = new TSmartPtrCppObjectConverter( klass, rawPtrType, methods[0], control, kTRUE );
+                  result = new TSmartPtrCppObjectConverter( klass, rawPtrType, method, control, kTRUE );
              //  } else if ( cpd == "**" || cpd == "*&" || cpd == "&*" ) {
              //  } else if ( cpd == "[]" || size > 0 ) {
              //  } else {

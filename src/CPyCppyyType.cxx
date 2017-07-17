@@ -94,13 +94,13 @@ namespace {
                char* cppname = CPyCppyy_PyUnicode_AsString( pycppname );
                Py_DECREF(pycppname);
                Cppyy::TCppScope_t scope = Cppyy::GetScope( cppname );
-            /* TODO: get rid of TClass usage
-               TClass* klass = TClass::GetClass( cppname );
-               if ( Cppyy::IsNamespace( scope ) ) {
 
+               if ( Cppyy::IsNamespace( scope ) ) {
                // tickle lazy lookup of functions
                   if ( ! attr ) {
-                     if ( klass->GetListOfMethods()->FindObject( name.c_str() ) ) {
+                     const std::vector< Cppyy::TCppIndex_t > methods =
+                        Cppyy::GetMethodIndicesFromName( scope, name );
+                     if ( ! methods.empty() ) {
                      // function exists, now collect overloads
                         std::vector< PyCallable* > overloads;
                         const size_t nmeth = Cppyy::GetNumMethods( scope );
@@ -124,6 +124,8 @@ namespace {
                   }
                }
 
+            /* TODO: get rid of TClass usage
+               TClass* klass = TClass::GetClass( cppname );
             // function templates that have not been instantiated
                if ( ! attr && klass ) {
                   TFunctionTemplate* tmpl = klass->GetFunctionTemplate( name.c_str() );

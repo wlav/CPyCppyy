@@ -105,8 +105,8 @@ assert type(e) == cppyy.gbl.AbstractClass
 print 'classes and structs'
 from cppyy.gbl import ConcreteClass, Namespace
 assert ConcreteClass != Namespace.ConcreteClass
-#n = Namespace.ConcreteClass.NestedClass()
-#assert 'Namespace::ConcreteClass::NestedClass' in str(type(n))
+n = Namespace.ConcreteClass.NestedClass()
+assert 'Namespace::ConcreteClass::NestedClass' in str(type(n))
 
 print 'data members'
 from cppyy.gbl import ConcreteClass
@@ -117,4 +117,3 @@ try:
    raise RuntimeError("failed to raise TypeError")
 except TypeError:
    pass
-c.m_const_int = 71
