@@ -323,20 +323,19 @@ Bool_t CPyCppyy::Utility::AddBinaryOperator(
 }
 
 //----------------------------------------------------------------------------
-static inline Cppyy::TCppMethod_t FindAndAddOperator( const std::string& lcname, const std::string& rcname,
-     const char* op, void* klass = 0 ) {
+static inline
+Cppyy::TCppMethod_t FindAndAddOperator( const std::string& lcname, const std::string& rcname,
+      const char* op, Cppyy::TCppScope_t scope = Cppyy::gGlobalScope ) {
 // Helper to find a function with matching signature in 'funcs'.
    std::string opname = "operator";
    opname += op;
-   std::string proto = lcname + ", " + rcname;
 
-// case of global namespace
-// TODO: Cppyy.cxx ...
-//   if ( ! klass )
-//      return (Cppyy::TCppMethod_t)gROOT->GetGlobalFunctionWithPrototype( opname.c_str(), proto.c_str() );
+   Cppyy::TCppIndex_t idx = Cppyy::GetGlobalOperator(
+      scope, Cppyy::GetScope( lcname ), Cppyy::GetScope( rcname ), opname );
+   if ( ! idx )
+       return (Cppyy::TCppMethod_t)0;
 
-// case of specific namespace
-   return (Cppyy::TCppMethod_t)0; // TODO: klass->GetMethodWithPrototype( opname.c_str(), proto.c_str() );
+   return Cppyy::GetMethod( scope, idx );
 }
 
 Bool_t CPyCppyy::Utility::AddBinaryOperator( PyObject* pyclass, const std::string& lcname,
@@ -349,42 +348,39 @@ Bool_t CPyCppyy::Utility::AddBinaryOperator( PyObject* pyclass, const std::strin
    if ( strcmp( op, "==" ) == 0 || strcmp( op, "!=" ) == 0 )
       return kFALSE;
 
-#if 0
 // For GNU on clang, search the internal __gnu_cxx namespace for binary operators (is
 // typically the case for STL iterators operator==/!=.
 // TODO: use Cppyy.cxx
-   static TClassRef gnucxx( "__gnu_cxx" );
-   static bool gnucxx_exists = (bool)gnucxx.GetClass();
+   static Cppyy::TCppScope_t gnucxx = Cppyy::GetScope( "__gnu_cxx" );
 
 // Same for clang on Mac. TODO: find proper pre-processor magic to only use those specific
 // namespaces that are actually around; although to be sure, this isn't expensive.
-   static TClassRef std__1( "std::__1" );
-   static bool std__1_exists = (bool)std__1.GetClass();
+   static Cppyy::TCppScope_t std__1 = Cppyy::GetScope( "std::__1" );
 
 // One more, mostly for Mac, but again not sure whether this is not a general issue. Some
 // operators are declared as friends only in classes, so then they're not found in the
 // global namespace. That's why there's this little helper.
    std::call_once( sOperatorTemplateFlag, InitOperatorTemplate );
-   static TClassRef _pr_int( "_cpycppyy_internal" );
+   static Cppyy::TCppScope_t _pr_int = Cppyy::GetScope( "_cpycppyy_internal" );
 
    PyCallable* pyfunc = 0;
-   if ( gnucxx_exists ) {
-      Cppyy::TCppMethod_t func = FindAndAddOperator( lcname, rcname, op, gnucxx.GetClass() );
-      if ( func ) pyfunc = new TFunctionHolder( Cppyy::GetScope( "__gnu_cxx" ), func );
+   if ( gnucxx ) {
+      Cppyy::TCppMethod_t func = FindAndAddOperator( lcname, rcname, op, gnucxx );
+      if ( func ) pyfunc = new TFunctionHolder( gnucxx, func );
    }
 
-   if ( ! pyfunc && std__1_exists ) {
-      Cppyy::TCppMethod_t func = FindAndAddOperator( lcname, rcname, op, std__1.GetClass() );
-      if ( func ) pyfunc = new TFunctionHolder( Cppyy::GetScope( "std::__1" ), func );
+   if ( ! pyfunc && std__1 ) {
+      Cppyy::TCppMethod_t func = FindAndAddOperator( lcname, rcname, op, std__1 );
+      if ( func ) pyfunc = new TFunctionHolder( std__1, func );
    }
 
    if ( ! pyfunc ) {
       std::string::size_type pos = lcname.substr(0, lcname.find('<')).rfind( "::" );
       if ( pos != std::string::npos ) {
-         TClass* lcscope = TClass::GetClass( lcname.substr( 0, pos ).c_str() );
+         Cppyy::TCppScope_t lcscope = Cppyy::GetScope( lcname.substr( 0, pos ).c_str() );
          if ( lcscope ) {
             Cppyy::TCppMethod_t func = FindAndAddOperator( lcname, rcname, op, lcscope );
-            if ( func ) pyfunc = new TFunctionHolder( Cppyy::GetScope( lcname.substr( 0, pos ) ), func );
+            if ( func ) pyfunc = new TFunctionHolder( lcscope, func );
          }
       }
    }
@@ -394,6 +390,7 @@ Bool_t CPyCppyy::Utility::AddBinaryOperator( PyObject* pyclass, const std::strin
       if ( func ) pyfunc = new TFunctionHolder( Cppyy::gGlobalScope, func );
    }
 
+#if 0
    if ( ! pyfunc && _pr_int.GetClass() &&
          lcname.find( "iterator" ) != std::string::npos &&
          rcname.find( "iterator" ) != std::string::npos ) {
@@ -405,7 +402,7 @@ Bool_t CPyCppyy::Utility::AddBinaryOperator( PyObject* pyclass, const std::strin
       else if ( strncmp( op, "!=", 2 ) == 0 ) { fname << "is_not_equal<"; }
       else { fname << "not_implemented<"; }
       fname  << lcname << ", " << rcname << ">";
-      Cppyy::TCppMethod_t func = (Cppyy::TCppMethod_t)_pr_int->GetMethodAny( fname.str().c_str() );
+      Cppyy::TCppMethod_t func = (Cppyy::TCppMethod_t)Cppyy_pr_int->GetMethodAny( fname.str().c_str() );
       if ( func ) pyfunc = new TFunctionHolder( Cppyy::GetScope( "_cpycppyy_internal" ), func );
    }
 
@@ -420,13 +417,14 @@ Bool_t CPyCppyy::Utility::AddBinaryOperator( PyObject* pyclass, const std::strin
          (Cppyy::TCppMethod_t)lc->GetMethodWithPrototype( opname.c_str(), rcname.c_str() );
       if ( func && f ) pyfunc = new TMethodHolder( Cppyy::GetScope( lcname ), func );
    }
+#endif
 
    if ( pyfunc ) {  // found a matching overload; add to class
       Bool_t ok = AddToClass( pyclass, label, pyfunc );
       if ( ok && alt )
          return AddToClass( pyclass, alt, label );
    }
-#endif
+
    return kFALSE;
 }
 
