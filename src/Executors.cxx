@@ -455,7 +455,7 @@ PyObject* CPyCppyy::TCppObjectRefExecutor::Execute(
 PyObject* CPyCppyy::TCppObjectPtrPtrExecutor::Execute(
       Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt )
 {
-// execute <method> with argument <self, ctxt>, construct python ROOT object
+// execute <method> with argument <self, ctxt>, construct python C++ proxy object
 // return ptr value
    return BindCppObject( (void*)GILCallR( method, self, ctxt ), fClass, kTRUE );
 }
@@ -464,7 +464,7 @@ PyObject* CPyCppyy::TCppObjectPtrPtrExecutor::Execute(
 PyObject* CPyCppyy::TCppObjectPtrRefExecutor::Execute(
       Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt )
 {
-// execute <method> with argument <self, ctxt>, construct python ROOT object
+// execute <method> with argument <self, ctxt>, construct python C++ proxy object
 // ignoring ref) return ptr value
    return BindCppObject( *(void**)GILCallR( method, self, ctxt ), fClass, kFALSE );
 }
@@ -606,7 +606,7 @@ CPyCppyy::TExecutor* CPyCppyy::CreateExecutor(
 // The matching of the fulltype to an executor factory goes through up to 4 levels:
 //   1) full, qualified match
 //   2) drop '&' as by ref/full type is often pretty much the same python-wise
-//   3) ROOT classes, either by ref/ptr or by value
+//   3) C++ classes, either by ref/ptr or by value
 //   4) additional special case for enums
 //
 // If all fails, void is used, which will cause the return type to be ignored on use
@@ -626,7 +626,7 @@ CPyCppyy::TExecutor* CPyCppyy::CreateExecutor(
 
 //-- nothing? ok, collect information about the type and possible qualifiers/decorators
    const std::string& cpd = Utility::Compound( resolvedType );
-   std::string realType = TypeManip::clean_type( resolvedType );
+   std::string realType = TypeManip::clean_type( resolvedType, false );
 
 // const-ness (dropped by TypeManip::clean_type) is in general irrelevant
    h = gExecFactories.find( realType + cpd );
@@ -647,7 +647,7 @@ CPyCppyy::TExecutor* CPyCppyy::CreateExecutor(
    }
 */
 
-// ROOT classes and special cases (enum)
+// C++ classes and special cases (enum)
    TExecutor* result = 0;
    if ( Cppyy::TCppType_t klass = Cppyy::GetScope( realType ) ) {
       if ( manage_smart_ptr && Cppyy::IsSmartPtr( realType ) ) {
@@ -769,7 +769,7 @@ namespace {
    CPYCPPYY_EXECUTOR_FACTORY( Constructor )
    CPYCPPYY_EXECUTOR_FACTORY( PyObject )
 
-// executor factories for ROOT types
+// executor factories for C++ types
    typedef std::pair< const char*, ExecutorFactory_t > NFp_t;
 
    NFp_t factories_[] = {

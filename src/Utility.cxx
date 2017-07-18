@@ -432,7 +432,7 @@ Bool_t CPyCppyy::Utility::AddBinaryOperator( PyObject* pyclass, const std::strin
 PyObject* CPyCppyy::Utility::BuildTemplateName( PyObject* pyname, PyObject* args, int argoff )
 {
 // Helper to construct the "< type, type, ... >" part of a templated name (either
-// for a class as in MakeRootTemplateClass in RootModule.cxx) or for method lookup
+// for a class as in MakeCppTemplateClass in CPyCppyyModule.cxx) or for method lookup
 // (as in TemplatedMemberHook, below).
    if ( pyname )
       pyname = CPyCppyy_PyUnicode_FromString( CPyCppyy_PyUnicode_AsString( pyname ) );
@@ -489,13 +489,13 @@ PyObject* CPyCppyy::Utility::BuildTemplateName( PyObject* pyname, PyObject* args
 //----------------------------------------------------------------------------
 Bool_t CPyCppyy::Utility::InitProxy( PyObject* module, PyTypeObject* pytype, const char* name )
 {
-// Initialize a proxy class for use by python, and add it to the ROOT module.
+// Initialize a proxy class for use by python, and add it to the module.
 
 // finalize proxy type
    if ( PyType_Ready( pytype ) < 0 )
       return kFALSE;
 
-// add proxy type to the given (ROOT) module
+// add proxy type to the given module
    Py_INCREF( pytype );         // PyModule_AddObject steals reference
    if ( PyModule_AddObject( module, (char*)name, (PyObject*)pytype ) < 0 ) {
       Py_DECREF( pytype );

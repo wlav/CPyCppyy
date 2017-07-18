@@ -26,6 +26,7 @@
   #define TParameter CPyCppyy::TParameter
 #endif
 
+
 //- data ______________________________________________________________________
 namespace CPyCppyy {
 
@@ -679,7 +680,7 @@ Bool_t CPyCppyy::TVoidArrayConverter::GetAddressSpecialCase( PyObject* pyobject,
 Bool_t CPyCppyy::TVoidArrayConverter::SetArg(
       PyObject* pyobject, TParameter& para, TCallContext* ctxt )
 {
-// just convert pointer if it is a ROOT object
+// just convert pointer if it is a C++ object
    if ( ObjectProxy_Check( pyobject ) ) {
    // depending on memory policy, some objects are no longer owned when passed to C++
       if ( ! fKeepControl && ! UseStrictOwnership( ctxt ) )
@@ -724,7 +725,7 @@ PyObject* CPyCppyy::TVoidArrayConverter::FromMemory( void* address )
 //-----------------------------------------------------------------------------
 Bool_t CPyCppyy::TVoidArrayConverter::ToMemory( PyObject* value, void* address )
 {
-// just convert pointer if it is a ROOT object
+// just convert pointer if it is a C++ object
    if ( ObjectProxy_Check( value ) ) {
    // depending on memory policy, some objects are no longer owned when passed to C++
       if ( ! fKeepControl && TCallContext::sMemoryPolicy != TCallContext::kUseStrict )
@@ -1305,7 +1306,7 @@ CPyCppyy::TConverter* CPyCppyy::CreateConverter( const std::string& fullType, Lo
 //   2) match of decorated, unqualified type
 //   3) accept const ref as by value
 //   4) accept ref as pointer
-//   5) generalized cases (covers basically all ROOT classes)
+//   5) generalized cases (covers basically all C++ classes)
 //
 // If all fails, void is used, which will generate a run-time warning when used.
 
@@ -1324,7 +1325,7 @@ CPyCppyy::TConverter* CPyCppyy::CreateConverter( const std::string& fullType, Lo
 
 //-- nothing? ok, collect information about the type and possible qualifiers/decorators
    const std::string& cpd = Utility::Compound( resolvedType );
-   std::string realType   = TypeManip::clean_type( resolvedType );
+   std::string realType   = TypeManip::clean_type( resolvedType, false );
 
 // accept unqualified type (as python does not know about qualifiers)
    h = gConvFactories.find( realType + cpd );
@@ -1351,7 +1352,7 @@ CPyCppyy::TConverter* CPyCppyy::CreateConverter( const std::string& fullType, Lo
    Bool_t isConst = resolvedType.substr(0, 5) == "const";
    Bool_t control = cpd == "&" || isConst;
 
-// converters for known/ROOT classes and default (void*)
+// converters for known C++ classes and default (void*)
    TConverter* result = 0;
    if ( Cppyy::TCppScope_t klass = Cppyy::GetScope( realType ) ) {
       if ( Cppyy::IsSmartPtr( realType ) ) {
@@ -1506,7 +1507,7 @@ namespace {
    CPYCPPYY_BASIC_CONVERTER_FACTORY( VoidPtrPtr )
    CPYCPPYY_BASIC_CONVERTER_FACTORY( PyObject )
 
-// converter factories for ROOT types
+// converter factories for C++ types
    typedef std::pair< const char*, ConverterFactory_t > NFp_t;
 
    // clang-format off

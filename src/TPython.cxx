@@ -83,7 +83,7 @@ namespace CPyCppyy {
 Bool_t TPython::Initialize()
 {
 // Private initialization method: setup the python interpreter and load the
-// ROOT module.
+// cppyy module.
 
    static Bool_t isInitialized = kFALSE;
    if ( isInitialized )
@@ -115,7 +115,7 @@ Bool_t TPython::Initialize()
       PySys_SetArgv( sizeof(argv)/sizeof(argv[0]), argv );
 
    // force loading of the ROOT module
-      PyRun_SimpleString( const_cast< char* >( "import ROOT" ) );
+      PyRun_SimpleString( const_cast< char* >( "import cppyy" ) );
    }
 
    if ( ! gMainDict ) {
@@ -338,7 +338,7 @@ void TPython::ExecScript( const char* name, int argc, const char**
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// Execute a python statement (e.g. "import ROOT").
+/// Execute a python statement (e.g. "import noddy").
 
 Bool_t TPython::Exec( const char* cmd )
 {

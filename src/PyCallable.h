@@ -14,8 +14,8 @@ namespace CPyCppyy {
       virtual ~PyCallable() {}
 
    public:
-      virtual PyObject* GetSignature() = 0;
-      virtual PyObject* GetPrototype() = 0;
+      virtual PyObject* GetSignature( Bool_t show_formalargs = kTRUE ) = 0;
+      virtual PyObject* GetPrototype( Bool_t show_formalargs = kTRUE ) = 0;
       virtual PyObject* GetDocString() { return GetPrototype(); }
 
       virtual Int_t GetPriority() = 0;

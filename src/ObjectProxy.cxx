@@ -80,7 +80,7 @@ namespace {
    PyObject* op_dispatch( PyObject* self, PyObject* args, PyObject* /* kdws */ )
    {
    // User-side __dispatch__ method to allow selection of a specific overloaded
-   // method. The actual selection is in the disp() method of MethodProxy.
+   // method. The actual selection is in the __overload__() method of MethodProxy.
       PyObject *mname = 0, *sigarg = 0;
       if ( ! PyArg_ParseTuple( args, const_cast< char* >( "O!O!:__dispatch__" ),
               &CPyCppyy_PyUnicode_Type, &mname, &CPyCppyy_PyUnicode_Type, &sigarg ) )
@@ -91,8 +91,9 @@ namespace {
       if ( ! pymeth )
          return 0;
 
-   // get the 'disp' method to allow overload selection
-      PyObject* pydisp = PyObject_GetAttrString( pymeth, const_cast<char*>( "disp" ) );
+   // get the '__overload__' method to allow overload selection
+      PyObject* pydisp = PyObject_GetAttrString(
+         pymeth, const_cast<char*>( "__overload__" ) );
       if ( ! pydisp ) {
          Py_DECREF( pymeth );
          return 0;

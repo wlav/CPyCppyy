@@ -19,7 +19,6 @@
 
 // Standard
 #include <map>
-#include <set>
 #include <string>
 #include <algorithm>
 #include <vector>
@@ -34,7 +33,7 @@ namespace CPyCppyy {
    extern std::vector<Cppyy::TCppType_t> gIgnorePinnings;
 }
 
-// to prevent having to walk scopes, track python classes by ROOT class
+// to prevent having to walk scopes, track python classes by C++ class
 typedef std::map< Cppyy::TCppScope_t, PyObject* > PyClassMap_t;
 static PyClassMap_t gPyClasses;
 
@@ -209,7 +208,7 @@ static int BuildScopeProxyDict( Cppyy::TCppScope_t scope, PyObject* pyclass ) {
       }
 
    // public methods are normally visible, private methods are mangled python-wise
-   // note the overload implications which are name based, and note that rootcint
+   // note the overload implications which are name based, and note that genreflex
    // does not create the interface methods for private/protected methods ...
       if ( ! Cppyy::IsPublicMethod( method ) ) {
          if ( isConstructor )                // don't expose private ctors
@@ -483,7 +482,7 @@ PyObject* CPyCppyy::CreateScopeProxy( const std::string& scope_name, PyObject* p
       Py_INCREF( parent );
    }
 
-// retrieve ROOT class (this verifies name, and is therefore done first)
+// retrieve C++ class (this verifies name, and is therefore done first)
    const std::string& lookup = parent ? (scName+"::"+name) : name;
    Cppyy::TCppScope_t klass = Cppyy::GetScope( lookup );
 
@@ -710,7 +709,7 @@ PyObject* CPyCppyy::BindCppObjectNoCast(
       Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, Bool_t isRef, Bool_t isValue ) {
 // only known or knowable objects will be bound (null object is ok)
    if ( ! klass ) {
-      PyErr_SetString( PyExc_TypeError, "attempt to bind ROOT object w/o class" );
+      PyErr_SetString( PyExc_TypeError, "attempt to bind C++ object w/o class" );
       return 0;
    }
 
@@ -746,7 +745,7 @@ PyObject* CPyCppyy::BindCppObject( Cppyy::TCppObject_t address, Cppyy::TCppType_
 
 // only known or knowable objects will be bound
    if ( ! klass ) {
-      PyErr_SetString( PyExc_TypeError, "attempt to bind ROOT object w/o class" );
+      PyErr_SetString( PyExc_TypeError, "attempt to bind C++ object w/o class" );
       return 0;
    }
 

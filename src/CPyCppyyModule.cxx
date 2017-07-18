@@ -144,17 +144,12 @@ namespace {
 
    using namespace CPyCppyy;
 
-   PyObject* RootModuleResetCallback( PyObject*, PyObject* )
-   {
-      gThisModule = 0;   // reference was borrowed
-      Py_INCREF( Py_None );
-      return Py_None;
-   }
-
 //----------------------------------------------------------------------------
    PyObject* LookupCppEntity( PyObject* pyname, PyObject* args )
    {
-   // Find a match within the ROOT module for something with name 'pyname'.
+   // Find a match within this module for something with name 'pyname'.
+   // TODO: created global objects are now stored twice: on thismodule and in
+   // the normal way in the global namespace -> resolve to one.
       const char* cname = 0; long macro_ok = 0;
       if ( pyname && CPyCppyy_PyUnicode_CheckExact( pyname ) )
          cname = CPyCppyy_PyUnicode_AsString( pyname );
@@ -190,6 +185,7 @@ namespace {
 
       // 4th attempt: global enum (pretend int, TODO: is fine for C++98, not in C++11)
          if ( Cppyy::IsEnum( name ) ) {
+         // TODO: how does this make sense? This only works if this is a class name.
             Py_INCREF( &PyInt_Type );
             return (PyObject*)&PyInt_Type;
          }
@@ -213,7 +209,7 @@ namespace {
 #define CPYCPPYY_ORGDICT_LOOKUP( mp, key, hash, value_addr )\
    OrgDictLookup( mp, key, hash, value_addr )
 
-   PyDictKeyEntry* RootLookDictString(
+   PyDictKeyEntry* CPyCppyyLookDictString(
          PyDictObject* mp, PyObject* key, Py_hash_t hash, PyObject*** value_addr )
 #else
    inline PyDictEntry* OrgDictLookup( PyDictObject* mp, PyObject* key, Long_t hash )
@@ -224,7 +220,7 @@ namespace {
 #define CPYCPPYY_ORGDICT_LOOKUP( mp, key, hash, value_addr )\
    OrgDictLookup( mp, key, hash )
 
-   PyDictEntry* RootLookDictString( PyDictObject* mp, PyObject* key, Long_t hash )
+   PyDictEntry* CPyCppyyLookDictString( PyDictObject* mp, PyObject* key, Long_t hash )
 #endif
    {
    // first search dictionary itself
@@ -237,10 +233,10 @@ namespace {
          return ep;
       }
 
-   // all failed, start calling into ROOT
+   // all failed, start entering reflection system
       gDictLookupActive = kTRUE;
 
-   // ROOT globals (the round-about lookup is to prevent recursion)
+   // globals (the round-about lookup is to prevent recursion)
       PyObject* gval = PyDict_GetItem( PyModule_GetDict( gThisModule ), key );
       if ( gval ) {
          Py_INCREF( gval );
@@ -254,7 +250,7 @@ namespace {
          return ep;
       }
 
-   // attempt to get ROOT enum/global/class
+   // attempt to get C++ enum/global/class
       PyObject* val = LookupCppEntity( key, 0 );
 
       if ( val != 0 ) {
@@ -270,7 +266,7 @@ namespace {
             val = actual_val;
          }
 
-      // add reference to ROOT entity in the given dictionary
+      // add reference to C++ entity in the given dictionary
          CPYCPPYY_GET_DICT_LOOKUP( mp ) = gDictLookupOrg;     // prevent recursion
          if ( PyDict_SetItem( (PyObject*)mp, key, val ) == 0 ) {
             ep = CPYCPPYY_ORGDICT_LOOKUP( mp, key, hash, value_addr );
@@ -278,7 +274,7 @@ namespace {
             ep->me_key   = 0;
             ep->me_value = 0;
          }
-         CPYCPPYY_GET_DICT_LOOKUP( mp ) = RootLookDictString; // restore
+         CPYCPPYY_GET_DICT_LOOKUP( mp ) = CPyCppyyLookDictString;     // restore
 
       // done with val
          Py_DECREF( val );
@@ -295,7 +291,7 @@ namespace {
          PyObject* buf[maxinsert];
          for ( int varmax = 1; varmax <= maxinsert; ++varmax ) {
             for ( int ivar = 0; ivar < varmax; ++ivar ) {
-               buf[ivar] = CPyCppyy_PyUnicode_FromFormat( "__ROOT_FORCE_RESIZE_%d", ivar );
+               buf[ivar] = CPyCppyy_PyUnicode_FromFormat( "__CPYCPPYY_FORCE_RESIZE_%d", ivar );
                PyDict_SetItem( (PyObject*)mp, buf[ivar], Py_None);
             }
             for ( int ivar = 0; ivar < varmax; ++ivar ) {
@@ -311,21 +307,21 @@ namespace {
 
       // full reset of all lookup functions
          gDictLookupOrg = CPYCPPYY_GET_DICT_LOOKUP( mp );
-         CPYCPPYY_GET_DICT_LOOKUP( mp ) = RootLookDictString; // restore
+         CPYCPPYY_GET_DICT_LOOKUP( mp ) = CPyCppyyLookDictString;     // restore
       }
 #endif
 
-   // stopped calling into ROOT
+   // stopped calling into the reflection system
       gDictLookupActive = kFALSE;
 
       return ep;
    }
 
 //----------------------------------------------------------------------------
-   PyObject* SetRootLazyLookup( PyObject*, PyObject* args )
+   PyObject* SetCppLazyLookup( PyObject*, PyObject* args )
    {
    // Modify the given dictionary to install the lookup function that also
-   // tries the ROOT namespace before failing. Called on a module's dictionary,
+   // tries the global C++ namespace before failing. Called on a module's dictionary,
    // this allows for lazy lookups.
       PyDictObject* dict = 0;
       if ( ! PyArg_ParseTuple( args, const_cast< char* >( "O!" ), &PyDict_Type, &dict ) )
@@ -333,11 +329,11 @@ namespace {
 
    // Notwithstanding the code changes, the following does not work for p3.3 and
    // later: once the dictionary is resized for anything other than an insert (see
-   // hack in RootLookDictString), its lookup function on its keys will revert to
-   // the default (lookdict_unicode_nodummy) and only if the resizing dictionary
+   // hack in CPyCppyyLookDictString), its lookup function on its keys will revert
+   // to the default (lookdict_unicode_nodummy) and only if the resizing dictionary
    // has the generic lookdict function as dk_lookup for its keys, will this be
    // set on the new keys.
-      CPYCPPYY_GET_DICT_LOOKUP( dict ) = RootLookDictString;
+      CPYCPPYY_GET_DICT_LOOKUP( dict ) = CPyCppyyLookDictString;
 
       Py_INCREF( Py_None );
       return Py_None;
@@ -655,13 +651,11 @@ static PyMethodDef gCPyCppyyMethods[] = {
      METH_VARARGS, (char*) "cppyy internal function" },
    { (char*) "LookupCppEntity", (PyCFunction)LookupCppEntity,
      METH_VARARGS, (char*) "cppyy internal function" },
-   { (char*) "SetRootLazyLookup", (PyCFunction)SetRootLazyLookup,
+   { (char*) "SetCppLazyLookup", (PyCFunction)SetCppLazyLookup,
      METH_VARARGS, (char*) "cppyy internal function" },
    { (char*) "MakeCppTemplateClass", (PyCFunction)MakeCppTemplateClass,
      METH_VARARGS, (char*) "cppyy internal function" },
    { (char*) "_DestroyPyStrings", (PyCFunction)CPyCppyy::DestroyPyStrings,
-     METH_NOARGS, (char*) "cppyy internal function" },
-   { (char*) "_ResetRootModule", (PyCFunction)RootModuleResetCallback,
      METH_NOARGS, (char*) "cppyy internal function" },
    { (char*) "addressof", (PyCFunction)addressof,
      METH_VARARGS, (char*) "Retrieve address of held object as a value" },
@@ -696,13 +690,13 @@ struct module_state {
 
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
 
-static int rootmodule_traverse( PyObject* m, visitproc visit, void* arg )
+static int cpycppyymodule_traverse( PyObject* m, visitproc visit, void* arg )
 {
     Py_VISIT( GETSTATE( m )->error );
     return 0;
 }
 
-static int rootmodule_clear( PyObject* m )
+static int cpycppyymodule_clear( PyObject* m )
 {
     Py_CLEAR( GETSTATE( m )->error );
     return 0;
@@ -716,8 +710,8 @@ static struct PyModuleDef moduledef = {
    sizeof(struct module_state),
    gCPyCppyyMethods,
    NULL,
-   rootmodule_traverse,
-   rootmodule_clear,
+   cpycppyymodule_traverse,
+   cpycppyymodule_clear,
    NULL
 };
 

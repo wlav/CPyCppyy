@@ -9,7 +9,7 @@ namespace CPyCppyy {
    namespace TypeManip {
 
       std::string remove_const(const std::string& cppname);
-      std::string clean_type(const std::string& cppname);
+      std::string clean_type(const std::string& cppname, bool template_strip = true);
 
    } // namespace TypeManip
 

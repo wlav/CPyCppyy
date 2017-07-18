@@ -43,7 +43,7 @@ if 'cppyy' in sys.builtin_module_names:
     _backend.cpp_backend = c
     _thismodule._backend = _backend
 
- # custom behavior that is not yet part of PyPy's cppyy
+  # custom behavior that is not yet part of PyPy's cppyy
     def _CreateScopeProxy(self, name):
         return getattr(self, name)
     type(_backend).CreateScopeProxy = _CreateScopeProxy
@@ -52,10 +52,7 @@ if 'cppyy' in sys.builtin_module_names:
         return getattr(self, name)
     type(_backend).LookupCppEntity = _LookupCppEntity
 
-    class _Double(float): pass
-    type(_backend).Double = _Double
-
-    del _Double, _LookupCppEntity, _CreateScopeProxy
+    del _LookupCppEntity, _CreateScopeProxy
 
 else:
     _builtin_cppyy = False
@@ -123,8 +120,7 @@ if not _builtin_cppyy:
             return "<cppyy.Template '%s' object at %s>" % (self.__name__, hex(id(self)))
 
         def __call__(self, *args):
-          # TODO: stripping std:: should no longer be needed
-            newargs = [self.__name__[0 <= self.__name__.find('std::') and 5 or 0:]]
+            newargs = [self.__name__]
             for arg in args:
                 if type(arg) == str:
                     arg = ','.join(map(lambda x: x.strip(), arg.split(',')))
@@ -160,6 +156,7 @@ if not _builtin_cppyy:
     class _stdmeta(type):
         def __getattr__(cls, name):     # for non-templated classes in std
             try:
+              # TODO: why only classes here?
                 klass = _backend.CreateScopeProxy(name, cls)
             except TypeError as e:
                 raise AttributeError(str(e))
@@ -168,12 +165,13 @@ if not _builtin_cppyy:
 
     class _global_cpp(with_metaclass(_ns_meta)):
         class std(with_metaclass(_stdmeta, object)):
+          # pre-get string to ensure disambiguation from python string module
             string = _backend.CreateScopeProxy('string')
 
     gbl = _global_cpp
     sys.modules['cppyy.gbl'] = gbl
 
- # cppyy-style functions
+  # cppyy-style functions
     addressof = _backend.addressof
     bind_object = _backend.bind_object
 
@@ -184,7 +182,7 @@ if not _builtin_cppyy:
 else:
     _global_cpp = _backend
 
- # copy over locally defined names
+  # copy over locally defined names
     for name in dir():
         if name[0] != '_': setattr(_thismodule, name, eval(name))
  

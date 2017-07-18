@@ -175,7 +175,7 @@ Bool_t CPyCppyy::TMethodHolder::InitExecutor_( TExecutor*& executor, TCallContex
 ////////////////////////////////////////////////////////////////////////////////
 /// built a signature representation (used for doc strings)
 
-std::string CPyCppyy::TMethodHolder::GetSignatureString()
+std::string CPyCppyy::TMethodHolder::GetSignatureString( Bool_t fa )
 {
    std::stringstream sig; sig << "(";
    Int_t ifirst = 0;
@@ -185,14 +185,16 @@ std::string CPyCppyy::TMethodHolder::GetSignatureString()
 
       sig << Cppyy::GetMethodArgType( fMethod, iarg );
 
-      const std::string& parname = Cppyy::GetMethodArgName( fMethod, iarg );
-      if ( ! parname.empty() )
-         sig << " " << parname;
+      if ( fa ) {
+         const std::string& parname = Cppyy::GetMethodArgName( fMethod, iarg );
+         if ( ! parname.empty() )
+            sig << " " << parname;
 
-      const std::string& defvalue = Cppyy::GetMethodArgDefault( fMethod, iarg );
-      if ( ! defvalue.empty() )
-         sig << " = " << defvalue;
-      ifirst++;
+         const std::string& defvalue = Cppyy::GetMethodArgDefault( fMethod, iarg );
+         if ( ! defvalue.empty() )
+            sig << " = " << defvalue;
+         ifirst++;
+      }
    }
    sig << ")";
    return sig.str();
@@ -276,14 +278,14 @@ CPyCppyy::TMethodHolder::~TMethodHolder()
 
 
 //- public members -----------------------------------------------------------
-PyObject* CPyCppyy::TMethodHolder::GetPrototype()
+PyObject* CPyCppyy::TMethodHolder::GetPrototype( Bool_t fa )
 {
 // construct python string from the method's prototype
    return CPyCppyy_PyUnicode_FromFormat( "%s%s %s::%s%s",
       ( Cppyy::IsStaticMethod( fMethod ) ? "static " : "" ),
       Cppyy::GetMethodResultType( fMethod ).c_str(),
       Cppyy::GetFinalName( fScope ).c_str(), Cppyy::GetMethodName( fMethod ).c_str(),
-      GetSignatureString().c_str() );
+      GetSignatureString( fa ).c_str() );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -589,10 +591,10 @@ PyObject* CPyCppyy::TMethodHolder::Call(
 }
 
 //- protected members --------------------------------------------------------
-PyObject* CPyCppyy::TMethodHolder::GetSignature()
+PyObject* CPyCppyy::TMethodHolder::GetSignature( Bool_t fa )
 {
 // construct python string from the method's signature
-   return CPyCppyy_PyUnicode_FromString( GetSignatureString().c_str() );
+   return CPyCppyy_PyUnicode_FromString( GetSignatureString( fa ).c_str() );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
