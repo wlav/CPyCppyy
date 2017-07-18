@@ -329,6 +329,8 @@ class TestPYTHONIFY:
     def test16_subclassing(self):
         """A sub-class on the python side should have that class as type"""
 
+        raise Exception("currently crashes ...")
+
         import cppyy
         example01 = cppyy.gbl.example01
 

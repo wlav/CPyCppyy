@@ -15,8 +15,6 @@ class TestFRAGILE:
         import cppyy
         cls.fragile = cppyy.load_reflection_info(cls.test_dct)
 
-        raise Exception("currently crashes ...")
-
     def test01_load_failure(self):
         """Test failure to load dictionary"""
 
@@ -207,20 +205,13 @@ class TestFRAGILE:
 
         import cppyy
 
-        if self.identity == 'CINT':          # CINT only support classes on global space
-            members = dir(cppyy.gbl)
-            assert 'TROOT' in members
-            assert 'TSystem' in members
-            assert 'TClass' in members
-            members = dir(cppyy.gbl.fragile)
-        else:
-            members = dir(cppyy.gbl.fragile)
-            assert 'A' in members
-            assert 'B' in members
-            assert 'C' in members
-            assert 'D' in members            # classes
+        members = dir(cppyy.gbl.fragile)
+        assert 'A' in members
+        assert 'B' in members
+        assert 'C' in members
+        assert 'D' in members                # classes
 
-            assert 'nested1' in members          # namespace
+        assert 'nested1' in members          # namespace
 
         # TODO: think this through ... probably want this, but interferes with
         # the (new) policy of lazy lookups

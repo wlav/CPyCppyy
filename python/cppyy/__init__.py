@@ -177,7 +177,8 @@ if not _builtin_cppyy:
 
     def load_reflection_info(name):
         sc = gbl.gSystem.Load(name)
-        if sc == -1: raise RuntimeError("error loading reflection info")
+        if sc == -1:
+            raise RuntimeError("missing reflection library "+name)
 
 else:
     _global_cpp = _backend
