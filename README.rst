@@ -18,5 +18,4 @@ CPython/cppyy and PyPy/cppyy are designed to be compatible, although there
 are differences due to the former being reference counted and the latter
 being garbage collected.
 
-Read the `full documentation <http://doc.pypy.org/en/latest/cppyy.html>`_
-over on `pypy.org <http://pypy.org>`_.
+Read the `full documentation <http://cppyy.readthedocs.io/en/latest/>`.
