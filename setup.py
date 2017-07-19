@@ -12,7 +12,7 @@ with open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
     name='CPyCppyy',
-    version='0.2.1',
+    version='0.3.0',
     description='Cling-based Python-C++ bindings',
     long_description=long_description,
 
@@ -44,12 +44,9 @@ setup(
         'Natural Language :: English'
     ],
 
-    install_requires=['PyPy-cppyy-backend'],
+    install_requires=['cppyy-backend'],
 
     keywords='C++ bindings',
-
-    package_dir={'': 'python'},
-    packages=find_packages('python'),
 
     ext_modules=[Extension('libcppyy',
         sources=glob.glob('src/*.cxx'),
