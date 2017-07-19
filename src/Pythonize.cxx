@@ -31,11 +31,10 @@ namespace {
 // for convenience
    using namespace CPyCppyy;
 
-////////////////////////////////////////////////////////////////////////////////
-/// prevents calls to Py_TYPE(pyclass)->tp_getattr, which is unnecessary for our
-/// purposes here and could tickle problems w/ spurious lookups into ROOT meta
-
+//-----------------------------------------------------------------------------
    Bool_t HasAttrDirect( PyObject* pyclass, PyObject* pyname, Bool_t mustBeCPyCppyy = kFALSE ) {
+   // prevents calls to Py_TYPE(pyclass)->tp_getattr, which is unnecessary for our
+   // purposes here and could tickle problems w/ spurious lookups into ROOT meta
       PyObject* attr = PyType_Type.tp_getattro( pyclass, pyname );
       if ( attr != 0 && ( ! mustBeCPyCppyy || MethodProxy_Check( attr ) ) ) {
          Py_DECREF( attr );
@@ -46,20 +45,18 @@ namespace {
       return kFALSE;
    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// prevents calls to descriptors
-
+//-----------------------------------------------------------------------------
    PyObject* PyObject_GetAttrFromDict( PyObject* pyclass, PyObject* pyname ) {
+   // prevents calls to descriptors
       PyObject* dict = PyObject_GetAttr( pyclass, PyStrings::gDict );
       PyObject* attr = PyObject_GetItem( dict, pyname );
       Py_DECREF( dict );
       return attr;
    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Scan the name of the class and determine whether it is a template instantiation.
-
+//-----------------------------------------------------------------------------
    inline Bool_t IsTemplatedSTLClass( const std::string& name, const std::string& klass ) {
+   // Scan the name of the class and determine whether it is a template instantiation.
       const int nsize = (int)name.size();
       const int ksize = (int)klass.size();
 
@@ -78,11 +75,10 @@ namespace {
       return result;
    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Helper; call method with signature: obj->meth( arg1 ).
-
+//-----------------------------------------------------------------------------
    inline PyObject* CallPyObjMethod( PyObject* obj, const char* meth, PyObject* arg1 )
    {
+   // Helper; call method with signature: obj->meth( arg1 ).
       Py_INCREF( obj );
       PyObject* result = PyObject_CallMethod(
          obj, const_cast< char* >( meth ), const_cast< char* >( "O" ), arg1 );
@@ -90,12 +86,11 @@ namespace {
       return result;
    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Helper; call method with signature: obj->meth( arg1, arg2 ).
-
+//-----------------------------------------------------------------------------
    inline PyObject* CallPyObjMethod(
       PyObject* obj, const char* meth, PyObject* arg1, PyObject* arg2 )
    {
+   // Helper; call method with signature: obj->meth( arg1, arg2 ).
       Py_INCREF( obj );
       PyObject* result = PyObject_CallMethod(
          obj, const_cast< char* >( meth ), const_cast< char* >( "OO" ), arg1, arg2 );
@@ -103,11 +98,10 @@ namespace {
       return result;
    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Helper; call method with signature: obj->meth( arg1, int ).
-
+//-----------------------------------------------------------------------------
    inline PyObject* CallPyObjMethod( PyObject* obj, const char* meth, PyObject* arg1, int arg2 )
    {
+   // Helper; call method with signature: obj->meth( arg1, int ).
       Py_INCREF( obj );
       PyObject* result = PyObject_CallMethod(
          obj, const_cast< char* >( meth ), const_cast< char* >( "Oi" ), arg1, arg2 );
@@ -140,11 +134,10 @@ namespace {
       return pyindex;
    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Helper; call method with signature: meth( pyindex ).
-
+//-----------------------------------------------------------------------------
    inline PyObject* CallSelfIndex( ObjectProxy* self, PyObject* idx, const char* meth )
    {
+   // Helper; call method with signature: meth( pyindex ).
       Py_INCREF( (PyObject*)self );
       PyObject* pyindex = PyStyleIndex( (PyObject*)self, idx );
       if ( ! pyindex ) {
@@ -158,11 +151,10 @@ namespace {
       return result;
    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Helper; convert generic python object into a boolean value.
-
+//-----------------------------------------------------------------------------
    inline PyObject* BoolNot( PyObject* value )
    {
+   // Helper; convert generic python object into a boolean value.
       if ( PyObject_IsTrue( value ) == 1 ) {
          Py_INCREF( Py_False );
          Py_DECREF( value );
@@ -204,12 +196,11 @@ namespace {
       return result;
    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Follow operator->() if present (available in python as __follow__), so that
-/// smart pointers behave as expected.
-
+//-----------------------------------------------------------------------------
    PyObject* FollowGetAttr( PyObject* self, PyObject* name )
    {
+   // Follow operator->() if present (available in python as __follow__), so that
+   // smart pointers behave as expected.
       if ( ! CPyCppyy_PyUnicode_Check( name ) )
          PyErr_SetString( PyExc_TypeError, "getattr(): attribute name must be string" );
 
@@ -222,14 +213,13 @@ namespace {
       return result;
    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Contrary to TObjectIsEqual, it can now not be relied upon that the only
-/// non-ObjectProxy obj is None, as any operator==(), taking any object (e.g.
-/// an enum) can be implemented. However, those cases will yield an exception
-/// if presented with None.
-
+//-----------------------------------------------------------------------------
    PyObject* GenObjectIsEqual( PyObject* self, PyObject* obj )
    {
+   // Contrary to TObjectIsEqual, it can now not be relied upon that the only
+   // non-ObjectProxy obj is None, as any operator==(), taking any object (e.g.
+   // an enum) can be implemented. However, those cases will yield an exception
+   // if presented with None.
       PyObject* result = CallPyObjMethod( self, "__cpp_eq__", obj );
       if ( ! result ) {
          PyErr_Clear();
@@ -239,11 +229,10 @@ namespace {
       return result;
    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Reverse of GenObjectIsEqual, if operator!= defined.
-
+//-----------------------------------------------------------------------------
    PyObject* GenObjectIsNotEqual( PyObject* self, PyObject* obj )
    {
+   // Reverse of GenObjectIsEqual, if operator!= defined.
       PyObject* result = CallPyObjMethod( self, "__cpp_ne__", obj );
       if ( ! result ) {
          PyErr_Clear();
@@ -355,7 +344,6 @@ namespace {
       _PyObject_GC_TRACK( vi );
       return (PyObject*)vi;
    }
-
 
    PyObject* VectorGetItem( ObjectProxy* self, PySliceObject* index )
    {
@@ -630,23 +618,21 @@ static int PyObject_Compare( PyObject* one, PyObject* other ) {
       return next;
    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Called if operator== not available (e.g. if a global overload as under gcc).
-/// An exception is raised as the user should fix the dictionary.
-
+//-----------------------------------------------------------------------------
    PyObject* StlIterIsEqual( PyObject* self, PyObject* other )
    {
+   // Called if operator== not available (e.g. if a global overload as under gcc).
+   // An exception is raised as the user should fix the dictionary.
       return PyErr_Format( PyExc_LookupError,
          "No operator==(const %s&, const %s&) available in the dictionary!",
          Utility::ClassName( self ).c_str(), Utility::ClassName( other ).c_str()  );
    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Called if operator!= not available (e.g. if a global overload as under gcc).
-/// An exception is raised as the user should fix the dictionary.
-
+//-----------------------------------------------------------------------------
    PyObject* StlIterIsNotEqual( PyObject* self, PyObject* other )
    {
+   // Called if operator!= not available (e.g. if a global overload as under gcc).
+   // An exception is raised as the user should fix the dictionary.
       return PyErr_Format( PyExc_LookupError,
          "No operator!=(const %s&, const %s&) available in the dictionary!",
          Utility::ClassName( self ).c_str(), Utility::ClassName( other ).c_str()  );
