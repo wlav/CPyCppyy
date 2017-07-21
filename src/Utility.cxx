@@ -345,9 +345,6 @@ Bool_t CPyCppyy::Utility::AddBinaryOperator( PyObject* pyclass, const std::strin
 // in addition, __gnu_cxx, std::__1, and _cpycppyy_internal are searched pro-actively (as
 // there's AFAICS no way to unearth using information).
 
-   if ( strcmp( op, "==" ) == 0 || strcmp( op, "!=" ) == 0 )
-      return kFALSE;
-
 // For GNU on clang, search the internal __gnu_cxx namespace for binary operators (is
 // typically the case for STL iterators operator==/!=.
 // TODO: use Cppyy.cxx
@@ -391,6 +388,7 @@ Bool_t CPyCppyy::Utility::AddBinaryOperator( PyObject* pyclass, const std::strin
    }
 
 #if 0
+   // TODO: figure out what this was for ...
    if ( ! pyfunc && _pr_int.GetClass() &&
          lcname.find( "iterator" ) != std::string::npos &&
          rcname.find( "iterator" ) != std::string::npos ) {

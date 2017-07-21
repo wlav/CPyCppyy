@@ -216,10 +216,7 @@ namespace {
 //-----------------------------------------------------------------------------
    PyObject* GenObjectIsEqual( PyObject* self, PyObject* obj )
    {
-   // Contrary to TObjectIsEqual, it can now not be relied upon that the only
-   // non-ObjectProxy obj is None, as any operator==(), taking any object (e.g.
-   // an enum) can be implemented. However, those cases will yield an exception
-   // if presented with None.
+   // Call the C++ operator==() if available, otherwise default.
       PyObject* result = CallPyObjMethod( self, "__cpp_eq__", obj );
       if ( ! result ) {
          PyErr_Clear();
