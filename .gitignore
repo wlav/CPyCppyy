@@ -7,4 +7,7 @@
 *.pcm
 *.rootmap
 
+# build products
+dist
+*.egg-info
 .cache
