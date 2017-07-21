@@ -660,7 +660,7 @@ PyObject* CPyCppyy::CreateScopeProxy( const std::string& scope_name, PyObject* p
       PyObject* modules = PySys_GetObject( const_cast<char*>("modules") );
       if ( modules && PyDict_Check( modules) ) {
          PyDict_SetItemString( modules,
-            const_cast<char*>(("cppyy."+pyfullname).c_str()), pyclass );
+            const_cast<char*>(("cppyy.gbl."+pyfullname).c_str()), pyclass );
       }
    }
 
