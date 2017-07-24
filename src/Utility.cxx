@@ -332,7 +332,7 @@ Cppyy::TCppMethod_t FindAndAddOperator( const std::string& lcname, const std::st
 
    Cppyy::TCppIndex_t idx = Cppyy::GetGlobalOperator(
       scope, Cppyy::GetScope( lcname ), Cppyy::GetScope( rcname ), opname );
-   if ( ! idx )
+   if ( idx == (Cppyy::TCppIndex_t)-1 )
        return (Cppyy::TCppMethod_t)0;
 
    return Cppyy::GetMethod( scope, idx );
@@ -347,7 +347,8 @@ Bool_t CPyCppyy::Utility::AddBinaryOperator( PyObject* pyclass, const std::strin
 
 // For GNU on clang, search the internal __gnu_cxx namespace for binary operators (is
 // typically the case for STL iterators operator==/!=.
-// TODO: use Cppyy.cxx
+// TODO: only look in __gnu_cxx for iterators (and more generally: do lookups in the
+//       namespace where the class is defined
    static Cppyy::TCppScope_t gnucxx = Cppyy::GetScope( "__gnu_cxx" );
 
 // Same for clang on Mac. TODO: find proper pre-processor magic to only use those specific
