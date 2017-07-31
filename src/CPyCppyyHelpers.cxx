@@ -156,22 +156,23 @@ static int BuildScopeProxyDict( Cppyy::TCppScope_t scope, PyObject* pyclass ) {
       Cppyy::TCppMethod_t method = Cppyy::GetMethod( scope, imeth );
 
    // process the method based on its name
-      std::string mtName = Cppyy::GetMethodName( method );
+      std::string mtCppName = Cppyy::GetMethodName( method );
 
    // special case trackers
       Bool_t setupSetItem = kFALSE;
       Bool_t isConstructor = Cppyy::IsConstructor( method );
+      Bool_t isTemplate = isConstructor ? false : Cppyy::IsMethodTemplate( scope, imeth );
 
    // filter empty names (happens for namespaces, is bug?)
-      if ( mtName == "" )
+      if ( mtCppName == "" )
          continue;
 
    // filter C++ destructors
-      if ( mtName[0] == '~' )
+      if ( mtCppName[0] == '~' )
          continue;
 
    // translate operators
-      mtName = Utility::MapOperatorName( mtName, Cppyy::GetMethodNumArgs( method ) );
+      std::string mtName = Utility::MapOperatorName( mtCppName, Cppyy::GetMethodNumArgs( method ) );
 
    // operator[]/() returning a reference type will be used for __setitem__
       if ( mtName == "__call__" || mtName == "__getitem__" ) {
@@ -184,36 +185,15 @@ static int BuildScopeProxyDict( Cppyy::TCppScope_t scope, PyObject* pyclass ) {
          }
       }
 
-   // decide on method type: member or static (which includes globals)
-      Bool_t isStatic = Cppyy::IsStaticMethod( method );
-
-   // template members; handled by adding a dispatcher to the class
-      std::string tmplName = "";
-      if ( ! (isNamespace || isStatic || isConstructor) && mtName[mtName.size()-1] == '>' ) {
-         tmplName = mtName.substr( 0, mtName.find('<') );
-      // TODO: the following is incorrect if both base and derived have the same
-      // templated method (but that is an unlikely scenario anyway)
-         PyObject* attr = PyObject_GetAttrString( pyclass, const_cast< char* >( tmplName.c_str() ) );
-         if ( ! TemplateProxy_Check( attr ) ) {
-            PyErr_Clear();
-            TemplateProxy* pytmpl = TemplateProxy_New( tmplName, pyclass );
-            if ( MethodProxy_Check( attr ) ) pytmpl->AddOverload( (MethodProxy*)attr );
-            PyObject_SetAttrString(
-               pyclass, const_cast< char* >( tmplName.c_str() ), (PyObject*)pytmpl );
-            Py_DECREF( pytmpl );
-         }
-         Py_XDECREF( attr );
-      // continue processing to actually add the method so that the proxy can find
-      // it on the class when called explicitly
-      }
-
    // public methods are normally visible, private methods are mangled python-wise
    // note the overload implications which are name based, and note that genreflex
    // does not create the interface methods for private/protected methods ...
+   // TODO: check whether Cling allows private method calling; otherwise delete this
       if ( ! Cppyy::IsPublicMethod( method ) ) {
          if ( isConstructor )                // don't expose private ctors
             continue;
          else {                              // mangle private methods
+         // TODO: drop use of TClassEdit here ...
          //            const std::string& clName = TClassEdit::ShortType(
          //               Cppyy::GetFinalName( scope ).c_str(), TClassEdit::kDropAlloc );
             const std::string& clName = Cppyy::GetFinalName( scope );
@@ -221,9 +201,27 @@ static int BuildScopeProxyDict( Cppyy::TCppScope_t scope, PyObject* pyclass ) {
          }
       }
 
+   // template members; handled by adding a dispatcher to the class
+      if ( isTemplate ) {
+      // TODO: the following is incorrect if both base and derived have the same
+      // templated method (but that is an unlikely scenario anyway)
+         PyObject* attr = PyObject_GetAttrString( pyclass, const_cast< char* >( mtName.c_str() ) );
+         if ( ! TemplateProxy_Check( attr ) ) {
+            PyErr_Clear();
+            TemplateProxy* pytmpl = TemplateProxy_New( mtCppName, mtName, pyclass );
+            if ( MethodProxy_Check( attr ) ) pytmpl->AddOverload( (MethodProxy*)attr );
+            PyObject_SetAttrString(
+               pyclass, const_cast< char* >( mtName.c_str() ), (PyObject*)pytmpl );
+            Py_DECREF( pytmpl );
+         }
+         Py_XDECREF( attr );
+      // continue processing to actually add the method so that the proxy can find
+      // it on the class when called explicitly
+      }
+
    // construct the holder
       PyCallable* pycall = 0;
-      if ( isStatic )                        // class method
+      if ( Cppyy::IsStaticMethod( method ) ) // class method
          pycall = new TClassMethodHolder( scope, method );
       else if ( isNamespace )                // free function
          pycall = new TFunctionHolder( scope, method );
@@ -246,9 +244,8 @@ static int BuildScopeProxyDict( Cppyy::TCppScope_t scope, PyObject* pyclass ) {
          setitem.push_back( new TSetItemHolder( scope, method ) );
       }
 
-   // special case for templates, add another call for the template name
-      if ( ! tmplName.empty() ) {
-         PyObject* attr = PyObject_GetAttrString( pyclass, const_cast< char* >( tmplName.c_str() ) );
+      if ( isTemplate ) {
+         PyObject* attr = PyObject_GetAttrString( pyclass, const_cast< char* >( mtName.c_str() ) );
          ((TemplateProxy*)attr)->AddTemplate( pycall->Clone() );
          Py_DECREF( attr );
       }

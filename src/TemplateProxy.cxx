@@ -12,295 +12,282 @@
 namespace CPyCppyy {
 
 //----------------------------------------------------------------------------
-void TemplateProxy::Set( const std::string& name, PyObject* pyclass )
+void TemplateProxy::Set(const std::string& cppname, const std::string& pyname, PyObject* pyclass)
 {
 // Initialize the proxy for the given 'pyclass.'
-   fPyName       = CPyCppyy_PyUnicode_FromString( const_cast< char* >( name.c_str() ) );
-   Py_XINCREF( pyclass );
-   fPyClass      = pyclass;
-   fSelf         = NULL;
-   std::vector< PyCallable* > dummy;
-   fNonTemplated = MethodProxy_New( name, dummy );
-   fTemplated    = MethodProxy_New( name, dummy );
+    fPyName       = CPyCppyy_PyUnicode_FromString(const_cast< char* >(pyname.c_str()));
+    fCppName      = CPyCppyy_PyUnicode_FromString(const_cast< char* >(cppname.c_str()));
+    Py_XINCREF(pyclass);
+    fPyClass      = pyclass;
+    fSelf         = nullptr;
+    std::vector<PyCallable*> dummy;
+    fNonTemplated = MethodProxy_New(pyname, dummy);
+    fTemplated    = MethodProxy_New(pyname, dummy);
 }
 
 //----------------------------------------------------------------------------
-void TemplateProxy::AddOverload( MethodProxy* mp ) {
+void TemplateProxy::AddOverload(MethodProxy* mp) {
 // Store overloads of this templated method.
-   fNonTemplated->AddMethod( mp );
+    fNonTemplated->AddMethod(mp);
 }
 
-void TemplateProxy::AddOverload( PyCallable* pc ) {
+void TemplateProxy::AddOverload(PyCallable* pc) {
 // Store overload of this templated method.
-   fNonTemplated->AddMethod( pc );
+    fNonTemplated->AddMethod(pc);
 }
 
-void TemplateProxy::AddTemplate( PyCallable* pc )
+void TemplateProxy::AddTemplate(PyCallable* pc)
 {
 // Store know template methods.
-   fTemplated->AddMethod( pc );
+    fTemplated->AddMethod(pc);
 }
 
 
-namespace {
-
 //= CPyCppyy template proxy construction/destruction =========================
-   TemplateProxy* tpp_new( PyTypeObject*, PyObject*, PyObject* )
-   {
-   // Create a new empty template method proxy.
-      TemplateProxy* pytmpl = PyObject_GC_New( TemplateProxy, &TemplateProxy_Type );
-      pytmpl->fPyName       = NULL;
-      pytmpl->fPyClass      = NULL;
-      pytmpl->fSelf         = NULL;
-      pytmpl->fNonTemplated = NULL;
-      pytmpl->fTemplated    = NULL;
+static TemplateProxy* tpp_new(PyTypeObject*, PyObject*, PyObject*)
+{
+// Create a new empty template method proxy.
+    TemplateProxy* pytmpl = PyObject_GC_New(TemplateProxy, &TemplateProxy_Type);
+    pytmpl->fCppName      = nullptr;
+    pytmpl->fPyName       = nullptr;
+    pytmpl->fPyClass      = nullptr;
+    pytmpl->fSelf         = nullptr;
+    pytmpl->fNonTemplated = nullptr;
+    pytmpl->fTemplated    = nullptr;
 
-      PyObject_GC_Track( pytmpl );
-      return pytmpl;
-   }
-
-//----------------------------------------------------------------------------
-   int tpp_clear( TemplateProxy* pytmpl )
-   {
-   // Garbage collector clear of held python member objects.
-      Py_CLEAR( pytmpl->fPyName );
-      Py_CLEAR( pytmpl->fPyClass );
-      Py_CLEAR( pytmpl->fSelf );
-      Py_CLEAR( pytmpl->fNonTemplated );
-      Py_CLEAR( pytmpl->fTemplated );
-
-      return 0;
-   }
+    PyObject_GC_Track(pytmpl);
+    return pytmpl;
+}
 
 //----------------------------------------------------------------------------
-   void tpp_dealloc( TemplateProxy* pytmpl )
-   {
-   // Destroy the given template method proxy.
-      PyObject_GC_UnTrack( pytmpl );
-      tpp_clear( pytmpl );
-      PyObject_GC_Del( pytmpl );
-   }
+static int tpp_clear(TemplateProxy* pytmpl)
+{
+// Garbage collector clear of held python member objects.
+    Py_CLEAR(pytmpl->fCppName);
+    Py_CLEAR(pytmpl->fPyName);
+    Py_CLEAR(pytmpl->fPyClass);
+    Py_CLEAR(pytmpl->fSelf);
+    Py_CLEAR(pytmpl->fNonTemplated);
+    Py_CLEAR(pytmpl->fTemplated);
+
+    return 0;
+}
 
 //----------------------------------------------------------------------------
-   PyObject* tpp_doc( TemplateProxy* pytmpl, void* )
-   {
-   // Forward to method proxies to doc all overloads
-      PyObject* doc = nullptr;
-      if ( pytmpl->fNonTemplated )
-         doc = PyObject_GetAttrString( (PyObject*)pytmpl->fNonTemplated, "__doc__" );
-      if ( pytmpl->fTemplated ) {
-         PyObject* doc2 = PyObject_GetAttrString( (PyObject*)pytmpl->fTemplated, "__doc__" );
-         if ( doc && doc2 ) {
-            CPyCppyy_PyUnicode_AppendAndDel( &doc, CPyCppyy_PyUnicode_FromString( "\n" ));
-            CPyCppyy_PyUnicode_AppendAndDel( &doc, doc2 );
-         } else if ( !doc && doc2 ) {
+static void tpp_dealloc(TemplateProxy* pytmpl)
+{
+// Destroy the given template method proxy.
+    PyObject_GC_UnTrack(pytmpl);
+    tpp_clear(pytmpl);
+    PyObject_GC_Del(pytmpl);
+}
+
+//----------------------------------------------------------------------------
+static PyObject* tpp_doc(TemplateProxy* pytmpl, void*)
+{
+// Forward to method proxies to doc all overloads
+    PyObject* doc = nullptr;
+    if (pytmpl->fNonTemplated)
+        doc = PyObject_GetAttrString((PyObject*)pytmpl->fNonTemplated, "__doc__");
+    if (pytmpl->fTemplated) {
+        PyObject* doc2 = PyObject_GetAttrString((PyObject*)pytmpl->fTemplated, "__doc__");
+        if (doc && doc2) {
+            CPyCppyy_PyUnicode_AppendAndDel(&doc, CPyCppyy_PyUnicode_FromString("\n"));
+            CPyCppyy_PyUnicode_AppendAndDel(&doc, doc2);
+        } else if (!doc && doc2) {
             doc = doc2;
-         }
-      }
+        }
+    }
 
-      if ( doc )
-         return doc;
+    if (doc)
+        return doc;
 
-      return CPyCppyy_PyUnicode_FromString( TemplateProxy_Type.tp_doc );
-   }
+    return CPyCppyy_PyUnicode_FromString(TemplateProxy_Type.tp_doc);
+}
 
 //----------------------------------------------------------------------------
-   int tpp_traverse( TemplateProxy* pytmpl, visitproc visit, void* arg )
-   {
-   // Garbage collector traverse of held python member objects.
-      Py_VISIT( pytmpl->fPyName );
-      Py_VISIT( pytmpl->fPyClass );
-      Py_VISIT( pytmpl->fSelf );
-      Py_VISIT( pytmpl->fNonTemplated );
-      Py_VISIT( pytmpl->fTemplated );
+static int tpp_traverse(TemplateProxy* pytmpl, visitproc visit, void* arg)
+{
+// Garbage collector traverse of held python member objects.
+    Py_VISIT(pytmpl->fCppName);
+    Py_VISIT(pytmpl->fPyName);
+    Py_VISIT(pytmpl->fPyClass);
+    Py_VISIT(pytmpl->fSelf);
+    Py_VISIT(pytmpl->fNonTemplated);
+    Py_VISIT(pytmpl->fTemplated);
 
-      return 0;
-   }
+    return 0;
+}
 
 //= CPyCppyy template proxy callable behavior ================================
-   PyObject* tpp_call( TemplateProxy* pytmpl, PyObject* args, PyObject* kwds )
-   {
-   // Dispatcher to the actual member method, several uses possible; in order:
-   //
-   // case 1:
-   //
-   //    obj.method( a0, a1, ... )              # non-template
-   //       => obj->method( a0, a1, ... )      // non-template
-   //
-   // case 2:
-   //
-   //    obj.method( t0, t1, ... )( a0, a1, ... )
-   //       -> getattr( obj, 'method< t0, t1, ... >' )( a0, a1, ... )
-   //       => obj->method< t0, t1, ... >( a0, a1, ... )
-   //
-   // case 3:
-   //
-   //    obj.method( a0, a1, ... )              # all known templates
-   //       => obj->method( a0, a1, ... )      // all known templates
-   //
-   // case 4:
-   //
-   //    collect types of arguments unless they are a type themselves (the idea
-   //    here is it is more likely for e.g. (1, 3.14) to be real arguments and
-   //    e.g. (int, 'double') to be template arguments:
-   //       a) if ! is_type(arg)
-   //             template<> method< T0, T1, ... >( type(a0), type(a1), ... )
-   //       b) else
-   //             drop to case 5
-   //    TODO: there is ambiguity in the above if the arguments are strings
-   //
-   // case 5:
-   //
-   //    instantiate template<> method< t0, t1, ... >
+static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
+{
+// Dispatcher to the actual member method, several uses possible; in order:
+//
+// case 1: select known non-template overload
+//
+//    obj.method(a0, a1, ...)
+//       => obj->method(a0, a1, ...)        // non-template
+//
+// case 2: select known template overload
+//
+//    obj.method(a0, a1, ...)
+//       => obj->method(a0, a1, ...)        // all known templates
+//
+// case 3: auto-instantiation from types of arguments
+//
+//    obj.method(a0, a1, ...)
+//       => obj->method<type(a0), type(a1), ...>(a0, a1, ...)
+//
+// Note: explicit instantiation needs to use [] syntax:
+//
+//    obj.method[type<a0>, type<a1>, ...](a0, a1, ...)
+//
 
-   // case 1: obj->method( a0, a1, ... )
+// case 1: select known non-template overload
 
-   // simply forward the call: all non-templated methods are defined on class definition
-   // and thus already available
-      PyObject* pymeth = MethodProxy_Type.tp_descr_get(
-         (PyObject*)pytmpl->fNonTemplated, pytmpl->fSelf, (PyObject*)&MethodProxy_Type );
-      if ( MethodProxy_Check( pymeth ) ) {
-      // now call the method with the arguments
-         PyObject* result = MethodProxy_Type.tp_call( pymeth, args, kwds );
-         Py_DECREF( pymeth ); pymeth = 0;
-         if ( result )
+// simply forward the call: all non-templated methods are defined on class definition
+// and thus already available
+    PyObject* pymeth = MethodProxy_Type.tp_descr_get(
+        (PyObject*)pytmpl->fNonTemplated, pytmpl->fSelf, (PyObject*)&MethodProxy_Type);
+    if (MethodProxy_Check(pymeth)) {
+    // now call the method with the arguments
+        PyObject* result = MethodProxy_Type.tp_call(pymeth, args, kwds);
+        Py_DECREF(pymeth); pymeth = 0;
+        if (result)
             return result;
-      // TODO: collect error here, as the failure may be either an overload
-      // failure after which we should continue; or a real failure, which should
-      // be reported.
-      }
-      Py_XDECREF( pymeth ); pymeth = 0;
-      PyErr_Clear();
+    // TODO: collect error here, as the failure may be either an overload
+    // failure after which we should continue; or a real failure, which should
+    // be reported.
+    }
+    Py_XDECREF(pymeth); pymeth = 0;
+    PyErr_Clear();
 
-   // error check on method() which can not be derived if non-templated case fails
-      Py_ssize_t nArgs = PyTuple_GET_SIZE( args );
-      if ( nArgs == 0 ) {
-         PyErr_Format( PyExc_TypeError, "template method \'%s\' with no arguments must be explicit",
-            CPyCppyy_PyUnicode_AsString( pytmpl->fPyName ) );
-         return 0;
-      }
+// error check on method() which can not be derived if non-templated case fails
+    Py_ssize_t nArgs = PyTuple_GET_SIZE(args);
+    if (nArgs == 0) {
+        PyErr_Format(PyExc_TypeError, "template method \'%s\' with no arguments must be explicit",
+            CPyCppyy_PyUnicode_AsString(pytmpl->fPyName));
+        return 0;
+    }
 
-   // case 2: non-instantiating obj->method< t0, t1, ... >( a0, a1, ... )
+// case 2: non-instantiating obj->method< t0, t1, ... >( a0, a1, ... )
 
-   // build "< type, type, ... >" part of method name
-      PyObject* pyname_v1 = Utility::BuildTemplateName( pytmpl->fPyName, args, 0 );
-      if ( pyname_v1 ) {
-      // lookup method on self (to make sure it propagates), which is readily callable
-         pymeth = PyObject_GetAttr( pytmpl->fSelf ? pytmpl->fSelf : pytmpl->fPyClass, pyname_v1 );
-         if ( pymeth ) { // overloads stop here, as this is an explicit match
-            Py_DECREF( pyname_v1 );
+// build "< type, type, ... >" part of method name
+    const std::string& name_v1 = Utility::ConstructTemplateArgs(pytmpl->fCppName, args, 0);
+    if (name_v1.size()) {
+        PyObject* pyname_v1 = CPyCppyy_PyUnicode_FromString(name_v1.c_str());
+    // lookup method on self (to make sure it propagates), which is readily callable
+        pymeth = PyObject_GetAttr(pytmpl->fSelf ? pytmpl->fSelf : pytmpl->fPyClass, pyname_v1);
+        Py_DECREF(pyname_v1); pyname_v1 = 0;
+        if (pymeth)     // overloads stop here, as this is an explicit match
             return pymeth;         // callable method, next step is by user
-         }
-      }
-      PyErr_Clear();
+    }
+    PyErr_Clear();
 
-   // case 3: loop over all previously instantiated templates
-      pymeth = MethodProxy_Type.tp_descr_get(
-         (PyObject*)pytmpl->fTemplated, pytmpl->fSelf, (PyObject*)&MethodProxy_Type );
-      if ( MethodProxy_Check( pymeth ) ) {
-      // now call the method with the arguments
-         PyObject* result = MethodProxy_Type.tp_call( pymeth, args, kwds );
-         Py_DECREF( pymeth ); pymeth = 0;
-         if ( result ) {
-            Py_XDECREF( pyname_v1 );
+// case 3: loop over all previously instantiated templates
+    pymeth = MethodProxy_Type.tp_descr_get(
+        (PyObject*)pytmpl->fTemplated, pytmpl->fSelf, (PyObject*)&MethodProxy_Type);
+    if (MethodProxy_Check(pymeth)) {
+    // now call the method with the arguments
+        PyObject* result = MethodProxy_Type.tp_call(pymeth, args, kwds);
+        Py_DECREF(pymeth); pymeth = 0;
+        if (result)
             return result;
-         }
-      // TODO: collect error here, as the failure may be either an overload
-      // failure after which we should continue; or a real failure, which should
-      // be reported.
-      }
-      Py_XDECREF( pymeth ); pymeth = 0;
-      PyErr_Clear();
+    // TODO: collect error here, as the failure may be either an overload
+    // failure after which we should continue; or a real failure, which should
+    // be reported.
+    }
+    Py_XDECREF(pymeth); pymeth = 0;
+    PyErr_Clear();
 
-   // still here? try instantiating methods
+// still here? try instantiating methods
 
-      Bool_t isType = kFALSE;
-      Int_t nStrings = 0;
-      PyObject* tpArgs = PyTuple_New( nArgs );
-      for ( Int_t i = 0; i < nArgs; ++i ) {
-         PyObject* itemi = PyTuple_GET_ITEM( args, i );
-         if ( PyType_Check( itemi ) ) isType = kTRUE;
+    Bool_t isType = kFALSE;
+    Int_t nStrings = 0;
+    PyObject* tpArgs = PyTuple_New(nArgs);
+    for (Int_t i = 0; i < nArgs; ++i) {
+        PyObject* itemi = PyTuple_GET_ITEM(args, i);
+        if (PyType_Check(itemi)) isType = kTRUE;
 #if PY_VERSION_HEX >= 0x03000000
-         else if ( ! isType && PyUnicode_Check( itemi ) ) nStrings += 1;
+        else if (!isType && PyUnicode_Check(itemi)) nStrings += 1;
 #else
-         else if ( ! isType && PyBytes_Check( itemi ) ) nStrings += 1;
+        else if (!isType && PyBytes_Check(itemi)) nStrings += 1;
 #endif
-      // special case for arrays
-         PyObject* pytc = PyObject_GetAttr( itemi, PyStrings::gTypeCode );
-         if ( ! ( pytc && CPyCppyy_PyUnicode_Check( pytc ) ) ) {
-         // normal case (not an array)
+    // special case for arrays
+        PyObject* pytc = PyObject_GetAttr(itemi, PyStrings::gTypeCode);
+        if (!(pytc && CPyCppyy_PyUnicode_Check(pytc))) {
+        // normal case (not an array)
             PyErr_Clear();
-            PyObject* tp = (PyObject*)Py_TYPE( itemi );
-            Py_INCREF( tp );
-            PyTuple_SET_ITEM( tpArgs, i, tp );
-         } else {
-         // array, build up a pointer type
-            char tc = ((char*)CPyCppyy_PyUnicode_AsString( pytc ))[0];
+            PyObject* tp = (PyObject*)Py_TYPE(itemi);
+            Py_INCREF(tp);
+            PyTuple_SET_ITEM(tpArgs, i, tp);
+        } else {
+        // array, build up a pointer type
+            char tc = ((char*)CPyCppyy_PyUnicode_AsString(pytc))[0];
             const char* ptrname = 0;
             switch ( tc ) {
-               case 'b': ptrname = "char*";           break;
-               case 'h': ptrname = "short*";          break;
-               case 'H': ptrname = "unsigned short*"; break;
-               case 'i': ptrname = "int*";            break;
-               case 'I': ptrname = "unsigned int*";   break;
-               case 'l': ptrname = "long*";           break;
-               case 'L': ptrname = "unsigned long*";  break;
-               case 'f': ptrname = "float*";          break;
-               case 'd': ptrname = "double*";         break;
-               default:  ptrname = "void*";  // TODO: verify if this is right
+                case 'b': ptrname = "char*";           break;
+                case 'h': ptrname = "short*";          break;
+                case 'H': ptrname = "unsigned short*"; break;
+                case 'i': ptrname = "int*";            break;
+                case 'I': ptrname = "unsigned int*";   break;
+                case 'l': ptrname = "long*";           break;
+                case 'L': ptrname = "unsigned long*";  break;
+                case 'f': ptrname = "float*";          break;
+                case 'd': ptrname = "double*";         break;
+                default:  ptrname = "void*";  // TODO: verify if this is right
             }
             if ( ptrname ) {
-               PyObject* pyptrname = PyBytes_FromString( ptrname );
-               PyTuple_SET_ITEM( tpArgs, i, pyptrname );
+                PyObject* pyptrname = PyBytes_FromString(ptrname);
+                PyTuple_SET_ITEM(tpArgs, i, pyptrname);
             // string added, but not counted towards nStrings
             } else {
             // this will cleanly fail instantiation
-               Py_INCREF( pytc );
-               PyTuple_SET_ITEM( tpArgs, i, pytc );
+                Py_INCREF(pytc);
+                PyTuple_SET_ITEM(tpArgs, i, pytc);
             }
-         }
-         Py_XDECREF( pytc );
-      }
+        }
+        Py_XDECREF(pytc);
+    }
 
-      PyObject* clName = PyObject_GetAttr( pytmpl->fPyClass, PyStrings::gCppName );
-      if ( ! clName ) clName = PyObject_GetAttr( pytmpl->fPyClass, PyStrings::gName );
-   // TODO: use Cppyy.cxx ...
-   /*
-      TClass* klass = TClass::GetClass( CPyCppyy_PyUnicode_AsString( clName ) );
-      Py_DECREF( clName );
-      const std::string& tmplname = pytmpl->fNonTemplated->fMethodInfo->fName;
+    PyObject* clName = PyObject_GetAttr(pytmpl->fPyClass, PyStrings::gCppName);
+    if (!clName) clName = PyObject_GetAttr(pytmpl->fPyClass, PyStrings::gName);
+    Cppyy::TCppScope_t scope = Cppyy::GetScope(CPyCppyy_PyUnicode_AsString(clName));
+    Py_DECREF(clName);
+    const std::string& tmplname = CPyCppyy_PyUnicode_AsString(pytmpl->fCppName);
 
-    // case 4a: instantiating obj->method< T0, T1, ... >( type(a0), type(a1), ... )( a0, a1, ... )
-      if ( ! isType && ! ( nStrings == nArgs ) ) {    // no types among args and not all strings
-         PyObject* pyname_v2 = Utility::BuildTemplateName( NULL, tpArgs, 0 );
-         if ( pyname_v2 ) {
-            std::string mname = CPyCppyy_PyUnicode_AsString( pyname_v2 );
-            Py_DECREF( pyname_v2 );
-            std::string proto = mname.substr( 1, mname.size() - 2 );
-         // the following causes instantiation as necessary
-            TMethod* cppmeth = klass ? klass->GetMethodWithPrototype( tmplname.c_str(), proto.c_str() ) : 0;
-            if ( cppmeth ) {    // overload stops here
-               Py_XDECREF( pyname_v1 );
-               Cppyy::TCppScope_t scope = Cppyy::GetScope( klass->GetName() );
-               if ( (klass->Property() & kIsNamespace) || (cppmeth->Property() & kIsStatic) ) {
-                  pytmpl->fTemplated->AddMethod( new TFunctionHolder( scope, (Cppyy::TCppMethod_t)cppmeth ) );
-                  pymeth = (PyObject*)MethodProxy_New(
-                     cppmeth->GetName(), new TFunctionHolder( scope, (Cppyy::TCppMethod_t)cppmeth ) );
-               } else {
-                  pytmpl->fTemplated->AddMethod( new TMethodHolder( scope, (Cppyy::TCppMethod_t)cppmeth ) );
-                  pymeth = (PyObject*)MethodProxy_New(
-                     cppmeth->GetName(), new TMethodHolder( scope, (Cppyy::TCppMethod_t)cppmeth ) );
-               }
-               PyObject_SetAttrString( pytmpl->fPyClass, (char*)cppmeth->GetName(), (PyObject*)pymeth );
-               Py_DECREF( pymeth );
-               pymeth = PyObject_GetAttrString(
-                  pytmpl->fSelf ? pytmpl->fSelf : pytmpl->fPyClass, (char*)cppmeth->GetName() );
-               PyObject* result = MethodProxy_Type.tp_call( pymeth, args, kwds );
-               Py_DECREF( pymeth );
-               return result;
+// case 4a: instantiating obj->method< T0, T1, ... >( type(a0), type(a1), ... )( a0, a1, ... )
+    if (!isType && nStrings != nArgs) {      // no types among args and not all strings
+        const std::string& name_v2 = Utility::ConstructTemplateArgs(nullptr, tpArgs, 0);
+        if (name_v2.size()) {
+            std::string proto = name_v2.substr(1, name_v2.size()-2);
+        // the following causes instantiation as necessary
+            Cppyy::TCppMethod_t cppmeth = Cppyy::GetMethodTemplate(scope, tmplname, proto);
+            if (cppmeth) {    // overload stops here
+                if (Cppyy::IsNamespace(scope) || Cppyy::IsStaticMethod(cppmeth)) {
+                    pytmpl->fTemplated->AddMethod(new TFunctionHolder(scope, cppmeth));
+                    pymeth = (PyObject*)MethodProxy_New(
+                        tmplname, new TFunctionHolder(scope, cppmeth));
+                } else {
+                    pytmpl->fTemplated->AddMethod(new TMethodHolder(scope, cppmeth));
+                    pymeth = (PyObject*)MethodProxy_New(
+                        tmplname, new TMethodHolder(scope, cppmeth));
+                }
+                PyObject_SetAttrString(pytmpl->fPyClass, (char*)tmplname.c_str(), (PyObject*)pymeth);
+                Py_DECREF(pymeth);
+                pymeth = PyObject_GetAttrString(
+                    pytmpl->fSelf ? pytmpl->fSelf : pytmpl->fPyClass, (char*)tmplname.c_str());
+
+            // now call the method directly
+                PyObject* result = MethodProxy_Type.tp_call(pymeth, args, kwds);
+                Py_DECREF(pymeth);
+                return result;
             }
-         }
-      }
+        }
+    }
+
+  /*
 
    // case 4b/5: instantiating obj->method< t0, t1, ... >( a0, a1, ... )
       if ( pyname_v1 ) {
@@ -322,52 +309,111 @@ namespace {
       }
    */
 
-   // moderately generic error message, but should be clear enough
-      PyErr_Format( PyExc_TypeError, "can not resolve method template call for \'%s\'",
-         CPyCppyy_PyUnicode_AsString( pytmpl->fPyName ) );
-      return 0;
-   }
+// moderately generic error message, but should be clear enough
+    PyErr_Format(PyExc_TypeError, "can not resolve method template call for \'%s\'",
+        CPyCppyy_PyUnicode_AsString(pytmpl->fPyName));
+    return 0;
+}
 
 //----------------------------------------------------------------------------
-   TemplateProxy* tpp_descrget( TemplateProxy* pytmpl, PyObject* pyobj, PyObject* )
-   {
-   // create and use a new template proxy (language requirement)
-      TemplateProxy* newPyTmpl = (TemplateProxy*)TemplateProxy_Type.tp_alloc( &TemplateProxy_Type, 0 );
+static PyObject* tpp_subscript(TemplateProxy* pytmpl, PyObject* args)
+{
+// Explicit template member lookup/instantiation.
+    PyObject* newArgs;
+    if (!PyTuple_Check(args)) {
+        newArgs = PyTuple_New(1);
+        Py_INCREF(args);
+        PyTuple_SET_ITEM(newArgs, 0, args);
+    } else {
+        Py_INCREF(args);
+        newArgs = args;
+    }
 
-   // copy name and class pointers
-      Py_INCREF( pytmpl->fPyName );
-      newPyTmpl->fPyName = pytmpl->fPyName;
+// build "< type, type, ... >" part of method name
+    const std::string& tmpl_args = Utility::ConstructTemplateArgs(nullptr, newArgs, 0);
+    std::string meth_name = CPyCppyy_PyUnicode_AsString(pytmpl->fCppName);
+    meth_name.append(tmpl_args);
+    Py_DECREF(newArgs);
+    if (tmpl_args.size()) {
+    // lookup method on self (to make sure it propagates), which is readily callable
+        PyObject* pytmpl_name = CPyCppyy_PyUnicode_FromString(meth_name.c_str());
+        PyObject* pymeth = PyObject_GetAttr(
+                pytmpl->fSelf ? pytmpl->fSelf : pytmpl->fPyClass, pytmpl_name);
+        if (pymeth) {    // overloads stop here, as this is an explicit match
+            Py_DECREF(pytmpl_name);
+            return pymeth;         // callable method, next step is by user
+        }
+        else {
+        // lookup failed: try instantiating
+            PyErr_Clear();
+            PyObject* clName = PyObject_GetAttr(pytmpl->fPyClass, PyStrings::gCppName);
+            if (!clName) clName = PyObject_GetAttr(pytmpl->fPyClass, PyStrings::gName);
+            Cppyy::TCppScope_t scope = Cppyy::GetScope(CPyCppyy_PyUnicode_AsString(clName));
+            Py_DECREF(clName);
 
-      Py_XINCREF( pytmpl->fPyClass );
-      newPyTmpl->fPyClass = pytmpl->fPyClass;
+       // the following causes instantiation as necessary
+            Cppyy::TCppMethod_t cppmeth = Cppyy::GetMethodTemplate(scope, meth_name, "");
+            if (cppmeth) {    // overload stops here
+                pymeth = (PyObject*)MethodProxy_New(meth_name, new TMethodHolder(scope, cppmeth));
+                PyObject_SetAttr(pytmpl->fPyClass, pytmpl_name, (PyObject*)pymeth);
+                Py_DECREF(pymeth);
+                pymeth = PyObject_GetAttr(pytmpl->fSelf ? pytmpl->fSelf : pytmpl->fPyClass, pytmpl_name);
+                Py_DECREF(pytmpl_name);
+                return pymeth;          // callable method, next step is by user
+            }
+        }
+        Py_DECREF(pytmpl_name);
+    }
 
-   // copy non-templated method proxy pointer
-      Py_INCREF( pytmpl->fNonTemplated );
-      newPyTmpl->fNonTemplated = pytmpl->fNonTemplated;
+    return 0;
+}
 
-   // copy templated method proxy pointer
-      Py_INCREF( pytmpl->fTemplated );
-      newPyTmpl->fTemplated = pytmpl->fTemplated;
-
-   // new method is to be bound to current object (may be NULL)
-      Py_XINCREF( pyobj );
-      newPyTmpl->fSelf = pyobj;
-
-      return newPyTmpl;
-   }
 
 //----------------------------------------------------------------------------
-   PyGetSetDef tpp_getset[] = {
-      { (char*)"__doc__",    (getter)tpp_doc,    NULL, NULL, NULL },
-      { (char*)NULL, NULL, NULL, NULL, NULL }
-   };
+static TemplateProxy* tpp_descrget(TemplateProxy* pytmpl, PyObject* pyobj, PyObject*)
+{
+// create and use a new template proxy (language requirement)
+    TemplateProxy* newPyTmpl = (TemplateProxy*)TemplateProxy_Type.tp_alloc(&TemplateProxy_Type, 0);
 
-} // unnamed namespace
+// copy name and class pointers
+    Py_INCREF(pytmpl->fCppName);
+    newPyTmpl->fCppName = pytmpl->fCppName;
+
+    Py_INCREF(pytmpl->fPyName);
+    newPyTmpl->fPyName = pytmpl->fPyName;
+
+    Py_XINCREF(pytmpl->fPyClass);
+    newPyTmpl->fPyClass = pytmpl->fPyClass;
+
+// copy non-templated method proxy pointer
+    Py_INCREF(pytmpl->fNonTemplated);
+    newPyTmpl->fNonTemplated = pytmpl->fNonTemplated;
+
+// copy templated method proxy pointer
+    Py_INCREF(pytmpl->fTemplated);
+    newPyTmpl->fTemplated = pytmpl->fTemplated;
+
+// new method is to be bound to current object (may be nullptr)
+    Py_XINCREF(pyobj);
+    newPyTmpl->fSelf = pyobj;
+
+    return newPyTmpl;
+}
+
+//----------------------------------------------------------------------------
+static PyMappingMethods tpp_as_mapping = {
+    nullptr, (binaryfunc)tpp_subscript, nullptr
+};
+
+static PyGetSetDef tpp_getset[] = {
+    {(char*)"__doc__", (getter)tpp_doc, nullptr, nullptr, nullptr},
+    {(char*)nullptr,   nullptr,         nullptr, nullptr, nullptr}
+};
 
 
 //= CPyCppyy template proxy type =============================================
 PyTypeObject TemplateProxy_Type = {
-   PyVarObject_HEAD_INIT( &PyType_Type, 0 )
+   PyVarObject_HEAD_INIT(&PyType_Type, 0)
    (char*)"cppyy.TemplateProxy", // tp_name
    sizeof(TemplateProxy),     // tp_basicsize
    0,                         // tp_itemsize
@@ -379,7 +425,7 @@ PyTypeObject TemplateProxy_Type = {
    0,                         // tp_repr
    0,                         // tp_as_number
    0,                         // tp_as_sequence
-   0,                         // tp_as_mapping
+   &tpp_as_mapping,           // tp_as_mapping
    0,                         // tp_hash
    (ternaryfunc)tpp_call,     // tp_call
    0,                         // tp_str

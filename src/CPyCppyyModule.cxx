@@ -352,14 +352,12 @@ namespace {
       }
 
    // build "< type, type, ... >" part of class name (modifies pyname)
-      PyObject* pyname = Utility::BuildTemplateName( PyTuple_GET_ITEM( args, 0 ), args, 1 );
-      if ( ! pyname )
+      const std::string& tmpl_name =
+               Utility::ConstructTemplateArgs( PyTuple_GET_ITEM( args, 0 ), args, 1 );
+      if ( ! tmpl_name.size() )
          return 0;
 
-      std::string name = CPyCppyy_PyUnicode_AsString( pyname );
-      Py_DECREF( pyname );
-
-      return CreateScopeProxy( name );
+      return CreateScopeProxy( tmpl_name );
    }
 
 //----------------------------------------------------------------------------
