@@ -18,9 +18,10 @@
 #include "Utility.h"
 
 // Standard
+#include <algorithm>
+#include <deque>
 #include <map>
 #include <string>
-#include <algorithm>
 #include <vector>
 
 
@@ -40,46 +41,49 @@ static PyClassMap_t gPyClasses;
 
 //- helpers --------------------------------------------------------------------
 
+namespace CPyCppyy {
+
 // helper for creating new C++ proxy python types
-static PyObject* CreateNewCppProxyClass( Cppyy::TCppScope_t klass, PyObject* pybases )
+static PyObject* CreateNewCppProxyClass(Cppyy::TCppScope_t klass, PyObject* pybases)
 {
 // Create a new python shadow class with the required hierarchy and meta-classes.
-   Py_XINCREF( pybases );
-   if ( ! pybases ) {
-      pybases = PyTuple_New( 1 );
-      Py_INCREF( (PyObject*)(void*)&CPyCppyy::ObjectProxy_Type );
-      PyTuple_SET_ITEM( pybases, 0, (PyObject*)(void*)&CPyCppyy::ObjectProxy_Type );
-   }
+    Py_XINCREF(pybases);
+    if (!pybases) {
+        pybases = PyTuple_New(1);
+        Py_INCREF((PyObject*)(void*)&ObjectProxy_Type);
+        PyTuple_SET_ITEM(pybases, 0, (PyObject*)(void*)&ObjectProxy_Type);
+    }
 
-   PyObject* pymetabases = PyTuple_New( PyTuple_GET_SIZE( pybases ) );
-   for ( int i = 0; i < PyTuple_GET_SIZE( pybases ); ++i ) {
-      PyObject* btype = (PyObject*)Py_TYPE( PyTuple_GetItem( pybases, i ) );
-      Py_INCREF( btype );
-      PyTuple_SET_ITEM( pymetabases, i, btype );
-   }
+    PyObject* pymetabases = PyTuple_New(PyTuple_GET_SIZE(pybases));
+    for (int i = 0; i < PyTuple_GET_SIZE(pybases); ++i) {
+        PyObject* btype = (PyObject*)Py_TYPE(PyTuple_GetItem(pybases, i));
+        Py_INCREF(btype);
+        PyTuple_SET_ITEM(pymetabases, i, btype);
+    }
 
-   std::string name = Cppyy::GetScopedFinalName( klass );
-   PyObject* args = Py_BuildValue( (char*)"sO{}", (name+"_meta").c_str(), pymetabases );
-   Py_DECREF( pymetabases );
+    std::string name = Cppyy::GetScopedFinalName(klass);
+    PyObject* args = Py_BuildValue((char*)"sO{}", (name+"_meta").c_str(), pymetabases);
+    Py_DECREF(pymetabases);
 
-   PyObject* pymeta = PyType_Type.tp_new( &CPyCppyy::CPyCppyyType_Type, args, NULL );
-   Py_DECREF( args );
-   if ( ! pymeta ) {
-      PyErr_Print();
-      Py_DECREF( pybases );
-      return 0;
-   }
+    PyObject* pymeta = PyType_Type.tp_new(&CPyCppyyType_Type, args, nullptr);
+    Py_DECREF(args);
+    if (!pymeta) {
+        PyErr_Print();
+        Py_DECREF(pybases);
+        return nullptr;
+    }
 
-   args = Py_BuildValue( (char*)"sO{}", name.c_str(), pybases ); // TODO: Cppyy::GetName(name).c_str(), pybases );
-   PyObject* pyclass = ((PyTypeObject*)pymeta)->tp_new( (PyTypeObject*)pymeta, args, NULL );
-   if (((CPyCppyy::CPyCppyyClass*)pyclass)->fCppType == -1)
-      ((CPyCppyy::CPyCppyyClass*)pyclass)->fCppType = klass;
-   Py_DECREF( args );
-   Py_DECREF( pymeta );
+    args = Py_BuildValue((char*)"sO{}", name.c_str(), pybases);
+    PyObject* pyclass =
+        ((PyTypeObject*)pymeta)->tp_new((PyTypeObject*)pymeta, args, nullptr);
+    if (pyclass && ((CPyCppyyClass*)pyclass)->fCppType == -1)
+        ((CPyCppyyClass*)pyclass)->fCppType = klass;
+    Py_DECREF( args );
+    Py_DECREF( pymeta );
 
-   Py_DECREF( pybases );
+    Py_DECREF( pybases );
 
-   return pyclass;
+    return pyclass;
 }
 
 static inline
@@ -127,13 +131,15 @@ void AddToGlobalScope(
       CPyCppyy::BindCppObjectNoCast( obj, klass ) );
 }
 
+} // namespace CPyCppyy
+
 
 //- public functions ---------------------------------------------------------
+namespace CPyCppyy {
+
 static int BuildScopeProxyDict( Cppyy::TCppScope_t scope, PyObject* pyclass ) {
 // Collect methods and data for the given scope, and add them to the given python
 // proxy object.
-
-   using namespace CPyCppyy;
 
 // some properties that'll affect building the dictionary
    Bool_t isNamespace = Cppyy::IsNamespace( scope );
@@ -336,23 +342,42 @@ static int BuildScopeProxyDict( Cppyy::TCppScope_t scope, PyObject* pyclass ) {
 }
 
 //----------------------------------------------------------------------------
-static PyObject* BuildCppClassBases( Cppyy::TCppType_t klass )
+static PyObject* BuildCppClassBases(Cppyy::TCppType_t klass)
 {
-// Build a tuple of python shadow classes of all the bases of the given 'klass'.
+// Build a tuple of python proxy classes of all the bases of the given 'klass'.
 
-   using namespace CPyCppyy;
+   size_t nbases = Cppyy::GetNumBases(klass);
 
-   size_t nbases = Cppyy::GetNumBases( klass );
+// collect bases in acceptable mro order, while removing duplicates (this may
+// break the overload resolution in esoteric cases, but otherwise the class can
+// not be used at all, as CPython will refuse the mro).
+   std::deque<std::string> uqb;
+   std::deque<Cppyy::TCppType_t> bids;
+   for (size_t ibase = 0; ibase < nbases; ++ibase) {
+      const std::string& name = Cppyy::GetBaseName(klass, ibase);
+      int decision = 2;
+      Cppyy::TCppType_t tp = Cppyy::GetScope(name);
+      for (size_t ibase2 = 0; ibase2 < uqb.size(); ++ibase2) {
+          if (uqb[ibase2] == name) {         // not unique ... skip
+              decision = 0;
+              break;
+          }
 
-// collect bases while removing duplicates
-   std::vector< std::string > uqb;
-   uqb.reserve( nbases );
-
-   for ( size_t ibase = 0; ibase < nbases; ++ibase ) {
-      const std::string& name = Cppyy::GetBaseName( klass, ibase );
-      if ( std::find( uqb.begin(), uqb.end(), name ) == uqb.end() ) {
-         uqb.push_back( name );
+          if (Cppyy::IsSubtype(tp, bids[ibase2])) {
+          // mro requirement: sub-type has to follow base
+              decision = 1;
+              break;
+          }
       }
+
+      if (decision == 1) {
+          uqb.push_front(name);
+          bids.push_front(tp);
+      } else if (decision == 2) {
+          uqb.push_back(name);
+          bids.push_back(tp);
+      }
+  // skipped if decision == 0 (not unique)
    }
 
 // allocate a tuple for the base classes, special case for first base
@@ -395,6 +420,8 @@ static PyObject* BuildCppClassBases( Cppyy::TCppType_t klass )
 
    return pybases;
 }
+
+} // namespace CPyCppyy
 
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::GetScopeProxy( Cppyy::TCppScope_t scope )
@@ -614,6 +641,7 @@ PyObject* CPyCppyy::CreateScopeProxy( const std::string& scope_name, PyObject* p
    }
 
 // add __cppname__ to keep the C++ name of the class/scope
+   if (!pyclass) return 0;
    PyObject_SetAttr( pyclass, PyStrings::gCppName,
       CPyCppyy_PyUnicode_FromString( Cppyy::GetScopedFinalName( klass ).c_str() ) );
 

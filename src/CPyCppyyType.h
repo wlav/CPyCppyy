@@ -28,29 +28,29 @@ namespace CPyCppyy {
       @version 1.0
  */
 
-   class CPyCppyyClass {
-   public:
-      PyHeapTypeObject fType;
-      Cppyy::TCppType_t fCppType;
+    class CPyCppyyClass {
+    public:
+        PyHeapTypeObject fType;
+        Cppyy::TCppType_t fCppType;
 
-   private:
-      CPyCppyyClass() {}
-   };
+    private:
+        CPyCppyyClass() = delete;
+    };
 
 //- metatype type and type verification --------------------------------------
-   extern PyTypeObject CPyCppyyType_Type;
+    extern PyTypeObject CPyCppyyType_Type;
 
-   template< typename T >
-   inline Bool_t CPyCppyyType_Check( T* object )
-   {
-      return object && PyObject_TypeCheck( object, &CPyCppyyType_Type );
-   }
+    template<typename T>
+    inline bool CPyCppyyType_Check(T* object)
+    {
+        return object && PyObject_TypeCheck(object, &CPyCppyyType_Type);
+    }
 
-   template< typename T >
-   inline Bool_t CPyCppyyType_CheckExact( T* object )
-   {
-      return object && Py_TYPE(object) == &CPyCppyyType_Type;
-   }
+    template<typename T>
+    inline bool CPyCppyyType_CheckExact(T* object)
+    {
+        return object && Py_TYPE(object) == &CPyCppyyType_Type;
+    }
 
 } // namespace CPyCppyy
 
