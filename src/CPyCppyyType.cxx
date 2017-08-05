@@ -57,8 +57,10 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
         result->fCppType = Cppyy::GetScope(
             CPyCppyy_PyUnicode_AsString(PyTuple_GET_ITEM(args, 0)));
     } else {
-    // coming here from cppyy, so the helper will set fCppType
-        result->fCppType = -1;
+    // coming here from cppyy, use meta class name instead of given name,
+    // so that it is safe to inherit python classes from the bound class
+        result->fCppType = Cppyy::GetScope(
+            std::string(subtype->tp_name).substr(0, mp-subtype->tp_name).c_str());
     }
 
     return (PyObject*)result;
