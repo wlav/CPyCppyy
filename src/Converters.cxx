@@ -987,7 +987,12 @@ Bool_t CPyCppyy::TRefCppObjectConverter::SetArg(
    if ( ! ObjectProxy_Check( pyobject ) )
       return kFALSE;
 
-   ObjectProxy* pyobj = (ObjectProxy*)pyobject;
+   ObjectProxy* pyobj = (ObjectProxy*)pyobject; 
+
+// reject moves
+   if (pyobj->fFlags & ObjectProxy::kIsRValue)
+      return kFALSE;
+
    if ( pyobj->ObjectIsA() && Cppyy::IsSubtype( pyobj->ObjectIsA(), fClass ) ) {
    // calculate offset between formal and actual arguments
       para.fValue.fVoidp = pyobj->GetObject();
@@ -1009,6 +1014,29 @@ Bool_t CPyCppyy::TRefCppObjectConverter::SetArg(
 */
 
    return kFALSE;
+}
+
+//-----------------------------------------------------------------------------
+Bool_t CPyCppyy::TMoveCppObjectConverter::SetArg(
+        PyObject* pyobject, TParameter& para, TCallContext* ctxt)
+{
+// moving is same as by-ref, but have to check that move is allowed
+    bool moveit = false;
+    if (pyobject->ob_refcnt == 1)
+         moveit = true;
+    else if (ObjectProxy_Check(pyobject)) {
+        ObjectProxy* pyobj = (ObjectProxy*)pyobject;
+        if (pyobj->fFlags & ObjectProxy::kIsRValue) {
+            pyobj->fFlags &= ~ObjectProxy::kIsRValue;
+            moveit = true;
+        }
+    }
+
+    if (moveit)
+        return this->TRefCppObjectConverter::SetArg(pyobject, para, ctxt);
+
+    PyErr_SetString(PyExc_TypeError, "object is not an rvalue");
+    return kFALSE;      // not a temporary or movable object
 }
 
 //-----------------------------------------------------------------------------
@@ -1391,6 +1419,8 @@ CPyCppyy::TConverter* CPyCppyy::CreateConverter( const std::string& fullType, Lo
           result = new TCppObjectConverter( klass, control );
         else if ( cpd == "&" )
           result = new TRefCppObjectConverter( klass );
+        else if ( cpd == "&&" )
+          result = new TMoveCppObjectConverter( klass );
         else if ( cpd == "[]" || size > 0 )
           result = new TCppObjectArrayConverter( klass, size, kFALSE );
         else if ( cpd == "" )               // by value
@@ -1409,9 +1439,6 @@ CPyCppyy::TConverter* CPyCppyy::CreateConverter( const std::string& fullType, Lo
    // TODO: a converter that generates wrappers as appropriate
       h = gConvFactories.find( "void*" );
    }
-
-   if ( ! result && cpd == "&&" )                  // moves
-      result = new TNotImplementedConverter();
 
    if ( ! result && h != gConvFactories.end() )
    // converter factory available, use it to create converter

@@ -26,8 +26,9 @@ namespace CPyCppyy {
          kNone        = 0x0,
          kIsOwner     = 0x0001,
          kIsReference = 0x0002,
-         kIsValue     = 0x0004,
-         kIsSmartPtr  = 0x0008 };
+         kIsRValue    = 0x0004,
+         kIsValue     = 0x0008,
+         kIsSmartPtr  = 0x0010 };
 
    public:
       void Set( void* address, EFlags flags = kNone )

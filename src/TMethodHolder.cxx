@@ -319,6 +319,8 @@ Int_t CPyCppyy::TMethodHolder::GetPriority()
          else if ( strstr( aname.c_str(), "bool" ) )
             priority += 1;         // bool over int (does accept 1 and 0)
 
+      } else if (aname.rfind("&&", aname.size()-2) != std::string::npos) {
+            priority += 100;
       } else if ( !aname.empty() && !Cppyy::IsComplete( aname ) ) {
       // class is known, but no dictionary available, 2 more cases: * and &
          if ( aname[ aname.size() - 1 ] == '&' )

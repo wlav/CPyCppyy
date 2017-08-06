@@ -129,7 +129,12 @@ namespace {
 
       Int_t nargs = PyTuple_GET_SIZE( args );
       for ( Int_t i = 0; i < nargs; ++i ) {
-         hash += (ULong_t) Py_TYPE( PyTuple_GET_ITEM( args, i ) );
+      // TODO: hashing in the ref-count is for moves; resolve this together with the
+      // improved overloads for implicit conversions
+         PyObject* pyobj = PyTuple_GET_ITEM( args, i );
+         hash += (ULong_t) Py_TYPE( pyobj );
+         if (pyobj->ob_refcnt == 1)
+            hash += (ULong_t) pyobj->ob_refcnt;
          hash += (hash << 10); hash ^= (hash >> 6);
       }
 

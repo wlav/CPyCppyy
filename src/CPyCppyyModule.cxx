@@ -507,6 +507,20 @@ namespace {
    }
 
 //----------------------------------------------------------------------------
+static PyObject* Move(PyObject*, PyObject* pyobject)
+{
+// Prepare the given C++ object for moving.
+    if (!ObjectProxy_Check(pyobject)) {
+        PyErr_SetString(PyExc_TypeError, "C++ object expected");
+        return 0;
+    }
+
+    ((ObjectProxy*)pyobject)->fFlags |= ObjectProxy::kIsRValue;
+    Py_INCREF(pyobject);
+    return pyobject;
+}
+
+//----------------------------------------------------------------------------
    PyObject* MakeNullPointer( PyObject*, PyObject* args )
    {
    // Create an object of the given type point to NULL (historic note: this
@@ -661,6 +675,8 @@ static PyMethodDef gCPyCppyyMethods[] = {
      METH_VARARGS, (char*) "Retrieve held object in a CObject" },
    { (char*) "bind_object", (PyCFunction)BindObject,
      METH_VARARGS, (char*) "Create an object of given type, from given address" },
+   { (char*) "move", (PyCFunction)Move,
+     METH_O, (char*) "Cast the C++ object to become movable" },
    { (char*) "MakeNullPointer", (PyCFunction)MakeNullPointer,
      METH_VARARGS, (char*) "Create a NULL pointer of the given type" },
    { (char*) "SetMemoryPolicy", (PyCFunction)SetMemoryPolicy,

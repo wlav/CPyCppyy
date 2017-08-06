@@ -186,8 +186,6 @@ namespace CPyCppyy {
    class TValueCppObjectConverter : public TStrictCppObjectConverter {
    public:
       using TStrictCppObjectConverter::TStrictCppObjectConverter;
-
-   public:
       virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
    };
 
@@ -200,6 +198,12 @@ namespace CPyCppyy {
 
    protected:
       Cppyy::TCppType_t fClass;
+   };
+
+   class TMoveCppObjectConverter : public TRefCppObjectConverter  {
+   public:
+      using TRefCppObjectConverter::TRefCppObjectConverter;
+      virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
    };
 
    template <bool ISREFERENCE>
