@@ -1444,6 +1444,9 @@ CPyCppyy::TConverter* CPyCppyy::CreateConverter( const std::string& fullType, Lo
       h = gConvFactories.find( "void*" );
    }
 
+   if ( ! result && cpd == "&&" )                  // unhandled moves
+      result = new TNotImplementedConverter();
+
    if ( ! result && h != gConvFactories.end() )
    // converter factory available, use it to create converter
       result = (h->second)( size );
