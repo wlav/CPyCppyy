@@ -110,7 +110,7 @@ static PyObject* pt_getattro(PyObject* pyclass, PyObject* pyname)
                         // Note: can't re-use Utility::AddClass here, as there's the risk of
                         // a recursive call. Simply add method directly, as we're guaranteed
                         // that it doesn't exist yet.
-                            attr = (PyObject*)MethodProxy_New(name.c_str(), overloads);
+                            attr = (PyObject*)MethodProxy_New(name, overloads);
                         }
                     }
 
@@ -121,15 +121,12 @@ static PyObject* pt_getattro(PyObject* pyclass, PyObject* pyname)
                     }
                 }
 
-            /* TODO: get rid of TClass usage
-               TClass* klass = TClass::GetClass( cppname );
            // function templates that have not been instantiated
-               if ( ! attr && klass ) {
-                  TFunctionTemplate* tmpl = klass->GetFunctionTemplate( name.c_str() );
-                  if ( tmpl )
-                     attr = (PyObject*)TemplateProxy_New( name, pyclass );
+               if (!attr && Cppyy::ExistsMethodTemplate(scope, name)) {
+                   attr = (PyObject*)TemplateProxy_New(name, name, pyclass);
                }
 
+           /*
            // enums types requested as type (rather than the constants)
                if ( ! attr && klass && klass->GetListOfEnums()->FindObject( name.c_str() ) ) {
                // special case; enum types; for now, pretend int

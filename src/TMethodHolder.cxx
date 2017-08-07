@@ -94,6 +94,7 @@ inline PyObject* CPyCppyy::TMethodHolder::CallFast( void* self, ptrdiff_t offset
       }
    */
 
+      PyErr_Format( PyExc_Exception, "%s (C++ exception)", e.what() );
       result = nullptr;
    } catch ( ... ) {
       PyErr_SetString( PyExc_Exception, "unhandled, unknown C++ exception" );

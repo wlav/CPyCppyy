@@ -1021,19 +1021,23 @@ Bool_t CPyCppyy::TMoveCppObjectConverter::SetArg(
         PyObject* pyobject, TParameter& para, TCallContext* ctxt)
 {
 // moving is same as by-ref, but have to check that move is allowed
-    bool moveit = false;
+    int moveit_reason = 0;
     if (pyobject->ob_refcnt == 1)
-         moveit = true;
+         moveit_reason = 1;
     else if (ObjectProxy_Check(pyobject)) {
         ObjectProxy* pyobj = (ObjectProxy*)pyobject;
         if (pyobj->fFlags & ObjectProxy::kIsRValue) {
             pyobj->fFlags &= ~ObjectProxy::kIsRValue;
-            moveit = true;
+            moveit_reason = 2;
         }
     }
 
-    if (moveit)
-        return this->TRefCppObjectConverter::SetArg(pyobject, para, ctxt);
+    if (moveit_reason) {
+        Bool_t result = this->TRefCppObjectConverter::SetArg(pyobject, para, ctxt);
+        if (!result && moveit_reason == 2)       // restore the movability flag?
+            ((ObjectProxy*)pyobject)->fFlags |= ObjectProxy::kIsRValue;
+        return result;
+    }
 
     PyErr_SetString(PyExc_TypeError, "object is not an rvalue");
     return kFALSE;      // not a temporary or movable object
