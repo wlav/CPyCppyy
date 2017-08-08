@@ -7,6 +7,7 @@
 #include "TFunctionHolder.h"
 #include "TemplateProxy.h"
 #include "PyStrings.h"
+#include "TypeManip.h"
 
 // Standard
 #include <string.h>
@@ -23,18 +24,25 @@ static PyObject* meta_alloc(PyTypeObject* metatype, Py_ssize_t nitems)
 }
 
 //----------------------------------------------------------------------------
-static void meta_dealloc(CPyCppyyClass* pytype)
+static void meta_dealloc(CPyCppyyClass* metatype)
 {
-    return PyType_Type.tp_dealloc((PyObject*)pytype);
-}
-
-//-----------------------------------------------------------------------------
-static PyObject* meta_getcppname(CPyCppyyClass* meta, void*)
-{
-    return CPyCppyy_PyUnicode_FromString(Cppyy::GetScopedFinalName(meta->fCppType).c_str());
+    return PyType_Type.tp_dealloc((PyObject*)metatype);
 }
 
 //----------------------------------------------------------------------------
+static PyObject* meta_repr(CPyCppyyClass* metatype)
+{
+// Specialized b/c type_repr expects __module__ to live in the dictionary,
+// whereas it is a property (to save memory).
+    std::string clName = Cppyy::GetScopedFinalName(metatype->fCppType);
+    TypeManip::cppscope_to_pyscope(clName);
+
+    return CPyCppyy_PyUnicode_FromFormat(
+        const_cast<char*>("<class cppyy.gbl.%s at %p>"), clName.c_str(), metatype);
+}
+
+
+//= CPyCppyy type metaclass behavior =========================================
 static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
 {
 // Called when CPyCppyyType acts as a metaclass; since type_new always resets
@@ -69,8 +77,7 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
     return (PyObject*)result;
 }
 
-
-//= CPyCppyy type metaclass behavior =========================================
+//----------------------------------------------------------------------------
 static PyObject* pt_getattro(PyObject* pyclass, PyObject* pyname)
 {
 // normal type-based lookup
@@ -175,6 +182,13 @@ static PyObject* pt_getattro(PyObject* pyclass, PyObject* pyname)
     return attr;
 }
 
+
+//-----------------------------------------------------------------------------
+static PyObject* meta_getcppname(CPyCppyyClass* meta, void*)
+{
+    return CPyCppyy_PyUnicode_FromString(Cppyy::GetScopedFinalName(meta->fCppType).c_str());
+}
+
 //-----------------------------------------------------------------------------
 static PyObject* meta_getmodule(CPyCppyyClass* meta, void*)
 {
@@ -184,12 +198,8 @@ static PyObject* meta_getmodule(CPyCppyyClass* meta, void*)
         return CPyCppyy_PyUnicode_FromString(const_cast<char*>("cppyy.gbl"));
 
     modname = modname.substr(0, pos);
+    TypeManip::cppscope_to_pyscope(modname);
 
-    pos = 0;
-    while ((pos = modname.find("::", pos)) != std::string::npos) {
-        modname.replace(pos, 2, ".");
-        pos += 1;
-    }
     return CPyCppyy_PyUnicode_FromString(("cppyy.gbl."+modname).c_str());
 }
 
@@ -212,7 +222,7 @@ PyTypeObject CPyCppyyType_Type = {
     0,                             // tp_getattr
     0,                             // tp_setattr
     0,                             // tp_compare
-    0,                             // tp_repr
+    (reprfunc)meta_repr,           // tp_repr
     0,                             // tp_as_number
     0,                             // tp_as_sequence
     0,                             // tp_as_mapping

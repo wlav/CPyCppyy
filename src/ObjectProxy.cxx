@@ -3,6 +3,7 @@
 #include "PyStrings.h"
 #include "ObjectProxy.h"
 #include "CPyCppyyHelpers.h"
+#include "TypeManip.h"
 #include "Utility.h"
 
 // Standard
@@ -179,11 +180,7 @@ static PyObject* op_repr(ObjectProxy* pyobj)
     if (pyobj->fFlags & ObjectProxy::kIsReference)
         clName.append( "*" );
 
-    std::string::size_type pos = 0;
-    while ((pos = clName.find("::", pos)) != std::string::npos) {
-        clName.replace(pos, 2, ".");
-        pos += 1;
-    }
+    TypeManip::cppscope_to_pyscope(clName);
 
     std::string smartPtrName;
     if (pyobj->fFlags & ObjectProxy::kIsSmartPtr) {

@@ -87,3 +87,14 @@ std::string CPyCppyy::TypeManip::clean_type(
     erase_const(name);
     return name;
 }
+
+//----------------------------------------------------------------------------
+void CPyCppyy::TypeManip::cppscope_to_pyscope(std::string& cppscope)
+{
+// Change '::' in C++ scope into '.' as in a Python scope.
+    std::string::size_type pos = 0;
+    while ((pos = cppscope.find("::", pos)) != std::string::npos) {
+        cppscope.replace(pos, 2, ".");
+        pos += 1;
+    }
+}
