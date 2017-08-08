@@ -1,7 +1,7 @@
 // Bindings
 #include "CPyCppyy.h"
 #include "PyStrings.h"
-#include "Executors.h"
+#include "DeclareExecutors.h"
 #include "ObjectProxy.h"
 #include "TPyBufferFactory.h"
 #include "TypeManip.h"
@@ -10,8 +10,9 @@
 
 // Standard
 #include <cstring>
-#include <utility>
+#include <map>
 #include <sstream>
+#include <utility>
 
 
 //- data ______________________________________________________________________
@@ -19,7 +20,7 @@ namespace CPyCppyy {
 
    typedef TExecutor* (*ExecutorFactory_t) ();
    typedef std::map< std::string, ExecutorFactory_t > ExecFactories_t;
-   ExecFactories_t gExecFactories;
+   static ExecFactories_t gExecFactories;
 
    extern PyObject* gNullPtrObject;
 }
@@ -43,7 +44,7 @@ namespace {
       }
    private:
       PyThreadState* fSave;
-      Bool_t fRelease;
+      bool fRelease;
    };
 
 } // unnamed namespace
@@ -95,7 +96,7 @@ static inline PyObject* CPyCppyy_PyUnicode_FromInt( Int_t c ) {
 }
 
 static inline PyObject* CPyCppyy_PyBool_FromInt( Int_t b ) {
-   PyObject* result = (Bool_t)b ? Py_True : Py_False;
+   PyObject* result = (bool)b ? Py_True : Py_False;
    Py_INCREF( result );
    return result;
 }
@@ -106,7 +107,7 @@ PyObject* CPyCppyy::TBoolExecutor::Execute(
       Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt )
 {
 // execute <method> with argument <self, ctxt>, construct python bool return value
-   Bool_t retval = GILCallB( method, self, ctxt );
+   bool retval = GILCallB( method, self, ctxt );
    PyObject* result = retval ? Py_True : Py_False;
    Py_INCREF( result );
    return result;
@@ -117,7 +118,7 @@ PyObject* CPyCppyy::TBoolConstRefExecutor::Execute(
       Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt )
 {
 // execute <method> with argument <self, ctxt>, construct python bool return value
-   return CPyCppyy_PyBool_FromInt( *((Bool_t*)GILCallR( method, self, ctxt )) );
+   return CPyCppyy_PyBool_FromInt( *((bool*)GILCallR( method, self, ctxt )) );
 }
 
 //-----------------------------------------------------------------------------
@@ -231,17 +232,17 @@ PyObject* CPyCppyy::TLongDoubleExecutor::Execute(
 }
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TRefExecutor::SetAssignable( PyObject* pyobject )
+bool CPyCppyy::TRefExecutor::SetAssignable( PyObject* pyobject )
 {
 // prepare "buffer" for by-ref returns, used with __setitem__
    if ( pyobject != 0 ) {
       Py_INCREF( pyobject );
       fAssignable = pyobject;
-      return kTRUE;
+      return true;
    }
 
    fAssignable = 0;
-   return kFALSE;
+   return false;
 }
 
 //-----------------------------------------------------------------------------
@@ -261,7 +262,7 @@ PyObject* CPyCppyy::T##name##RefExecutor::Execute(                             \
    }                                                                         \
 }
 
-CPYCPPYY_IMPLEMENT_BASIC_REFEXECUTOR( Bool,   Bool_t,   Long_t,   CPyCppyy_PyBool_FromInt,    PyLong_AsLong )
+CPYCPPYY_IMPLEMENT_BASIC_REFEXECUTOR( Bool,   bool,   Long_t,   CPyCppyy_PyBool_FromInt,    PyLong_AsLong )
 CPYCPPYY_IMPLEMENT_BASIC_REFEXECUTOR( Char,   Char_t,   Long_t,   CPyCppyy_PyUnicode_FromInt, PyLong_AsLong )
 CPYCPPYY_IMPLEMENT_BASIC_REFEXECUTOR( UChar,  UChar_t,  ULong_t,  CPyCppyy_PyUnicode_FromInt, PyLongOrInt_AsULong )
 CPYCPPYY_IMPLEMENT_BASIC_REFEXECUTOR( Short,  Short_t,  Long_t,   PyInt_FromLong,     PyLong_AsLong )
@@ -295,8 +296,7 @@ PyObject* CPyCppyy::TSTLStringRefExecutor::Execute(
       Py_DECREF( fAssignable );
       fAssignable = 0;
 
-      Py_INCREF( Py_None );
-      return Py_None;
+      Py_RETURN_NONE;
    }
 }
 
@@ -306,8 +306,7 @@ PyObject* CPyCppyy::TVoidExecutor::Execute(
 {
 // execute <method> with argument <self, ctxt>, return None
    GILCallV( method, self, ctxt );
-   Py_INCREF( Py_None );
-   return Py_None;
+   Py_RETURN_NONE;
 }
 
 //-----------------------------------------------------------------------------
@@ -346,7 +345,7 @@ PyObject* CPyCppyy::T##name##ArrayExecutor::Execute(                           \
    return BufFac_t::Instance()->PyBuffer_FromMemory( (type*)GILCallR( method, self, ctxt ) );\
 }
 
-CPYCPPYY_IMPLEMENT_ARRAY_EXECUTOR( Bool,   Bool_t )
+CPYCPPYY_IMPLEMENT_ARRAY_EXECUTOR( Bool,   bool )
 CPYCPPYY_IMPLEMENT_ARRAY_EXECUTOR( Short,  Short_t )
 CPYCPPYY_IMPLEMENT_ARRAY_EXECUTOR( UShort, UShort_t )
 CPYCPPYY_IMPLEMENT_ARRAY_EXECUTOR( Int,    Int_t )
@@ -400,7 +399,7 @@ PyObject* CPyCppyy::TCppObjectByValueExecutor::Execute(
    }
 
 // the result can then be bound
-   ObjectProxy* pyobj = (ObjectProxy*)BindCppObjectNoCast( value, fClass, kFALSE, kTRUE );
+   ObjectProxy* pyobj = (ObjectProxy*)BindCppObjectNoCast( value, fClass, false, true );
    if ( ! pyobj )
       return 0;
 
@@ -443,8 +442,7 @@ PyObject* CPyCppyy::TCppObjectRefExecutor::Execute(
 
       if ( res2 ) {
          Py_DECREF( res2 );             // typically, *this from operator=()
-         Py_INCREF( Py_None );
-         return Py_None;
+         Py_RETURN_NONE;
       }
 
       return 0;
@@ -457,7 +455,7 @@ PyObject* CPyCppyy::TCppObjectPtrPtrExecutor::Execute(
 {
 // execute <method> with argument <self, ctxt>, construct python C++ proxy object
 // return ptr value
-   return BindCppObject( (void*)GILCallR( method, self, ctxt ), fClass, kTRUE );
+   return BindCppObject( (void*)GILCallR( method, self, ctxt ), fClass, true );
 }
 
 //-----------------------------------------------------------------------------
@@ -466,7 +464,7 @@ PyObject* CPyCppyy::TCppObjectPtrRefExecutor::Execute(
 {
 // execute <method> with argument <self, ctxt>, construct python C++ proxy object
 // ignoring ref) return ptr value
-   return BindCppObject( *(void**)GILCallR( method, self, ctxt ), fClass, kFALSE );
+   return BindCppObject( *(void**)GILCallR( method, self, ctxt ), fClass, false );
 }
 
 
@@ -562,8 +560,7 @@ PyObject* CPyCppyy::TCppObjectBySmartPtrRefExecutor::Execute(
 
       if ( res2 ) {
          Py_DECREF( res2 );             // typically, *this from operator=()
-         Py_INCREF( Py_None );
-         return Py_None;
+         Py_RETURN_NONE;
       }
 
       return 0;
@@ -601,7 +598,7 @@ PyObject* CPyCppyy::TPyObjectExecutor::Execute(
 
 //- factories -----------------------------------------------------------------
 CPyCppyy::TExecutor* CPyCppyy::CreateExecutor(
-      const std::string& fullType, Bool_t manage_smart_ptr )
+      const std::string& fullType, bool manage_smart_ptr )
 {
 // The matching of the fulltype to an executor factory goes through up to 4 levels:
 //   1) full, qualified match
@@ -712,10 +709,10 @@ CPyCppyy::TExecutor* CPyCppyy::CreateExecutor(
 ////////////////////////////////////////////////////////////////////////////////
 
 //-----------------------------------------------------------------------------
-#define CPYCPPYY_EXECUTOR_FACTORY( name )                \
-TExecutor* Create##name##Executor()                    \
+#define CPYCPPYY_EXECUTOR_FACTORY(name)                \
+static TExecutor* Create##name##Executor()             \
 {                                                      \
-   return new T##name##Executor;                       \
+    return new T##name##Executor;                      \
 }
 
 namespace {
@@ -772,7 +769,7 @@ namespace {
 // executor factories for C++ types
    typedef std::pair< const char*, ExecutorFactory_t > NFp_t;
 
-   NFp_t factories_[] = {
+   static NFp_t factories_[] = {
    // factories for built-ins
       NFp_t( "bool",               &CreateBoolExecutor                ),
       NFp_t( "bool&",              &CreateBoolRefExecutor             ),
@@ -847,7 +844,7 @@ namespace {
       NFp_t( "FILE*",              &CreateVoidArrayExecutor           )
    };
 
-   struct InitExecFactories_t {
+   static struct InitExecFactories_t {
    public:
       InitExecFactories_t()
       {

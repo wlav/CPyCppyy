@@ -80,14 +80,14 @@ namespace CPyCppyy {
 
 
 //- static public members ----------------------------------------------------
-Bool_t TPython::Initialize()
+bool TPython::Initialize()
 {
 // Private initialization method: setup the python interpreter and load the
 // cppyy module.
 
-   static Bool_t isInitialized = kFALSE;
+   static bool isInitialized = false;
    if ( isInitialized )
-      return kTRUE;
+      return true;
 
    if ( ! Py_IsInitialized() ) {
    // this happens if Cling comes in first
@@ -103,7 +103,7 @@ Bool_t TPython::Initialize()
       if ( ! Py_IsInitialized() ) {
       // give up ...
          std::cerr << "Error: python has not been intialized; returning." << std::endl;
-         return kFALSE;
+         return false;
       }
 
    // set the command line arguments on python's sys.argv
@@ -126,24 +126,24 @@ Bool_t TPython::Initialize()
    }
 
 // declare success ...
-   isInitialized = kTRUE;
-   return kTRUE;
+   isInitialized = true;
+   return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Import the named python module and create Cling equivalents for its classes
 /// and methods.
 
-Bool_t TPython::Import( const char* mod_name )
+bool TPython::Import( const char* mod_name )
 {
 // setup
    if ( ! Initialize() )
-      return kFALSE;
+      return false;
 
    PyObject* mod = PyImport_ImportModule( mod_name );
    if ( ! mod ) {
       PyErr_Print();
-      return kFALSE;
+      return false;
    }
 
 // allow finding to prevent creation of a python proxy for the C++ proxy
@@ -152,7 +152,7 @@ Bool_t TPython::Import( const char* mod_name )
 
 // force creation of the module as a namespace
 // TODO: the following is broken (and should live in Cppyy.cxx)
-//   TClass::GetClass( mod_name, kTRUE );
+//   TClass::GetClass( mod_name, true );
 
    PyObject* dct = PyModule_GetDict( mod );
 
@@ -176,7 +176,7 @@ Bool_t TPython::Import( const char* mod_name )
 
       // force class creation (this will eventually call TPyClassGenerator)
       // TODO: the following is broken (and should live in Cppyy.cxx) to
-      //         TClass::GetClass( fullname.c_str(), kTRUE );
+      //         TClass::GetClass( fullname.c_str(), true );
 
          Py_XDECREF( pyClName );
       }
@@ -188,8 +188,8 @@ Bool_t TPython::Import( const char* mod_name )
 
 // TODO: mod "leaks" here
    if ( PyErr_Occurred() )
-      return kFALSE;
-   return kTRUE;
+      return false;
+   return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -246,7 +246,7 @@ void TPython::LoadMacro( const char* name )
 
             // force class creation (this will eventually call TPyClassGenerator)
             // the following is broken (and should live in Cppyy.cxx)
-            //TClass::GetClass( fullname.c_str(), kTRUE );
+            //TClass::GetClass( fullname.c_str(), true );
             }
 
             Py_XDECREF( pyClName );
@@ -336,11 +336,11 @@ void TPython::ExecScript( const char* name, int argc, const char**
 ////////////////////////////////////////////////////////////////////////////////
 /// Execute a python statement (e.g. "import noddy").
 
-Bool_t TPython::Exec( const char* cmd )
+bool TPython::Exec( const char* cmd )
 {
 // setup
    if ( ! Initialize() )
-      return kFALSE;
+      return false;
 
 // execute the command
    PyObject* result =
@@ -349,11 +349,11 @@ Bool_t TPython::Exec( const char* cmd )
 // test for error
    if ( result ) {
       Py_DECREF( result );
-      return kTRUE;
+      return true;
    }
 
    PyErr_Print();
-   return kFALSE;
+   return false;
 }
 
 
@@ -422,11 +422,11 @@ const TPyReturn TPython::Eval( const char* expr )
 
 #if 0
 // TODO: see whether this still makes sense
-Bool_t TPython::Bind( TObject* object, const char* label )
+bool TPython::Bind( TObject* object, const char* label )
 {
 // check given address and setup
    if ( ! ( object && Initialize() ) )
-      return kFALSE;
+      return false;
 
 // bind object in the main namespace
    TClass* klass = object->IsA();
@@ -434,14 +434,14 @@ Bool_t TPython::Bind( TObject* object, const char* label )
       PyObject* bound = CPyCppyy::BindCppObject( (void*)object, klass->GetName() );
 
       if ( bound ) {
-         Bool_t bOk = PyDict_SetItemString( gMainDict, const_cast< char* >( label ), bound ) == 0;
+         bool bOk = PyDict_SetItemString( gMainDict, const_cast< char* >( label ), bound ) == 0;
          Py_DECREF( bound );
 
          return bOk;
       }
    }
 
-   return kFALSE;
+   return false;
 }
 #endif
 
@@ -463,11 +463,11 @@ void TPython::Prompt() {
 /// Test whether the type of the given pyobject is of ObjectProxy type or any
 /// derived type.
 
-Bool_t TPython::ObjectProxy_Check( PyObject* pyobject )
+bool TPython::ObjectProxy_Check( PyObject* pyobject )
 {
 // setup
    if ( ! Initialize() )
-      return kFALSE;
+      return false;
 
 // detailed walk through inheritance hierarchy
    return CPyCppyy::ObjectProxy_Check( pyobject );
@@ -476,11 +476,11 @@ Bool_t TPython::ObjectProxy_Check( PyObject* pyobject )
 ////////////////////////////////////////////////////////////////////////////////
 /// Test whether the type of the given pyobject is ObjectProxy type.
 
-Bool_t TPython::ObjectProxy_CheckExact( PyObject* pyobject )
+bool TPython::ObjectProxy_CheckExact( PyObject* pyobject )
 {
 // setup
    if ( ! Initialize() )
-      return kFALSE;
+      return false;
 
 // direct pointer comparison of type member
    return CPyCppyy::ObjectProxy_CheckExact( pyobject );
@@ -490,11 +490,11 @@ Bool_t TPython::ObjectProxy_CheckExact( PyObject* pyobject )
 /// Test whether the type of the given pyobject is of MethodProxy type or any
 /// derived type.
 
-Bool_t TPython::MethodProxy_Check( PyObject* pyobject )
+bool TPython::MethodProxy_Check( PyObject* pyobject )
 {
 // setup
    if ( ! Initialize() )
-      return kFALSE;
+      return false;
 
 // detailed walk through inheritance hierarchy
    return CPyCppyy::MethodProxy_Check( pyobject );
@@ -503,11 +503,11 @@ Bool_t TPython::MethodProxy_Check( PyObject* pyobject )
 ////////////////////////////////////////////////////////////////////////////////
 /// Test whether the type of the given pyobject is MethodProxy type.
 
-Bool_t TPython::MethodProxy_CheckExact( PyObject* pyobject )
+bool TPython::MethodProxy_CheckExact( PyObject* pyobject )
 {
 // setup
    if ( ! Initialize() )
-      return kFALSE;
+      return false;
 
 // direct pointer comparison of type member
    return CPyCppyy::MethodProxy_CheckExact( pyobject );
@@ -534,14 +534,14 @@ void* TPython::ObjectProxy_AsVoidPtr( PyObject* pyobject )
 /// Bind the addr to a python object of class defined by classname.
 
 PyObject* TPython::ObjectProxy_FromVoidPtr(
-   void* addr, const char* classname, Bool_t python_owns )
+   void* addr, const char* classname, bool python_owns )
 {
 // setup
    if ( ! Initialize() )
       return 0;
 
 // perform cast (the call will check TClass and addr, and set python errors)
-   PyObject* pyobject = CPyCppyy::BindCppObjectNoCast( addr, Cppyy::GetScope( classname ), kFALSE );
+   PyObject* pyobject = CPyCppyy::BindCppObjectNoCast( addr, Cppyy::GetScope( classname ), false );
 
 // give ownership, for ref-counting, to the python side, if so requested
    if ( python_owns && CPyCppyy::ObjectProxy_Check( pyobject ) )

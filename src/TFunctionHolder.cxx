@@ -49,10 +49,10 @@ PyObject* CPyCppyy::TFunctionHolder::Call(
       return 0;
 
 // translate the arguments
-   Bool_t bConvertOk = this->ConvertAndSetArgs( args, ctxt );
+   bool bConvertOk = this->ConvertAndSetArgs( args, ctxt );
    Py_DECREF( args );
 
-   if ( bConvertOk == kFALSE )
+   if ( bConvertOk == false )
       return 0;                              // important: 0, not Py_None
 
 // execute function

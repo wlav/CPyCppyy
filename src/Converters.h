@@ -17,22 +17,22 @@ namespace CPyCppyy {
       virtual ~TConverter() {}
 
    public:
-      virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 ) = 0;
+      virtual bool SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 ) = 0;
       virtual PyObject* FromMemory( void* address );
-      virtual Bool_t ToMemory( PyObject* value, void* address );
+      virtual bool ToMemory( PyObject* value, void* address );
    };
 
 #define CPYCPPYY_DECLARE_BASIC_CONVERTER( name )                                \
    class T##name##Converter : public TConverter {                             \
    public:                                                                    \
-      virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );\
+      virtual bool SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );\
       virtual PyObject* FromMemory( void* );                                  \
-      virtual Bool_t ToMemory( PyObject*, void* );                            \
+      virtual bool ToMemory( PyObject*, void* );                            \
    };                                                                         \
                                                                               \
    class TConst##name##RefConverter : public TConverter {                     \
    public:                                                                    \
-      virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );\
+      virtual bool SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );\
    }
 
 
@@ -40,27 +40,27 @@ namespace CPyCppyy {
    class T##name##Converter : public T##base##Converter {                     \
    public:                                                                    \
       virtual PyObject* FromMemory( void* );                                  \
-      virtual Bool_t ToMemory( PyObject*, void* );                            \
+      virtual bool ToMemory( PyObject*, void* );                            \
    };                                                                         \
                                                                               \
    class TConst##name##RefConverter : public TConverter {                     \
    public:                                                                    \
-      virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );\
+      virtual bool SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );\
    }
 
 #define CPYCPPYY_DECLARE_REF_CONVERTER( name )                                  \
    class T##name##RefConverter : public TConverter {                          \
    public:                                                                    \
-      virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );\
+      virtual bool SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );\
    };
 
 #define CPYCPPYY_DECLARE_ARRAY_CONVERTER( name )                                \
    class T##name##Converter : public TConverter {                             \
    public:                                                                    \
       T##name##Converter( Py_ssize_t size = -1 ) { fSize = size; }            \
-      virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );\
+      virtual bool SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );\
       virtual PyObject* FromMemory( void* );                                  \
-      virtual Bool_t ToMemory( PyObject*, void* );                            \
+      virtual bool ToMemory( PyObject*, void* );                            \
    private:                                                                   \
       Py_ssize_t fSize;                                                       \
    };                                                                         \
@@ -68,7 +68,7 @@ namespace CPyCppyy {
    class T##name##RefConverter : public T##name##Converter {                  \
    public:                                                                    \
       using T##name##Converter::T##name##Converter;                           \
-      virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );\
+      virtual bool SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );\
    }
 
 // converters for built-ins
@@ -93,7 +93,7 @@ namespace CPyCppyy {
 
    class TVoidConverter : public TConverter {
    public:
-      virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
+      virtual bool SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
    };
 
    class TCStringConverter : public TConverter {
@@ -101,9 +101,9 @@ namespace CPyCppyy {
       TCStringConverter( UInt_t maxSize = UINT_MAX ) : fMaxSize( maxSize ) {}
 
    public:
-      virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
+      virtual bool SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
       virtual PyObject* FromMemory( void* address );
-      virtual Bool_t ToMemory( PyObject* value, void* address );
+      virtual bool ToMemory( PyObject* value, void* address );
 
    protected:
       std::string fBuffer;
@@ -115,7 +115,7 @@ namespace CPyCppyy {
       TNonConstCStringConverter( UInt_t maxSize = UINT_MAX ) : TCStringConverter( maxSize ) {}
 
    public:
-      virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
+      virtual bool SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
       virtual PyObject* FromMemory( void* address );
    };
 
@@ -124,25 +124,25 @@ namespace CPyCppyy {
       TNonConstUCStringConverter( UInt_t maxSize = UINT_MAX ) : TNonConstCStringConverter( maxSize ) {}
 
    public:
-      virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
+      virtual bool SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
    };
 
 // pointer/array conversions
    class TVoidArrayConverter : public TConverter {
    public:
-      TVoidArrayConverter( Bool_t keepControl = kTRUE ) { fKeepControl = keepControl; }
-      virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
+      TVoidArrayConverter( bool keepControl = true ) { fKeepControl = keepControl; }
+      virtual bool SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
       virtual PyObject* FromMemory( void* address );
-      virtual Bool_t ToMemory( PyObject* value, void* address );
+      virtual bool ToMemory( PyObject* value, void* address );
 
    protected:
-      virtual Bool_t GetAddressSpecialCase( PyObject* pyobject, void*& address );
+      virtual bool GetAddressSpecialCase( PyObject* pyobject, void*& address );
 
    protected:
-      Bool_t KeepControl() { return fKeepControl; }
+      bool KeepControl() { return fKeepControl; }
 
    private:
-      Bool_t fKeepControl;
+      bool fKeepControl;
    };
 
    CPYCPPYY_DECLARE_ARRAY_CONVERTER( BoolArray );
@@ -157,19 +157,19 @@ namespace CPyCppyy {
 
    class TLongLongArrayConverter : public TVoidArrayConverter {
    public:
-      virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
+      virtual bool SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
    };
 
 // converters for special cases
    class TCppObjectConverter : public TVoidArrayConverter {
    public:
-      TCppObjectConverter( Cppyy::TCppType_t klass, Bool_t keepControl = kFALSE ) :
+      TCppObjectConverter( Cppyy::TCppType_t klass, bool keepControl = false ) :
          TVoidArrayConverter( keepControl ), fClass( klass ) {}
 
    public:
-      virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
+      virtual bool SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
       virtual PyObject* FromMemory( void* address );
-      virtual Bool_t ToMemory( PyObject* value, void* address );
+      virtual bool ToMemory( PyObject* value, void* address );
 
    protected:
       Cppyy::TCppType_t fClass;
@@ -180,13 +180,13 @@ namespace CPyCppyy {
       using TCppObjectConverter::TCppObjectConverter;
 
    protected:
-      virtual Bool_t GetAddressSpecialCase( PyObject*, void*& ) { return kFALSE; }
+      virtual bool GetAddressSpecialCase( PyObject*, void*& ) { return false; }
    };
 
    class TValueCppObjectConverter : public TStrictCppObjectConverter {
    public:
       using TStrictCppObjectConverter::TStrictCppObjectConverter;
-      virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
+      virtual bool SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
    };
 
    class TRefCppObjectConverter : public TConverter  {
@@ -194,7 +194,7 @@ namespace CPyCppyy {
       TRefCppObjectConverter( Cppyy::TCppType_t klass ) : fClass( klass ) {}
 
    public:
-      virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
+      virtual bool SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
 
    protected:
       Cppyy::TCppType_t fClass;
@@ -203,7 +203,7 @@ namespace CPyCppyy {
    class TMoveCppObjectConverter : public TRefCppObjectConverter  {
    public:
       using TRefCppObjectConverter::TRefCppObjectConverter;
-      virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
+      virtual bool SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
    };
 
    template <bool ISREFERENCE>
@@ -212,9 +212,9 @@ namespace CPyCppyy {
       using TCppObjectConverter::TCppObjectConverter;
 
    public:
-      virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
+      virtual bool SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
       virtual PyObject* FromMemory( void* address );
-      virtual Bool_t ToMemory( PyObject* value, void* address );
+      virtual bool ToMemory( PyObject* value, void* address );
    };
 
    extern template class TCppObjectPtrConverter<true>;
@@ -222,13 +222,13 @@ namespace CPyCppyy {
 
    class TCppObjectArrayConverter : public TCppObjectConverter {
    public:
-      TCppObjectArrayConverter( Cppyy::TCppType_t klass, size_t size, Bool_t keepControl = kFALSE ) :
+      TCppObjectArrayConverter( Cppyy::TCppType_t klass, size_t size, bool keepControl = false ) :
          TCppObjectConverter( klass, keepControl ), m_size( size ) {}
 
    public:
-      virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
+      virtual bool SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
       virtual PyObject* FromMemory( void* address );
-      virtual Bool_t ToMemory( PyObject* value, void* address );
+      virtual bool ToMemory( PyObject* value, void* address );
 
    protected:
       size_t m_size;
@@ -238,18 +238,18 @@ namespace CPyCppyy {
 // they come in a bazillion different guises, so just do whatever
    class TSTLIteratorConverter : public TConverter {
    public:
-      virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
+      virtual bool SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
    };
 // -- END CLING WORKAROUND
 
    class TVoidPtrRefConverter : public TConverter {
    public:
-      virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
+      virtual bool SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
    };
 
    class TVoidPtrPtrConverter : public TConverter {
    public:
-      virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
+      virtual bool SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
       virtual PyObject* FromMemory( void* address );
    };
 
@@ -258,11 +258,11 @@ namespace CPyCppyy {
 #define CPYCPPYY_DECLARE_STRING_CONVERTER( name, strtype )                      \
    class T##name##Converter : public TCppObjectConverter {                    \
    public:                                                                    \
-      T##name##Converter( Bool_t keepControl = kTRUE );                       \
+      T##name##Converter( bool keepControl = true );                       \
    public:                                                                    \
-      virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );\
+      virtual bool SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );\
       virtual PyObject* FromMemory( void* address );                          \
-      virtual Bool_t ToMemory( PyObject* value, void* address );              \
+      virtual bool ToMemory( PyObject* value, void* address );              \
    private:                                                                   \
       strtype fBuffer;                                                        \
    }
@@ -274,7 +274,7 @@ namespace CPyCppyy {
 
    class TNotImplementedConverter : public TConverter {
    public:
-      virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* = 0 );
+      virtual bool SetArg( PyObject*, TParameter&, TCallContext* = 0 );
    };
 
 // smart pointer converter
@@ -283,24 +283,24 @@ namespace CPyCppyy {
       TSmartPtrCppObjectConverter( Cppyy::TCppType_t klass,
                                    Cppyy::TCppType_t rawPtrType,
                                    Cppyy::TCppMethod_t deref,
-                                   Bool_t keepControl = kFALSE,
-                                   Bool_t handlePtr = kFALSE )
+                                   bool keepControl = false,
+                                   bool handlePtr = false )
          : fClass( klass ), fRawPtrType( rawPtrType ), fDereferencer( deref ),
            fKeepControl( keepControl ), fHandlePtr( handlePtr ) {}
 
    public:
-      virtual Bool_t SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
+      virtual bool SetArg( PyObject*, TParameter&, TCallContext* ctxt = 0 );
       virtual PyObject* FromMemory( void* address );
-      //virtual Bool_t ToMemory( PyObject* value, void* address );
+      //virtual bool ToMemory( PyObject* value, void* address );
 
    protected:
-      virtual Bool_t GetAddressSpecialCase( PyObject*, void*& ) { return kFALSE; }
+      virtual bool GetAddressSpecialCase( PyObject*, void*& ) { return false; }
 
       Cppyy::TCppType_t   fClass;
       Cppyy::TCppType_t   fRawPtrType;
       Cppyy::TCppMethod_t fDereferencer;
-      Bool_t              fKeepControl;
-      Bool_t              fHandlePtr;
+      bool                fKeepControl;
+      bool                fHandlePtr;
    };
 
 // create converter from fully qualified type

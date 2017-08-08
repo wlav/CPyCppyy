@@ -154,7 +154,7 @@ namespace {
       return 0;                                                              \
    }
 
-   CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS( Bool,   Bool_t,   Long_t,   PyBool_FromLong, PyInt_AsLong )
+   CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS( Bool,   bool,   Long_t,   PyBool_FromLong, PyInt_AsLong )
    CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS( Short,  Short_t,  Long_t,   PyInt_FromLong, PyInt_AsLong )
    CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS( UShort, UShort_t, Long_t,   PyInt_FromLong, PyInt_AsLong )
    CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS( Int,    Int_t,    Long_t,   PyInt_FromLong, PyInt_AsLong )
@@ -193,8 +193,7 @@ namespace {
       PyMemoryView_GET_BUFFER(self)->len = nlen * PyMemoryView_GET_BUFFER(self)->itemsize;
 #endif 
 
-      Py_INCREF( Py_None );
-      return Py_None;
+      Py_RETURN_NONE;
    }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -274,7 +273,7 @@ CPyCppyy::TPyBufferFactory* CPyCppyy::TPyBufferFactory::Instance()
 CPyCppyy::TPyBufferFactory::TPyBufferFactory()
 {
 // construct python buffer types
-   CPYCPPYY_INSTALL_PYBUFFER_METHODS( Bool,   Bool_t )
+   CPYCPPYY_INSTALL_PYBUFFER_METHODS( Bool,   bool )
    CPYCPPYY_INSTALL_PYBUFFER_METHODS( Short,  Short_t )
    CPYCPPYY_INSTALL_PYBUFFER_METHODS( UShort, UShort_t )
    CPYCPPYY_INSTALL_PYBUFFER_METHODS( Int,    Int_t )
@@ -334,7 +333,7 @@ PyObject* CPyCppyy::TPyBufferFactory::PyBuffer_FromMemory( type* address, PyObje
    return buf;                                                                  \
 }
 
-CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY( Bool,   Bool_t )
+CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY( Bool,   bool )
 CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY( Short,  Short_t )
 CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY( UShort, UShort_t )
 CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY( Int,    Int_t )

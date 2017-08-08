@@ -48,9 +48,7 @@ void CPyCppyy::op_dealloc_nofree(ObjectProxy* pyobj) {
 }
 
 
-namespace {
-
-using namespace CPyCppyy;
+namespace CPyCppyy {
 
 //= CPyCppyy object proxy null-ness checking =================================
 static PyObject* op_nonzero(ObjectProxy* self)
@@ -69,8 +67,7 @@ static PyObject* op_destruct(ObjectProxy* self)
 // the C++ destructor is called. This method requires that the C++ object
 // is owned (no-op otherwise).
     op_dealloc_nofree(self);
-    Py_INCREF(Py_None);
-    return Py_None;
+    Py_RETURN_NONE;
 }
 
 //= CPyCppyy object dispatch support =========================================
@@ -154,7 +151,7 @@ static PyObject* op_richcompare(ObjectProxy* self, ObjectProxy* other, int op)
         return Py_NotImplemented;
     }
 
-    Bool_t bIsEq = false;
+    bool bIsEq = false;
 
 // special case for None to compare True to a null-pointer
     if ((PyObject*)other == Py_None && ! self->fObject)
@@ -166,12 +163,10 @@ static PyObject* op_richcompare(ObjectProxy* self, ObjectProxy* other, int op)
         bIsEq = true;
 
     if ((op == Py_EQ && bIsEq) || (op == Py_NE && !bIsEq)) {
-        Py_INCREF(Py_True);
-        return Py_True;
+        Py_RETURN_TRUE;
     }
 
-    Py_INCREF(Py_False);
-    return Py_False;
+    Py_RETURN_FALSE;
 }
 
 //----------------------------------------------------------------------------
@@ -204,27 +199,27 @@ static PyObject* op_repr(ObjectProxy* pyobj)
         const_cast<char*>("<cppyy.gbl.%s object at %p>"), clName.c_str(), pyobj->GetObject());
 }
 
-//= CPyCppyy type number stubs to allow dynamic overrides ====================
-#define CPYCPPYY_STUB(name, op, pystring)                                    \
-static PyObject* op_##name##_stub(PyObject* left, PyObject* right)           \
-{                                                                            \
-   if (!ObjectProxy_Check(left)) {                                           \
-       if (ObjectProxy_Check(right)) {                                       \
-           std::swap(left, right);                                           \
-       } else {                                                              \
-           Py_INCREF(Py_NotImplemented);                                     \
-           return Py_NotImplemented;                                         \
-       }                                                                     \
-   }                                                                         \
+//= CPyCppyy type number stubs to allow dynamic overrides =====================
+#define CPYCPPYY_STUB(name, op, pystring)                                     \
+static PyObject* op_##name##_stub(PyObject* left, PyObject* right)            \
+{                                                                             \
+    if (!ObjectProxy_Check(left)) {                                           \
+        if (ObjectProxy_Check(right)) {                                       \
+            std::swap(left, right);                                           \
+        } else {                                                              \
+            Py_INCREF(Py_NotImplemented);                                     \
+            return Py_NotImplemented;                                         \
+        }                                                                     \
+    }                                                                         \
 /* place holder to lazily install __name__ if a global overload is available */\
-   if (!Utility::AddBinaryOperator(                                          \
-           left, right, #op, "__"#name"__", "__r"#name"__")) {               \
-       Py_INCREF(Py_NotImplemented);                                         \
-       return Py_NotImplemented;                                             \
-   }                                                                         \
-                                                                             \
-/* redo the call, which will now go to the newly installed method */         \
-   return PyObject_CallMethodObjArgs(left, pystring, right, nullptr);        \
+    if (!Utility::AddBinaryOperator(                                          \
+            left, right, #op, "__"#name"__", "__r"#name"__")) {               \
+        Py_INCREF(Py_NotImplemented);                                         \
+        return Py_NotImplemented;                                             \
+    }                                                                         \
+                                                                              \
+/* redo the call, which will now go to the newly installed method */          \
+    return PyObject_CallMethodObjArgs(left, pystring, right, nullptr);        \
 }
 
 CPYCPPYY_STUB(add, +, PyStrings::gAdd)
@@ -232,131 +227,128 @@ CPYCPPYY_STUB(sub, -, PyStrings::gSub)
 CPYCPPYY_STUB(mul, *, PyStrings::gMul)
 CPYCPPYY_STUB(div, /, PyStrings::gDiv)
 
-//----------------------------------------------------------------------------
-   PyNumberMethods op_as_number = {
-      (binaryfunc)op_add_stub,        // nb_add
-      (binaryfunc)op_sub_stub,        // nb_subtract
-      (binaryfunc)op_mul_stub,        // nb_multiply
+//-----------------------------------------------------------------------------
+PyNumberMethods op_as_number = {
+    (binaryfunc)op_add_stub,       // nb_add
+    (binaryfunc)op_sub_stub,       // nb_subtract
+    (binaryfunc)op_mul_stub,       // nb_multiply
 #if PY_VERSION_HEX < 0x03000000
-      (binaryfunc)op_div_stub,        // nb_divide
+    (binaryfunc)op_div_stub,       // nb_divide
 #endif
-      0,                              // nb_remainder
-      0,                              // nb_divmod
-      0,                              // nb_power
-      0,                              // nb_negative
-      0,                              // nb_positive
-      0,                              // nb_absolute
-      0,                              // tp_nonzero (nb_bool in p3)
-      0,                              // nb_invert
-      0,                              // nb_lshift
-      0,                              // nb_rshift
-      0,                              // nb_and
-      0,                              // nb_xor
-      0,                              // nb_or
+    0,                             // nb_remainder
+    0,                             // nb_divmod
+    0,                             // nb_power
+    0,                             // nb_negative
+    0,                             // nb_positive
+    0,                             // nb_absolute
+    0,                             // tp_nonzero (nb_bool in p3)
+    0,                             // nb_invert
+    0,                             // nb_lshift
+    0,                             // nb_rshift
+    0,                             // nb_and
+    0,                             // nb_xor
+    0,                             // nb_or
 #if PY_VERSION_HEX < 0x03000000
-      0,                              // nb_coerce
+    0,                             // nb_coerce
 #endif
-      0,                              // nb_int
-      0,                              // nb_long (nb_reserved in p3)
-      0,                              // nb_float
+    0,                             // nb_int
+    0,                             // nb_long (nb_reserved in p3)
+    0,                             // nb_float
 #if PY_VERSION_HEX < 0x03000000
-      0,                              // nb_oct
-      0,                              // nb_hex
+    0,                             // nb_oct
+    0,                             // nb_hex
 #endif
-      0,                              // nb_inplace_add
-      0,                              // nb_inplace_subtract
-      0,                              // nb_inplace_multiply
+    0,                             // nb_inplace_add
+    0,                             // nb_inplace_subtract
+    0,                             // nb_inplace_multiply
 #if PY_VERSION_HEX < 0x03000000
-      0,                              // nb_inplace_divide
+    0,                             // nb_inplace_divide
 #endif
-      0,                              // nb_inplace_remainder
-      0,                              // nb_inplace_power
-      0,                              // nb_inplace_lshift
-      0,                              // nb_inplace_rshift
-      0,                              // nb_inplace_and
-      0,                              // nb_inplace_xor
-      0                               // nb_inplace_or
+    0,                             // nb_inplace_remainder
+    0,                             // nb_inplace_power
+    0,                             // nb_inplace_lshift
+    0,                             // nb_inplace_rshift
+    0,                             // nb_inplace_and
+    0,                             // nb_inplace_xor
+    0                              // nb_inplace_or
 #if PY_VERSION_HEX >= 0x02020000
-      , 0                             // nb_floor_divide
+    , 0                            // nb_floor_divide
 #if PY_VERSION_HEX < 0x03000000
-      , 0                             // nb_true_divide
+    , 0                            // nb_true_divide
 #else
-      , (binaryfunc)op_div_stub       // nb_true_divide
+    , (binaryfunc)op_div_stub      // nb_true_divide
 #endif
-      , 0                             // nb_inplace_floor_divide
-      , 0                             // nb_inplace_true_divide
+    , 0                            // nb_inplace_floor_divide
+    , 0                            // nb_inplace_true_divide
 #endif
 #if PY_VERSION_HEX >= 0x02050000
-      , 0                             // nb_index
+    , 0                            // nb_index
 #endif
 #if PY_VERSION_HEX >= 0x03050000
-      , 0                             // nb_matrix_multiply
-      , 0                             // nb_inplace_matrix_multiply
+    , 0                            // nb_matrix_multiply
+    , 0                            // nb_inplace_matrix_multiply
 #endif
-   };
+};
 
-} // unnamed namespace
-
-namespace CPyCppyy {
 
 //= CPyCppyy object proxy type ===============================================
 PyTypeObject ObjectProxy_Type = {
-   PyVarObject_HEAD_INIT( &CPyCppyyType_Type, 0 )
-   (char*)"cppyy.ObjectProxy",// tp_name
-   sizeof(ObjectProxy),       // tp_basicsize
-   0,                         // tp_itemsize
-   (destructor)op_dealloc,    // tp_dealloc
-   0,                         // tp_print
-   0,                         // tp_getattr
-   0,                         // tp_setattr
-   0,                         // tp_compare
-   (reprfunc)op_repr,         // tp_repr
-   &op_as_number,             // tp_as_number
-   0,                         // tp_as_sequence
-   0,                         // tp_as_mapping
-   PyBaseObject_Type.tp_hash, // tp_hash
-   0,                         // tp_call
-   0,                         // tp_str
-   0,                         // tp_getattro
-   0,                         // tp_setattro
-   0,                         // tp_as_buffer
-   Py_TPFLAGS_DEFAULT |
-      Py_TPFLAGS_BASETYPE |
-      Py_TPFLAGS_HAVE_GC |
-      Py_TPFLAGS_CHECKTYPES,  // tp_flags
-   (char*)"cppyy object proxy (internal)",       // tp_doc
-   0,                         // tp_traverse
-   0,                         // tp_clear
-   (richcmpfunc)op_richcompare,                  // tp_richcompare
-   0,                         // tp_weaklistoffset
-   0,                         // tp_iter
-   0,                         // tp_iternext
-   op_methods,                // tp_methods
-   0,                         // tp_members
-   0,                         // tp_getset
-   0,                         // tp_base
-   0,                         // tp_dict
-   0,                         // tp_descr_get
-   0,                         // tp_descr_set
-   0,                         // tp_dictoffset
-   0,                         // tp_init
-   0,                         // tp_alloc
-   (newfunc)op_new,           // tp_new
-   0,                         // tp_free
-   0,                         // tp_is_gc
-   0,                         // tp_bases
-   0,                         // tp_mro
-   0,                         // tp_cache
-   0,                         // tp_subclasses
-   0                          // tp_weaklist
+    PyVarObject_HEAD_INIT(&CPyCppyyType_Type, 0)
+    (char*)"cppyy.ObjectProxy",    // tp_name
+    sizeof(ObjectProxy),           // tp_basicsize
+    0,                             // tp_itemsize
+    (destructor)op_dealloc,        // tp_dealloc
+    0,                             // tp_print
+    0,                             // tp_getattr
+    0,                             // tp_setattr
+    0,                             // tp_compare
+    (reprfunc)op_repr,             // tp_repr
+    &op_as_number,                 // tp_as_number
+    0,                             // tp_as_sequence
+    0,                             // tp_as_mapping
+    PyBaseObject_Type.tp_hash,     // tp_hash
+    0,                             // tp_call
+    0,                             // tp_str
+    0,                             // tp_getattro
+    0,                             // tp_setattro
+    0,                             // tp_as_buffer
+    Py_TPFLAGS_DEFAULT |
+        Py_TPFLAGS_BASETYPE |
+        Py_TPFLAGS_HAVE_GC |
+        Py_TPFLAGS_CHECKTYPES,     // tp_flags
+    (char*)"cppyy object proxy (internal)",       // tp_doc
+    0,                             // tp_traverse
+    0,                             // tp_clear
+    (richcmpfunc)op_richcompare,   // tp_richcompare
+    0,                             // tp_weaklistoffset
+    0,                             // tp_iter
+    0,                             // tp_iternext
+    op_methods,                    // tp_methods
+    0,                             // tp_members
+    0,                             // tp_getset
+    0,                             // tp_base
+    0,                             // tp_dict
+    0,                             // tp_descr_get
+    0,                             // tp_descr_set
+    0,                             // tp_dictoffset
+    0,                             // tp_init
+    0,                             // tp_alloc
+    (newfunc)op_new,               // tp_new
+    0,                             // tp_free
+    0,                             // tp_is_gc
+    0,                             // tp_bases
+    0,                             // tp_mro
+    0,                             // tp_cache
+    0,                             // tp_subclasses
+    0                              // tp_weaklist
 #if PY_VERSION_HEX >= 0x02030000
-   , 0                        // tp_del
+    , 0                            // tp_del
 #endif
 #if PY_VERSION_HEX >= 0x02060000
-   , 0                        // tp_version_tag
+    , 0                            // tp_version_tag
 #endif
 #if PY_VERSION_HEX >= 0x03040000
-   , 0                        // tp_finalize
+    , 0                            // tp_finalize
 #endif
 };
 

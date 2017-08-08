@@ -33,6 +33,7 @@
 
 
 #include "Python.h"
+#include <sys/types.h>
 
 // selected ROOT types from RtypesCore.h
 typedef char           Char_t;      //Signed Character 1 byte (char)
@@ -61,7 +62,6 @@ typedef double         Double_t;    //Double 8 bytes
 typedef double         Double32_t;  //Double 8 bytes in memory, written as a 4 bytes float
 typedef long double    LongDouble_t;//Long Double
 typedef char           Text_t;      //General string (char)
-typedef bool           Bool_t;      //Boolean (0=false, 1=true) (bool)
 typedef unsigned char  Byte_t;      //Byte (8 bits) (unsigned char)
 #if defined(R__WIN32) && !defined(__CINT__)
 typedef __int64          Long64_t;  //Portable signed long integer 8 bytes
@@ -71,16 +71,13 @@ typedef long long          Long64_t; //Portable signed long integer 8 bytes
 typedef unsigned long long ULong64_t;//Portable unsigned long integer 8 bytes
 #endif
 
-const Bool_t kTRUE  = true;
-const Bool_t kFALSE = false;
-
 
 // for 3.3 support
 #if PY_VERSION_HEX < 0x03030000
-   typedef PyDictEntry* (*dict_lookup_func) ( PyDictObject*, PyObject*, Long_t );
+   typedef PyDictEntry* (*dict_lookup_func) (PyDictObject*, PyObject*, long);
 #else
    struct PyDictKeyEntry;
-   typedef PyDictKeyEntry* (*dict_lookup_func) ( PyDictObject*, PyObject*, Py_hash_t, PyObject*** );
+   typedef PyDictKeyEntry* (*dict_lookup_func) (PyDictObject*, PyObject*, Py_hash_t, PyObject***);
 #define PyDictEntry PyDictKeyEntry
 #endif
 
@@ -113,14 +110,15 @@ const Bool_t kFALSE = false;
 
 #define CPyCppyy_PyUnicode_Type PyString_Type
 
-static inline PyObject* CPyCppyy_PyCapsule_New( void* cobj, const char* /* name */, void (*destr)(void *) )
+static inline PyObject* CPyCppyy_PyCapsule_New(
+        void* cobj, const char* /* name */, void (*destr)(void*))
 {
-   return PyCObject_FromVoidPtr( cobj, destr );
+    return PyCObject_FromVoidPtr(cobj, destr);
 }
 #define CPyCppyy_PyCapsule_CheckExact    PyCObject_Check
-static inline void* CPyCppyy_PyCapsule_GetPointer( PyObject* capsule, const char* /* name */ )
+static inline void* CPyCppyy_PyCapsule_GetPointer(PyObject* capsule, const char* /* name */)
 {
-   return (void*)PyCObject_AsVoidPtr( capsule );
+    return (void*)PyCObject_AsVoidPtr(capsule);
 }
 
 #define CPYCPPYY__long__ "__long__"
@@ -203,10 +201,10 @@ typedef int Py_ssize_t;
 #define ssizeargfunc    intargfunc
 
 #define PyIndex_Check(obj) \
-   (PyInt_Check(obj) || PyLong_Check(obj))
+    (PyInt_Check(obj) || PyLong_Check(obj))
 
-inline Py_ssize_t PyNumber_AsSsize_t( PyObject* obj, PyObject* ) {
-   return (Py_ssize_t)PyLong_AsLong( obj );
+inline Py_ssize_t PyNumber_AsSsize_t(PyObject* obj, PyObject*) {
+    return (Py_ssize_t)PyLong_AsLong( obj );
 }
 
 #else
@@ -233,13 +231,25 @@ inline Py_ssize_t PyNumber_AsSsize_t( PyObject* obj, PyObject* ) {
 // the following should quiet Solaris
 #ifdef Py_False
 #undef Py_False
-#define Py_False ( (PyObject*)(void*)&_Py_ZeroStruct )
+#define Py_False ((PyObject*)(void*)&_Py_ZeroStruct)
 #endif
 
 #ifdef Py_True
 #undef Py_True
-#define Py_True ( (PyObject*)(void*)&_Py_TrueStruct )
+#define Py_True ((PyObject*)(void*)&_Py_TrueStruct)
 #endif
+#endif
+
+#ifndef Py_RETURN_NONE
+#define Py_RETURN_NONE return Py_INCREF(Py_None), Py_None
+#endif
+
+#ifndef Py_RETURN_TRUE
+#define Py_RETURN_TRUE return Py_INCREF(Py_True), Py_True
+#endif
+
+#ifndef Py_RETURN_FALSE
+#define Py_RETURN_FALSE return Py_INCREF(Py_False), Py_False
 #endif
 
 // C++ version of the cppyy API

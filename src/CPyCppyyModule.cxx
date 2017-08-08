@@ -234,7 +234,7 @@ namespace {
       }
 
    // all failed, start entering reflection system
-      gDictLookupActive = kTRUE;
+      gDictLookupActive = true;
 
    // globals (the round-about lookup is to prevent recursion)
       PyObject* gval = PyDict_GetItem( PyModule_GetDict( gThisModule ), key );
@@ -246,7 +246,7 @@ namespace {
 #if PY_VERSION_HEX >= 0x03030000
          *value_addr  = &gval;
 #endif
-         gDictLookupActive = kFALSE;
+         gDictLookupActive = false;
          return ep;
       }
 
@@ -312,7 +312,7 @@ namespace {
 #endif
 
    // stopped calling into the reflection system
-      gDictLookupActive = kFALSE;
+      gDictLookupActive = false;
 
       return ep;
    }
@@ -335,8 +335,7 @@ namespace {
    // set on the new keys.
       CPYCPPYY_GET_DICT_LOOKUP( dict ) = CPyCppyyLookDictString;
 
-      Py_INCREF( Py_None );
-      return Py_None;
+      Py_RETURN_NONE;
    }
 
 //----------------------------------------------------------------------------
@@ -414,7 +413,7 @@ namespace {
          return PyLong_FromLong( *(Long_t*)addr );
       else if ( PyTuple_Size( args ) ) {
          PyErr_Clear();
-         Utility::GetBuffer( PyTuple_GetItem( args, 0 ), '*', 1, addr, kFALSE );
+         Utility::GetBuffer( PyTuple_GetItem( args, 0 ), '*', 1, addr, false );
          if ( addr ) return PyLong_FromLong( (Long_t)addr );
       }
 
@@ -494,7 +493,7 @@ static PyObject* BindObject_(void* addr, PyObject* pyname)
             PyErr_Clear();
 
          // last chance, perhaps it's a buffer/array (return from void*)
-            int buflen = Utility::GetBuffer( PyTuple_GetItem( args, 0 ), '*', 1, addr, kFALSE );
+            int buflen = Utility::GetBuffer( PyTuple_GetItem( args, 0 ), '*', 1, addr, false );
             if ( ! addr || ! buflen ) {
                PyErr_SetString( PyExc_TypeError,
                   "BindObject requires a CObject or long integer as first argument" );
@@ -535,8 +534,7 @@ static PyObject* Move(PyObject*, PyObject* pyobject)
 
    // no class given, use None as generic
       if ( argc == 0 ) {
-         Py_INCREF( Py_None );
-         return Py_None;
+         Py_RETURN_NONE;
       }
 
       return BindObject_( 0, PyTuple_GET_ITEM( args, 0 ) );
@@ -553,8 +551,7 @@ static PyObject* Move(PyObject*, PyObject* pyobject)
 
       Long_t l = PyInt_AS_LONG( policy );
       if ( TCallContext::SetMemoryPolicy( (TCallContext::ECallFlags)l ) ) {
-         Py_INCREF( Py_None );
-         return Py_None;
+         Py_RETURN_NONE;
       }
 
       PyErr_Format( PyExc_ValueError, "Unknown policy %ld", l );
@@ -572,8 +569,7 @@ static PyObject* Move(PyObject*, PyObject* pyobject)
 
       Long_t l = PyInt_AS_LONG( policy );
       if ( TCallContext::SetSignalPolicy( (TCallContext::ECallFlags)l ) ) {
-         Py_INCREF( Py_None );
-         return Py_None;
+         Py_RETURN_NONE;
       }
 
       PyErr_Format( PyExc_ValueError, "Unknown policy %ld", l );
@@ -589,10 +585,9 @@ static PyObject* Move(PyObject*, PyObject* pyobject)
                 &ObjectProxy_Type, (void*)&pyobj, &PyInt_Type, &pykeep ) )
          return 0;
 
-      (Bool_t)PyLong_AsLong( pykeep ) ? pyobj->HoldOn() : pyobj->Release();
+      (bool)PyLong_AsLong( pykeep ) ? pyobj->HoldOn() : pyobj->Release();
 
-      Py_INCREF( Py_None );
-      return Py_None;
+      Py_RETURN_NONE;
    }
 
 //----------------------------------------------------------------------------

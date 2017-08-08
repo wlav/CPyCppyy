@@ -9,11 +9,11 @@
 
 
 //- protected members --------------------------------------------------------
-Bool_t CPyCppyy::TConstructorHolder::InitExecutor_( TExecutor*& executor, TCallContext* )
+bool CPyCppyy::TConstructorHolder::InitExecutor_( TExecutor*& executor, TCallContext* )
 {
 // pick up special case new object executor
    executor = CreateExecutor( "__init__" );
-   return kTRUE;
+   return true;
 }
 
 //- public members -----------------------------------------------------------
@@ -86,8 +86,7 @@ PyObject* CPyCppyy::TConstructorHolder::Call(
    // done with self
       Py_DECREF( self );
 
-      Py_INCREF( Py_None );
-      return Py_None;                        // by definition
+      Py_RETURN_NONE;                        // by definition
    }
 
    if ( ! PyErr_Occurred() )   // should be set, otherwise write a generic error msg
@@ -96,5 +95,5 @@ PyObject* CPyCppyy::TConstructorHolder::Call(
 
 // do not throw an exception, '0' might trigger the overload handler to choose a
 // different constructor, which if all fails will throw an exception
-   return 0;
+   return nullptr;
 }

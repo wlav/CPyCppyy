@@ -48,13 +48,13 @@ namespace CPyCppyy {
     extern PyTypeObject TemplateProxy_Type;
 
     template<typename T>
-    inline Bool_t TemplateProxy_Check(T* object)
+    inline bool TemplateProxy_Check(T* object)
     {
         return object && PyObject_TypeCheck(object, &TemplateProxy_Type);
     }
 
     template<typename T>
-    inline Bool_t TemplateProxy_CheckExact(T* object)
+    inline bool TemplateProxy_CheckExact(T* object)
     {
         return object && Py_TYPE(object) == &TemplateProxy_Type;
     }

@@ -10,10 +10,10 @@
 
 class TPyClassGenerator : public TClassGenerator {
 public:
-   virtual TClass* GetClass( const char* name, Bool_t load );
-   virtual TClass* GetClass( const std::type_info& typeinfo, Bool_t load );
-   virtual TClass* GetClass( const char* name, Bool_t load, Bool_t silent );
-   virtual TClass* GetClass( const std::type_info& typeinfo, Bool_t load, Bool_t silent );
+   virtual TClass* GetClass( const char* name, bool load );
+   virtual TClass* GetClass( const std::type_info& typeinfo, bool load );
+   virtual TClass* GetClass( const char* name, bool load, bool silent );
+   virtual TClass* GetClass( const std::type_info& typeinfo, bool load, bool silent );
 };
 
 #endif

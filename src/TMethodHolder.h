@@ -22,8 +22,8 @@ namespace CPyCppyy {
         virtual ~TMethodHolder();
 
     public:
-        virtual PyObject* GetSignature(bool show_formalargs = kTRUE);
-        virtual PyObject* GetPrototype(bool show_formalargs = kTRUE);
+        virtual PyObject* GetSignature(bool show_formalargs = true);
+        virtual PyObject* GetPrototype(bool show_formalargs = true);
         virtual int       GetPriority();
 
         virtual int       GetMaxArgs();
@@ -46,7 +46,7 @@ namespace CPyCppyy {
         Cppyy::TCppMethod_t GetMethod()   { return fMethod; }
         Cppyy::TCppScope_t  GetScope()    { return fScope; }
         TExecutor*          GetExecutor() { return fExecutor; }
-        std::string         GetSignatureString(bool show_formalargs = kTRUE);
+        std::string         GetSignatureString(bool show_formalargs = true);
         std::string         GetReturnTypeName();
 
         virtual bool InitExecutor_(TExecutor*&, TCallContext* ctxt = 0);

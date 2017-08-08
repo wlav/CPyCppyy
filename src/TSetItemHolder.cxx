@@ -5,21 +5,21 @@
 
 
 //- protected members --------------------------------------------------------
-Bool_t CPyCppyy::TSetItemHolder::InitExecutor_( TExecutor*& executor, TCallContext* )
+bool CPyCppyy::TSetItemHolder::InitExecutor_( TExecutor*& executor, TCallContext* )
 {
 // basic call will do
    if ( ! TMethodHolder::InitExecutor_( executor ) )
-      return kFALSE;
+      return false;
 
 // check to make sure we're dealing with a RefExecutor
    if ( ! dynamic_cast< TRefExecutor* >( executor ) ) {
       PyErr_Format( PyExc_NotImplementedError,
          "no __setitem__ handler for return type (%s)",
          this->GetReturnTypeName().c_str() );
-      return kFALSE;
+      return false;
    }
 
-   return kTRUE;
+   return true;
 }
 
 

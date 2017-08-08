@@ -12,7 +12,7 @@ namespace CPyCppyy {
    class PyCallable;
 
    extern dict_lookup_func gDictLookupOrg;
-   extern Bool_t gDictLookupActive;
+   extern bool gDictLookupActive;
 
 // additional converter functions
    ULong_t PyLongOrInt_AsULong( PyObject* pyobject );
@@ -21,34 +21,34 @@ namespace CPyCppyy {
    namespace Utility {
 
    // convenience functions for adding methods to classes
-      Bool_t AddToClass( PyObject* pyclass, const char* label, PyCFunction cfunc,
+      bool AddToClass( PyObject* pyclass, const char* label, PyCFunction cfunc,
                          int flags = METH_VARARGS );
-      Bool_t AddToClass( PyObject* pyclass, const char* label, const char* func );
-      Bool_t AddToClass( PyObject* pyclass, const char* label, PyCallable* pyfunc );
+      bool AddToClass( PyObject* pyclass, const char* label, const char* func );
+      bool AddToClass( PyObject* pyclass, const char* label, PyCallable* pyfunc );
 
-      Bool_t AddUsingToClass( PyObject* pyclass, const char* method );
+      bool AddUsingToClass( PyObject* pyclass, const char* method );
 
    // helpers for dynamically constructing binary operators
-      Bool_t AddBinaryOperator( PyObject* left, PyObject* right,
+      bool AddBinaryOperator( PyObject* left, PyObject* right,
          const char* op, const char* label, const char* alt_label = NULL );
-      Bool_t AddBinaryOperator( PyObject* pyclass,
+      bool AddBinaryOperator( PyObject* pyclass,
          const char* op, const char* label, const char* alt_label = NULL );
-      Bool_t AddBinaryOperator( PyObject* pyclass, const std::string& lcname, const std::string& rcname,
+      bool AddBinaryOperator( PyObject* pyclass, const std::string& lcname, const std::string& rcname,
          const char* op, const char* label, const char* alt_label = NULL );
 
    // helper for template classes and methods
       std::string ConstructTemplateArgs( PyObject* pyname, PyObject* args, int argoff );
 
    // initialize proxy type objects
-      Bool_t InitProxy( PyObject* module, PyTypeObject* pytype, const char* name );
+      bool InitProxy( PyObject* module, PyTypeObject* pytype, const char* name );
 
    // retrieve the memory buffer from pyobject, return buflength, tc (optional) is python
    // array.array type code, size is type size, buf will point to buffer, and if check is
    // true, some heuristics will be applied to check buffer compatibility with the type
-      int GetBuffer( PyObject* pyobject, char tc, int size, void*& buf, Bool_t check = kTRUE );
+      int GetBuffer( PyObject* pyobject, char tc, int size, void*& buf, bool check = true );
 
    // data/operator mappings
-      std::string MapOperatorName( const std::string& name, Bool_t bTakesParames );
+      std::string MapOperatorName( const std::string& name, bool bTakesParames );
 
    // meta information
       const std::string Compound( const std::string& name );

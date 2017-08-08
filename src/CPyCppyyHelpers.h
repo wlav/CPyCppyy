@@ -20,11 +20,11 @@ namespace CPyCppyy {
 
 // bind a C++ object into a Python proxy object
    PyObject* BindCppObjectNoCast( Cppyy::TCppObject_t object, Cppyy::TCppType_t klass,
-      Bool_t isRef = kFALSE, Bool_t isValue = kFALSE );
+      bool isRef = false, bool isValue = false );
    PyObject* BindCppObject(
-      Cppyy::TCppObject_t object, Cppyy::TCppType_t klass, Bool_t isRef = kFALSE );
+      Cppyy::TCppObject_t object, Cppyy::TCppType_t klass, bool isRef = false );
    inline PyObject* BindCppObject(
-      Cppyy::TCppObject_t object, const std::string& clName, Bool_t isRef = kFALSE )
+      Cppyy::TCppObject_t object, const std::string& clName, bool isRef = false )
    {
       return BindCppObject( object, Cppyy::GetScope( clName ), isRef );
    }

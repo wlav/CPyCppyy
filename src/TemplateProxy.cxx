@@ -203,12 +203,12 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
 
 // still here? try instantiating methods
 
-    Bool_t isType = kFALSE;
+    bool isType = false;
     Int_t nStrings = 0;
     PyObject* tpArgs = PyTuple_New(nArgs);
     for (Int_t i = 0; i < nArgs; ++i) {
         PyObject* itemi = PyTuple_GET_ITEM(args, i);
-        if (PyType_Check(itemi)) isType = kTRUE;
+        if (PyType_Check(itemi)) isType = true;
 #if PY_VERSION_HEX >= 0x03000000
         else if (!isType && PyUnicode_Check(itemi)) nStrings += 1;
 #else

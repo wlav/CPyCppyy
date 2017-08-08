@@ -20,19 +20,19 @@
 
 
 //- public members -----------------------------------------------------------
-TClass* TPyClassGenerator::GetClass( const char* name, Bool_t load )
+TClass* TPyClassGenerator::GetClass( const char* name, bool load )
 {
 // Just forward.
-   return GetClass( name, load, kFALSE );
+   return GetClass( name, load, false );
 }
 
 //- public members -----------------------------------------------------------
-TClass* TPyClassGenerator::GetClass( const char* name, Bool_t load, Bool_t silent )
+TClass* TPyClassGenerator::GetClass( const char* name, bool load, bool silent )
 {
 // Class generator to make python classes available to Cling
 
 // called if all other class generators failed, attempt to build from python class
-   if ( PyROOT::gDictLookupActive == kTRUE )
+   if ( PyROOT::gDictLookupActive == true )
       return 0;                              // call originated from python
 
    if ( ! load || ! name )
@@ -44,7 +44,7 @@ TClass* TPyClassGenerator::GetClass( const char* name, Bool_t load, Bool_t silen
    PyObject* modules = PySys_GetObject( const_cast<char*>("modules") );
    PyObject* pyname = PyROOT_PyUnicode_FromString( name );
    PyObject* keys = PyDict_Keys( modules );
-   Bool_t isModule = PySequence_Contains( keys, pyname );
+   bool isModule = PySequence_Contains( keys, pyname );
    Py_DECREF( keys );
    Py_DECREF( pyname );
 
@@ -127,7 +127,7 @@ TClass* TPyClassGenerator::GetClass( const char* name, Bool_t load, Bool_t silen
    clName = clName.substr( pos+1, std::string::npos );
 
 // create class in namespace, if it exists (no load, silent)
-   Bool_t useNS = gROOT->GetListOfClasses()->FindObject( mdName.c_str() ) != 0;
+   bool useNS = gROOT->GetListOfClasses()->FindObject( mdName.c_str() ) != 0;
    if ( ! useNS ) {
    // the class itself may exist if we're using the global scope
       TClass* cl = (TClass*)gROOT->GetListOfClasses()->FindObject( clName.c_str() );
@@ -166,7 +166,7 @@ TClass* TPyClassGenerator::GetClass( const char* name, Bool_t load, Bool_t silen
    proxyCode << "class " << clName << " {\nprivate:\n PyObject* fPyObject;\npublic:\n";
 
 // loop over and add member functions
-   Bool_t hasConstructor = kFALSE, hasDestructor = kFALSE;
+   bool hasConstructor = false, hasDestructor = false;
    for ( int i = 0; i < PyList_GET_SIZE( attrs ); ++i ) {
       PyObject* label = PyList_GET_ITEM( attrs, i );
       Py_INCREF( label );
@@ -177,12 +177,12 @@ TClass* TPyClassGenerator::GetClass( const char* name, Bool_t load, Bool_t silen
          std::string mtName = PyROOT_PyUnicode_AsString( label );
 
          if ( mtName == "__del__" ) {
-            hasDestructor = kTRUE;
+            hasDestructor = true;
             proxyCode << " ~" << clName << "() { TPyArg::CallDestructor(fPyObject); }\n";
             continue;
          }
 
-         Bool_t isConstructor = mtName == "__init__";
+         bool isConstructor = mtName == "__init__";
          if ( !isConstructor && mtName.find("__", 0, 2) == 0 )
             continue;    // skip all other python special funcs
 
@@ -208,7 +208,7 @@ TClass* TPyClassGenerator::GetClass( const char* name, Bool_t load, Bool_t silen
 
       // method declaration as appropriate
          if ( isConstructor ) {
-            hasConstructor = kTRUE;
+            hasConstructor = true;
             proxyCode << " " << clName << "(";
          } else // normal method
             proxyCode << " TPyReturn " << mtName << "(";
@@ -272,7 +272,7 @@ TClass* TPyClassGenerator::GetClass( const char* name, Bool_t load, Bool_t silen
 ////////////////////////////////////////////////////////////////////////////////
 /// Just forward; based on type name only.
 
-TClass* TPyClassGenerator::GetClass( const std::type_info& typeinfo, Bool_t load, Bool_t silent )
+TClass* TPyClassGenerator::GetClass( const std::type_info& typeinfo, bool load, bool silent )
 {
    return GetClass( typeinfo.name(), load, silent );
 }
@@ -280,7 +280,7 @@ TClass* TPyClassGenerator::GetClass( const std::type_info& typeinfo, Bool_t load
 ////////////////////////////////////////////////////////////////////////////////
 /// Just forward; based on type name only
 
-TClass* TPyClassGenerator::GetClass( const std::type_info& typeinfo, Bool_t load )
+TClass* TPyClassGenerator::GetClass( const std::type_info& typeinfo, bool load )
 {
    return GetClass( typeinfo.name(), load );
 }

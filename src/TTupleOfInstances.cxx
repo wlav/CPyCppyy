@@ -17,7 +17,7 @@ PyObject* TTupleOfInstances_New(
    // TODO: there's an assumption here that there is no padding, which is bound
    // to be incorrect in certain cases
       PyTuple_SetItem( tup, i,
-         BindCppObject( (char*)address + i*Cppyy::SizeOf( klass ), klass, kFALSE /* isRef */ ) );
+         BindCppObject( (char*)address + i*Cppyy::SizeOf( klass ), klass, false /* isRef */ ) );
    // Note: objects are bound as pointers, yet since the pointer value stays in
    // place, updates propagate just as if they were bound by-reference
    }

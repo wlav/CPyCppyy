@@ -17,11 +17,11 @@
 class TPython {
 
 private:
-   static Bool_t Initialize();
+   static bool Initialize();
 
 public:
 // import a python module, making its classes available
-   static Bool_t Import( const char* name );
+   static bool Import( const char* name );
 
 // load a python script as if it were a macro
    static void LoadMacro( const char* name );
@@ -30,7 +30,7 @@ public:
    static void ExecScript( const char* name, int argc = 0, const char** argv = 0 );
 
 // execute a python statement (e.g. "import sys" )
-   static Bool_t Exec( const char* cmd );
+   static bool Exec( const char* cmd );
 
 // evaluate a python expression (e.g. "1+1")
    static const TPyReturn Eval( const char* expr );
@@ -39,19 +39,19 @@ public:
    static void Prompt();
 
 // type verifiers for ObjectProxy
-   static Bool_t ObjectProxy_Check( PyObject* pyobject );
-   static Bool_t ObjectProxy_CheckExact( PyObject* pyobject );
+   static bool ObjectProxy_Check( PyObject* pyobject );
+   static bool ObjectProxy_CheckExact( PyObject* pyobject );
 
 // type verifiers for MethodProxy
-   static Bool_t MethodProxy_Check( PyObject* pyobject );
-   static Bool_t MethodProxy_CheckExact( PyObject* pyobject );
+   static bool MethodProxy_Check( PyObject* pyobject );
+   static bool MethodProxy_CheckExact( PyObject* pyobject );
 
 // object proxy to void* conversion
    static void* ObjectProxy_AsVoidPtr( PyObject* pyobject );
 
 // void* to object proxy conversion, returns a new reference
    static PyObject* ObjectProxy_FromVoidPtr(
-      void* addr, const char* classname, Bool_t python_owns = kFALSE );
+      void* addr, const char* classname, bool python_owns = false );
 
    virtual ~TPython() { }
 };

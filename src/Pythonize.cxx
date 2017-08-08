@@ -32,17 +32,17 @@ namespace {
    using namespace CPyCppyy;
 
 //-----------------------------------------------------------------------------
-   Bool_t HasAttrDirect( PyObject* pyclass, PyObject* pyname, Bool_t mustBeCPyCppyy = kFALSE ) {
+   bool HasAttrDirect( PyObject* pyclass, PyObject* pyname, bool mustBeCPyCppyy = false ) {
    // prevents calls to Py_TYPE(pyclass)->tp_getattr, which is unnecessary for our
    // purposes here and could tickle problems w/ spurious lookups into ROOT meta
       PyObject* attr = PyType_Type.tp_getattro( pyclass, pyname );
       if ( attr != 0 && ( ! mustBeCPyCppyy || MethodProxy_Check( attr ) ) ) {
          Py_DECREF( attr );
-         return kTRUE;
+         return true;
       }
 
       PyErr_Clear();
-      return kFALSE;
+      return false;
    }
 
 //-----------------------------------------------------------------------------
@@ -55,7 +55,7 @@ namespace {
    }
 
 //-----------------------------------------------------------------------------
-   inline Bool_t IsTemplatedSTLClass( const std::string& name, const std::string& klass ) {
+   inline bool IsTemplatedSTLClass( const std::string& name, const std::string& klass ) {
    // Scan the name of the class and determine whether it is a template instantiation.
       const int nsize = (int)name.size();
       const int ksize = (int)klass.size();
@@ -156,13 +156,11 @@ namespace {
    {
    // Helper; convert generic python object into a boolean value.
       if ( PyObject_IsTrue( value ) == 1 ) {
-         Py_INCREF( Py_False );
          Py_DECREF( value );
-         return Py_False;
+         Py_RETURN_FALSE;
       } else {
-         Py_INCREF( Py_True );
          Py_XDECREF( value );
-         return Py_True;
+         Py_RETURN_TRUE;
       }
    }
 
@@ -319,7 +317,7 @@ namespace {
 
       if ( pyvalue_type && pyvalue_size ) {
          PyObject* pydata = CallPyObjMethod( v, "data" );
-         if ( !pydata || Utility::GetBuffer( pydata, '*', 1, vi->vi_data, kFALSE ) == 0 )
+         if ( !pydata || Utility::GetBuffer( pydata, '*', 1, vi->vi_data, false ) == 0 )
             vi->vi_data = nullptr;
          Py_XDECREF( pydata );
 
@@ -403,8 +401,7 @@ namespace {
    // finally, set the value
       (*vb)[ index ] = (bool)bval;
 
-      Py_INCREF( Py_None );
-      return Py_None;
+      Py_RETURN_NONE;
    }
 
 //- map behavior as primitives ------------------------------------------------
@@ -458,11 +455,11 @@ namespace {
    // Implement a generic python __getitem__ for std::vector<>s that are missing
    // their std::vector<>::iterator dictionary. This is then used for iteration
    // by means of consecutive index.
-      Bool_t inbounds = kFALSE;
+      bool inbounds = false;
       Py_ssize_t size = PySequence_Size( self );
       Py_ssize_t idx  = PyInt_AsSsize_t( obj );
       if ( 0 <= idx && 0 <= size && idx < size )
-         inbounds = kTRUE;
+         inbounds = true;
 
       if ( inbounds ) {
          return CallPyObjMethod( self, "_getitem__unchecked", obj );
@@ -639,12 +636,12 @@ static int PyObject_Compare( PyObject* one, PyObject* other ) {
 
 
 //- public functions -----------------------------------------------------------
-Bool_t CPyCppyy::Pythonize( PyObject* pyclass, const std::string& name )
+bool CPyCppyy::Pythonize( PyObject* pyclass, const std::string& name )
 {
 // Add pre-defined pythonizations (for STL and ROOT) to classes based on their
 // signature and/or class name.
    if ( pyclass == 0 )
-      return kFALSE;
+      return false;
 
 //- method name based pythonization --------------------------------------------
 
@@ -692,17 +689,17 @@ Bool_t CPyCppyy::Pythonize( PyObject* pyclass, const std::string& name )
    Utility::AddBinaryOperator( pyclass, "==", "__eq__" );
    Utility::AddBinaryOperator( pyclass, "!=", "__ne__" );
 
-// map operator==() through GenObjectIsEqual to allow comparison to None (kTRUE is to
+// map operator==() through GenObjectIsEqual to allow comparison to None (true is to
 // require that the located method is a MethodProxy; this prevents circular calls as
 // GenObjectIsEqual is no MethodProxy)
-   if ( HasAttrDirect( pyclass, PyStrings::gEq, kTRUE ) ) {
+   if ( HasAttrDirect( pyclass, PyStrings::gEq, true ) ) {
       Utility::AddToClass( pyclass, "__cpp_eq__",  "__eq__" );
       Utility::AddToClass( pyclass, "__eq__",  (PyCFunction) GenObjectIsEqual, METH_O );
    }
 
 // map operator!=() through GenObjectIsNotEqual to allow comparison to None (see note
-// on kTRUE above for __eq__)
-   if ( HasAttrDirect( pyclass, PyStrings::gNe, kTRUE ) ) {
+// on true above for __eq__)
+   if ( HasAttrDirect( pyclass, PyStrings::gNe, true ) ) {
       Utility::AddToClass( pyclass, "__cpp_ne__",  "__ne__" );
       Utility::AddToClass( pyclass, "__ne__",  (PyCFunction) GenObjectIsNotEqual, METH_O );
    }
@@ -767,9 +764,9 @@ Bool_t CPyCppyy::Pythonize( PyObject* pyclass, const std::string& name )
       Utility::AddToClass( pyclass, CPYCPPYY__next__, (PyCFunction) StlIterNext, METH_NOARGS );
 
    // special case, if operator== is a global overload and included in the dictionary
-      if ( ! HasAttrDirect( pyclass, PyStrings::gCppEq, kTRUE ) )
+      if ( ! HasAttrDirect( pyclass, PyStrings::gCppEq, true ) )
          Utility::AddToClass( pyclass, "__eq__",  (PyCFunction) StlIterIsEqual, METH_O );
-      if ( ! HasAttrDirect( pyclass, PyStrings::gCppNe, kTRUE ) )
+      if ( ! HasAttrDirect( pyclass, PyStrings::gCppNe, true ) )
          Utility::AddToClass( pyclass, "__ne__",  (PyCFunction) StlIterIsNotEqual, METH_O );
 
    }
@@ -798,7 +795,7 @@ Bool_t CPyCppyy::Pythonize( PyObject* pyclass, const std::string& name )
       }
    }
 
-   Bool_t pstatus = kTRUE;
+   bool pstatus = true;
 
    for ( auto key = pythonization_scopes.cbegin(); key != pythonization_scopes.cend(); ++key ) {
       PyObject* tmp = PyDict_GetItemString( userPythonizations, key->c_str() );
@@ -811,7 +808,7 @@ Bool_t CPyCppyy::Pythonize( PyObject* pyclass, const std::string& name )
       // TODO: detail error handling for the pythonizors
          PyObject* result = PyObject_CallObject( pythonizor, arglist );
          if ( !result ) {
-            pstatus = kFALSE;
+            pstatus = false;
             break;
          } else
             Py_DECREF( result );
@@ -821,7 +818,6 @@ Bool_t CPyCppyy::Pythonize( PyObject* pyclass, const std::string& name )
 
    Py_DECREF( userPythonizations );
    Py_DECREF( pythonizationScope );
-
 
 // phew! all done ...
    return pstatus;

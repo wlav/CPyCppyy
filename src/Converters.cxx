@@ -57,16 +57,16 @@ static inline PyTypeObject* GetCTypesType( const char* name ) {
 #endif
 
 //- custom helpers to check ranges --------------------------------------------
-static inline Bool_t CPyCppyy_PyLong_AsBool( PyObject* pyobject )
+static inline bool CPyCppyy_PyLong_AsBool( PyObject* pyobject )
 {
 // range-checking python integer to C++ bool conversion
    Long_t l = PyLong_AsLong( pyobject );
 // fail to pass float -> bool; the problem is rounding (0.1 -> 0 -> False)
    if ( ! ( l == 0 || l == 1 ) || PyFloat_Check( pyobject ) ) {
       PyErr_SetString( PyExc_ValueError, "boolean value should be bool, or integer 1 or 0" );
-      return (Bool_t)-1;
+      return (bool)-1;
    }
-   return (Bool_t)l;
+   return (bool)l;
 }
 
 static inline Char_t CPyCppyy_PyUnicode_AsChar( PyObject* pyobject ) {
@@ -133,26 +133,26 @@ PyObject* CPyCppyy::TConverter::FromMemory( void* )
 }
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TConverter::ToMemory( PyObject*, void* )
+bool CPyCppyy::TConverter::ToMemory( PyObject*, void* )
 {
 // could happen if no derived class override
    PyErr_SetString( PyExc_TypeError, "C++ type can not be converted to memory" );
-   return kFALSE;
+   return false;
 }
 
 
 //- helper macro's ------------------------------------------------------------
 #define CPYCPPYY_IMPLEMENT_BASIC_CONVERTER( name, type, stype, F1, F2, tc )   \
-Bool_t CPyCppyy::T##name##Converter::SetArg(                                  \
+bool CPyCppyy::T##name##Converter::SetArg(                                  \
       PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */ )        \
 {                                                                             \
 /* convert <pyobject> to C++ 'type', set arg for call */                      \
    type val = (type)F2( pyobject );                                           \
    if ( val == (type)-1 && PyErr_Occurred() )                                 \
-      return kFALSE;                                                          \
+      return false;                                                          \
    para.fValue.f##name = val;                                                 \
    para.fTypeCode = tc;                                                       \
-   return kTRUE;                                                              \
+   return true;                                                              \
 }                                                                             \
                                                                               \
 PyObject* CPyCppyy::T##name##Converter::FromMemory( void* address )           \
@@ -160,13 +160,13 @@ PyObject* CPyCppyy::T##name##Converter::FromMemory( void* address )           \
    return F1( (stype)*((type*)address) );                                     \
 }                                                                             \
                                                                               \
-Bool_t CPyCppyy::T##name##Converter::ToMemory( PyObject* value, void* address )\
+bool CPyCppyy::T##name##Converter::ToMemory( PyObject* value, void* address )\
 {                                                                             \
    type s = (type)F2( value );                                                \
    if ( s == (type)-1 && PyErr_Occurred() )                                   \
-      return kFALSE;                                                          \
+      return false;                                                          \
    *((type*)address) = (type)s;                                               \
-   return kTRUE;                                                              \
+   return true;                                                              \
 }
 
 //-----------------------------------------------------------------------------
@@ -196,44 +196,44 @@ static inline Int_t ExtractChar( PyObject* pyobject, const char* tname, Int_t lo
 
 //-----------------------------------------------------------------------------
 #define CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( name, type, F1 )        \
-Bool_t CPyCppyy::TConst##name##RefConverter::SetArg(                          \
+bool CPyCppyy::TConst##name##RefConverter::SetArg(                          \
       PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */ )        \
 {                                                                             \
    type val = (type)F1( pyobject );                                           \
    if ( val == (type)-1 && PyErr_Occurred() )                                 \
-      return kFALSE;                                                          \
+      return false;                                                          \
    para.fValue.f##name = val;                                                 \
    para.fRef = &para.fValue.f##name;                                          \
    para.fTypeCode = 'r';                                                      \
-   return kTRUE;                                                              \
+   return true;                                                              \
 }
 
 //-----------------------------------------------------------------------------
 #define CPYCPPYY_IMPLEMENT_BASIC_CONST_CHAR_REF_CONVERTER( name, type, low, high )\
-Bool_t CPyCppyy::TConst##name##RefConverter::SetArg(                          \
+bool CPyCppyy::TConst##name##RefConverter::SetArg(                          \
       PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */ )        \
 {                                                                             \
 /* convert <pyobject> to C++ <<type>>, set arg for call, allow int -> char */ \
    type val = (type)ExtractChar( pyobject, #type, low, high );                \
    if ( val == (type)-1 && PyErr_Occurred() )                                 \
-      return kFALSE;                                                          \
+      return false;                                                          \
    para.fValue.fLong = val;                                                   \
    para.fTypeCode = 'l';                                                      \
-   return kTRUE;                                                              \
+   return true;                                                              \
 }
 
 //-----------------------------------------------------------------------------
 #define CPYCPPYY_IMPLEMENT_BASIC_CHAR_CONVERTER( name, type, low, high ) \
-Bool_t CPyCppyy::T##name##Converter::SetArg(                                  \
+bool CPyCppyy::T##name##Converter::SetArg(                                  \
       PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */ )        \
 {                                                                             \
 /* convert <pyobject> to C++ <<type>>, set arg for call, allow int -> char */ \
    Long_t val = ExtractChar( pyobject, #type, low, high );                    \
    if ( val == -1 && PyErr_Occurred() )                                       \
-      return kFALSE;                                                          \
+      return false;                                                          \
    para.fValue.fLong = val;                                                   \
    para.fTypeCode = 'l';                                                      \
-   return kTRUE;                                                              \
+   return true;                                                              \
 }                                                                             \
                                                                               \
 PyObject* CPyCppyy::T##name##Converter::FromMemory( void* address )           \
@@ -241,30 +241,30 @@ PyObject* CPyCppyy::T##name##Converter::FromMemory( void* address )           \
    return CPyCppyy_PyUnicode_FromFormat( "%c", *((type*)address) );           \
 }                                                                             \
                                                                               \
-Bool_t CPyCppyy::T##name##Converter::ToMemory( PyObject* value, void* address )\
+bool CPyCppyy::T##name##Converter::ToMemory( PyObject* value, void* address )\
 {                                                                             \
    if ( CPyCppyy_PyUnicode_Check( value ) ) {                                 \
       const char* buf = CPyCppyy_PyUnicode_AsString( value );                 \
       if ( PyErr_Occurred() )                                                 \
-         return kFALSE;                                                       \
+         return false;                                                       \
       int len = CPyCppyy_PyUnicode_GET_SIZE( value );                         \
       if ( len != 1 ) {                                                       \
          PyErr_Format( PyExc_TypeError, #type" expected, got string of size %d", len );\
-         return kFALSE;                                                       \
+         return false;                                                       \
       }                                                                       \
       *((type*)address) = (type)buf[0];                                       \
    } else {                                                                   \
       Long_t l = PyLong_AsLong( value );                                      \
       if ( l == -1 && PyErr_Occurred() )                                      \
-         return kFALSE;                                                       \
+         return false;                                                       \
       if ( ! ( low <= l && l <= high ) ) {                                    \
          PyErr_Format( PyExc_ValueError, \
             "integer to character: value %ld not in range [%d,%d]", l, low, high );\
-         return kFALSE;                                                       \
+         return false;                                                       \
       }                                                                       \
       *((type*)address) = (type)l;                                            \
    }                                                                          \
-   return kTRUE;                                                              \
+   return true;                                                              \
 }
 
 
@@ -272,7 +272,7 @@ Bool_t CPyCppyy::T##name##Converter::ToMemory( PyObject* value, void* address )\
 CPYCPPYY_IMPLEMENT_BASIC_CONVERTER( Long, Long_t, Long_t, PyLong_FromLong, CPyCppyy_PyLong_AsStrictLong, 'l' )
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TLongRefConverter::SetArg(
+bool CPyCppyy::TLongRefConverter::SetArg(
       PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */ )
 {
 // convert <pyobject> to C++ long&, set arg for call
@@ -280,13 +280,13 @@ Bool_t CPyCppyy::TLongRefConverter::SetArg(
    if ( TCustomInt_CheckExact( pyobject ) ) {
       para.fValue.fVoidp = (void*)&((PyIntObject*)pyobject)->ob_ival;
       para.fTypeCode = 'V';
-      return kTRUE;
+      return true;
    }
 #endif
 
 #if PY_VERSION_HEX < 0x02050000
    PyErr_SetString( PyExc_TypeError, "use cppyy.Long for pass-by-ref of longs" );
-   return kFALSE;
+   return false;
 #endif
 
 // TODO: this keeps a refcount to the type .. it should be okay to drop that
@@ -294,18 +294,18 @@ Bool_t CPyCppyy::TLongRefConverter::SetArg(
    if ( Py_TYPE( pyobject ) == c_long_type ) {
       para.fValue.fVoidp = (void*)((CPyCppyy_tagCDataObject*)pyobject)->b_ptr;
       para.fTypeCode = 'V';
-      return kTRUE;
+      return true;
    }
 
    PyErr_SetString( PyExc_TypeError, "use ctypes.c_long for pass-by-ref of longs" );
-   return kFALSE;
+   return false;
 }
 
 //-----------------------------------------------------------------------------
 CPYCPPYY_IMPLEMENT_BASIC_CONST_CHAR_REF_CONVERTER( Char,  Char_t,  CHAR_MIN,  CHAR_MAX )
 CPYCPPYY_IMPLEMENT_BASIC_CONST_CHAR_REF_CONVERTER( UChar, UChar_t,        0, UCHAR_MAX )
 
-CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( Bool,      Bool_t,    CPyCppyy_PyLong_AsBool )
+CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( Bool,      bool,    CPyCppyy_PyLong_AsBool )
 CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( Short,     Short_t,   CPyCppyy_PyLong_AsShort )
 CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( UShort,    UShort_t,  CPyCppyy_PyLong_AsUShort )
 CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( Int,       Int_t,     CPyCppyy_PyLong_AsStrictLong )
@@ -316,7 +316,7 @@ CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( LongLong,  Long64_t,  PyLong_AsLon
 CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( ULongLong, ULong64_t, PyLongOrInt_AsULong64 )
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TIntRefConverter::SetArg(
+bool CPyCppyy::TIntRefConverter::SetArg(
       PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */ )
 {
 // convert <pyobject> to C++ (pseudo)int&, set arg for call
@@ -324,7 +324,7 @@ Bool_t CPyCppyy::TIntRefConverter::SetArg(
    if ( TCustomInt_CheckExact( pyobject ) ) {
       para.fValue.fVoidp = (void*)&((PyIntObject*)pyobject)->ob_ival;
       para.fTypeCode = 'V';
-      return kTRUE;
+      return true;
    }
 #endif
 
@@ -334,7 +334,7 @@ Bool_t CPyCppyy::TIntRefConverter::SetArg(
    if ( Py_TYPE( pyobject ) == c_int_type ) {
       para.fValue.fVoidp = (void*)((CPyCppyy_tagCDataObject*)pyobject)->b_ptr;
       para.fTypeCode = 'V';
-      return kTRUE;
+      return true;
    }
 #endif
 
@@ -342,7 +342,7 @@ Bool_t CPyCppyy::TIntRefConverter::SetArg(
    int buflen = Utility::GetBuffer( pyobject, 'i', sizeof(int), para.fValue.fVoidp );
    if ( para.fValue.fVoidp && buflen ) {
       para.fTypeCode = 'V';
-      return kTRUE;
+      return true;
    };
 
 #if PY_VERSION_HEX < 0x02050000
@@ -350,13 +350,13 @@ Bool_t CPyCppyy::TIntRefConverter::SetArg(
 #else
    PyErr_SetString( PyExc_TypeError, "use ctypes.c_int for pass-by-ref of ints" );
 #endif
-   return kFALSE;
+   return false;
 }
 
 //-----------------------------------------------------------------------------
 // convert <pyobject> to C++ bool, allow int/long -> bool, set arg for call
 CPYCPPYY_IMPLEMENT_BASIC_CONVERTER(
-   Bool, Bool_t, Long_t, PyInt_FromLong, CPyCppyy_PyLong_AsBool, 'l' )
+   Bool, bool, Long_t, PyInt_FromLong, CPyCppyy_PyLong_AsBool, 'l' )
 
 //-----------------------------------------------------------------------------
 CPYCPPYY_IMPLEMENT_BASIC_CHAR_CONVERTER( Char,  Char_t,  CHAR_MIN, CHAR_MAX  )
@@ -371,15 +371,15 @@ CPYCPPYY_IMPLEMENT_BASIC_CONVERTER(
    Int,    Int_t,    Long_t, PyInt_FromLong,  CPyCppyy_PyLong_AsStrictLong, 'l' )
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TULongConverter::SetArg(
+bool CPyCppyy::TULongConverter::SetArg(
       PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */ )
 {
 // convert <pyobject> to C++ unsigned long, set arg for call
    para.fValue.fULong = PyLongOrInt_AsULong( pyobject );
    if ( PyErr_Occurred() )
-      return kFALSE;
+      return false;
    para.fTypeCode = 'L';
-   return kTRUE;
+   return true;
 }
 
 PyObject* CPyCppyy::TULongConverter::FromMemory( void* address )
@@ -388,14 +388,14 @@ PyObject* CPyCppyy::TULongConverter::FromMemory( void* address )
    return PyLong_FromUnsignedLong( *((ULong_t*)address) );
 }
 
-Bool_t CPyCppyy::TULongConverter::ToMemory( PyObject* value, void* address )
+bool CPyCppyy::TULongConverter::ToMemory( PyObject* value, void* address )
 {
 // convert <value> to C++ unsigned long, write it at <address>
    ULong_t u = PyLongOrInt_AsULong( value );
    if ( PyErr_Occurred() )
-      return kFALSE;
+      return false;
    *((ULong_t*)address) = u;
-   return kTRUE;
+   return true;
 }
 
 //-----------------------------------------------------------------------------
@@ -405,20 +405,20 @@ PyObject* CPyCppyy::TUIntConverter::FromMemory( void* address )
    return PyLong_FromUnsignedLong( *((UInt_t*)address) );
 }
 
-Bool_t CPyCppyy::TUIntConverter::ToMemory( PyObject* value, void* address )
+bool CPyCppyy::TUIntConverter::ToMemory( PyObject* value, void* address )
 {
 // convert <value> to C++ unsigned int, write it at <address>
    ULong_t u = PyLongOrInt_AsULong( value );
    if ( PyErr_Occurred() )
-      return kFALSE;
+      return false;
 
    if ( u > (ULong_t)UINT_MAX ) {
       PyErr_SetString( PyExc_OverflowError, "value too large for unsigned int" );
-      return kFALSE;
+      return false;
    }
 
    *((UInt_t*)address) = (UInt_t)u;
-   return kTRUE;
+   return true;
 }
 
 //- floating point converters -------------------------------------------------
@@ -431,25 +431,25 @@ CPYCPPYY_IMPLEMENT_BASIC_CONVERTER(
    LongDouble, LongDouble_t, LongDouble_t, PyFloat_FromDouble, PyFloat_AsDouble, 'g' )
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TDoubleRefConverter::SetArg(
+bool CPyCppyy::TDoubleRefConverter::SetArg(
       PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */ )
 {
 // convert <pyobject> to C++ double&, set arg for call
    if ( TCustomFloat_CheckExact( pyobject ) ) {
       para.fValue.fVoidp = (void*)&((PyFloatObject*)pyobject)->ob_fval;
       para.fTypeCode = 'V';
-      return kTRUE;
+      return true;
    }
 
 // alternate, pass pointer from buffer
    int buflen = Utility::GetBuffer( pyobject, 'd', sizeof(double), para.fValue.fVoidp );
    if ( para.fValue.fVoidp && buflen ) {
       para.fTypeCode = 'V';
-      return kTRUE;
+      return true;
    }
 
    PyErr_SetString( PyExc_TypeError, "use cppyy.Double for pass-by-ref of doubles" );
-   return kFALSE;
+   return false;
 }
 
 //-----------------------------------------------------------------------------
@@ -458,15 +458,15 @@ CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( Double,     Double_t,     PyFloat_
 CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( LongDouble, LongDouble_t, PyFloat_AsDouble )
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TVoidConverter::SetArg( PyObject*, TParameter&, TCallContext* )
+bool CPyCppyy::TVoidConverter::SetArg( PyObject*, TParameter&, TCallContext* )
 {
 // can't happen (unless a type is mapped wrongly), but implemented for completeness
    PyErr_SetString( PyExc_SystemError, "void/unknown arguments can\'t be set" );
-   return kFALSE;
+   return false;
 }
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TLongLongConverter::SetArg(
+bool CPyCppyy::TLongLongConverter::SetArg(
       PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */ )
 {
 // convert <pyobject> to C++ long long, set arg for call
@@ -474,14 +474,14 @@ Bool_t CPyCppyy::TLongLongConverter::SetArg(
    // special case: float implements nb_int, but allowing rounding conversions
    // interferes with overloading
       PyErr_SetString( PyExc_ValueError, "can not convert float to long long" );
-      return kFALSE;
+      return false;
    }
 
    para.fValue.fLongLong = PyLong_AsLongLong( pyobject );
    if ( PyErr_Occurred() )
-      return kFALSE;
+      return false;
    para.fTypeCode = 'q';
-   return kTRUE;
+   return true;
 }
 
 PyObject* CPyCppyy::TLongLongConverter::FromMemory( void* address )
@@ -490,26 +490,26 @@ PyObject* CPyCppyy::TLongLongConverter::FromMemory( void* address )
    return PyLong_FromLongLong( *(Long64_t*)address );
 }
 
-Bool_t CPyCppyy::TLongLongConverter::ToMemory( PyObject* value, void* address )
+bool CPyCppyy::TLongLongConverter::ToMemory( PyObject* value, void* address )
 {
 // convert <value> to C++ long long, write it at <address>
    Long64_t ll = PyLong_AsLongLong( value );
    if ( ll == -1 && PyErr_Occurred() )
-      return kFALSE;
+      return false;
    *((Long64_t*)address) = ll;
-   return kTRUE;
+   return true;
 }
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TULongLongConverter::SetArg(
+bool CPyCppyy::TULongLongConverter::SetArg(
       PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */ )
 {
 // convert <pyobject> to C++ unsigned long long, set arg for call
    para.fValue.fULongLong = PyLongOrInt_AsULong64( pyobject );
    if ( PyErr_Occurred() )
-      return kFALSE;
+      return false;
    para.fTypeCode = 'Q';
-   return kTRUE;
+   return true;
 }
 
 PyObject* CPyCppyy::TULongLongConverter::FromMemory( void* address )
@@ -518,24 +518,24 @@ PyObject* CPyCppyy::TULongLongConverter::FromMemory( void* address )
    return PyLong_FromUnsignedLongLong( *(ULong64_t*)address );
 }
 
-Bool_t CPyCppyy::TULongLongConverter::ToMemory( PyObject* value, void* address )
+bool CPyCppyy::TULongLongConverter::ToMemory( PyObject* value, void* address )
 {
 // convert <value> to C++ unsigned long long, write it at <address>
    Long64_t ull = PyLongOrInt_AsULong64( value );
    if ( PyErr_Occurred() )
-      return kFALSE;
+      return false;
    *((ULong64_t*)address) = ull;
-   return kTRUE;
+   return true;
 }
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TCStringConverter::SetArg(
+bool CPyCppyy::TCStringConverter::SetArg(
       PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */ )
 {
 // construct a new string and copy it in new memory
    const char* s = CPyCppyy_PyUnicode_AsStringChecked( pyobject );
    if ( PyErr_Occurred() )
-      return kFALSE;
+      return false;
 
    fBuffer = std::string( s, CPyCppyy_PyUnicode_GET_SIZE( pyobject ) );
 
@@ -548,7 +548,7 @@ Bool_t CPyCppyy::TCStringConverter::SetArg(
 // set the value and declare success
    para.fValue.fVoidp = (void*)fBuffer.c_str();
    para.fTypeCode = 'p';
-   return kTRUE;
+   return true;
 }
 
 PyObject* CPyCppyy::TCStringConverter::FromMemory( void* address )
@@ -568,12 +568,12 @@ PyObject* CPyCppyy::TCStringConverter::FromMemory( void* address )
    return PyStrings::gEmptyString;
 }
 
-Bool_t CPyCppyy::TCStringConverter::ToMemory( PyObject* value, void* address )
+bool CPyCppyy::TCStringConverter::ToMemory( PyObject* value, void* address )
 {
 // convert <value> to C++ const char*, write it at <address>
    const char* s = CPyCppyy_PyUnicode_AsStringChecked( value );
    if ( PyErr_Occurred() )
-      return kFALSE;
+      return false;
 
 // verify (too long string will cause truncation, no crash)
    if ( fMaxSize < (UInt_t)CPyCppyy_PyUnicode_GET_SIZE( value ) )
@@ -585,7 +585,7 @@ Bool_t CPyCppyy::TCStringConverter::ToMemory( PyObject* value, void* address )
       // coverity[secure_coding] - can't help it, it's intentional.
       strcpy( *(char**)address, s );
 
-   return kTRUE;
+   return true;
 }
 
 
@@ -594,7 +594,7 @@ namespace {
 
    using namespace CPyCppyy;
 
-   inline Bool_t CArraySetArg(
+   inline bool CArraySetArg(
       PyObject* pyobject, TParameter& para, char tc, int size )
    {
    // general case of loading a C array pointer (void* + type code) as function argument
@@ -603,22 +603,22 @@ namespace {
       } else {
          int buflen = Utility::GetBuffer( pyobject, tc, size, para.fValue.fVoidp );
          if ( ! para.fValue.fVoidp || buflen == 0 )
-            return kFALSE;
+            return false;
       }
       para.fTypeCode = 'p';
-      return kTRUE;
+      return true;
    }
 
 } // unnamed namespace
 
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TNonConstCStringConverter::SetArg(
+bool CPyCppyy::TNonConstCStringConverter::SetArg(
       PyObject* pyobject, TParameter& para, TCallContext* ctxt )
 {
 // attempt base class first (i.e. passing a string), but if that fails, try a buffer
    if ( this->TCStringConverter::SetArg( pyobject, para, ctxt ) )
-      return kTRUE;
+      return true;
 
 // apparently failed, try char buffer
    PyErr_Clear();
@@ -635,12 +635,12 @@ PyObject* CPyCppyy::TNonConstCStringConverter::FromMemory( void* address )
 }
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TNonConstUCStringConverter::SetArg(
+bool CPyCppyy::TNonConstUCStringConverter::SetArg(
       PyObject* pyobject, TParameter& para, TCallContext* ctxt )
 {
 // attempt base class first (i.e. passing a string), but if that fails, try a buffer
    if ( this->TCStringConverter::SetArg( pyobject, para, ctxt ) )
-      return kTRUE;
+      return true;
 
 // apparently failed, try char buffer
    PyErr_Clear();
@@ -648,12 +648,12 @@ Bool_t CPyCppyy::TNonConstUCStringConverter::SetArg(
 }
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TVoidArrayConverter::GetAddressSpecialCase( PyObject* pyobject, void*& address )
+bool CPyCppyy::TVoidArrayConverter::GetAddressSpecialCase( PyObject* pyobject, void*& address )
 {
 // (1): "null pointer" or C++11 style nullptr
    if ( pyobject == Py_None || pyobject == gNullPtrObject ) {
       address = (void*)0;
-      return kTRUE;
+      return true;
    }
 
 // (2): allow integer zero to act as a null pointer, no deriveds
@@ -661,23 +661,23 @@ Bool_t CPyCppyy::TVoidArrayConverter::GetAddressSpecialCase( PyObject* pyobject,
       Long_t val = (Long_t)PyLong_AsLong( pyobject );
       if ( val == 0l ) {
          address = (void*)val;
-         return kTRUE;
+         return true;
       }
 
-      return kFALSE;
+      return false;
    }
 
 // (3): opaque PyCapsule (CObject in older pythons) from somewhere
    if ( CPyCppyy_PyCapsule_CheckExact( pyobject ) ) {
       address = (void*)CPyCppyy_PyCapsule_GetPointer( pyobject, NULL );
-      return kTRUE;
+      return true;
    }
 
-   return kFALSE;
+   return false;
 }
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TVoidArrayConverter::SetArg(
+bool CPyCppyy::TVoidArrayConverter::SetArg(
       PyObject* pyobject, TParameter& para, TCallContext* ctxt )
 {
 // just convert pointer if it is a C++ object
@@ -689,26 +689,26 @@ Bool_t CPyCppyy::TVoidArrayConverter::SetArg(
    // set pointer (may be null) and declare success
       para.fValue.fVoidp = ((ObjectProxy*)pyobject)->GetObject();
       para.fTypeCode = 'p';
-      return kTRUE;
+      return true;
    }
 
 // handle special cases
    if ( GetAddressSpecialCase( pyobject, para.fValue.fVoidp ) ) {
       para.fTypeCode = 'p';
-      return kTRUE;
+      return true;
    }
 
 // final try: attempt to get buffer
-   int buflen = Utility::GetBuffer( pyobject, '*', 1, para.fValue.fVoidp, kFALSE );
+   int buflen = Utility::GetBuffer( pyobject, '*', 1, para.fValue.fVoidp, false );
 
 // ok if buffer exists (can't perform any useful size checks)
    if ( para.fValue.fVoidp && buflen != 0 ) {
       para.fTypeCode = 'p';
-      return kTRUE;
+      return true;
    }
 
 // give up
-   return kFALSE;
+   return false;
 }
 
 //-----------------------------------------------------------------------------
@@ -723,7 +723,7 @@ PyObject* CPyCppyy::TVoidArrayConverter::FromMemory( void* address )
 }
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TVoidArrayConverter::ToMemory( PyObject* value, void* address )
+bool CPyCppyy::TVoidArrayConverter::ToMemory( PyObject* value, void* address )
 {
 // just convert pointer if it is a C++ object
    if ( ObjectProxy_Check( value ) ) {
@@ -733,38 +733,38 @@ Bool_t CPyCppyy::TVoidArrayConverter::ToMemory( PyObject* value, void* address )
 
    // set pointer (may be null) and declare success
       *(void**)address = ((ObjectProxy*)value)->GetObject();
-      return kTRUE;
+      return true;
    }
 
 // handle special cases
    void* ptr = 0;
    if ( GetAddressSpecialCase( value, ptr ) ) {
       *(void**)address = ptr;
-      return kTRUE;
+      return true;
    }
 
 // final try: attempt to get buffer
    void* buf = 0;
-   int buflen = Utility::GetBuffer( value, '*', 1, buf, kFALSE );
+   int buflen = Utility::GetBuffer( value, '*', 1, buf, false );
    if ( ! buf || buflen == 0 )
-      return kFALSE;
+      return false;
 
    *(void**)address = buf;
-   return kTRUE;
+   return true;
 }
 
 //-----------------------------------------------------------------------------
 #define CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER( name, type, code )               \
-Bool_t CPyCppyy::T##name##ArrayConverter::SetArg(                            \
+bool CPyCppyy::T##name##ArrayConverter::SetArg(                            \
       PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */ )       \
 {                                                                            \
    return CArraySetArg( pyobject, para, code, sizeof(type) );                \
 }                                                                            \
                                                                              \
-Bool_t CPyCppyy::T##name##ArrayRefConverter::SetArg(                         \
+bool CPyCppyy::T##name##ArrayRefConverter::SetArg(                         \
       PyObject* pyobject, TParameter& para, TCallContext* ctxt )             \
 {                                                                            \
-   Bool_t result = T##name##ArrayConverter::SetArg( pyobject, para, ctxt );  \
+   bool result = T##name##ArrayConverter::SetArg( pyobject, para, ctxt );  \
    para.fTypeCode = 'V';                                                     \
    return result;                                                            \
 }                                                                            \
@@ -774,25 +774,25 @@ PyObject* CPyCppyy::T##name##ArrayConverter::FromMemory( void* address )     \
    return BufFac_t::Instance()->PyBuffer_FromMemory( *(type**)address, fSize * sizeof(type) );\
 }                                                                            \
                                                                              \
-Bool_t CPyCppyy::T##name##ArrayConverter::ToMemory( PyObject* value, void* address )\
+bool CPyCppyy::T##name##ArrayConverter::ToMemory( PyObject* value, void* address )\
 {                                                                            \
    void* buf = 0;                                                            \
    int buflen = Utility::GetBuffer( value, code, sizeof(type), buf );        \
    if ( ! buf || buflen == 0 )                                               \
-      return kFALSE;                                                         \
+      return false;                                                         \
    if ( 0 <= fSize ) {                                                       \
       if ( fSize < buflen/(int)sizeof(type) ) {                              \
          PyErr_SetString( PyExc_ValueError, "buffer too large for value" );  \
-         return kFALSE;                                                      \
+         return false;                                                      \
       }                                                                      \
       memcpy( *(type**)address, buf, 0 < buflen ? ((size_t) buflen) : sizeof(type) );\
    } else                                                                    \
       *(type**)address = (type*)buf;                                         \
-   return kTRUE;                                                             \
+   return true;                                                             \
 }
 
 //-----------------------------------------------------------------------------
-CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER( Bool,   Bool_t,   'b' )   // signed char
+CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER( Bool,   bool,   'b' )   // signed char
 CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER( Short,  Short_t,  'h' )
 CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER( UShort, UShort_t, 'H' )
 CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER( Int,    Int_t,    'i' )
@@ -803,14 +803,14 @@ CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER( Float,  Float_t,  'f' )
 CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER( Double, Double_t, 'd' )
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TLongLongArrayConverter::SetArg(
+bool CPyCppyy::TLongLongArrayConverter::SetArg(
       PyObject* pyobject, TParameter& para, TCallContext* ctxt )
 {
 // convert <pyobject> to C++ long long*, set arg for call
    PyObject* pytc = PyObject_GetAttr( pyobject, PyStrings::gTypeCode );
    if ( pytc != 0 ) {              // iow, this array has a known type, but there's no
       Py_DECREF( pytc );           // such thing for long long in module array
-      return kFALSE;
+      return false;
    }
 
    return TVoidArrayConverter::SetArg( pyobject, para, ctxt );
@@ -819,10 +819,10 @@ Bool_t CPyCppyy::TLongLongArrayConverter::SetArg(
 
 //- converters for special cases ----------------------------------------------
 #define CPYCPPYY_IMPLEMENT_STRING_AS_PRIMITIVE_CONVERTER( name, type, F1, F2 )\
-CPyCppyy::T##name##Converter::T##name##Converter( Bool_t keepControl ) :      \
+CPyCppyy::T##name##Converter::T##name##Converter( bool keepControl ) :      \
       TCppObjectConverter( Cppyy::GetScope( #type ), keepControl ) {}         \
                                                                               \
-Bool_t CPyCppyy::T##name##Converter::SetArg(                                  \
+bool CPyCppyy::T##name##Converter::SetArg(                                  \
       PyObject* pyobject, TParameter& para, TCallContext* ctxt )              \
 {                                                                             \
    if ( CPyCppyy_PyUnicode_Check( pyobject ) ) {                              \
@@ -830,15 +830,15 @@ Bool_t CPyCppyy::T##name##Converter::SetArg(                                  \
                       CPyCppyy_PyUnicode_GET_SIZE( pyobject ) );              \
       para.fValue.fVoidp = &fBuffer;                                          \
       para.fTypeCode = 'V';                                                   \
-      return kTRUE;                                                           \
+      return true;                                                           \
    }                                                                          \
                                                                               \
    if ( ! ( PyInt_Check( pyobject ) || PyLong_Check( pyobject ) ) ) {         \
-      Bool_t result = TCppObjectConverter::SetArg( pyobject, para, ctxt );    \
+      bool result = TCppObjectConverter::SetArg( pyobject, para, ctxt );    \
       para.fTypeCode = 'V';                                                   \
       return result;                                                          \
    }                                                                          \
-   return kFALSE;                                                             \
+   return false;                                                             \
 }                                                                             \
                                                                               \
 PyObject* CPyCppyy::T##name##Converter::FromMemory( void* address )           \
@@ -849,11 +849,11 @@ PyObject* CPyCppyy::T##name##Converter::FromMemory( void* address )           \
    return PyStrings::gEmptyString;                                            \
 }                                                                             \
                                                                               \
-Bool_t CPyCppyy::T##name##Converter::ToMemory( PyObject* value, void* address )\
+bool CPyCppyy::T##name##Converter::ToMemory( PyObject* value, void* address )\
 {                                                                             \
    if ( CPyCppyy_PyUnicode_Check( value ) ) {                                 \
       *((type*)address) = CPyCppyy_PyUnicode_AsString( value );               \
-      return kTRUE;                                                           \
+      return true;                                                           \
    }                                                                          \
                                                                               \
    return TCppObjectConverter::ToMemory( value, address );                    \
@@ -865,18 +865,18 @@ CPYCPPYY_IMPLEMENT_STRING_AS_PRIMITIVE_CONVERTER( STLStringView, std::string_vie
 #endif
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TCppObjectConverter::SetArg(
+bool CPyCppyy::TCppObjectConverter::SetArg(
       PyObject* pyobject, TParameter& para, TCallContext* ctxt )
 {
 // convert <pyobject> to C++ instance*, set arg for call
    if ( ! ObjectProxy_Check( pyobject ) ) {
       if ( GetAddressSpecialCase( pyobject, para.fValue.fVoidp ) ) {
          para.fTypeCode = 'p';      // allow special cases such as NULL
-         return kTRUE;
+         return true;
       }
 
    // not a cppyy object (TODO: handle SWIG etc.)
-      return kFALSE;
+      return false;
    }
 
    ObjectProxy* pyobj = (ObjectProxy*)pyobject;
@@ -894,7 +894,7 @@ Bool_t CPyCppyy::TCppObjectConverter::SetArg(
 
    // set pointer (may be null) and declare success
       para.fTypeCode = 'p';
-      return kTRUE;
+      return true;
 
    }
 /* TODO: remove usage of TClass
@@ -902,33 +902,33 @@ Bool_t CPyCppyy::TCppObjectConverter::SetArg(
    // assume "user knows best" to allow anonymous pointer passing
       para.fValue.fVoidp = pyobj->GetObject();
       para.fTypeCode = 'p';
-      return kTRUE;
+      return true;
    }
 */
 
-   return kFALSE;
+   return false;
 }
 
 //-----------------------------------------------------------------------------
 PyObject* CPyCppyy::TCppObjectConverter::FromMemory( void* address )
 {
 // construct python object from C++ instance read at <address>
-   return BindCppObject( address, fClass, kFALSE );
+   return BindCppObject( address, fClass, false );
 }
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TCppObjectConverter::ToMemory( PyObject* value, void* address )
+bool CPyCppyy::TCppObjectConverter::ToMemory( PyObject* value, void* address )
 {
 // convert <value> to C++ instance, write it at <address>
    if ( ! ObjectProxy_Check( value ) ) {
       void* ptr = 0;
       if ( GetAddressSpecialCase( value, ptr ) ) {
          *(void**)address = ptr;             // allow special cases such as NULL
-         return kTRUE;
+         return true;
       }
 
    // not a cppyy object (TODO: handle SWIG etc.)
-      return kFALSE;
+      return false;
    }
 
    if ( Cppyy::IsSubtype( ((ObjectProxy*)value)->ObjectIsA(), fClass ) ) {
@@ -943,29 +943,29 @@ Bool_t CPyCppyy::TCppObjectConverter::ToMemory( PyObject* value, void* address )
       Py_DECREF( pyobj );
       if ( result ) {
          Py_DECREF( result );
-         return kTRUE;
+         return true;
       }
    }
 
-   return kFALSE;
+   return false;
 }
 
 // TODO: CONSOLIDATE ValueCpp, RefCpp, and CppObject ...
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TValueCppObjectConverter::SetArg(
+bool CPyCppyy::TValueCppObjectConverter::SetArg(
       PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */ )
 {
 // convert <pyobject> to C++ instance, set arg for call
    if ( ! ObjectProxy_Check( pyobject ) )
-      return kFALSE;
+      return false;
 
    ObjectProxy* pyobj = (ObjectProxy*)pyobject;
    if ( pyobj->ObjectIsA() && Cppyy::IsSubtype( pyobj->ObjectIsA(), fClass ) ) {
    // calculate offset between formal and actual arguments
       para.fValue.fVoidp = pyobj->GetObject();
       if ( ! para.fValue.fVoidp )
-         return kFALSE;
+         return false;
 
       if ( pyobj->ObjectIsA() != fClass ) {
          para.fValue.fLong += Cppyy::GetBaseOffset(
@@ -973,25 +973,25 @@ Bool_t CPyCppyy::TValueCppObjectConverter::SetArg(
       }
 
       para.fTypeCode = 'V';
-      return kTRUE;
+      return true;
    }
 
-   return kFALSE;
+   return false;
 }
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TRefCppObjectConverter::SetArg(
+bool CPyCppyy::TRefCppObjectConverter::SetArg(
       PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */ )
 {
 // convert <pyobject> to C++ instance&, set arg for call
    if ( ! ObjectProxy_Check( pyobject ) )
-      return kFALSE;
+      return false;
 
    ObjectProxy* pyobj = (ObjectProxy*)pyobject; 
 
 // reject moves
    if (pyobj->fFlags & ObjectProxy::kIsRValue)
-      return kFALSE;
+      return false;
 
    if ( pyobj->ObjectIsA() && Cppyy::IsSubtype( pyobj->ObjectIsA(), fClass ) ) {
    // calculate offset between formal and actual arguments
@@ -1002,22 +1002,22 @@ Bool_t CPyCppyy::TRefCppObjectConverter::SetArg(
       }
 
       para.fTypeCode = 'V';
-      return kTRUE;
+      return true;
    }
 /* TODO: remove usage of TClass
    else if ( ! TClass::GetClass( Cppyy::GetFinalName( fClass ).c_str() )->GetClassInfo() ) {
    // assume "user knows best" to allow anonymous reference passing
       para.fValue.fVoidp = pyobj->GetObject();
       para.fTypeCode = 'V';
-      return kTRUE;
+      return true;
    }
 */
 
-   return kFALSE;
+   return false;
 }
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TMoveCppObjectConverter::SetArg(
+bool CPyCppyy::TMoveCppObjectConverter::SetArg(
         PyObject* pyobject, TParameter& para, TCallContext* ctxt)
 {
 // moving is same as by-ref, but have to check that move is allowed
@@ -1033,24 +1033,24 @@ Bool_t CPyCppyy::TMoveCppObjectConverter::SetArg(
     }
 
     if (moveit_reason) {
-        Bool_t result = this->TRefCppObjectConverter::SetArg(pyobject, para, ctxt);
+        bool result = this->TRefCppObjectConverter::SetArg(pyobject, para, ctxt);
         if (!result && moveit_reason == 2)       // restore the movability flag?
             ((ObjectProxy*)pyobject)->fFlags |= ObjectProxy::kIsRValue;
         return result;
     }
 
     PyErr_SetString(PyExc_TypeError, "object is not an rvalue");
-    return kFALSE;      // not a temporary or movable object
+    return false;      // not a temporary or movable object
 }
 
 //-----------------------------------------------------------------------------
 template <bool ISREFERENCE>
-Bool_t CPyCppyy::TCppObjectPtrConverter<ISREFERENCE>::SetArg(
+bool CPyCppyy::TCppObjectPtrConverter<ISREFERENCE>::SetArg(
       PyObject* pyobject, TParameter& para, TCallContext* ctxt )
 {
 // convert <pyobject> to C++ instance**, set arg for call
    if ( ! ObjectProxy_Check( pyobject ) )
-      return kFALSE;              // not a cppyy object (TODO: handle SWIG etc.)
+      return false;              // not a cppyy object (TODO: handle SWIG etc.)
 
    if ( Cppyy::IsSubtype( ((ObjectProxy*)pyobject)->ObjectIsA(), fClass ) ) {
    // depending on memory policy, some objects need releasing when passed into functions
@@ -1064,10 +1064,10 @@ Bool_t CPyCppyy::TCppObjectPtrConverter<ISREFERENCE>::SetArg(
       else
         para.fValue.fVoidp = &((ObjectProxy*)pyobject)->fObject;
       para.fTypeCode = ISREFERENCE ? 'V' : 'p';
-      return kTRUE;
+      return true;
    }
 
-   return kFALSE;
+   return false;
 }
 
 //-----------------------------------------------------------------------------
@@ -1075,16 +1075,16 @@ template <bool ISREFERENCE>
 PyObject* CPyCppyy::TCppObjectPtrConverter<ISREFERENCE>::FromMemory( void* address )
 {
 // construct python object from C++ instance* read at <address>
-   return BindCppObject( address, fClass, kTRUE );
+   return BindCppObject( address, fClass, true );
 }
 
 //-----------------------------------------------------------------------------
 template <bool ISREFERENCE>
-Bool_t CPyCppyy::TCppObjectPtrConverter<ISREFERENCE>::ToMemory( PyObject* value, void* address )
+bool CPyCppyy::TCppObjectPtrConverter<ISREFERENCE>::ToMemory( PyObject* value, void* address )
 {
 // convert <value> to C++ instance*, write it at <address>
    if ( ! ObjectProxy_Check( value ) )
-      return kFALSE;              // not a cppyy object (TODO: handle SWIG etc.)
+      return false;              // not a cppyy object (TODO: handle SWIG etc.)
 
    if ( Cppyy::IsSubtype( ((ObjectProxy*)value)->ObjectIsA(), fClass ) ) {
    // depending on memory policy, some objects need releasing when passed into functions
@@ -1093,10 +1093,10 @@ Bool_t CPyCppyy::TCppObjectPtrConverter<ISREFERENCE>::ToMemory( PyObject* value,
 
    // set pointer (may be null) and declare success
       *(void**)address = ((ObjectProxy*)value)->GetObject();
-      return kTRUE;
+      return true;
    }
 
-   return kFALSE;
+   return false;
 }
 
 
@@ -1107,30 +1107,30 @@ namespace CPyCppyy {
 }
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TCppObjectArrayConverter::SetArg(
+bool CPyCppyy::TCppObjectArrayConverter::SetArg(
       PyObject* pyobject, TParameter& para, TCallContext* /* txt */ )
 {
 // convert <pyobject> to C++ instance**, set arg for call
    if ( ! TTupleOfInstances_CheckExact( pyobject ) )
-      return kFALSE;              // no guarantee that the tuple is okay
+      return false;              // no guarantee that the tuple is okay
 
 // treat the first instance of the tuple as the start of the array, and pass it
 // by pointer (TODO: store and check sizes)
    if ( PyTuple_Size( pyobject ) < 1 )
-      return kFALSE;
+      return false;
 
    PyObject* first = PyTuple_GetItem( pyobject, 0 );
    if ( ! ObjectProxy_Check( first ) )
-      return kFALSE;              // should not happen
+      return false;              // should not happen
 
    if ( Cppyy::IsSubtype( ((ObjectProxy*)first)->ObjectIsA(), fClass ) ) {
    // no memory policies supported; set pointer (may be null) and declare success
       para.fValue.fVoidp = ((ObjectProxy*)first)->fObject;
       para.fTypeCode = 'p';
-      return kTRUE;
+      return true;
    }
 
-   return kFALSE;
+   return false;
 }
 
 //-----------------------------------------------------------------------------
@@ -1144,49 +1144,49 @@ PyObject* CPyCppyy::TCppObjectArrayConverter::FromMemory( void* address )
 }
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TCppObjectArrayConverter::ToMemory( PyObject* /* value */, void* /* address */ )
+bool CPyCppyy::TCppObjectArrayConverter::ToMemory( PyObject* /* value */, void* /* address */ )
 {
 // convert <value> to C++ array of instances, write it at <address>
 
 // TODO: need to have size both for the array and from the input
    PyErr_SetString( PyExc_NotImplementedError,
       "access to C-arrays of objects not yet implemented!" );
-   return kFALSE;
+   return false;
 }
 
 //____________________________________________________________________________
 // CLING WORKAROUND -- classes for STL iterators are completely undefined in that
 // they come in a bazillion different guises, so just do whatever
-Bool_t CPyCppyy::TSTLIteratorConverter::SetArg(
+bool CPyCppyy::TSTLIteratorConverter::SetArg(
       PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */ )
 {
    if ( ! ObjectProxy_Check( pyobject ) )
-      return kFALSE;
+      return false;
 
 // just set the pointer value, no check
    ObjectProxy* pyobj = (ObjectProxy*)pyobject;
    para.fValue.fVoidp = pyobj->GetObject();
    para.fTypeCode = 'V';
-   return kTRUE;
+   return true;
 }
 // -- END CLING WORKAROUND
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TVoidPtrRefConverter::SetArg(
+bool CPyCppyy::TVoidPtrRefConverter::SetArg(
       PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */ )
 {
 // convert <pyobject> to C++ void*&, set arg for call
    if ( ObjectProxy_Check( pyobject ) ) {
       para.fValue.fVoidp = &((ObjectProxy*)pyobject)->fObject;
       para.fTypeCode = 'V';
-      return kTRUE;
+      return true;
    }
 
-   return kFALSE;
+   return false;
 }
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TVoidPtrPtrConverter::SetArg(
+bool CPyCppyy::TVoidPtrPtrConverter::SetArg(
       PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */ )
 {
 // convert <pyobject> to C++ void**, set arg for call
@@ -1194,19 +1194,19 @@ Bool_t CPyCppyy::TVoidPtrPtrConverter::SetArg(
    // this is a C++ object, take and set its address
       para.fValue.fVoidp = &((ObjectProxy*)pyobject)->fObject;
       para.fTypeCode = 'p';
-      return kTRUE;
+      return true;
    }
 
 // buffer objects are allowed under "user knows best"
-   int buflen = Utility::GetBuffer( pyobject, '*', 1, para.fValue.fVoidp, kFALSE );
+   int buflen = Utility::GetBuffer( pyobject, '*', 1, para.fValue.fVoidp, false );
 
 // ok if buffer exists (can't perform any useful size checks)
    if ( para.fValue.fVoidp && buflen != 0 ) {
       para.fTypeCode = 'p';
-      return kTRUE;
+      return true;
    }
 
-   return kFALSE;
+   return false;
 }
 
 //-----------------------------------------------------------------------------
@@ -1221,13 +1221,13 @@ PyObject* CPyCppyy::TVoidPtrPtrConverter::FromMemory( void* address )
 }
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TPyObjectConverter::SetArg(
+bool CPyCppyy::TPyObjectConverter::SetArg(
       PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */ )
 {
 // by definition: set and declare success
    para.fValue.fVoidp = pyobject;
    para.fTypeCode = 'p';
-   return kTRUE;
+   return true;
 }
 
 PyObject* CPyCppyy::TPyObjectConverter::FromMemory( void* address )
@@ -1236,25 +1236,24 @@ PyObject* CPyCppyy::TPyObjectConverter::FromMemory( void* address )
    PyObject* pyobject = *((PyObject**)address);
 
    if ( ! pyobject ) {
-      Py_INCREF( Py_None );
-      return Py_None;
+      Py_RETURN_NONE;
    }
 
    Py_INCREF( pyobject );
    return pyobject;
 }
 
-Bool_t CPyCppyy::TPyObjectConverter::ToMemory( PyObject* value, void* address )
+bool CPyCppyy::TPyObjectConverter::ToMemory( PyObject* value, void* address )
 {
 // no conversion needed, write <value> at <address>
    Py_INCREF( value );
    *((PyObject**)address) = value;
-   return kTRUE;
+   return true;
 }
 
 
 //- smart pointer converters --------------------------------------------------
-Bool_t CPyCppyy::TSmartPtrCppObjectConverter::SetArg(
+bool CPyCppyy::TSmartPtrCppObjectConverter::SetArg(
       PyObject* pyobject, TParameter& para, TCallContext* ctxt )
 {
    char typeCode = fHandlePtr ? 'p' : 'V';
@@ -1262,10 +1261,10 @@ Bool_t CPyCppyy::TSmartPtrCppObjectConverter::SetArg(
    if ( ! ObjectProxy_Check( pyobject ) ) {
       if ( fHandlePtr && GetAddressSpecialCase( pyobject, para.fValue.fVoidp ) ) {
          para.fTypeCode = typeCode;      // allow special cases such as NULL
-         return kTRUE;
+         return true;
       }
 
-      return kFALSE;
+      return false;
    }
 
    ObjectProxy* pyobj = (ObjectProxy*)pyobject;
@@ -1285,7 +1284,7 @@ Bool_t CPyCppyy::TSmartPtrCppObjectConverter::SetArg(
 
    // set pointer (may be null) and declare success
       para.fTypeCode = typeCode;
-      return kTRUE;
+      return true;
    }
 
 // for the case where we have an 'exposed' smart pointer:
@@ -1299,10 +1298,10 @@ Bool_t CPyCppyy::TSmartPtrCppObjectConverter::SetArg(
 
    // set pointer (may be null) and declare success
       para.fTypeCode = typeCode;
-      return kTRUE;
+      return true;
    }
 
-   return kFALSE;
+   return false;
 }
 
 PyObject* CPyCppyy::TSmartPtrCppObjectConverter::FromMemory( void* address )
@@ -1322,11 +1321,11 @@ PyObject* CPyCppyy::TSmartPtrCppObjectConverter::FromMemory( void* address )
 
 
 //-----------------------------------------------------------------------------
-Bool_t CPyCppyy::TNotImplementedConverter::SetArg( PyObject*, TParameter&, TCallContext* )
+bool CPyCppyy::TNotImplementedConverter::SetArg( PyObject*, TParameter&, TCallContext* )
 {
 // raise a NotImplemented exception to take a method out of overload resolution
    PyErr_SetString( PyExc_NotImplementedError, "this method can not (yet) be called" );
-   return kFALSE;
+   return false;
 }
 
 
@@ -1381,8 +1380,8 @@ CPyCppyy::TConverter* CPyCppyy::CreateConverter( const std::string& fullType, Lo
    }
 
 //-- still nothing? use a generalized converter
-   Bool_t isConst = resolvedType.substr(0, 5) == "const";
-   Bool_t control = cpd == "&" || isConst;
+   bool isConst = resolvedType.substr(0, 5) == "const";
+   bool control = cpd == "&" || isConst;
 
 // converters for known C++ classes and default (void*)
    TConverter* result = 0;
@@ -1400,7 +1399,7 @@ CPyCppyy::TConverter* CPyCppyy::CreateConverter( const std::string& fullType, Lo
                } else if ( cpd == "&" ) {
                   result = new TSmartPtrCppObjectConverter( klass, rawPtrType, method );
                } else if ( cpd == "*" && size <= 0 ) {
-                  result = new TSmartPtrCppObjectConverter( klass, rawPtrType, method, control, kTRUE );
+                  result = new TSmartPtrCppObjectConverter( klass, rawPtrType, method, control, true );
              //  } else if ( cpd == "**" || cpd == "*&" || cpd == "&*" ) {
              //  } else if ( cpd == "[]" || size > 0 ) {
              //  } else {
@@ -1426,9 +1425,9 @@ CPyCppyy::TConverter* CPyCppyy::CreateConverter( const std::string& fullType, Lo
         else if ( cpd == "&&" )
           result = new TMoveCppObjectConverter( klass );
         else if ( cpd == "[]" || size > 0 )
-          result = new TCppObjectArrayConverter( klass, size, kFALSE );
+          result = new TCppObjectArrayConverter( klass, size, false );
         else if ( cpd == "" )               // by value
-          result = new TValueCppObjectConverter( klass, kTRUE );
+          result = new TValueCppObjectConverter( klass, true );
       }
    } else if ( Cppyy::IsEnum( realType ) ) {
    // special case (Cling): represent enums as unsigned integers

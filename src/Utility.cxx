@@ -23,7 +23,7 @@
 
 //- data _____________________________________________________________________
 dict_lookup_func CPyCppyy::gDictLookupOrg = 0;
-Bool_t CPyCppyy::gDictLookupActive = kFALSE;
+bool CPyCppyy::gDictLookupActive = false;
 
 typedef std::map<std::string, std::string> TC2POperatorMapping_t;
 static TC2POperatorMapping_t gC2POperatorMapping;
@@ -164,7 +164,7 @@ ULong64_t CPyCppyy::PyLongOrInt_AsULong64( PyObject* pyobject )
 }
 
 //----------------------------------------------------------------------------
-Bool_t CPyCppyy::Utility::AddToClass(
+bool CPyCppyy::Utility::AddToClass(
       PyObject* pyclass, const char* label, PyCFunction cfunc, int flags )
 {
 // Add the given function to the class under name 'label'.
@@ -181,37 +181,37 @@ Bool_t CPyCppyy::Utility::AddToClass(
 
     PyObject* func = PyCFunction_New( pdef, NULL );
     PyObject* method = TCustomInstanceMethod_New( func, NULL, pyclass );
-    Bool_t isOk = PyObject_SetAttrString( pyclass, pdef->ml_name, method ) == 0;
+    bool isOk = PyObject_SetAttrString( pyclass, pdef->ml_name, method ) == 0;
     Py_DECREF( method );
     Py_DECREF( func );
 
     if ( PyErr_Occurred() )
-        return kFALSE;
+        return false;
 
     if ( ! isOk ) {
         PyErr_Format( PyExc_TypeError, "could not add method %s", label );
-        return kFALSE;
+        return false;
     }
 
-    return kTRUE;
+    return true;
 }
 
 //----------------------------------------------------------------------------
-Bool_t CPyCppyy::Utility::AddToClass( PyObject* pyclass, const char* label, const char* func )
+bool CPyCppyy::Utility::AddToClass( PyObject* pyclass, const char* label, const char* func )
 {
 // Add the given function to the class under name 'label'.
     PyObject* pyfunc = PyObject_GetAttrString( pyclass, const_cast< char* >( func ) );
     if ( ! pyfunc )
-        return kFALSE;
+        return false;
 
-    Bool_t isOk = PyObject_SetAttrString( pyclass, const_cast< char* >( label ), pyfunc ) == 0;
+    bool isOk = PyObject_SetAttrString( pyclass, const_cast< char* >( label ), pyfunc ) == 0;
 
     Py_DECREF( pyfunc );
     return isOk;
 }
 
 //----------------------------------------------------------------------------
-Bool_t CPyCppyy::Utility::AddToClass( PyObject* pyclass, const char* label, PyCallable* pyfunc )
+bool CPyCppyy::Utility::AddToClass( PyObject* pyclass, const char* label, PyCallable* pyfunc )
 {
 // Add the given function to the class under name 'label'.
     MethodProxy* method =
@@ -223,7 +223,7 @@ Bool_t CPyCppyy::Utility::AddToClass( PyObject* pyclass, const char* label, PyCa
             PyErr_Clear();
         Py_XDECREF( (PyObject*)method );
         method = MethodProxy_New( label, pyfunc );
-        Bool_t isOk = PyObject_SetAttrString(
+        bool isOk = PyObject_SetAttrString(
             pyclass, const_cast< char* >( label ), (PyObject*)method ) == 0;
         Py_DECREF( method );
         return isOk;
@@ -232,11 +232,11 @@ Bool_t CPyCppyy::Utility::AddToClass( PyObject* pyclass, const char* label, PyCa
     method->AddMethod( pyfunc );
 
     Py_DECREF( method );
-    return kTRUE;
+    return true;
 }
 
 //----------------------------------------------------------------------------
-Bool_t CPyCppyy::Utility::AddUsingToClass(PyObject* pyclass, const char* method)
+bool CPyCppyy::Utility::AddUsingToClass(PyObject* pyclass, const char* method)
 {
 // Helper to add base class methods to the derived class one (this covers the
 // 'using' cases, which the dictionary does not provide).
@@ -244,14 +244,14 @@ Bool_t CPyCppyy::Utility::AddUsingToClass(PyObject* pyclass, const char* method)
         (MethodProxy*)PyObject_GetAttrString( pyclass, const_cast<char*>(method));
     if ( ! MethodProxy_Check( derivedMethod ) ) {
         Py_XDECREF( derivedMethod );
-        return kFALSE;
+        return false;
     }
 
     PyObject* mro = PyObject_GetAttr( pyclass, PyStrings::gMRO );
     if ( ! mro || ! PyTuple_Check( mro ) ) {
         Py_XDECREF( mro );
         Py_DECREF( derivedMethod );
-        return kFALSE;
+        return false;
     }
 
     MethodProxy* baseMethod = 0;
@@ -276,7 +276,7 @@ Bool_t CPyCppyy::Utility::AddUsingToClass(PyObject* pyclass, const char* method)
     if (!MethodProxy_Check(baseMethod)) {
         Py_XDECREF(baseMethod);
         Py_DECREF(derivedMethod);
-        return kFALSE;
+        return false;
     }
 
     derivedMethod->AddMethod(baseMethod);
@@ -284,11 +284,11 @@ Bool_t CPyCppyy::Utility::AddUsingToClass(PyObject* pyclass, const char* method)
     Py_DECREF(baseMethod);
     Py_DECREF(derivedMethod);
 
-    return kTRUE;
+    return true;
 }
 
 //----------------------------------------------------------------------------
-Bool_t CPyCppyy::Utility::AddBinaryOperator(
+bool CPyCppyy::Utility::AddBinaryOperator(
         PyObject* left, PyObject* right, const char* op, const char* label, const char* alt)
 {
 // Install the named operator (op) into the left object's class if such a function
@@ -297,21 +297,21 @@ Bool_t CPyCppyy::Utility::AddBinaryOperator(
 
 // this should be a given, nevertheless ...
     if (!ObjectProxy_Check(left))
-        return kFALSE;
+        return false;
 
 // retrieve the class names to match the signature of any found global functions
     std::string rcname = ClassName(right);
     std::string lcname = ClassName(left);
     PyObject* pyclass = PyObject_GetAttr(left, PyStrings::gClass);
 
-    Bool_t result = AddBinaryOperator(pyclass, lcname, rcname, op, label, alt);
+    bool result = AddBinaryOperator(pyclass, lcname, rcname, op, label, alt);
 
     Py_DECREF( pyclass );
     return result;
 }
 
 //----------------------------------------------------------------------------
-Bool_t CPyCppyy::Utility::AddBinaryOperator(
+bool CPyCppyy::Utility::AddBinaryOperator(
        PyObject* pyclass, const char* op, const char* label, const char* alt)
 {
 // Install binary operator op in pyclass, working on two instances of pyclass.
@@ -343,7 +343,7 @@ Cppyy::TCppMethod_t FindAndAddOperator(const std::string& lcname, const std::str
     return Cppyy::GetMethod( scope, idx );
 }
 
-Bool_t CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& lcname,
+bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& lcname,
         const std::string& rcname, const char* op, const char* label, const char* alt)
 {
 // Find a global function with a matching signature and install the result on pyclass;
@@ -424,12 +424,12 @@ Bool_t CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string
 #endif
 
     if (pyfunc) {  // found a matching overload; add to class
-        Bool_t ok = AddToClass(pyclass, label, pyfunc);
+        bool ok = AddToClass(pyclass, label, pyfunc);
         if (ok && alt)
             return AddToClass(pyclass, alt, label);
     }
 
-    return kFALSE;
+    return false;
 }
 
 //----------------------------------------------------------------------------
@@ -484,27 +484,27 @@ std::string CPyCppyy::Utility::ConstructTemplateArgs(PyObject* pyname, PyObject*
 }
 
 //----------------------------------------------------------------------------
-Bool_t CPyCppyy::Utility::InitProxy(PyObject* module, PyTypeObject* pytype, const char* name)
+bool CPyCppyy::Utility::InitProxy(PyObject* module, PyTypeObject* pytype, const char* name)
 {
 // Initialize a proxy class for use by python, and add it to the module.
 
 // finalize proxy type
     if (PyType_Ready( pytype ) < 0)
-        return kFALSE;
+        return false;
 
 // add proxy type to the given module
     Py_INCREF(pytype);       // PyModule_AddObject steals reference
     if (PyModule_AddObject(module, (char*)name, (PyObject*)pytype) < 0) {
         Py_DECREF( pytype );
-        return kFALSE;
+        return false;
     }
 
 // declare success
-    return kTRUE;
+    return true;
 }
 
 //----------------------------------------------------------------------------
-int CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, void*& buf, Bool_t check)
+int CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, void*& buf, bool check)
 {
 // Retrieve a linear buffer pointer from the given pyobject.
 
@@ -540,7 +540,7 @@ int CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, void*& b
 #endif
 #endif
 
-        if (buf && check == kTRUE) {
+        if (buf && check == true) {
         // determine buffer compatibility (use "buf" as a status flag)
             PyObject* pytc = PyObject_GetAttr(pyobject, PyStrings::gTypeCode);
             if (pytc != 0) {      // for array objects
@@ -577,7 +577,7 @@ int CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, void*& b
 }
 
 //----------------------------------------------------------------------------
-std::string CPyCppyy::Utility::MapOperatorName(const std::string& name, Bool_t bTakesParams)
+std::string CPyCppyy::Utility::MapOperatorName(const std::string& name, bool bTakesParams)
 {
 // Map the given C++ operator name on the python equivalent.
     if (8 < name.size() && name.substr(0, 8) == "operator") {

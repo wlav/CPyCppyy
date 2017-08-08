@@ -7,16 +7,16 @@
 
 namespace CPyCppyy {
 
-   class TFunctionHolder : public TMethodHolder {
-   public:
-      using TMethodHolder::TMethodHolder;
+    class TFunctionHolder : public TMethodHolder {
+    public:
+        using TMethodHolder::TMethodHolder;
 
-      virtual PyCallable* Clone() { return new TFunctionHolder( *this ); }
+        virtual PyCallable* Clone() { return new TFunctionHolder( *this ); }
 
-      virtual PyObject* PreProcessArgs( ObjectProxy*& self, PyObject* args, PyObject* kwds );
-      virtual PyObject* Call(
-         ObjectProxy*&, PyObject* args, PyObject* kwds, TCallContext* ctx = 0 );
-   };
+        virtual PyObject* PreProcessArgs(ObjectProxy*& self, PyObject* args, PyObject* kwds);
+        virtual PyObject* Call(
+            ObjectProxy*&, PyObject* args, PyObject* kwds, TCallContext* ctx = 0);
+    };
 
 } // namespace CPyCppyy
 
