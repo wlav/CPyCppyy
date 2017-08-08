@@ -1,6 +1,9 @@
 #ifndef CPYCPPYY_TEMPLATEPROXY_H
 #define CPYCPPYY_TEMPLATEPROXY_H
 
+// Bindings
+#include "CPyCppyyType.h"
+
 // Standard
 #include <string>
 
@@ -17,12 +20,14 @@ namespace CPyCppyy {
  */
 
     class TemplateProxy {
-    public:
+    private:
+        friend TemplateProxy* TemplateProxy_New(
+            const std::string& cppname, const std::string& pyname, PyObject* pyclass);
         void Set(const std::string& cppname, const std::string& pyname, PyObject* pyclass);
 
     public:              // public, as the python C-API works with C structs
         PyObject_HEAD
-        PyObject* fSelf;                // must be first (same layout as MethodProxy)
+        PyObject* fSelf;           // must be first (same layout as MethodProxy)
         PyObject* fCppName;
         PyObject* fPyClass;
         PyObject* fPyName;
@@ -59,6 +64,8 @@ namespace CPyCppyy {
             const std::string& cppname, const std::string& pyname, PyObject* pyclass)
     {
     // Create and initialize a new template method proxy for the class.
+        if (!CPyCppyyType_Check(pyclass)) return nullptr;
+
         TemplateProxy* pytmpl =
             (TemplateProxy*)TemplateProxy_Type.tp_new(&TemplateProxy_Type, 0, 0);
         pytmpl->Set(cppname, pyname, pyclass);

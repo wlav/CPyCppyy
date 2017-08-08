@@ -45,22 +45,19 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
     if (!result)
         return nullptr;
 
-// initialization of class (based on name only, initially, which is lazy)
-
-// there's a snag here: if a python class is derived from the bound class,
-// the name will not be known by the scope lookup, hence we'll use the meta
-// class name from the subtype, rather than given class name
+// initialization of class (based on metatype)
     const char* mp = strstr(subtype->tp_name, "_meta");
-    if (!mp) {
+    if (!mp || !CPyCppyyType_CheckExact(subtype)) {
     // there has been a user meta class override in a derived class, so do
     // the consistent thing, thus allowing user control over naming
         result->fCppType = Cppyy::GetScope(
             CPyCppyy_PyUnicode_AsString(PyTuple_GET_ITEM(args, 0)));
     } else {
-    // coming here from cppyy, use meta class name instead of given name,
-    // so that it is safe to inherit python classes from the bound class
-        result->fCppType = Cppyy::GetScope(
-            std::string(subtype->tp_name).substr(0, mp-subtype->tp_name).c_str());
+    // coming here from cppyy or from sub-classing in python; take the
+    // C++ type from the meta class to make sure that the latter category
+    // has fCppType properly set (it inherits the meta class, but has an
+    // otherwise unknown (or wrong) C++ type)
+        result->fCppType = ((CPyCppyyClass*)subtype)->fCppType;//Cppyy::GetScope(
     }
 
     return (PyObject*)result;
@@ -85,12 +82,9 @@ static PyObject* pt_getattro(PyObject* pyclass, PyObject* pyname)
 
         // namespaces may have seen updates in their list of global functions, which
         // are available as "methods" even though they're not really that
-            if (!attr && !CPyCppyyType_CheckExact(pyclass) && PyType_Check(pyclass)) {
+            if (!attr && CPyCppyyType_Check(pyclass)) {
                 PyErr_Clear();
-                PyObject* pycppname = PyObject_GetAttr(pyclass, PyStrings::gCppName);
-                char* cppname = CPyCppyy_PyUnicode_AsString(pycppname);
-                Py_DECREF(pycppname);
-                Cppyy::TCppScope_t scope = Cppyy::GetScope(cppname);
+                Cppyy::TCppScope_t scope = ((CPyCppyyClass*)pyclass)->fCppType;
 
                 if (Cppyy::IsNamespace(scope)) {
                 // tickle lazy lookup of functions
@@ -121,10 +115,10 @@ static PyObject* pt_getattro(PyObject* pyclass, PyObject* pyname)
                     }
                 }
 
-           // function templates that have not been instantiated
-               if (!attr && Cppyy::ExistsMethodTemplate(scope, name)) {
-                   attr = (PyObject*)TemplateProxy_New(name, name, pyclass);
-               }
+            // function templates that have not been instantiated
+                if (!attr && Cppyy::ExistsMethodTemplate(scope, name)) {
+                    attr = (PyObject*)TemplateProxy_New(name, name, pyclass);
+                }
 
            /*
            // enums types requested as type (rather than the constants)

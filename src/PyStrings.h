@@ -25,7 +25,6 @@ namespace CPyCppyy {
        extern PyObject* gModule;
        extern PyObject* gMRO;
        extern PyObject* gName;
-       extern PyObject* gCppName;
        extern PyObject* gNe;
        extern PyObject* gTypeCode;
 

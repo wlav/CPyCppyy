@@ -446,31 +446,31 @@ namespace {
    }
 
 //----------------------------------------------------------------------------
-   PyObject* BindObject_( void* addr, PyObject* pyname )
-   {
-   // Helper to factorize the common code between MakeNullPointer and BindObject.
-      if ( ! CPyCppyy_PyUnicode_Check( pyname ) ) {     // name given as string
-         PyObject* nattr = PyObject_GetAttr( pyname, PyStrings::gCppName );
-         if ( ! nattr ) nattr = PyObject_GetAttr( pyname, PyStrings::gName );
-         if ( nattr )                        // object is actually a class
-            pyname = nattr;
-         pyname = PyObject_Str( pyname );
-         Py_XDECREF( nattr );
-      } else {
-         Py_INCREF( pyname );
-      }
+static PyObject* BindObject_(void* addr, PyObject* pyname)
+{
+// Helper to factorize the common code between MakeNullPointer and BindObject.
+    Cppyy::TCppType_t klass = 0;
+    if (!CPyCppyy_PyUnicode_Check(pyname)) {      // not string, then class
+        if (CPyCppyyType_Check(pyname))
+            klass = ((CPyCppyyClass*)pyname)->fCppType;
+        else
+            pyname = PyObject_GetAttr(pyname, PyStrings::gName);
+    } else
+        Py_INCREF(pyname);
 
-      Cppyy::TCppType_t klass = (Cppyy::TCppType_t)Cppyy::GetScope( CPyCppyy_PyUnicode_AsString( pyname ) );
-      Py_DECREF( pyname );
+    if (!klass && pyname) {
+        klass = (Cppyy::TCppType_t)Cppyy::GetScope(CPyCppyy_PyUnicode_AsString(pyname));
+        Py_DECREF(pyname);
+    }
 
-      if ( ! klass ) {
-         PyErr_SetString( PyExc_TypeError,
-            "BindObject expects a valid class or class name as an argument" );
-         return 0;
-      }
+    if (!klass) {
+        PyErr_SetString(PyExc_TypeError,
+            "BindObject expects a valid class or class name as an argument");
+        return 0;
+    }
 
-      return BindCppObjectNoCast( addr, klass, kFALSE );
-   }
+    return BindCppObjectNoCast(addr, klass, false);
+}
 
 //----------------------------------------------------------------------------
    PyObject* BindObject( PyObject*, PyObject* args )

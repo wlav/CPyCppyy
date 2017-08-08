@@ -25,241 +25,214 @@
 // ones as is the default.
 
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// Destroy the held C++ object, if owned; does not deallocate the proxy.
-
-void CPyCppyy::op_dealloc_nofree( ObjectProxy* pyobj ) {
-   if ( pyobj->fFlags & ObjectProxy::kIsValue ) {
-      if ( ! (pyobj->fFlags & ObjectProxy::kIsSmartPtr) ) {
-         Cppyy::CallDestructor( pyobj->ObjectIsA(), pyobj->GetObject() );
-         Cppyy::Deallocate( pyobj->ObjectIsA(), pyobj->GetObject() );
-      } else {
-         Cppyy::CallDestructor( pyobj->fSmartPtrType, pyobj->fSmartPtr );
-         Cppyy::Deallocate( pyobj->fSmartPtrType, pyobj->fSmartPtr );
-      }
-   }
-   else if ( pyobj->fObject && ( pyobj->fFlags & ObjectProxy::kIsOwner ) ) {
-      if ( ! (pyobj->fFlags & ObjectProxy::kIsSmartPtr) ) {
-         Cppyy::Destruct( pyobj->ObjectIsA(), pyobj->GetObject() );
-      } else {
-         Cppyy::Destruct( pyobj->fSmartPtrType, pyobj->fSmartPtr );
-      }
-   }
-   pyobj->fObject = NULL;
+//----------------------------------------------------------------------------
+void CPyCppyy::op_dealloc_nofree(ObjectProxy* pyobj) {
+// Destroy the held C++ object, if owned; does not deallocate the proxy.
+    if (pyobj->fFlags & ObjectProxy::kIsValue) {
+        if (!(pyobj->fFlags & ObjectProxy::kIsSmartPtr) ) {
+            Cppyy::CallDestructor(pyobj->ObjectIsA(), pyobj->GetObject());
+            Cppyy::Deallocate(pyobj->ObjectIsA(), pyobj->GetObject());
+        } else {
+            Cppyy::CallDestructor(pyobj->fSmartPtrType, pyobj->fSmartPtr);
+            Cppyy::Deallocate(pyobj->fSmartPtrType, pyobj->fSmartPtr);
+        }
+    }
+    else if (pyobj->fObject && (pyobj->fFlags & ObjectProxy::kIsOwner)) {
+        if (!(pyobj->fFlags & ObjectProxy::kIsSmartPtr)) {
+            Cppyy::Destruct(pyobj->ObjectIsA(), pyobj->GetObject());
+        } else {
+            Cppyy::Destruct(pyobj->fSmartPtrType, pyobj->fSmartPtr);
+        }
+    }
+    pyobj->fObject = nullptr;
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-
-namespace CPyCppyy {
 namespace {
 
+using namespace CPyCppyy;
+
 //= CPyCppyy object proxy null-ness checking =================================
-   PyObject* op_nonzero( ObjectProxy* self )
-   {
-   // Null of the proxy is determined by null-ness of the held C++ object.
-      PyObject* result = self->GetObject() ? Py_True : Py_False;
-      Py_INCREF( result );
-      return result;
-   }
+static PyObject* op_nonzero(ObjectProxy* self)
+{
+// Null of the proxy is determined by null-ness of the held C++ object.
+    PyObject* result = self->GetObject() ? Py_True : Py_False;
+    Py_INCREF(result);
+    return result;
+}
 
 //= CPyCppyy object explicit destruction =====================================
-   PyObject* op_destruct( ObjectProxy* self )
-   {
-   // User access to force deletion of the object. Needed in case of a true
-   // garbage collector (like in PyPy), to allow the user control over when
-   // the C++ destructor is called. This method requires that the C++ object
-   // is owned (no-op otherwise).
-      op_dealloc_nofree( self );
-      Py_INCREF( Py_None );
-      return Py_None;
-   }
+static PyObject* op_destruct(ObjectProxy* self)
+{
+// User access to force deletion of the object. Needed in case of a true
+// garbage collector (like in PyPy), to allow the user control over when
+// the C++ destructor is called. This method requires that the C++ object
+// is owned (no-op otherwise).
+    op_dealloc_nofree(self);
+    Py_INCREF(Py_None);
+    return Py_None;
+}
 
 //= CPyCppyy object dispatch support =========================================
-   PyObject* op_dispatch( PyObject* self, PyObject* args, PyObject* /* kdws */ )
-   {
-   // User-side __dispatch__ method to allow selection of a specific overloaded
-   // method. The actual selection is in the __overload__() method of MethodProxy.
-      PyObject *mname = 0, *sigarg = 0;
-      if ( ! PyArg_ParseTuple( args, const_cast< char* >( "O!O!:__dispatch__" ),
-              &CPyCppyy_PyUnicode_Type, &mname, &CPyCppyy_PyUnicode_Type, &sigarg ) )
-         return 0;
+static PyObject* op_dispatch(PyObject* self, PyObject* args, PyObject* /* kdws */)
+{
+// User-side __dispatch__ method to allow selection of a specific overloaded
+// method. The actual selection is in the __overload__() method of MethodProxy.
+    PyObject *mname = nullptr, *sigarg = nullptr;
+    if (!PyArg_ParseTuple(args, const_cast<char*>("O!O!:__dispatch__"),
+            &CPyCppyy_PyUnicode_Type, &mname, &CPyCppyy_PyUnicode_Type, &sigarg))
+        return nullptr;
 
-   // get the named overload
-      PyObject* pymeth = PyObject_GetAttr( self, mname );
-      if ( ! pymeth )
-         return 0;
+// get the named overload
+    PyObject* pymeth = PyObject_GetAttr(self, mname);
+    if (!pymeth)
+        return nullptr;
 
-   // get the '__overload__' method to allow overload selection
-      PyObject* pydisp = PyObject_GetAttrString(
-         pymeth, const_cast<char*>( "__overload__" ) );
-      if ( ! pydisp ) {
-         Py_DECREF( pymeth );
-         return 0;
-      }
+// get the '__overload__' method to allow overload selection
+    PyObject* pydisp = PyObject_GetAttrString(pymeth, const_cast<char*>("__overload__"));
+    if (!pydisp) {
+        Py_DECREF(pymeth);
+        return 0;
+    }
 
-   // finally, call dispatch to get the specific overload
-      PyObject* oload = PyObject_CallFunctionObjArgs( pydisp, sigarg, NULL );
-      Py_DECREF( pydisp );
-      Py_DECREF( pymeth );
-      return oload;
-   }
+// finally, call dispatch to get the specific overload
+    PyObject* oload = PyObject_CallFunctionObjArgs(pydisp, sigarg, nullptr);
+    Py_DECREF(pydisp);
+    Py_DECREF(pymeth);
+    return oload;
+}
 
 //= CPyCppyy smart pointer support ===========================================
-  PyObject* op_get_smart_ptr( ObjectProxy* self )
-  {
-     if ( !( self->fFlags & ObjectProxy::kIsSmartPtr ) ) {
+static PyObject* op_get_smart_ptr(ObjectProxy* self)
+{
+    if (!(self->fFlags & ObjectProxy::kIsSmartPtr)) {
         Py_RETURN_NONE;
-     }
+    }
 
-     return (PyObject*)CPyCppyy::BindCppObject( self->fSmartPtr, self->fSmartPtrType );
-  }
+    return (PyObject*)CPyCppyy::BindCppObject(self->fSmartPtr, self->fSmartPtrType);
+}
 
-////////////////////////////////////////////////////////////////////////////////
 
-   PyMethodDef op_methods[] = {
-      { (char*)"__nonzero__",  (PyCFunction)op_nonzero,  METH_NOARGS, NULL },
-      { (char*)"__bool__",     (PyCFunction)op_nonzero,  METH_NOARGS, NULL }, // for p3
-      { (char*)"__destruct__", (PyCFunction)op_destruct, METH_NOARGS, NULL },
-      { (char*)"__dispatch__", (PyCFunction)op_dispatch, METH_VARARGS, (char*)"dispatch to selected overload" },
-      { (char*)"_get_smart_ptr", (PyCFunction)op_get_smart_ptr, METH_NOARGS, (char*)"get associated smart pointer, if any" },
-      { (char*)NULL, NULL, 0, NULL }
+//----------------------------------------------------------------------------
+static PyMethodDef op_methods[] = {
+    {(char*)"__nonzero__",  (PyCFunction)op_nonzero,  METH_NOARGS, nullptr},
+    {(char*)"__bool__",     (PyCFunction)op_nonzero,  METH_NOARGS, nullptr}, // for p3
+    {(char*)"__destruct__", (PyCFunction)op_destruct, METH_NOARGS, nullptr},
+    {(char*)"__dispatch__", (PyCFunction)op_dispatch, METH_VARARGS,
+         (char*)"dispatch to selected overload"},
+    {(char*)"_get_smart_ptr", (PyCFunction)op_get_smart_ptr, METH_NOARGS,
+         (char*)"get associated smart pointer, if any"},
+    {(char*)nullptr, nullptr, 0, nullptr}
    };
 
 
 //= CPyCppyy object proxy construction/destruction ===========================
-   ObjectProxy* op_new( PyTypeObject* subtype, PyObject*, PyObject* )
-   {
-   // Create a new object proxy (holder only).
-      ObjectProxy* pyobj = (ObjectProxy*)subtype->tp_alloc( subtype, 0 );
-      pyobj->fObject = NULL;
-      pyobj->fFlags  = 0;
+static ObjectProxy* op_new(PyTypeObject* subtype, PyObject*, PyObject*)
+{
+// Create a new object proxy (holder only).
+    ObjectProxy* pyobj = (ObjectProxy*)subtype->tp_alloc(subtype, 0);
+    pyobj->fObject = nullptr;
+    pyobj->fFlags  = 0;
 
-      return pyobj;
-   }
+    return pyobj;
+}
 
-////////////////////////////////////////////////////////////////////////////////
-/// Remove (Python-side) memory held by the object proxy.
+//----------------------------------------------------------------------------
+static void op_dealloc( ObjectProxy* pyobj )
+{
+// Remove (Python-side) memory held by the object proxy.
+    op_dealloc_nofree(pyobj);
+    Py_TYPE(pyobj)->tp_free((PyObject*)pyobj);
+}
 
-   void op_dealloc( ObjectProxy* pyobj )
-   {
-      op_dealloc_nofree( pyobj );
-      Py_TYPE(pyobj)->tp_free( (PyObject*)pyobj );
-   }
+//----------------------------------------------------------------------------
+static PyObject* op_richcompare(ObjectProxy* self, ObjectProxy* other, int op)
+{
+// Rich set of comparison objects; only equals and not-equals are defined.
+    if (op != Py_EQ && op != Py_NE) {
+        Py_INCREF(Py_NotImplemented);
+        return Py_NotImplemented;
+    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Rich set of comparison objects; only equals and not-equals are defined.
+    Bool_t bIsEq = false;
 
-   PyObject* op_richcompare( ObjectProxy* self, ObjectProxy* other, int op )
-   {
-      if ( op != Py_EQ && op != Py_NE ) {
-         Py_INCREF( Py_NotImplemented );
-         return Py_NotImplemented;
-      }
+// special case for None to compare True to a null-pointer
+    if ((PyObject*)other == Py_None && ! self->fObject)
+        bIsEq = true;
 
-      Bool_t bIsEq = false;
+// type + held pointer value defines identity (will cover if other is not
+// actually an ObjectProxy, as ob_type will be unequal)
+    else if (Py_TYPE(self) == Py_TYPE(other) && self->GetObject() == other->GetObject())
+        bIsEq = true;
 
-   // special case for None to compare True to a null-pointer
-      if ( (PyObject*)other == Py_None && ! self->fObject )
-         bIsEq = true;
+    if ((op == Py_EQ && bIsEq) || (op == Py_NE && !bIsEq)) {
+        Py_INCREF(Py_True);
+        return Py_True;
+    }
 
-   // type + held pointer value defines identity (will cover if other is not
-   // actually an ObjectProxy, as ob_type will be unequal)
-      else if ( Py_TYPE(self) == Py_TYPE(other) && self->GetObject() == other->GetObject() )
-         bIsEq = true;
+    Py_INCREF(Py_False);
+    return Py_False;
+}
 
-      if ( ( op == Py_EQ && bIsEq ) || ( op == Py_NE && ! bIsEq ) ) {
-         Py_INCREF( Py_True );
-         return Py_True;
-      }
+//----------------------------------------------------------------------------
+static PyObject* op_repr(ObjectProxy* pyobj)
+{
+// Build a representation string of the object proxy that shows the address
+// of the C++ object that is held, as well as its type.
+    Cppyy::TCppType_t klass = pyobj->ObjectIsA();
+    std::string clName = klass ? Cppyy::GetScopedFinalName(klass) : "<unknown>";
+    if (pyobj->fFlags & ObjectProxy::kIsReference)
+        clName.append( "*" );
 
-      Py_INCREF( Py_False );
-      return Py_False;
-   }
+    std::string::size_type pos = 0;
+    while ((pos = clName.find("::", pos)) != std::string::npos) {
+        clName.replace(pos, 2, ".");
+        pos += 1;
+    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// Build a representation string of the object proxy that shows the address
-/// of the C++ object that is held, as well as its type.
+    std::string smartPtrName;
+    if (pyobj->fFlags & ObjectProxy::kIsSmartPtr) {
+        Cppyy::TCppType_t smartPtrType = pyobj->fSmartPtrType;
+        smartPtrName = smartPtrType ?
+            Cppyy::GetScopedFinalName( smartPtrType ) : "unknown smart pointer";
+        return CPyCppyy_PyUnicode_FromFormat(
+            const_cast<char*>("<cppyy.gbl.%s object at %p held by %s at %p>"),
+            clName.c_str(), pyobj->GetObject(), smartPtrName.c_str(), pyobj->fSmartPtr);
+    }
 
-   PyObject* op_repr( ObjectProxy* pyobj )
-   {
-      Cppyy::TCppType_t klass = pyobj->ObjectIsA();
-      std::string clName = klass ? Cppyy::GetFinalName( klass ) : "<unknown>";
-      if ( pyobj->fFlags & ObjectProxy::kIsReference )
-         clName.append( "*" );
-
-      std::string smartPtrName;
-      if ( pyobj->fFlags & ObjectProxy::kIsSmartPtr ) {
-         Cppyy::TCppType_t smartPtrType = pyobj->fSmartPtrType;
-         smartPtrName = smartPtrType ? Cppyy::GetFinalName( smartPtrType ) : "unknown smart pointer";
-      }
-
-   // need to prevent accidental derefs when just printing (usually unsafe)
-      if ( ! PyObject_HasAttr( (PyObject*)pyobj, PyStrings::gDeref ) ) {
-         PyObject* name = PyObject_CallMethod( (PyObject*)pyobj,
-            const_cast< char* >( "GetName" ), const_cast< char* >( "" ) );
-
-         if ( name ) {
-            if ( CPyCppyy_PyUnicode_GET_SIZE( name ) != 0 ) {
-               if ( pyobj->fFlags & ObjectProxy::kIsSmartPtr ) {
-                  PyObject* repr = CPyCppyy_PyUnicode_FromFormat( "<cppyy.gbl.%s object (\"%s\") at %p held by %s at %p>",
-                     clName.c_str(), CPyCppyy_PyUnicode_AsString( name ), pyobj->GetObject(), smartPtrName.c_str(), pyobj->fSmartPtr );
-                  Py_DECREF( name );
-                  return repr;
-               } else {
-                  PyObject* repr = CPyCppyy_PyUnicode_FromFormat( "<cppyy.gbl.%s object (\"%s\") at %p>",
-                     clName.c_str(), CPyCppyy_PyUnicode_AsString( name ), pyobj->GetObject() );
-                  Py_DECREF( name );
-                  return repr;
-               }
-            }
-            Py_DECREF( name );
-         } else
-            PyErr_Clear();
-      }
-
-   // get here if object has no method GetName() or name = ""
-      if ( pyobj->fFlags & ObjectProxy::kIsSmartPtr ) {
-         return CPyCppyy_PyUnicode_FromFormat( const_cast< char* >( "<cppyy.gbl.%s object at %p held by %s at %p>" ),
-            clName.c_str(), pyobj->GetObject(), smartPtrName.c_str(), pyobj->fSmartPtr );
-      } else {
-         return CPyCppyy_PyUnicode_FromFormat( const_cast< char* >( "<cppyy.gbl.%s object at %p>" ),
-                                             clName.c_str(), pyobj->GetObject() );
-      }
-   }
-
+    return CPyCppyy_PyUnicode_FromFormat(
+        const_cast<char*>("<cppyy.gbl.%s object at %p>"), clName.c_str(), pyobj->GetObject());
+}
 
 //= CPyCppyy type number stubs to allow dynamic overrides ====================
-#define CPYCPPYY_STUB( name, op, pystring )                                     \
-   PyObject* op_##name##_stub( PyObject* left, PyObject* right )              \
-   {                                                                          \
-      if ( ! ObjectProxy_Check( left ) ) {                                    \
-         if ( ObjectProxy_Check( right ) ) {                                  \
-            std::swap( left, right );                                         \
-         } else {                                                             \
-            Py_INCREF( Py_NotImplemented );                                   \
-            return Py_NotImplemented;                                         \
-         }                                                                    \
-      }                                                                       \
-   /* place holder to lazily install __name__ if a global overload is available */ \
-      if ( ! Utility::AddBinaryOperator(                                      \
-               left, right, #op, "__"#name"__", "__r"#name"__" ) ) {          \
-         Py_INCREF( Py_NotImplemented );                                      \
-         return Py_NotImplemented;                                            \
-      }                                                                       \
-                                                                              \
-   /* redo the call, which will now go to the newly installed method */       \
-      return PyObject_CallMethodObjArgs( left, pystring, right, NULL );       \
-   }
+#define CPYCPPYY_STUB(name, op, pystring)                                    \
+static PyObject* op_##name##_stub(PyObject* left, PyObject* right)           \
+{                                                                            \
+   if (!ObjectProxy_Check(left)) {                                           \
+       if (ObjectProxy_Check(right)) {                                       \
+           std::swap(left, right);                                           \
+       } else {                                                              \
+           Py_INCREF(Py_NotImplemented);                                     \
+           return Py_NotImplemented;                                         \
+       }                                                                     \
+   }                                                                         \
+/* place holder to lazily install __name__ if a global overload is available */\
+   if (!Utility::AddBinaryOperator(                                          \
+           left, right, #op, "__"#name"__", "__r"#name"__")) {               \
+       Py_INCREF(Py_NotImplemented);                                         \
+       return Py_NotImplemented;                                             \
+   }                                                                         \
+                                                                             \
+/* redo the call, which will now go to the newly installed method */         \
+   return PyObject_CallMethodObjArgs(left, pystring, right, nullptr);        \
+}
 
-CPYCPPYY_STUB( add, +, PyStrings::gAdd )
-CPYCPPYY_STUB( sub, -, PyStrings::gSub )
-CPYCPPYY_STUB( mul, *, PyStrings::gMul )
-CPYCPPYY_STUB( div, /, PyStrings::gDiv )
+CPYCPPYY_STUB(add, +, PyStrings::gAdd)
+CPYCPPYY_STUB(sub, -, PyStrings::gSub)
+CPYCPPYY_STUB(mul, *, PyStrings::gMul)
+CPYCPPYY_STUB(div, /, PyStrings::gDiv)
 
-////////////////////////////////////////////////////////////////////////////////
-
+//----------------------------------------------------------------------------
    PyNumberMethods op_as_number = {
       (binaryfunc)op_add_stub,        // nb_add
       (binaryfunc)op_sub_stub,        // nb_subtract
@@ -324,6 +297,7 @@ CPYCPPYY_STUB( div, /, PyStrings::gDiv )
 
 } // unnamed namespace
 
+namespace CPyCppyy {
 
 //= CPyCppyy object proxy type ===============================================
 PyTypeObject ObjectProxy_Type = {

@@ -22,7 +22,6 @@ PyObject* CPyCppyy::PyStrings::gLifeLine = 0;
 PyObject* CPyCppyy::PyStrings::gModule = 0;
 PyObject* CPyCppyy::PyStrings::gMRO = 0;
 PyObject* CPyCppyy::PyStrings::gName = 0;
-PyObject* CPyCppyy::PyStrings::gCppName = 0;
 PyObject* CPyCppyy::PyStrings::gNe = 0;
 PyObject* CPyCppyy::PyStrings::gTypeCode = 0;
 
@@ -71,7 +70,6 @@ Bool_t CPyCppyy::CreatePyStrings() {
    CPYCPPYY_INITIALIZE_STRING( gModule, __module__ );
    CPYCPPYY_INITIALIZE_STRING( gMRO, __mro__ );
    CPYCPPYY_INITIALIZE_STRING( gName, __name__ );
-   CPYCPPYY_INITIALIZE_STRING( gCppName, __cppname__ );
    CPYCPPYY_INITIALIZE_STRING( gNe, __ne__ );
    CPYCPPYY_INITIALIZE_STRING( gTypeCode, typecode );
 
@@ -116,7 +114,6 @@ PyObject* CPyCppyy::DestroyPyStrings() {
    Py_DECREF( PyStrings::gModule ); PyStrings::gModule = 0;
    Py_DECREF( PyStrings::gMRO ); PyStrings::gMRO = 0;
    Py_DECREF( PyStrings::gName ); PyStrings::gName = 0;
-   Py_DECREF( PyStrings::gCppName ); PyStrings::gCppName = 0;
    Py_DECREF( PyStrings::gNe ); PyStrings::gNe = 0;
    Py_DECREF( PyStrings::gTypeCode ); PyStrings::gTypeCode = 0;
 

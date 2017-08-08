@@ -315,10 +315,14 @@ Bool_t CPyCppyy::Utility::AddBinaryOperator(
        PyObject* pyclass, const char* op, const char* label, const char* alt)
 {
 // Install binary operator op in pyclass, working on two instances of pyclass.
-    PyObject* pyname = PyObject_GetAttr(pyclass, PyStrings::gCppName);
-    if (!pyname) pyname = PyObject_GetAttr(pyclass, PyStrings::gName);
-    std::string cname = Cppyy::ResolveName(CPyCppyy_PyUnicode_AsString(pyname));
-    Py_DECREF(pyname); pyname = 0;
+    std::string cname;
+    if (CPyCppyyType_Check(pyclass))
+        cname = Cppyy::GetScopedFinalName(((CPyCppyyClass*)pyclass)->fCppType);
+    else {
+        PyObject* pyname = PyObject_GetAttr(pyclass, PyStrings::gName);
+        cname = Cppyy::ResolveName(CPyCppyy_PyUnicode_AsString(pyname));
+        Py_DECREF(pyname);
+    }
 
     return AddBinaryOperator(pyclass, cname, cname, op, label, alt);
 }
@@ -444,13 +448,10 @@ std::string CPyCppyy::Utility::ConstructTemplateArgs(PyObject* pyname, PyObject*
         PyObject* tn = PyTuple_GET_ITEM(args, i);
         if (CPyCppyy_PyUnicode_Check(tn)) {
             tmpl_name << CPyCppyy_PyUnicode_AsString(tn);
+        } else if (CPyCppyyType_Check(tn)) {
+            tmpl_name << Cppyy::GetScopedFinalName(((CPyCppyyClass*)tn)->fCppType);
         } else if (PyObject_HasAttr(tn, PyStrings::gName)) {
-        // __cppname__ provides a better name for C++ classes (namespaces)
-            PyObject* tpName;
-            if (PyObject_HasAttr(tn, PyStrings::gCppName))
-                tpName = PyObject_GetAttr(tn, PyStrings::gCppName);
-            else
-                tpName = PyObject_GetAttr(tn, PyStrings::gName);
+            PyObject* tpName = PyObject_GetAttr(tn, PyStrings::gName);
 
         // special case for strings
             if (strcmp(CPyCppyy_PyUnicode_AsString(tpName), "str" ) == 0)
@@ -665,26 +666,22 @@ Py_ssize_t CPyCppyy::Utility::ArraySize(const std::string& name)
 }
 
 //----------------------------------------------------------------------------
-const std::string CPyCppyy::Utility::ClassName(PyObject* pyobj)
+std::string CPyCppyy::Utility::ClassName(PyObject* pyobj)
 {
-// Retrieve the class name from the given python object (which may be just an
-// instance of the class).
+// Retrieve the class name from the given Python instance.
+    if (ObjectProxy_Check(pyobj))
+        return Cppyy::GetScopedFinalName(((ObjectProxy*)pyobj)->ObjectIsA());
+
+// generic Python object ...
     std::string clname = "<unknown>";
     PyObject* pyclass = PyObject_GetAttr(pyobj, PyStrings::gClass);
-    if (pyclass != 0) {
-        PyObject* pyname = PyObject_GetAttr(pyclass, PyStrings::gCppName);
-
-        if (pyname != 0) {
+    if (pyclass) {
+        PyObject* pyname = PyObject_GetAttr(pyclass, PyStrings::gName);
+        if (pyname) {
             clname = CPyCppyy_PyUnicode_AsString(pyname);
             Py_DECREF(pyname);
         } else {
-            pyname = PyObject_GetAttr(pyclass, PyStrings::gName);
-            if (pyname != 0) {
-                clname = CPyCppyy_PyUnicode_AsString(pyname);
-                Py_DECREF(pyname);
-            } else {
-                PyErr_Clear();
-            }
+            PyErr_Clear();
         }
         Py_DECREF(pyclass);
     } else {
