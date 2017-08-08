@@ -46,15 +46,6 @@ namespace {
    }
 
 //-----------------------------------------------------------------------------
-   PyObject* PyObject_GetAttrFromDict( PyObject* pyclass, PyObject* pyname ) {
-   // prevents calls to descriptors
-      PyObject* dict = PyObject_GetAttr( pyclass, PyStrings::gDict );
-      PyObject* attr = PyObject_GetItem( dict, pyname );
-      Py_DECREF( dict );
-      return attr;
-   }
-
-//-----------------------------------------------------------------------------
    inline bool IsTemplatedSTLClass( const std::string& name, const std::string& klass ) {
    // Scan the name of the class and determine whether it is a template instantiation.
       const int nsize = (int)name.size();

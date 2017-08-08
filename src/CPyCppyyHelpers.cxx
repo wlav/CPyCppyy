@@ -774,8 +774,8 @@ PyObject* CPyCppyy::BindCppObject( Cppyy::TCppObject_t address, Cppyy::TCppType_
    Cppyy::TCppType_t clActual = isRef ? 0 : Cppyy::GetActualClass( klass, address );
 
 // TODO: write own memory regulator like in PyPy
-   void* object = 0;
 #if 0
+   void* object = 0;
 // obtain pointer to TObject base class (if possible) for memory mgmt; this is
 // done before downcasting, as upcasting from the current class may be easier and
 // downcasting is unnecessary if the python side object gets recycled by the
