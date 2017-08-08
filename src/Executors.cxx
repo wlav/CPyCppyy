@@ -706,13 +706,12 @@ CPyCppyy::TExecutor* CPyCppyy::CreateExecutor(
    return result;                  // may still be null
 }
 
-////////////////////////////////////////////////////////////////////////////////
 
 //-----------------------------------------------------------------------------
-#define CPYCPPYY_EXECUTOR_FACTORY(name)                \
-static TExecutor* Create##name##Executor()             \
-{                                                      \
-    return new T##name##Executor;                      \
+#define CPYCPPYY_EXECUTOR_FACTORY(name)                                       \
+TExecutor* Create##name##Executor()                                           \
+{                                                                             \
+    return new T##name##Executor;                                             \
 }
 
 namespace {
@@ -769,7 +768,7 @@ namespace {
 // executor factories for C++ types
    typedef std::pair< const char*, ExecutorFactory_t > NFp_t;
 
-   static NFp_t factories_[] = {
+   NFp_t factories_[] = {
    // factories for built-ins
       NFp_t( "bool",               &CreateBoolExecutor                ),
       NFp_t( "bool&",              &CreateBoolRefExecutor             ),
@@ -844,7 +843,7 @@ namespace {
       NFp_t( "FILE*",              &CreateVoidArrayExecutor           )
    };
 
-   static struct InitExecFactories_t {
+   struct InitExecFactories_t {
    public:
       InitExecFactories_t()
       {

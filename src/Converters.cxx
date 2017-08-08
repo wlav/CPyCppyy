@@ -1,7 +1,7 @@
 // Bindings
 #include "CPyCppyy.h"
 #include "PyStrings.h"
-#include "Converters.h"
+#include "DeclareConverters.h"
 #include "TCallContext.h"
 #include "ObjectProxy.h"
 #include "TPyBufferFactory.h"
@@ -33,7 +33,7 @@ namespace CPyCppyy {
 // factories
    typedef TConverter* (*ConverterFactory_t) ( Long_t size );
    typedef std::map< std::string, ConverterFactory_t > ConvFactories_t;
-   ConvFactories_t gConvFactories;
+   static ConvFactories_t gConvFactories;
    extern PyObject* gNullPtrObject;
 
 }
@@ -1636,7 +1636,7 @@ namespace {
    };
    // clang-format on
 
-   struct InitConvFactories_t {
+   static struct InitConvFactories_t {
    public:
       InitConvFactories_t()
       {
