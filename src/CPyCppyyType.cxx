@@ -28,6 +28,12 @@ static void meta_dealloc(CPyCppyyClass* pytype)
     return PyType_Type.tp_dealloc((PyObject*)pytype);
 }
 
+//-----------------------------------------------------------------------------
+static PyObject* meta_getcppname(CPyCppyyClass* meta, void*)
+{
+    return CPyCppyy_PyUnicode_FromString(Cppyy::GetScopedFinalName(meta->fCppType).c_str());
+}
+
 //----------------------------------------------------------------------------
 static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
 {
@@ -57,7 +63,7 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
     // C++ type from the meta class to make sure that the latter category
     // has fCppType properly set (it inherits the meta class, but has an
     // otherwise unknown (or wrong) C++ type)
-        result->fCppType = ((CPyCppyyClass*)subtype)->fCppType;//Cppyy::GetScope(
+        result->fCppType = ((CPyCppyyClass*)subtype)->fCppType;
     }
 
     return (PyObject*)result;
@@ -69,9 +75,11 @@ static PyObject* pt_getattro(PyObject* pyclass, PyObject* pyname)
 {
 // normal type-based lookup
     PyObject* attr = PyType_Type.tp_getattro(pyclass, pyname);
+    if (attr)
+        return attr;
 
 // more elaborate search in case of failure (eg. for inner classes on demand)
-    if (!attr && CPyCppyy_PyUnicode_CheckExact(pyname)) {
+    if (CPyCppyy_PyUnicode_CheckExact(pyname)) {
         PyObject *etype, *value, *trace;
         PyErr_Fetch(&etype, &value, &trace);       // clears current exception
 
@@ -137,7 +145,7 @@ static PyObject* pt_getattro(PyObject* pyclass, PyObject* pyname)
                 }
             }
 
-            if (!attr && ! CPyCppyyType_Check(pyclass) /* at global or module-level only */) {
+            if (!attr && !CPyCppyyType_Check(pyclass) /* at global or module-level only */) {
                 PyErr_Clear();
             // get the attribute as a global
                 attr = GetCppGlobal(name /*, tag */);
@@ -157,7 +165,7 @@ static PyObject* pt_getattro(PyObject* pyclass, PyObject* pyname)
         else if (!attr) {
             PyObject* sklass = PyObject_Str(pyclass);
             PyErr_Format(PyExc_AttributeError, "%s has no attribute \'%s\'",
-                         CPyCppyy_PyUnicode_AsString(sklass), CPyCppyy_PyUnicode_AsString(pyname));
+                CPyCppyy_PyUnicode_AsString(sklass), CPyCppyy_PyUnicode_AsString(pyname));
             Py_DECREF(sklass);
         }
 
@@ -167,62 +175,87 @@ static PyObject* pt_getattro(PyObject* pyclass, PyObject* pyname)
     return attr;
 }
 
+//-----------------------------------------------------------------------------
+static PyObject* meta_getmodule(CPyCppyyClass* meta, void*)
+{
+    std::string modname = Cppyy::GetScopedFinalName(meta->fCppType);
+    std::string::size_type pos = modname.rfind("::");
+    if (modname.empty() || pos == std::string::npos)
+        return CPyCppyy_PyUnicode_FromString(const_cast<char*>("cppyy.gbl"));
+
+    modname = modname.substr(0, pos);
+
+    pos = 0;
+    while ((pos = modname.find("::", pos)) != std::string::npos) {
+        modname.replace(pos, 2, ".");
+        pos += 1;
+    }
+    return CPyCppyy_PyUnicode_FromString(("cppyy.gbl."+modname).c_str());
+}
+
+//-----------------------------------------------------------------------------
+static PyGetSetDef meta_getset[] = {
+    {(char*)"__cppname__", (getter)meta_getcppname, nullptr, nullptr, nullptr},
+    {(char*)"__module__",  (getter)meta_getmodule,  nullptr, nullptr, nullptr},
+    {(char*)nullptr, nullptr, nullptr, nullptr, nullptr}
+};
+
 
 //= CPyCppyy object proxy type type ==========================================
 PyTypeObject CPyCppyyType_Type = {
-   PyVarObject_HEAD_INIT(&PyType_Type, 0)
-   (char*)"cppyy.CPyCppyyType",  // tp_name
-   sizeof(CPyCppyy::CPyCppyyClass),// tp_basicsize
-   0,                         // tp_itemsize
-   0,                         // tp_dealloc
-   0,                         // tp_print
-   0,                         // tp_getattr
-   0,                         // tp_setattr
-   0,                         // tp_compare
-   0,                         // tp_repr
-   0,                         // tp_as_number
-   0,                         // tp_as_sequence
-   0,                         // tp_as_mapping
-   0,                         // tp_hash
-   0,                         // tp_call
-   0,                         // tp_str
-   (getattrofunc)pt_getattro, // tp_getattro
-   0,                         // tp_setattro
-   0,                         // tp_as_buffer
-   Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,     // tp_flags
-   (char*)"CPyCppyy metatype (internal)",        // tp_doc
-   0,                         // tp_traverse
-   0,                         // tp_clear
-   0,                         // tp_richcompare
-   0,                         // tp_weaklistoffset
-   0,                         // tp_iter
-   0,                         // tp_iternext
-   0,                         // tp_methods
-   0,                         // tp_members
-   0,                         // tp_getset
-   &PyType_Type,              // tp_base
-   0,                         // tp_dict
-   0,                         // tp_descr_get
-   0,                         // tp_descr_set
-   0,                         // tp_dictoffset
-   0,                         // tp_init
-   0,                         // tp_alloc
-   (newfunc)pt_new,           // tp_new
-   0,                         // tp_free
-   0,                         // tp_is_gc
-   0,                         // tp_bases
-   0,                         // tp_mro
-   0,                         // tp_cache
-   0,                         // tp_subclasses
-   0                          // tp_weaklist
+    PyVarObject_HEAD_INIT(&PyType_Type, 0)
+    (char*)"cppyy.CPyCppyyType",   // tp_name
+    sizeof(CPyCppyy::CPyCppyyClass),              // tp_basicsize
+    0,                             // tp_itemsize
+    0,                             // tp_dealloc
+    0,                             // tp_print
+    0,                             // tp_getattr
+    0,                             // tp_setattr
+    0,                             // tp_compare
+    0,                             // tp_repr
+    0,                             // tp_as_number
+    0,                             // tp_as_sequence
+    0,                             // tp_as_mapping
+    0,                             // tp_hash
+    0,                             // tp_call
+    0,                             // tp_str
+    (getattrofunc)pt_getattro,     // tp_getattro
+    0,                             // tp_setattro
+    0,                             // tp_as_buffer
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,     // tp_flags
+    (char*)"CPyCppyy metatype (internal)",        // tp_doc
+    0,                             // tp_traverse
+    0,                             // tp_clear
+    0,                             // tp_richcompare
+    0,                             // tp_weaklistoffset
+    0,                             // tp_iter
+    0,                             // tp_iternext
+    0,                             // tp_methods
+    0,                             // tp_members
+    meta_getset,                   // tp_getset
+    &PyType_Type,                  // tp_base
+    0,                             // tp_dict
+    0,                             // tp_descr_get
+    0,                             // tp_descr_set
+    0,                             // tp_dictoffset
+    0,                             // tp_init
+    0,                             // tp_alloc
+    (newfunc)pt_new,               // tp_new
+    0,                             // tp_free
+    0,                             // tp_is_gc
+    0,                             // tp_bases
+    0,                             // tp_mro
+    0,                             // tp_cache
+    0,                             // tp_subclasses
+    0                              // tp_weaklist
 #if PY_VERSION_HEX >= 0x02030000
-   , 0                        // tp_del
+    , 0                            // tp_del
 #endif
 #if PY_VERSION_HEX >= 0x02060000
-   , 0                        // tp_version_tag
+    , 0                            // tp_version_tag
 #endif
 #if PY_VERSION_HEX >= 0x03040000
-   , 0                        // tp_finalize
+    , 0                            // tp_finalize
 #endif
 };
 

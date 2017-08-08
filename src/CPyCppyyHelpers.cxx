@@ -21,7 +21,6 @@
 #include <algorithm>
 #include <deque>
 #include <map>
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -44,6 +43,11 @@ static PyClassMap_t gPyClasses;
 
 namespace CPyCppyy {
 
+typedef struct {
+    PyObject_HEAD
+    PyObject *dict;
+} proxyobject;
+
 // helper for creating new C++ proxy python types
 static PyObject* CreateNewCppProxyClass(Cppyy::TCppScope_t klass, PyObject* pybases)
 {
@@ -63,11 +67,13 @@ static PyObject* CreateNewCppProxyClass(Cppyy::TCppScope_t klass, PyObject* pyba
     }
 
     std::string name = Cppyy::GetFinalName(klass);
+
+// create meta-class, add a dummy __module__ to pre-empt the default setting
     PyObject* args = Py_BuildValue((char*)"sO{}", (name+"_meta").c_str(), pymetabases);
+    PyDict_SetItem(PyTuple_GET_ITEM(args, 2), PyStrings::gModule, Py_True);
     Py_DECREF(pymetabases);
 
     PyObject* pymeta = PyType_Type.tp_new(&CPyCppyyType_Type, args, nullptr);
-    ((CPyCppyyClass*)pymeta)->fCppType = klass;
 
     Py_DECREF(args);
     if (!pymeta) {
@@ -76,6 +82,14 @@ static PyObject* CreateNewCppProxyClass(Cppyy::TCppScope_t klass, PyObject* pyba
         return nullptr;
     }
 
+// set the klass id, in case there is derivation Python-side
+    ((CPyCppyyClass*)pymeta)->fCppType = klass;
+
+// alright, and now we really badly want to get rid of the dummy ...
+    PyObject* dictproxy = PyObject_GetAttr(pymeta, PyStrings::gDict);
+    PyDict_DelItem(((proxyobject*)dictproxy)->dict, PyStrings::gModule);
+
+// create actual class
     args = Py_BuildValue((char*)"sO{}", name.c_str(), pybases);
     PyObject* pyclass =
         ((PyTypeObject*)pymeta)->tp_new((PyTypeObject*)pymeta, args, nullptr);
@@ -89,7 +103,7 @@ static PyObject* CreateNewCppProxyClass(Cppyy::TCppScope_t klass, PyObject* pyba
 
 static inline
 void AddPropertyToClass1(
-      PyObject* pyclass, CPyCppyy::PropertyProxy* property, Bool_t isStatic )
+      PyObject* pyclass, CPyCppyy::PropertyProxy* property, bool isStatic )
 {
 // allow access at the instance level
    PyObject_SetAttrString( pyclass,
@@ -117,7 +131,7 @@ void AddPropertyToClass( PyObject* pyclass,
 {
    CPyCppyy::PropertyProxy* property =
       CPyCppyy::PropertyProxy_NewConstant( scope, name, address );
-   AddPropertyToClass1( pyclass, property, kTRUE );
+   AddPropertyToClass1( pyclass, property, true );
    Py_DECREF( property );
 }
 
@@ -143,8 +157,8 @@ static int BuildScopeProxyDict( Cppyy::TCppScope_t scope, PyObject* pyclass ) {
 // proxy object.
 
 // some properties that'll affect building the dictionary
-   Bool_t isNamespace = Cppyy::IsNamespace( scope );
-   Bool_t hasConstructor = kFALSE;
+   bool isNamespace = Cppyy::IsNamespace( scope );
+   bool hasConstructor = false;
 
 // load all public methods and data members
    typedef std::vector< PyCallable* > Callables_t;
@@ -153,7 +167,7 @@ static int BuildScopeProxyDict( Cppyy::TCppScope_t scope, PyObject* pyclass ) {
 
 // bypass custom __getattr__ for efficiency
    getattrofunc oldgetattro = Py_TYPE(pyclass)->tp_getattro;
-   Py_TYPE(pyclass)->tp_getattro = PyType_Type.tp_getattro;
+//   Py_TYPE(pyclass)->tp_getattro = PyType_Type.tp_getattro;
 
 // functions in namespaces are properly found through lazy lookup, so do not
 // create them until needed (the same is not true for data members)
@@ -166,9 +180,9 @@ static int BuildScopeProxyDict( Cppyy::TCppScope_t scope, PyObject* pyclass ) {
       std::string mtCppName = Cppyy::GetMethodName( method );
 
    // special case trackers
-      Bool_t setupSetItem = kFALSE;
-      Bool_t isConstructor = Cppyy::IsConstructor( method );
-      Bool_t isTemplate = isConstructor ? false : Cppyy::IsMethodTemplate( scope, imeth );
+      bool setupSetItem = false;
+      bool isConstructor = Cppyy::IsConstructor( method );
+      bool isTemplate = isConstructor ? false : Cppyy::IsMethodTemplate( scope, imeth );
 
    // filter empty names (happens for namespaces, is bug?)
       if ( mtCppName == "" )
@@ -187,7 +201,7 @@ static int BuildScopeProxyDict( Cppyy::TCppScope_t scope, PyObject* pyclass ) {
          if ( qual_return.find( "const", 0, 5 ) == std::string::npos ) {
             const std::string& cpd = Utility::Compound( qual_return );
             if ( ! cpd.empty() && cpd[ cpd.size() - 1 ] == '&' ) {
-               setupSetItem = kTRUE;
+               setupSetItem = true;
             }
          }
       }
@@ -235,7 +249,7 @@ static int BuildScopeProxyDict( Cppyy::TCppScope_t scope, PyObject* pyclass ) {
       else if ( isConstructor ) {            // constructor
          pycall = new TConstructorHolder( scope, method );
          mtName = "__init__";
-         hasConstructor = kTRUE;
+         hasConstructor = true;
       } else                                 // member function
          pycall = new TMethodHolder( scope, method );
 
@@ -482,7 +496,7 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
     }
 
 // force building of the class if a parent is specified (prevents loops)
-    Bool_t force = parent != 0;
+    bool force = parent != 0;
 
 // working copy
     std::string name = scope_name;
@@ -514,7 +528,7 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
     const std::string& lookup = parent ? (scName+"::"+name) : name;
     Cppyy::TCppScope_t klass = Cppyy::GetScope(lookup);
 
-    if (!(Bool_t)klass && Cppyy::IsTemplate(lookup)) {
+    if (!(bool)klass && Cppyy::IsTemplate(lookup)) {
     // a "naked" templated class is requested: return callable proxy for instantiations
         PyObject* pytcl = PyObject_GetAttr(gThisModule, PyStrings::gTemplate);
         PyObject* pytemplate = PyObject_CallFunction(
@@ -529,7 +543,7 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
         return pytemplate;
     }
 
-    if (!(Bool_t)klass) {   // if so, all options have been exhausted: it doesn't exist as such
+    if (!(bool)klass) {   // if so, all options have been exhausted: it doesn't exist as such
         PyErr_Format(PyExc_TypeError, "requested class \'%s\' does not exist", lookup.c_str());
         Py_XDECREF(parent);
         return 0;
@@ -604,7 +618,7 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
     PyObject* pyactual = CPyCppyy_PyUnicode_FromString(actual.c_str());
     PyObject* pyclass = force ? 0 : PyObject_GetAttr(parent, pyactual);
 
-    Bool_t bClassFound = pyclass ? kTRUE : kFALSE;
+    bool bClassFound = pyclass ? true : false;
 
 // build if the class does not yet exist
     if (!pyclass) {
@@ -632,59 +646,43 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
 
     }
 
-    if (pyclass && name != actual)      // exists, but typedef-ed: simply map reference
+// give up, if not constructed
+    if (!pyclass)
+        return 0;
+
+    if (name != actual)       // exists, but typedef-ed: simply map reference
         PyObject_SetAttrString(parent, const_cast<char*>(name.c_str()), pyclass);
 
-    if (pyclass && !bClassFound) {
-    // store a ref from cppyy scope id to new python class
-        gPyClasses[klass] = PyWeakref_NewRef(pyclass, nullptr);
+// if this is a recycled class, we're done
+    if (bClassFound)
+        return pyclass;
 
-    // add a ref in the class to its scope
-        PyObject_SetAttrString(
-            pyclass, "__scope__", CPyCppyy_PyUnicode_FromString(scName.c_str()));
-    }
+// store a ref from cppyy scope id to new python class
+    gPyClasses[klass] = PyWeakref_NewRef(pyclass, nullptr);
 
-// add __cppname__ to keep the C++ name of the class/scope
-    if (!pyclass) return 0;
-    PyObject_SetAttrString(pyclass, "__cppname__",
-        CPyCppyy_PyUnicode_FromString(Cppyy::GetScopedFinalName(klass).c_str()));
-
-// add __module__  (see https://docs.python.org/3/c-api/typeobj.html#c.PyTypeObject.tp_name) 
-    std::ostringstream module;
-    if (parent == gThisModule) {
-        module << "cppyy.gbl";
-    } else {
-        PyObject* parmod = PyObject_GetAttr(parent, PyStrings::gModule);
-        module << CPyCppyy_PyUnicode_AsString(parmod);
-        module << '.';
-        Py_DECREF(parmod);
-
-        PyObject* parname = PyObject_GetAttr(parent, PyStrings::gName);
-        module << CPyCppyy_PyUnicode_AsString(parname);
-        Py_DECREF(parname);
-    }
-    PyObject_SetAttr(pyclass, PyStrings::gModule,
-        CPyCppyy_PyUnicode_FromString(module.str().c_str()));
+// add a ref in the class to its scope
+    PyObject_SetAttrString(
+        pyclass, "__scope__", CPyCppyy_PyUnicode_FromString(scName.c_str()));
 
     Py_DECREF(pyactual);
     Py_DECREF(parent);
 
-    bool bIsNS = Cppyy::IsNamespace(klass);
-    if (!bClassFound && !bIsNS) {       // add python-style features to newly minted classes
-        if (!Pythonize(pyclass, actual)) {
+    if (!Cppyy::IsNamespace(klass)) {
+        if (!Pythonize(pyclass, actual)) {     // add python-style features
             Py_XDECREF(pyclass);
             pyclass = 0;
         }
-    }
-
-    if (pyclass && bIsNS) {
+    } else {
     // add to sys.modules to allow importing from this namespace
-        std::string pyfullname = module.str()+name;
+        PyObject* pyfullname = PyObject_GetAttr(pyclass, PyStrings::gModule);
+        CPyCppyy_PyUnicode_AppendAndDel(
+            &pyfullname, CPyCppyy_PyUnicode_FromString("."));
+        CPyCppyy_PyUnicode_AppendAndDel(
+            &pyfullname, PyObject_GetAttr(pyclass, PyStrings::gName));
         PyObject* modules = PySys_GetObject(const_cast<char*>("modules"));
-        if (modules && PyDict_Check(modules)) {
-            PyDict_SetItemString(modules,
-                const_cast<char*>(pyfullname.c_str()), pyclass);
-        }
+        if (modules && PyDict_Check(modules))
+            PyDict_SetItem(modules, pyfullname, pyclass);
+        Py_DECREF(pyfullname);
     }
 
 // all done
@@ -729,7 +727,7 @@ PyObject* CPyCppyy::GetCppGlobal( const std::string& name )
 
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::BindCppObjectNoCast(
-      Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, Bool_t isRef, Bool_t isValue ) {
+      Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, bool isRef, bool isValue ) {
 // only known or knowable objects will be bound (null object is ok)
    if ( ! klass ) {
       PyErr_SetString( PyExc_TypeError, "attempt to bind C++ object w/o class" );
@@ -750,7 +748,7 @@ PyObject* CPyCppyy::BindCppObjectNoCast(
 
 // bind, register and return if successful
    if ( pyobj != 0 ) { // fill proxy value?
-   // TODO: take flags directly instead of separate Bool_t args
+   // TODO: take flags directly instead of separate bool args
       unsigned flags = (isRef ? ObjectProxy::kIsReference : 0) | (isValue ? ObjectProxy::kIsValue : 0);
       pyobj->Set( address, (ObjectProxy::EFlags)flags );
    }
@@ -760,11 +758,11 @@ PyObject* CPyCppyy::BindCppObjectNoCast(
 }
 
 //----------------------------------------------------------------------------
-PyObject* CPyCppyy::BindCppObject( Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, Bool_t isRef )
+PyObject* CPyCppyy::BindCppObject( Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, bool isRef )
 {
 // if the object is a null pointer, return a typed one (as needed for overloading)
    if ( ! address )
-      return BindCppObjectNoCast( address, klass, kFALSE );
+      return BindCppObjectNoCast( address, klass, false );
 
 // only known or knowable objects will be bound
    if ( ! klass ) {
@@ -807,7 +805,7 @@ PyObject* CPyCppyy::BindCppObject( Cppyy::TCppObject_t address, Cppyy::TCppType_
 
 
 // check if type is pinned
-   Bool_t ignore_pin = std::find(
+   bool ignore_pin = std::find(
      gIgnorePinnings.begin(), gIgnorePinnings.end(), klass ) != gIgnorePinnings.end();
 
    if ( ! ignore_pin ) {
