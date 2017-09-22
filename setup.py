@@ -12,8 +12,8 @@ with open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
     name='CPyCppyy',
-    version='0.3.0',
-    description='Cling-based Python-C++ bindings',
+    version='0.4.0',
+    description='Cling-based Python-C++ bindings for CPython',
     long_description=long_description,
 
     url='http://cppyy.readthedocs.io/',
@@ -32,7 +32,7 @@ setup(
         'Topic :: Software Development',
         'Topic :: Software Development :: Interpreters',
 
-        #'License :: OSI Approved :: MIT License',
+        'License :: OSI Approved :: BSD License',
 
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
