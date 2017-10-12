@@ -3,11 +3,11 @@
 
 #ifdef _WIN32
 // Disable warning C4275: non dll-interface class
-#pragma warning ( disable : 4275 )
+#pragma warning (disable : 4275)
 // Disable warning C4251: needs to have dll-interface to be used by clients
-#pragma warning ( disable : 4251 )
+#pragma warning (disable : 4251)
 // Disable warning C4800: 'int' : forcing value to bool
-#pragma warning ( disable : 4800 )
+#pragma warning (disable : 4800)
 // Avoid that pyconfig.h decides using a #pragma what library python library to use
 //#define MS_NO_COREDLL 1
 #endif
@@ -181,7 +181,7 @@ static inline void* CPyCppyy_PyCapsule_GetPointer(PyObject* capsule, const char*
 
 // feature of 3.0 not in 2.5 and earlier
 #if PY_VERSION_HEX < 0x02060000
-#define PyVarObject_HEAD_INIT(type, size)       \
+#define PyVarObject_HEAD_INIT(type, size)                                     \
     PyObject_HEAD_INIT(type) size,
 #define Py_TYPE(ob)             (((PyObject*)(ob))->ob_type)
 #endif
@@ -200,7 +200,7 @@ typedef int Py_ssize_t;
 #define lenfunc         inquiry
 #define ssizeargfunc    intargfunc
 
-#define PyIndex_Check(obj) \
+#define PyIndex_Check(obj)                                                    \
     (PyInt_Check(obj) || PyLong_Check(obj))
 
 inline Py_ssize_t PyNumber_AsSsize_t(PyObject* obj, PyObject*) {

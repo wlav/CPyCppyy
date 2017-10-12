@@ -16,11 +16,11 @@ namespace CPyCppyy {
         using TMethodHolder::TMethodHolder;
 
     public:
-        virtual PyCallable* Clone() { return new TSetItemHolder( *this ); }
+        virtual PyCallable* Clone() { return new TSetItemHolder(*this); }
         virtual PyObject* PreProcessArgs(ObjectProxy*& self, PyObject* args, PyObject* kwds);
 
     protected:
-        virtual bool InitExecutor_(TExecutor*&, TCallContext* ctxt = 0);
+        virtual bool InitExecutor_(TExecutor*&, TCallContext* ctxt = nullptr);
     };
 
 } // namespace CPyCppyy

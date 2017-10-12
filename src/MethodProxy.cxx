@@ -535,13 +535,13 @@ static PyGetSetDef mp_getset[] = {
     {(char*)"func_name",     (getter)mp_name,          nullptr, nullptr, nullptr},
 
     {(char*)"_creates", (getter)mp_getcreates, (setter)mp_setcreates,
-         (char*)"For ownership rules of result: if true, objects are python-owned", nullptr},
+      (char*)"For ownership rules of result: if true, objects are python-owned", nullptr},
     {(char*)"_mempolicy", (getter)mp_getmempolicy, (setter)mp_setmempolicy,
-         (char*)"For argument ownership rules: like global, either heuristic or strict", nullptr},
+      (char*)"For argument ownership rules: like global, either heuristic or strict", nullptr},
     {(char*)"_manage_smart_ptr", (getter)mp_get_manage_smart_ptr, (setter)mp_set_manage_smart_ptr,
-         (char*)"If a smart pointer is returned, determines management policy.", nullptr},
+      (char*)"If a smart pointer is returned, determines management policy.", nullptr},
     {(char*)"_threaded", (getter)mp_getthreaded, (setter)mp_setthreaded,
-         (char*)"If true, releases GIL on call into C++", nullptr},
+      (char*)"If true, releases GIL on call into C++", nullptr},
     {(char*)nullptr, nullptr, nullptr, nullptr, nullptr}
 };
 
@@ -584,7 +584,7 @@ static PyObject* mp_call(MethodProxy* pymeth, PyObject* args, PyObject* kwds)
     MethodProxy::DispatchMap_t::iterator m = dispatchMap.find(sighash);
     if (m != dispatchMap.end()) {
         int index = m->second;
-        PyObject* result = methods[ index ]->Call(pymeth->fSelf, args, kwds, &ctxt);
+        PyObject* result = methods[index]->Call(pymeth->fSelf, args, kwds, &ctxt);
         result = HandleReturn(pymeth, oldSelf, result);
 
         if (result != 0)
@@ -794,9 +794,9 @@ static PyObject* mp_add_overload(MethodProxy* pymeth, PyObject* new_overload)
 
 static PyMethodDef mp_methods[] = {
     {(char*)"__overload__",     (PyCFunction)mp_overload, METH_O,
-         (char*)"select overload for dispatch" },
+      (char*)"select overload for dispatch" },
     {(char*)"__add_overload__", (PyCFunction)mp_add_overload, METH_O,
-         (char*)"add a new overload" },
+      (char*)"add a new overload" },
     {(char*)nullptr, nullptr, 0, nullptr }
 };
 

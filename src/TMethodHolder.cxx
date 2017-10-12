@@ -6,6 +6,7 @@
 #include "ObjectProxy.h"
 #include "CPyCppyyHelpers.h"
 #include "TPyException.h"
+#include "PyStrings.h"
 #include "Utility.h"
 
 // Standard
@@ -95,7 +96,7 @@ inline PyObject* CPyCppyy::TMethodHolder::CallFast(
 
        PyErr_Format(PyExc_Exception, "%s (C++ exception)", e.what());
        result = nullptr;
-   } catch ( ... ) {
+   } catch (...) {
        PyErr_SetString(PyExc_Exception, "unhandled, unknown C++ exception");
        result = nullptr;
    }
@@ -111,7 +112,7 @@ inline PyObject* CPyCppyy::TMethodHolder::CallSafe(
     PyObject* result = 0;
 
 //   TRY {       // ROOT "try block"
-    result = CallFast( self, offset, ctxt );
+    result = CallFast(self, offset, ctxt);
    //   } CATCH( excode ) {
    //      PyErr_SetString( PyExc_SystemError, "problem in C++; program state has been reset" );
    //      result = 0;
@@ -157,13 +158,13 @@ bool CPyCppyy::TMethodHolder::InitConverters_()
 }
 
 //----------------------------------------------------------------------------
-bool CPyCppyy::TMethodHolder::InitExecutor_( TExecutor*& executor, TCallContext* ctxt )
+bool CPyCppyy::TMethodHolder::InitExecutor_(TExecutor*& executor, TCallContext* ctxt)
 {
 // install executor conform to the return type
     executor = CreateExecutor(
         (bool)fMethod == true ? Cppyy::ResolveName(Cppyy::GetMethodResultType(fMethod))\
                               : Cppyy::GetScopedFinalName(fScope),
-        ctxt ? ManagesSmartPtr( ctxt ) : false);
+        ctxt ? ManagesSmartPtr(ctxt) : false);
 
     if (!executor)
         return false;
@@ -217,19 +218,27 @@ void CPyCppyy::TMethodHolder::SetPyError_(PyObject* msg)
     Py_XDECREF(evalue); Py_XDECREF(etrace);
 
     PyObject* doc = GetDocString();
-    PyObject* errtype = etype ? etype : PyExc_TypeError;
+    PyObject* errtype = etype;
+    if (!errtype) {
+        Py_INCREF(PyExc_TypeError);
+        errtype = PyExc_TypeError;
+    }
+    PyObject* pyname = PyObject_GetAttr(errtype, PyStrings::gName);
+    const char* cname = pyname ? CPyCppyy_PyUnicode_AsString(pyname) : "Exception";
+
     if (details.empty()) {
-        PyErr_Format(errtype, "%s =>\n    %s", CPyCppyy_PyUnicode_AsString(doc),
-            msg ? CPyCppyy_PyUnicode_AsString(msg) : "");
+        PyErr_Format(errtype, "%s =>\n    %s: %s", CPyCppyy_PyUnicode_AsString(doc),
+            cname, msg ? CPyCppyy_PyUnicode_AsString(msg) : "");
     } else if (msg) {
-        PyErr_Format(errtype, "%s =>\n    %s (%s)",
-            CPyCppyy_PyUnicode_AsString(doc), CPyCppyy_PyUnicode_AsString(msg),
+        PyErr_Format(errtype, "%s =>\n    %s: %s (%s)",
+            CPyCppyy_PyUnicode_AsString(doc), cname, CPyCppyy_PyUnicode_AsString(msg),
             details.c_str());
     } else {
-        PyErr_Format(errtype, "%s =>\n    %s",
-            CPyCppyy_PyUnicode_AsString(doc), details.c_str());
+        PyErr_Format(errtype, "%s =>\n    %s: %s",
+            CPyCppyy_PyUnicode_AsString(doc), cname, details.c_str());
     }
 
+    Py_XDECREF(pyname);
     Py_XDECREF(etype);
     Py_DECREF(doc);
     Py_XDECREF(msg);
@@ -278,7 +287,7 @@ PyObject* CPyCppyy::TMethodHolder::GetPrototype(bool fa)
     return CPyCppyy_PyUnicode_FromFormat("%s%s %s::%s%s",
         (Cppyy::IsStaticMethod(fMethod) ? "static " : ""),
         Cppyy::GetMethodResultType(fMethod).c_str(),
-        Cppyy::GetFinalName(fScope).c_str(), Cppyy::GetMethodName(fMethod).c_str(),
+        Cppyy::GetScopedFinalName(fScope).c_str(), Cppyy::GetMethodName(fMethod).c_str(),
         GetSignatureString(fa).c_str());
 }
 
@@ -419,19 +428,19 @@ PyObject* CPyCppyy::TMethodHolder::PreProcessArgs(
         ObjectProxy*& self, PyObject* args, PyObject*)
 {
 // verify existence of self, return if ok
-    if ( self != 0 ) {
-        Py_INCREF( args );
+    if (self) {
+        Py_INCREF(args);
         return args;
     }
 
 // otherwise, check for a suitable 'self' in args and update accordingly
-    if ( PyTuple_GET_SIZE( args ) != 0 ) {
-        ObjectProxy* pyobj = (ObjectProxy*)PyTuple_GET_ITEM( args, 0 );
+    if (PyTuple_GET_SIZE(args) != 0) {
+        ObjectProxy* pyobj = (ObjectProxy*)PyTuple_GET_ITEM(args, 0);
 
     // demand CPyCppyy object, and an argument that may match down the road
         if (ObjectProxy_Check(pyobj) &&
              (fScope == Cppyy::gGlobalScope ||               // free global
-             (pyobj->ObjectIsA() == 0 )     ||               // null pointer or ctor call
+             (pyobj->ObjectIsA() == 0)     ||                // null pointer or ctor call
              (Cppyy::IsSubtype(pyobj->ObjectIsA(), fScope))) // matching types
          ) {
         // reset self
@@ -445,9 +454,9 @@ PyObject* CPyCppyy::TMethodHolder::PreProcessArgs(
 
 // no self, set error and lament
     SetPyError_(CPyCppyy_PyUnicode_FromFormat(
-       "unbound method %s::%s must be called with a %s instance as first argument",
-       Cppyy::GetFinalName(fScope).c_str(), Cppyy::GetMethodName(fMethod).c_str(),
-       Cppyy::GetFinalName(fScope).c_str()));
+        "unbound method %s::%s must be called with a %s instance as first argument",
+        Cppyy::GetFinalName(fScope).c_str(), Cppyy::GetMethodName(fMethod).c_str(),
+        Cppyy::GetFinalName(fScope).c_str()));
     return 0;
 }
 
@@ -470,7 +479,7 @@ bool CPyCppyy::TMethodHolder::ConvertAndSetArgs(PyObject* args, TCallContext* ct
 
 // convert the arguments to the method call array
     ctxt->fArgs.resize(argc);
-    for (int i = 0; i < argc; ++i ) {
+    for (int i = 0; i < argc; ++i) {
         if (!fConverters[i]->SetArg(
                 PyTuple_GET_ITEM(args, i), ctxt->fArgs[i], ctxt)) {
             SetPyError_(CPyCppyy_PyUnicode_FromFormat("could not convert argument %d", i+1));
@@ -535,7 +544,7 @@ PyObject* CPyCppyy::TMethodHolder::Call(
 
 // validity check that should not fail
     if (!object) {
-        PyErr_SetString( PyExc_ReferenceError, "attempt to access a null-pointer" );
+        PyErr_SetString(PyExc_ReferenceError, "attempt to access a null-pointer");
         return 0;
     }
 

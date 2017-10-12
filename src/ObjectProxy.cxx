@@ -90,7 +90,7 @@ static PyObject* op_dispatch(PyObject* self, PyObject* args, PyObject* /* kdws *
     PyObject* pydisp = PyObject_GetAttrString(pymeth, const_cast<char*>("__overload__"));
     if (!pydisp) {
         Py_DECREF(pymeth);
-        return 0;
+        return nullptr;
     }
 
 // finally, call dispatch to get the specific overload
@@ -117,9 +117,9 @@ static PyMethodDef op_methods[] = {
     {(char*)"__bool__",     (PyCFunction)op_nonzero,  METH_NOARGS, nullptr}, // for p3
     {(char*)"__destruct__", (PyCFunction)op_destruct, METH_NOARGS, nullptr},
     {(char*)"__dispatch__", (PyCFunction)op_dispatch, METH_VARARGS,
-         (char*)"dispatch to selected overload"},
+      (char*)"dispatch to selected overload"},
     {(char*)"_get_smart_ptr", (PyCFunction)op_get_smart_ptr, METH_NOARGS,
-         (char*)"get associated smart pointer, if any"},
+      (char*)"get associated smart pointer, if any"},
     {(char*)nullptr, nullptr, 0, nullptr}
    };
 
@@ -178,7 +178,7 @@ static PyObject* op_repr(ObjectProxy* pyobj)
     Cppyy::TCppType_t klass = pyobj->ObjectIsA();
     std::string clName = klass ? Cppyy::GetScopedFinalName(klass) : "<unknown>";
     if (pyobj->fFlags & ObjectProxy::kIsReference)
-        clName.append( "*" );
+        clName.append("*");
 
     TypeManip::cppscope_to_pyscope(clName);
 

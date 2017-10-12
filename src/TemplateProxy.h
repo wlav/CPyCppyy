@@ -67,7 +67,7 @@ namespace CPyCppyy {
         if (!CPyCppyyType_Check(pyclass)) return nullptr;
 
         TemplateProxy* pytmpl =
-            (TemplateProxy*)TemplateProxy_Type.tp_new(&TemplateProxy_Type, 0, 0);
+            (TemplateProxy*)TemplateProxy_Type.tp_new(&TemplateProxy_Type, nullptr, nullptr);
         pytmpl->Set(cppname, pyname, pyclass);
         return pytmpl;
     }

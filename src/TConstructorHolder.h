@@ -17,10 +17,10 @@ namespace CPyCppyy {
 
     public:
         virtual PyObject* Call(
-            ObjectProxy*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt = 0);
+            ObjectProxy*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt = nullptr);
 
     protected:
-        virtual bool InitExecutor_(TExecutor*&, TCallContext* ctxt = 0);
+        virtual bool InitExecutor_(TExecutor*&, TCallContext* ctxt = nullptr);
     };
 
 } // namespace CPyCppyy

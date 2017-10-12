@@ -17,7 +17,7 @@ namespace CPyCppyy {
         virtual ~TConverter() {}
 
     public:
-        virtual bool SetArg(PyObject*, TParameter&, TCallContext* ctxt = 0) = 0;
+        virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr) = 0;
         virtual PyObject* FromMemory(void* address);
         virtual bool ToMemory(PyObject* value, void* address);
     };
@@ -28,7 +28,7 @@ namespace CPyCppyy {
         TVoidArrayConverter(bool keepControl = true) { fKeepControl = keepControl; }
 
     public:
-        virtual bool SetArg(PyObject*, TParameter&, TCallContext* ctxt = 0);
+        virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);
         virtual PyObject* FromMemory(void* address);
         virtual bool ToMemory(PyObject* value, void* address);
 
@@ -46,7 +46,7 @@ namespace CPyCppyy {
             TVoidArrayConverter(keepControl), fClass(klass) {}
 
     public:
-        virtual bool SetArg(PyObject*, TParameter&, TCallContext* ctxt = 0);
+        virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);
         virtual PyObject* FromMemory(void* address);
         virtual bool ToMemory(PyObject* value, void* address);
         

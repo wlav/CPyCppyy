@@ -19,6 +19,19 @@
 #include <typeinfo>
 
 
+//= helper ==================================================================
+namespace {
+
+    class PyGILRAII {
+        PyGILState_STATE m_GILState;
+    public:
+        PyGILRAII() : m_GILState(PyGILState_Ensure()) {}
+        ~PyGILRAII() { PyGILState_Release(m_GILState); }
+    };
+
+} // unnamed namespace
+
+
 //- public members -----------------------------------------------------------
 TClass* TPyClassGenerator::GetClass( const char* name, bool load )
 {
@@ -38,7 +51,7 @@ TClass* TPyClassGenerator::GetClass( const char* name, bool load, bool silent )
    if ( ! load || ! name )
       return 0;
 
-   PyROOT::PyGILRAII thePyGILRAII;
+   PyGILRAII thePyGILRAII;
    
 // first, check whether the name is of a module
    PyObject* modules = PySys_GetObject( const_cast<char*>("modules") );

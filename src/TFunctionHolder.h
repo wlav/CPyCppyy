@@ -11,11 +11,11 @@ namespace CPyCppyy {
     public:
         using TMethodHolder::TMethodHolder;
 
-        virtual PyCallable* Clone() { return new TFunctionHolder( *this ); }
+        virtual PyCallable* Clone() { return new TFunctionHolder(*this); }
 
         virtual PyObject* PreProcessArgs(ObjectProxy*& self, PyObject* args, PyObject* kwds);
         virtual PyObject* Call(
-            ObjectProxy*&, PyObject* args, PyObject* kwds, TCallContext* ctx = 0);
+            ObjectProxy*&, PyObject* args, PyObject* kwds, TCallContext* ctx = nullptr);
     };
 
 } // namespace CPyCppyy

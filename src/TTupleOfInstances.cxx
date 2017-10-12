@@ -24,7 +24,7 @@ PyObject* TTupleOfInstances_New(
 
    PyObject* args = PyTuple_New( 1 );
    Py_INCREF( tup ); PyTuple_SET_ITEM( args, 0, tup );
-   PyObject* arr = PyTuple_Type.tp_new( &TTupleOfInstances_Type, args, NULL );
+   PyObject* arr = PyTuple_Type.tp_new( &TTupleOfInstances_Type, args, nullptr );
    if ( PyErr_Occurred() ) PyErr_Print();
 
    Py_DECREF( args );

@@ -7,13 +7,13 @@
 #include "structmember.h"
 
 typedef struct {
-   PyTypeObject type;
-   PyNumberMethods as_number;
-   PySequenceMethods as_sequence;
-   PyMappingMethods as_mapping;
-   PyBufferProcs as_buffer;
-   PyObject *name, *slots;
-   PyMemberDef members[1];
+    PyTypeObject type;
+    PyNumberMethods as_number;
+    PySequenceMethods as_sequence;
+    PyMappingMethods as_mapping;
+    PyBufferProcs as_buffer;
+    PyObject *name, *slots;
+    PyMemberDef members[1];
 } PyHeapTypeObject;
 
 #endif

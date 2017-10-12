@@ -13,7 +13,7 @@ namespace CPyCppyy {
 
         void cppscope_to_pyscope(std::string& cppscope);
 
-   } // namespace TypeManip
+    } // namespace TypeManip
 
 } // namespace CPyCppyy
 

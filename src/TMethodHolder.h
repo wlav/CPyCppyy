@@ -35,12 +35,12 @@ namespace CPyCppyy {
 
     public:
         virtual PyObject* Call(
-            ObjectProxy*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt = 0);
+            ObjectProxy*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt = nullptr);
 
-        virtual bool      Initialize(TCallContext* ctxt = 0);
+        virtual bool      Initialize(TCallContext* ctxt = nullptr);
         virtual PyObject* PreProcessArgs(ObjectProxy*& self, PyObject* args, PyObject* kwds);
-        virtual bool      ConvertAndSetArgs(PyObject* args, TCallContext* ctxt = 0);
-        virtual PyObject* Execute(void* self, ptrdiff_t offset, TCallContext* ctxt = 0);
+        virtual bool      ConvertAndSetArgs(PyObject* args, TCallContext* ctxt = nullptr);
+        virtual PyObject* Execute(void* self, ptrdiff_t offset, TCallContext* ctxt = nullptr);
 
    protected:
         Cppyy::TCppMethod_t GetMethod()   { return fMethod; }
@@ -49,7 +49,7 @@ namespace CPyCppyy {
         std::string         GetSignatureString(bool show_formalargs = true);
         std::string         GetReturnTypeName();
 
-        virtual bool InitExecutor_(TExecutor*&, TCallContext* ctxt = 0);
+        virtual bool InitExecutor_(TExecutor*&, TCallContext* ctxt = nullptr);
 
     private:
         void Copy_(const TMethodHolder&);

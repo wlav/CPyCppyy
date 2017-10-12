@@ -742,7 +742,7 @@ PyObject* CPyCppyy::BindCppObjectNoCast(
 // instantiate an object of this class
    PyObject* args = PyTuple_New(0);
    ObjectProxy* pyobj =
-      (ObjectProxy*)((PyTypeObject*)pyclass)->tp_new( (PyTypeObject*)pyclass, args, NULL );
+      (ObjectProxy*)((PyTypeObject*)pyclass)->tp_new((PyTypeObject*)pyclass, args, nullptr);
    Py_DECREF( args );
    Py_DECREF( pyclass );
 

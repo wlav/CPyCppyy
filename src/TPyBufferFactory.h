@@ -12,30 +12,30 @@ namespace CPyCppyy {
 
 class TPyBufferFactory {
 public:
-   static TPyBufferFactory* Instance();
+    static TPyBufferFactory* Instance();
 
-   PyObject* PyBuffer_FromMemory( bool* buf, Py_ssize_t size = -1 );
-   PyObject* PyBuffer_FromMemory( bool* buf, PyObject* sizeCallback );
-   PyObject* PyBuffer_FromMemory( Short_t* buf, Py_ssize_t size = -1 );
-   PyObject* PyBuffer_FromMemory( Short_t* buf, PyObject* sizeCallback );
-   PyObject* PyBuffer_FromMemory( UShort_t* buf, Py_ssize_t size = -1 );
-   PyObject* PyBuffer_FromMemory( UShort_t* buf, PyObject* sizeCallback );
-   PyObject* PyBuffer_FromMemory( Int_t* buf, Py_ssize_t size = -1 );
-   PyObject* PyBuffer_FromMemory( Int_t* buf, PyObject* sizeCallback );
-   PyObject* PyBuffer_FromMemory( UInt_t* buf, Py_ssize_t size = -1 );
-   PyObject* PyBuffer_FromMemory( UInt_t* buf, PyObject* sizeCallback );
-   PyObject* PyBuffer_FromMemory( Long_t* buf, Py_ssize_t size = -1 );
-   PyObject* PyBuffer_FromMemory( Long_t* buf, PyObject* sizeCallback );
-   PyObject* PyBuffer_FromMemory( ULong_t* buf, Py_ssize_t size = -1 );
-   PyObject* PyBuffer_FromMemory( ULong_t* buf, PyObject* sizeCallback );
-   PyObject* PyBuffer_FromMemory( Float_t* buf, Py_ssize_t size = -1 );
-   PyObject* PyBuffer_FromMemory( Float_t* buf, PyObject* sizeCallback );
-   PyObject* PyBuffer_FromMemory( Double_t* buf, Py_ssize_t size = -1 );
-   PyObject* PyBuffer_FromMemory( Double_t* buf, PyObject* sizeCallback );
+    PyObject* PyBuffer_FromMemory(bool* buf, Py_ssize_t size = -1);
+    PyObject* PyBuffer_FromMemory(bool* buf, PyObject* sizeCallback);
+    PyObject* PyBuffer_FromMemory(Short_t* buf, Py_ssize_t size = -1);
+    PyObject* PyBuffer_FromMemory(Short_t* buf, PyObject* sizeCallback);
+    PyObject* PyBuffer_FromMemory(UShort_t* buf, Py_ssize_t size = -1);
+    PyObject* PyBuffer_FromMemory(UShort_t* buf, PyObject* sizeCallback);
+    PyObject* PyBuffer_FromMemory(Int_t* buf, Py_ssize_t size = -1);
+    PyObject* PyBuffer_FromMemory(Int_t* buf, PyObject* sizeCallback);
+    PyObject* PyBuffer_FromMemory(UInt_t* buf, Py_ssize_t size = -1);
+    PyObject* PyBuffer_FromMemory(UInt_t* buf, PyObject* sizeCallback);
+    PyObject* PyBuffer_FromMemory(Long_t* buf, Py_ssize_t size = -1);
+    PyObject* PyBuffer_FromMemory(Long_t* buf, PyObject* sizeCallback);
+    PyObject* PyBuffer_FromMemory(ULong_t* buf, Py_ssize_t size = -1);
+    PyObject* PyBuffer_FromMemory(ULong_t* buf, PyObject* sizeCallback);
+    PyObject* PyBuffer_FromMemory(Float_t* buf, Py_ssize_t size = -1);
+    PyObject* PyBuffer_FromMemory(Float_t* buf, PyObject* sizeCallback);
+    PyObject* PyBuffer_FromMemory(Double_t* buf, Py_ssize_t size = -1);
+    PyObject* PyBuffer_FromMemory(Double_t* buf, PyObject* sizeCallback);
 
 protected:
-   TPyBufferFactory();
-   ~TPyBufferFactory();
+    TPyBufferFactory();
+    ~TPyBufferFactory();
 };
 
 typedef TPyBufferFactory BufFac_t;

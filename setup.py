@@ -12,7 +12,7 @@ with open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
     name='CPyCppyy',
-    version='0.4.0',
+    version='0.4.1',
     description='Cling-based Python-C++ bindings for CPython',
     long_description=long_description,
 

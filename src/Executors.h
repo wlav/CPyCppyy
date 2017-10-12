@@ -19,7 +19,7 @@ namespace CPyCppyy {
 // special case needed for TSetItemHolder
     class TRefExecutor : public TExecutor {
     public:
-        TRefExecutor() : fAssignable(0) {}
+        TRefExecutor() : fAssignable(nullptr) {}
         virtual bool SetAssignable(PyObject*);
 
     protected:

@@ -70,7 +70,7 @@ namespace CPyCppyy {
         const std::string& name, std::vector<PyCallable*>& methods)
     {
     // Create and initialize a new method proxy from the overloads.
-        MethodProxy* pymeth = (MethodProxy*)MethodProxy_Type.tp_new(&MethodProxy_Type, 0, 0);
+        MethodProxy* pymeth = (MethodProxy*)MethodProxy_Type.tp_new(&MethodProxy_Type, nullptr, nullptr);
         pymeth->Set(name, methods);
         return pymeth;
     }
