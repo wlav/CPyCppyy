@@ -228,7 +228,7 @@ void* CPyCppyy::PropertyProxy::GetAddress( ObjectProxy* pyobj ) {
 
 // special case: non-static lookup through class
    if ( ! pyobj ) {
-      PyErr_SetString( PyExc_ReferenceError, "attribute access requires an instance" );
+      PyErr_SetString( PyExc_AttributeError, "attribute access requires an instance" );
       return 0;
    }
 
