@@ -80,7 +80,7 @@ static inline UShort_t CPyCppyy_PyLong_AsUShort( PyObject* pyobject )
 
 // prevent p2.7 silent conversions and do a range check
    if ( ! (PyLong_Check( pyobject ) || PyInt_Check( pyobject )) ) {
-      PyErr_SetString( PyExc_TypeError, "unsigned short converion expects an integer object" );
+      PyErr_SetString( PyExc_TypeError, "unsigned short conversion expects an integer object" );
       return (UShort_t)-1;
    }
    Long_t l = PyLong_AsLong( pyobject );
@@ -97,7 +97,7 @@ static inline Short_t CPyCppyy_PyLong_AsShort( PyObject* pyobject )
 // range-checking python integer to C++ short int conversion
 // prevent p2.7 silent conversions and do a range check
    if ( ! (PyLong_Check( pyobject ) || PyInt_Check( pyobject )) ) {
-      PyErr_SetString( PyExc_TypeError, "short int converion expects an integer object" );
+      PyErr_SetString( PyExc_TypeError, "short int conversion expects an integer object" );
       return (Short_t)-1;
    }
    Long_t l = PyLong_AsLong( pyobject );
@@ -117,7 +117,7 @@ static inline Long_t CPyCppyy_PyLong_AsStrictLong( PyObject* pyobject )
 // check; earlier pythons may raise a SystemError which should be avoided as
 // it is confusing
    if ( ! (PyLong_Check( pyobject ) || PyInt_Check( pyobject )) ) {
-      PyErr_SetString( PyExc_TypeError, "int/long converion expects an integer object" );
+      PyErr_SetString( PyExc_TypeError, "int/long conversion expects an integer object" );
       return (Long_t)-1;
    }
    return (Long_t)PyLong_AsLong( pyobject );
@@ -650,13 +650,13 @@ bool CPyCppyy::TNonConstUCStringConverter::SetArg(
 //-----------------------------------------------------------------------------
 bool CPyCppyy::TVoidArrayConverter::GetAddressSpecialCase( PyObject* pyobject, void*& address )
 {
-// (1): "null pointer" or C++11 style nullptr
-   if ( pyobject == Py_None || pyobject == gNullPtrObject ) {
-      address = (void*)0;
+// (1): C++11 style "null pointer"
+   if ( pyobject == gNullPtrObject ) {
+      address = nullptr;
       return true;
    }
 
-// (2): allow integer zero to act as a null pointer, no deriveds
+// (2): allow integer zero to act as a null pointer (C NULL), no deriveds
    if ( PyInt_CheckExact( pyobject ) || PyLong_CheckExact( pyobject ) ) {
       Long_t val = (Long_t)PyLong_AsLong( pyobject );
       if ( val == 0l ) {
@@ -1039,7 +1039,7 @@ bool CPyCppyy::TMoveCppObjectConverter::SetArg(
         return result;
     }
 
-    PyErr_SetString(PyExc_TypeError, "object is not an rvalue");
+    PyErr_SetString(PyExc_ValueError, "object is not an rvalue");
     return false;      // not a temporary or movable object
 }
 
