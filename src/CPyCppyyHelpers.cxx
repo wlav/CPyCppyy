@@ -510,14 +510,14 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
             PyObject* parname = PyObject_GetAttr(parent, PyStrings::gName);
             if (!parname) {
                 PyErr_Format(PyExc_SystemError, "given scope has no name for %s", name.c_str());
-                return 0;
+                return nullptr;
             }
 
         // should be a string
             scName = CPyCppyy_PyUnicode_AsString(parname);
             Py_DECREF(parname);
             if (PyErr_Occurred())
-                return 0;
+                return nullptr;
         }
 
     // accept this parent scope and use it's name for prefixing
@@ -546,7 +546,7 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
     if (!(bool)klass) {   // if so, all options have been exhausted: it doesn't exist as such
         PyErr_Format(PyExc_TypeError, "requested class \'%s\' does not exist", lookup.c_str());
         Py_XDECREF(parent);
-        return 0;
+        return nullptr;
     }
 
 // locate class by ID, if possible, to prevent parsing scopes/templates anew
@@ -586,7 +586,7 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
                 Py_XDECREF(parent);
 
                 if (!next)              // create failed, give up
-                    return 0;
+                    return nullptr;
 
             // found scope part
                 parent = next;
@@ -616,7 +616,7 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
 
 // first try to retrieve an existing class representation
     PyObject* pyactual = CPyCppyy_PyUnicode_FromString(actual.c_str());
-    PyObject* pyclass = force ? 0 : PyObject_GetAttr(parent, pyactual);
+    PyObject* pyclass = force ? nullptr : PyObject_GetAttr(parent, pyactual);
 
     bool bClassFound = pyclass ? true : false;
 
@@ -634,11 +634,11 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
         }
 
     // fill the dictionary, if successful
-        if (pyclass != 0) {
-            if (BuildScopeProxyDict(klass, pyclass) != 0) {
+        if (pyclass) {
+            if (BuildScopeProxyDict(klass, pyclass)) {
             // something failed in building the dictionary
                 Py_DECREF(pyclass);
-                pyclass = 0;
+                pyclass = nullptr;
             } else {
                 PyObject_SetAttr(parent, pyactual, pyclass);
             }
@@ -648,7 +648,7 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
 
 // give up, if not constructed
     if (!pyclass)
-        return 0;
+        return nullptr;
 
     if (name != actual)       // exists, but typedef-ed: simply map reference
         PyObject_SetAttrString(parent, const_cast<char*>(name.c_str()), pyclass);
@@ -670,7 +670,7 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
     if (!Cppyy::IsNamespace(klass)) {
         if (!Pythonize(pyclass, actual)) {     // add python-style features
             Py_XDECREF(pyclass);
-            pyclass = 0;
+            pyclass = nullptr;
         }
     } else {
     // add to sys.modules to allow importing from this namespace
