@@ -701,11 +701,7 @@ CPyCppyy::TExecutor* CPyCppyy::CreateExecutor(
     // enums don't resolve to unsigned ints, but that's what they are ...
         h = gExecFactories.find("UInt_t" + cpd);
     } else {
-    // handle (with warning) unknown types
-        std::stringstream s;
-        s << "creating executor for unknown type \"" << fullType << "\"" << std::ends;
-        PyErr_Warn(PyExc_RuntimeWarning, (char*)s.str().c_str());
-    // void* may work ("user knows best"), void will fail on use of return value
+    // unknown: void* may work ("user knows best"), void will fail on use of return value
         h = (cpd == "") ? gExecFactories.find("void") : gExecFactories.find("void*");
     }
 

@@ -1462,9 +1462,6 @@ CPyCppyy::TConverter* CPyCppyy::CreateConverter(const std::string& fullType, lon
         result = (h->second)(size);
     else if (!result) {
         if (cpd != "") {
-            std::stringstream s;
-            s << "creating converter for unknown type \"" << fullType << "\"";
-            PyErr_Warn(PyExc_RuntimeWarning, (char*)s.str().c_str());
             result = new TVoidArrayConverter();       // "user knows best"
         } else {
             result = new TVoidConverter();            // fails on use

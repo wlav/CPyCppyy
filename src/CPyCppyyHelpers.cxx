@@ -480,16 +480,12 @@ PyObject* CPyCppyy::CreateScopeProxy( PyObject*, PyObject* args )
 PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* parent)
 {
 // Build a python shadow class for the named C++ class.
-    if (scope_name.empty() || scope_name == "std") {
-    // special cases, as gbl and gbl.std are defined in cppyy.py
+    if (scope_name.empty()) { // special case, as gbl lives only in cppyy.py
         PyObject* mods = PyImport_GetModuleDict();
         PyObject* gbl = PyDict_GetItemString(mods, "cppyy.gbl");
         if (gbl) {
-            if (scope_name.empty()) {
-                Py_INCREF(gbl);
-                return gbl;
-            } else
-                return PyObject_GetAttrString(gbl, "std");
+            Py_INCREF(gbl);
+            return gbl;
         }
         PyErr_SetString(PyExc_SystemError, "could not locate global namespace");
         return nullptr;
