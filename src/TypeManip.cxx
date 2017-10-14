@@ -52,7 +52,7 @@ std::string CPyCppyy::TypeManip::remove_const(const std::string& cppname)
 // Remove 'const' qualifiers from the given C++ name.
     std::string::size_type tmplt_start = cppname.find('<');
     std::string::size_type tmplt_stop  = cppname.rfind('>');
-    if (0 <= tmplt_start && 0 <= tmplt_stop) {
+    if (tmplt_start != std::string::npos && tmplt_stop != std::string::npos) {
     // only replace const qualifying cppname, not in template parameters
         std::string pre = cppname.substr(0, tmplt_start);
         erase_const(pre);
@@ -70,7 +70,7 @@ std::string CPyCppyy::TypeManip::remove_const(const std::string& cppname)
 
 //----------------------------------------------------------------------------
 std::string CPyCppyy::TypeManip::clean_type(
-       const std::string& cppname, bool template_strip)
+    const std::string& cppname, bool template_strip, bool const_strip)
 {
 // Strip C++ name from all qualifiers and compounds.
     std::string::size_type i = find_qualifier_index(cppname);
@@ -84,7 +84,12 @@ std::string CPyCppyy::TypeManip::clean_type(
         name = name.substr(0, name.find('<'));
     }
 
-    erase_const(name);
+    if (const_strip) {
+        if (template_strip)
+            erase_const(name);
+        else
+            name = remove_const(name);
+    }
     return name;
 }
 

@@ -9,7 +9,8 @@ namespace CPyCppyy {
     namespace TypeManip {
 
         std::string remove_const(const std::string& cppname);
-        std::string clean_type(const std::string& cppname, bool template_strip = true);
+        std::string clean_type(const std::string& cppname,
+                bool template_strip = true, bool const_strip = true);
 
         void cppscope_to_pyscope(std::string& cppscope);
 

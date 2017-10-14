@@ -598,7 +598,7 @@ PyObject* CPyCppyy::TPyObjectExecutor::Execute(
 
 //- factories -----------------------------------------------------------------
 CPyCppyy::TExecutor* CPyCppyy::CreateExecutor(
-      const std::string& fullType, bool manage_smart_ptr )
+        const std::string& fullType, bool manage_smart_ptr)
 {
 // The matching of the fulltype to an executor factory goes through up to 4 levels:
 //   1) full, qualified match
@@ -609,99 +609,109 @@ CPyCppyy::TExecutor* CPyCppyy::CreateExecutor(
 // If all fails, void is used, which will cause the return type to be ignored on use
 
 // an exactly matching executor is best
-   ExecFactories_t::iterator h = gExecFactories.find( fullType );
-   if ( h != gExecFactories.end() )
-      return (h->second)();
+    ExecFactories_t::iterator h = gExecFactories.find(fullType);
+    if (h != gExecFactories.end())
+        return (h->second)();
 
-// resolve typedefs etc., and collect qualifiers
-   std::string resolvedType = Cppyy::ResolveName( fullType );
+// resolve typedefs etc.
+    const std::string& resolvedType = Cppyy::ResolveName(fullType);
 
 // a full, qualified matching executor is preferred
-   h = gExecFactories.find( resolvedType );
-   if ( h != gExecFactories.end() )
-      return (h->second)();
+    if (resolvedType != fullType) {
+         h = gExecFactories.find(resolvedType);
+         if (h != gExecFactories.end())
+              return (h->second)();
+    }
 
 //-- nothing? ok, collect information about the type and possible qualifiers/decorators
-   const std::string& cpd = Utility::Compound( resolvedType );
-   std::string realType = TypeManip::clean_type( resolvedType, false );
+    bool isConst = strncmp(resolvedType.c_str(), "const", 5)  == 0;
+    const std::string& cpd = Utility::Compound(resolvedType);
+    std::string realType = TypeManip::clean_type(resolvedType, false);
 
-// const-ness (dropped by TypeManip::clean_type) is in general irrelevant
-   h = gExecFactories.find( realType + cpd );
-   if ( h != gExecFactories.end() )
-      return (h->second)();
+// accept unqualified type (as python does not know about qualifiers)
+    h = gExecFactories.find(realType + cpd);
+    if (h != gExecFactories.end())
+        return (h->second)();
+
+// drop const, as that is mostly meaningless to python (with the exception
+// of c-strings, but those are specialized in the converter map)
+    if (isConst) {
+        realType = TypeManip::remove_const(realType);
+        h = gExecFactories.find(realType + cpd);
+        if (h != gExecFactories.end())
+            return (h->second)();
+    }
 
 //-- still nothing? try pointer instead of array (for builtins)
-/* TODO: check/fix/remove
-   if ( cpd == "[]" ) {
-   // CLING WORKAROUND -- if the type is a fixed-size array, it will have a funky
-   // resolved type like MyClass(&)[N], which TClass::GetClass() fails on. So, strip
-   // it down:
-      realType = TClassEdit::CleanType( realType.substr( 0, realType.rfind("(") ).c_str(), 1 );
-   // -- CLING WORKAROUND
-      h = gExecFactories.find( realType + "*" );
-      if ( h != gExecFactories.end() )
-         return (h->second)();         // TODO: use array size
-   }
-*/
+    if (cpd == "[]") {
+    /* // CLING WORKAROUND -- if the type is a fixed-size array, it will have a funky
+    // resolved type like MyClass(&)[N], which TClass::GetClass() fails on. So, strip
+    // it down:
+        realType = TClassEdit::CleanType( realType.substr( 0, realType.rfind("(") ).c_str(), 1 );
+    // -- CLING WORKAROUND */
+        h = gExecFactories.find(realType + "*");
+        if (h != gExecFactories.end())
+            return (h->second)();           // TODO: use array size
+    }
 
 // C++ classes and special cases (enum)
-   TExecutor* result = 0;
-   if ( Cppyy::TCppType_t klass = Cppyy::GetScope( realType ) ) {
-      if ( manage_smart_ptr && Cppyy::IsSmartPtr( realType ) ) {
-         const std::vector< Cppyy::TCppIndex_t > methods =
-            Cppyy::GetMethodIndicesFromName( klass, "operator->" );
-         if ( ! methods.empty() ) {
-            Cppyy::TCppMethod_t method = Cppyy::GetMethod( klass, methods[0] );
-            Cppyy::TCppType_t rawPtrType = Cppyy::GetScope(
-               TypeManip::clean_type( Cppyy::GetMethodResultType( method ) ) );
-            if ( rawPtrType ) {
-               if ( cpd == "" ) {
-                  result = new TCppObjectBySmartPtrExecutor( klass, rawPtrType, method );
-               } else if ( cpd == "*" ) {
-                  result = new TCppObjectBySmartPtrPtrExecutor( klass, rawPtrType, method );
-               } else if ( cpd == "&" ) {
-                  result = new TCppObjectBySmartPtrRefExecutor( klass, rawPtrType, method );
-               } // else if ( cpd == "**" ) {
-               //  } else if ( cpd == "*&" || cpd == "&*" ) {
-               //  } else if ( cpd == "[]" ) {
-               //  } else {
+    TExecutor* result = 0;
+    if (Cppyy::TCppType_t klass = Cppyy::GetScope(realType)) {
+        if (manage_smart_ptr && Cppyy::IsSmartPtr(realType)) {
+            const std::vector<Cppyy::TCppIndex_t> methods =
+                Cppyy::GetMethodIndicesFromName(klass, "operator->");
+            if (!methods.empty()) {
+                Cppyy::TCppMethod_t method = Cppyy::GetMethod(klass, methods[0]);
+                Cppyy::TCppType_t rawPtrType = Cppyy::GetScope(
+                    TypeManip::clean_type(Cppyy::GetMethodResultType(method)));
+                if (rawPtrType) {
+                    if (cpd == "") {
+                        result = new TCppObjectBySmartPtrExecutor(klass, rawPtrType, method);
+                    } else if (cpd == "*") {
+                        result = new TCppObjectBySmartPtrPtrExecutor(klass, rawPtrType, method);
+                    } else if (cpd == "&") {
+                        result = new TCppObjectBySmartPtrRefExecutor(klass, rawPtrType, method);
+                    } // else if (cpd == "**") {
+                //  } else if (cpd == "*&" || cpd == "&*") {
+                //  } else if (cpd == "[]") {
+                //  } else {
+                }
             }
-         }
-      }
+        }
 
-      if ( ! result ) {
-         if ( cpd == "" )
-            result = new TCppObjectByValueExecutor( klass );
-         else if ( cpd == "&" )
-            result = new TCppObjectRefExecutor( klass );
-         else if ( cpd == "**" )
-            result = new TCppObjectPtrPtrExecutor( klass );
-         else if ( cpd == "*&" || cpd == "&*" )
-            result = new TCppObjectPtrRefExecutor( klass );
-         else if ( cpd == "[]" ) {
-            Py_ssize_t asize = Utility::ArraySize( resolvedType );
-            if ( 0 < asize )
-              result = new TCppObjectArrayExecutor( klass, asize );
-            else
-              result = new TCppObjectPtrRefExecutor( klass );
-         } else
-            result = new TCppObjectExecutor( klass );
-      }
-   } else if ( Cppyy::IsEnum( realType ) ) {
-   // enums don't resolve to unsigned ints, but that's what they are ...
-      h = gExecFactories.find( "UInt_t" + cpd );
-   } else {
-   // handle (with warning) unknown types
-      std::stringstream s;
-      s << "creating executor for unknown type \"" << fullType << "\"" << std::ends;
-      PyErr_Warn( PyExc_RuntimeWarning, (char*)s.str().c_str() );
-   // void* may work ("user knows best"), void will fail on use of return value
-      h = (cpd == "") ? gExecFactories.find( "void" ) : gExecFactories.find( "void*" );
-   }
+        if (!result) {
+            if (cpd == "")
+                result = new TCppObjectByValueExecutor(klass);
+            else if (cpd == "&")
+                result = new TCppObjectRefExecutor(klass);
+            else if (cpd == "**")
+                result = new TCppObjectPtrPtrExecutor(klass);
+            else if (cpd == "*&"|| cpd == "&*" )
+                result = new TCppObjectPtrRefExecutor(klass);
+            else if (cpd == "[]") {
+                Py_ssize_t asize = Utility::ArraySize(resolvedType);
+                if (0 < asize)
+                    result = new TCppObjectArrayExecutor(klass, asize);
+                else
+                    result = new TCppObjectPtrRefExecutor(klass);
+            } else
+                result = new TCppObjectExecutor(klass);
+        }
+    } else if ( Cppyy::IsEnum( realType ) ) {
+    // enums don't resolve to unsigned ints, but that's what they are ...
+        h = gExecFactories.find("UInt_t" + cpd);
+    } else {
+    // handle (with warning) unknown types
+        std::stringstream s;
+        s << "creating executor for unknown type \"" << fullType << "\"" << std::ends;
+        PyErr_Warn(PyExc_RuntimeWarning, (char*)s.str().c_str());
+    // void* may work ("user knows best"), void will fail on use of return value
+        h = (cpd == "") ? gExecFactories.find("void") : gExecFactories.find("void*");
+    }
 
-   if ( ! result && h != gExecFactories.end() )
-   // executor factory available, use it to create executor
-      result = (h->second)();
+    if (!result && h != gExecFactories.end())
+    // executor factory available, use it to create executor
+        result = (h->second)();
 
    return result;                  // may still be null
 }

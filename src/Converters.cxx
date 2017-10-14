@@ -1330,7 +1330,7 @@ bool CPyCppyy::TNotImplementedConverter::SetArg( PyObject*, TParameter&, TCallCo
 
 
 //- factories -----------------------------------------------------------------
-CPyCppyy::TConverter* CPyCppyy::CreateConverter( const std::string& fullType, Long_t size )
+CPyCppyy::TConverter* CPyCppyy::CreateConverter(const std::string& fullType, long size)
 {
 // The matching of the fulltype to a converter factory goes through up to five levels:
 //   1) full, exact match
@@ -1342,26 +1342,38 @@ CPyCppyy::TConverter* CPyCppyy::CreateConverter( const std::string& fullType, Lo
 // If all fails, void is used, which will generate a run-time warning when used.
 
 // an exactly matching converter is best
-   ConvFactories_t::iterator h = gConvFactories.find( fullType );
-   if ( h != gConvFactories.end() )
-      return (h->second)( size );
+    ConvFactories_t::iterator h = gConvFactories.find(fullType);
+    if (h != gConvFactories.end())
+        return (h->second)(size);
 
 // resolve typedefs etc.
-   std::string resolvedType = Cppyy::ResolveName( fullType );
+    const std::string& resolvedType = Cppyy::ResolveName(fullType);
 
 // a full, qualified matching converter is preferred
-   h = gConvFactories.find( resolvedType );
-   if ( h != gConvFactories.end() )
-      return (h->second)( size );
+    if (resolvedType != fullType) {
+        h = gConvFactories.find(resolvedType);
+        if (h != gConvFactories.end())
+            return (h->second)(size);
+    }
 
 //-- nothing? ok, collect information about the type and possible qualifiers/decorators
-   const std::string& cpd = Utility::Compound( resolvedType );
-   std::string realType   = TypeManip::clean_type( resolvedType, false );
+    bool isConst = strncmp(resolvedType.c_str(), "const", 5)  == 0;
+    const std::string& cpd = Utility::Compound(resolvedType);
+    std::string realType   = TypeManip::clean_type(resolvedType, false, true);
 
 // accept unqualified type (as python does not know about qualifiers)
-   h = gConvFactories.find( realType + cpd );
-   if ( h != gConvFactories.end() )
-      return (h->second)( size );
+    h = gConvFactories.find(realType + cpd);
+    if (h != gConvFactories.end())
+        return (h->second)(size);
+
+// drop const, as that is mostly meaningless to python (with the exception
+// of c-strings, but those are specialized in the converter map)
+    if (isConst) {
+        realType = TypeManip::remove_const(realType);
+        h = gConvFactories.find(realType + cpd);
+        if (h != gConvFactories.end())
+            return (h->second)(size);
+    }
 
 // CLING WORKAROUND -- if the type is a fixed-size array, it will have a funky
 // resolved type like MyClass(&)[N], which TClass::GetClass() fails on. So, strip
@@ -1373,93 +1385,93 @@ CPyCppyy::TConverter* CPyCppyy::CreateConverter( const std::string& fullType, Lo
 // -- CLING WORKAROUND
 
 //-- still nothing? try pointer instead of array (for builtins)
-   if ( cpd == "[]" ) {
-      h = gConvFactories.find( realType + "*" );
-      if ( h != gConvFactories.end() )
-         return (h->second)( size );
-   }
+    if (cpd == "[]") {
+        h = gConvFactories.find(realType + "*");
+        if (h != gConvFactories.end())
+            return (h->second)(size);
+    }
 
 //-- still nothing? use a generalized converter
-   bool isConst = resolvedType.substr(0, 5) == "const";
-   bool control = cpd == "&" || isConst;
+    bool control = cpd == "&" || isConst;
 
 // converters for known C++ classes and default (void*)
-   TConverter* result = 0;
-   if ( Cppyy::TCppScope_t klass = Cppyy::GetScope( realType ) ) {
-      if ( Cppyy::IsSmartPtr( realType ) ) {
-         const std::vector< Cppyy::TCppIndex_t > methods =
-            Cppyy::GetMethodIndicesFromName( klass, "operator->" );
-         if ( ! methods.empty() ) {
-            Cppyy::TCppMethod_t method = Cppyy::GetMethod( klass, methods[0] );
-            Cppyy::TCppType_t rawPtrType = Cppyy::GetScope(
-               TypeManip::clean_type( Cppyy::GetMethodResultType( method ) ) );
-            if ( rawPtrType ) {
-               if ( cpd == "" ) {
-                  result = new TSmartPtrCppObjectConverter( klass, rawPtrType, method, control );
-               } else if ( cpd == "&" ) {
-                  result = new TSmartPtrCppObjectConverter( klass, rawPtrType, method );
-               } else if ( cpd == "*" && size <= 0 ) {
-                  result = new TSmartPtrCppObjectConverter( klass, rawPtrType, method, control, true );
-             //  } else if ( cpd == "**" || cpd == "*&" || cpd == "&*" ) {
-             //  } else if ( cpd == "[]" || size > 0 ) {
-             //  } else {
-               }
+    TConverter* result = 0;
+    if (Cppyy::TCppScope_t klass = Cppyy::GetScope(realType)) {
+        if (Cppyy::IsSmartPtr(realType)) {
+            const std::vector<Cppyy::TCppIndex_t> methods =
+                Cppyy::GetMethodIndicesFromName(klass, "operator->");
+            if (!methods.empty()) {
+                Cppyy::TCppMethod_t method = Cppyy::GetMethod(klass, methods[0]);
+                Cppyy::TCppType_t rawPtrType = Cppyy::GetScope(
+                    TypeManip::clean_type(Cppyy::GetMethodResultType(method)));
+                if (rawPtrType) {
+                    if (cpd == "") {
+                        result = new TSmartPtrCppObjectConverter(klass, rawPtrType, method, control);
+                    } else if (cpd == "&") {
+                        result = new TSmartPtrCppObjectConverter(klass, rawPtrType, method);
+                    } else if (cpd == "*" && size <= 0) {
+                        result = new TSmartPtrCppObjectConverter(klass, rawPtrType, method, control, true);
+                //  } else if (cpd == "**" || cpd == "*&" || cpd == "&*") {
+                //  } else if (cpd == "[]" || size > 0) {
+                //  } else {
+                    }
+                }
             }
-         }
-      }
+        }
 
-      if ( ! result ) {
+        if (!result) {
         // CLING WORKAROUND -- special case for STL iterators
-        if ( realType.find( "__gnu_cxx::__normal_iterator", 0 ) /* vector */ == 0 )
-          result = new TSTLIteratorConverter();
+            if (realType.find("__gnu_cxx::__normal_iterator", 0) /* vector */ == 0)
+                result = new TSTLIteratorConverter();
+            else
+       // -- CLING WORKAROUND
+            if (cpd == "**" || cpd == "&*")
+                result = new TCppObjectPtrConverter<false>(klass, control);
+            else if (cpd == "*&" )
+                result = new TCppObjectPtrConverter<true>(klass, control);
+            else if (cpd == "*" && size <= 0 )
+                result = new TCppObjectConverter(klass, control);
+            else if (cpd == "&" )
+                result = new TRefCppObjectConverter(klass);
+            else if (cpd == "&&" )
+                result = new TMoveCppObjectConverter(klass);
+            else if (cpd == "[]" || size > 0)
+                result = new TCppObjectArrayConverter(klass, size, false);
+            else if (cpd == "" )               // by value
+                result = new TValueCppObjectConverter(klass, true);
+        }
+    } else if (Cppyy::IsEnum(realType)) {
+    // special case (Cling): represent enums as unsigned integers
+        if (cpd == "&")
+            h = isConst ? gConvFactories.find("const long&") : gConvFactories.find("long&");
         else
-          // -- CLING WORKAROUND
-        if ( cpd == "**" || cpd == "&*" )
-          result = new TCppObjectPtrConverter<false>( klass, control);
-        else if ( cpd == "*&" )
-          result = new TCppObjectPtrConverter<true>( klass, control);
-        else if ( cpd == "*" && size <= 0 )
-          result = new TCppObjectConverter( klass, control );
-        else if ( cpd == "&" )
-          result = new TRefCppObjectConverter( klass );
-        else if ( cpd == "&&" )
-          result = new TMoveCppObjectConverter( klass );
-        else if ( cpd == "[]" || size > 0 )
-          result = new TCppObjectArrayConverter( klass, size, false );
-        else if ( cpd == "" )               // by value
-          result = new TValueCppObjectConverter( klass, true );
-      }
-   } else if ( Cppyy::IsEnum( realType ) ) {
-   // special case (Cling): represent enums as unsigned integers
-      if ( cpd == "&" )
-         h = isConst ? gConvFactories.find( "const long&" ) : gConvFactories.find( "long&" );
-      else
-         h = gConvFactories.find( "UInt_t" );
-   } else if ( realType.find( "(*)" ) != std::string::npos ||
-             ( realType.find( "::*)" ) != std::string::npos ) ) {
-   // this is a function function pointer
-   // TODO: find better way of finding the type
-   // TODO: a converter that generates wrappers as appropriate
-      h = gConvFactories.find( "void*" );
-   }
+            h = gConvFactories.find("UInt_t");
+    } else if (realType.find("(*)") != std::string::npos ||
+               (realType.find("::*)") != std::string::npos)) {
+    // this is a function function pointer
+    // TODO: find better way of finding the type
+    // TODO: a converter that generates wrappers as appropriate
+        h = gConvFactories.find("void*");
+    }
 
-   if ( ! result && cpd == "&&" )                  // unhandled moves
-      result = new TNotImplementedConverter();
+    if (!result && cpd == "&&")                   // unhandled moves
+        result = new TNotImplementedConverter();
 
-   if ( ! result && h != gConvFactories.end() )
-   // converter factory available, use it to create converter
-      result = (h->second)( size );
-   else if ( ! result ) {
-      if ( cpd != "" ) {
-         std::stringstream s;
-         s << "creating converter for unknown type \"" << fullType << "\"" << std::ends;
-         PyErr_Warn( PyExc_RuntimeWarning, (char*)s.str().c_str() );
-         result = new TVoidArrayConverter();       // "user knows best"
-      } else
-         result = new TVoidConverter();            // fails on use
-   }
+    if (!result && h != gConvFactories.end())
+    // converter factory available, use it to create converter
+        result = (h->second)(size);
+    else if (!result) {
+        if (cpd != "") {
+            std::stringstream s;
+            s << "creating converter for unknown type \"" << fullType << "\"";
+            PyErr_Warn(PyExc_RuntimeWarning, (char*)s.str().c_str());
+            result = new TVoidArrayConverter();       // "user knows best"
+        } else {
+            result = new TVoidConverter();            // fails on use
+        }
+    }
 
-   return result;
+    return result;
 }
 
 //-----------------------------------------------------------------------------
@@ -1613,6 +1625,7 @@ namespace {
 
    // factories for special cases
       NFp_t( "const char*",               &CreateCStringConverter            ),
+      NFp_t( "const char[]",              &CreateCStringConverter            ),
       NFp_t( "char*",                     &CreateNonConstCStringConverter    ),
       NFp_t( "std::string",               &CreateSTLStringConverter          ),
       NFp_t( "string",                    &CreateSTLStringConverter          ),
