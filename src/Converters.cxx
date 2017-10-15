@@ -981,55 +981,65 @@ bool CPyCppyy::TValueCppObjectConverter::SetArg(
 
 //-----------------------------------------------------------------------------
 bool CPyCppyy::TRefCppObjectConverter::SetArg(
-      PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */ )
+        PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */)
 {
 // convert <pyobject> to C++ instance&, set arg for call
-   if ( ! ObjectProxy_Check( pyobject ) )
-      return false;
-
-   ObjectProxy* pyobj = (ObjectProxy*)pyobject; 
+    if (!ObjectProxy_Check(pyobject))
+        return false;
+    ObjectProxy* pyobj = (ObjectProxy*)pyobject;
 
 // reject moves
-   if (pyobj->fFlags & ObjectProxy::kIsRValue)
-      return false;
+    if (pyobj->fFlags & ObjectProxy::kIsRValue)
+        return false;
 
-   if ( pyobj->ObjectIsA() && Cppyy::IsSubtype( pyobj->ObjectIsA(), fClass ) ) {
-   // calculate offset between formal and actual arguments
-      para.fValue.fVoidp = pyobj->GetObject();
-      if ( pyobj->ObjectIsA() != fClass ) {
-         para.fValue.fLong += Cppyy::GetBaseOffset(
-            pyobj->ObjectIsA(), fClass, para.fValue.fVoidp, 1 /* up-cast */ );
-      }
+    if (pyobj->ObjectIsA() && Cppyy::IsSubtype(pyobj->ObjectIsA(), fClass)) {
+    // calculate offset between formal and actual arguments
+        para.fValue.fVoidp = pyobj->GetObject();
+        if (pyobj->ObjectIsA() != fClass) {
+            para.fValue.fLong += Cppyy::GetBaseOffset(
+                pyobj->ObjectIsA(), fClass, para.fValue.fVoidp, 1 /* up-cast */);
+        }
 
-      para.fTypeCode = 'V';
-      return true;
-   }
+       para.fTypeCode = 'V';
+       return true;
+    }
 /* TODO: remove usage of TClass
-   else if ( ! TClass::GetClass( Cppyy::GetFinalName( fClass ).c_str() )->GetClassInfo() ) {
-   // assume "user knows best" to allow anonymous reference passing
-      para.fValue.fVoidp = pyobj->GetObject();
-      para.fTypeCode = 'V';
-      return true;
-   }
+    else if (!TClass::GetClass( Cppyy::GetFinalName( fClass ).c_str() )->GetClassInfo()) {
+    // assume "user knows best" to allow anonymous reference passing
+        para.fValue.fVoidp = pyobj->GetObject();
+        para.fTypeCode = 'V';
+        return true;
+    }
 */
-
-   return false;
+    return false;
 }
 
 //-----------------------------------------------------------------------------
+#if PY_VERSION_HEX < 0x03000000
+const size_t refcount_cutoff = 1;
+#else
+// p3 has at least 2 ref-counts, as contrary to p2, it will create a descriptor
+// copy for the method holding self in the case of __init__; but there can also
+// be a reference held by the frame object, which is indistinguishable from a
+// local variable reference, so the cut-off has to remain 2.
+const size_t refcount_cutoff = 2;
+#endif
+
 bool CPyCppyy::TMoveCppObjectConverter::SetArg(
         PyObject* pyobject, TParameter& para, TCallContext* ctxt)
 {
+// convert <pyobject> to C++ instance&&, set arg for call
+    if (!ObjectProxy_Check(pyobject))
+        return false;
+    ObjectProxy* pyobj = (ObjectProxy*)pyobject;
+
 // moving is same as by-ref, but have to check that move is allowed
     int moveit_reason = 0;
-    if (pyobject->ob_refcnt == 1)
-         moveit_reason = 1;
-    else if (ObjectProxy_Check(pyobject)) {
-        ObjectProxy* pyobj = (ObjectProxy*)pyobject;
-        if (pyobj->fFlags & ObjectProxy::kIsRValue) {
-            pyobj->fFlags &= ~ObjectProxy::kIsRValue;
-            moveit_reason = 2;
-        }
+    if (pyobj->fFlags & ObjectProxy::kIsRValue) {
+        pyobj->fFlags &= ~ObjectProxy::kIsRValue;
+        moveit_reason = 2;
+    } else if (pyobject->ob_refcnt == refcount_cutoff) {
+        moveit_reason = 1;
     }
 
     if (moveit_reason) {

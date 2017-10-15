@@ -167,7 +167,7 @@ static int BuildScopeProxyDict( Cppyy::TCppScope_t scope, PyObject* pyclass ) {
 
 // bypass custom __getattr__ for efficiency
    getattrofunc oldgetattro = Py_TYPE(pyclass)->tp_getattro;
-//   Py_TYPE(pyclass)->tp_getattro = PyType_Type.tp_getattro;
+   Py_TYPE(pyclass)->tp_getattro = PyType_Type.tp_getattro;
 
 // functions in namespaces are properly found through lazy lookup, so do not
 // create them until needed (the same is not true for data members)
