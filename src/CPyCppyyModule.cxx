@@ -12,6 +12,7 @@
 #include "CPyCppyyHelpers.h"
 #include "TCallContext.h"
 #include "Utility.h"
+#include "MemoryRegulator.h"
 
 // Standard
 #include <string>
@@ -360,16 +361,17 @@ PyObject* MakeCppTemplateClass(PyObject*, PyObject* args)
 }
 
 //----------------------------------------------------------------------------
-void* GetObjectProxyAddress( PyObject*, PyObject* args )
+void* GetObjectProxyAddress(PyObject*, PyObject* args)
 {
 // Helper to get the address (address-of-address) of various object proxy types.
     ObjectProxy* pyobj = 0;
     PyObject* pyname = 0;
-    if ( PyArg_ParseTuple( args, const_cast< char* >( "O|O!" ), &pyobj,
-                           &CPyCppyy_PyUnicode_Type, &pyname ) &&
-         ObjectProxy_Check( pyobj ) && pyobj->fObject ) {
+    if (PyArg_ParseTuple(args, const_cast<char*>("O|O!"), &pyobj,
+                         &CPyCppyy_PyUnicode_Type, &pyname) && ObjectProxy_Check(pyobj)) {
+        if (!pyobj->fObject)
+            return nullptr;  // note: no error set
 
-        if ( pyname != 0 ) {
+        if (pyname != 0) {
         // locate property proxy for offset info
             PropertyProxy* pyprop = nullptr;
 
@@ -411,16 +413,15 @@ PyObject* addressof(PyObject* pyobj, PyObject* args)
     void* addr = GetObjectProxyAddress(pyobj, args);
     if (addr)
         return PyLong_FromLong(*(Long_t*)addr);
-    else if (PyTuple_Size(args)) {
+    else if (!PyErr_Occurred()) {
+        return PyLong_FromLong(0);
+    } else if (PyTuple_Size(args)) {
         PyErr_Clear();
-        Utility::GetBuffer(PyTuple_GetItem(args, 0), '*', 1, addr, false);
+        PyObject* arg0 = PyTuple_GetItem(args, 0);
+        if (arg0 == Py_None || arg0 == gNullPtrObject)
+            return PyLong_FromLong(0);
+        Utility::GetBuffer(arg0, '*', 1, addr, false);
         if (addr) return PyLong_FromLong((Long_t)addr);
-    }
-
-// a few special cases
-    if (pyobj == Py_None || pyobj == gNullPtrObject) {
-        Py_INCREF(gNullPtrObject);
-        return gNullPtrObject;
     }
 
 // error message
@@ -445,7 +446,7 @@ PyObject* AsCObject(PyObject* dummy, PyObject* args)
 }
 
 //----------------------------------------------------------------------------
-static PyObject* BindObject_(void* addr, PyObject* pyname)
+static PyObject* BindObject_(void* addr, PyObject* pyname, bool do_cast=false)
 {
 // Helper to factorize the common code between MakeNullPointer and BindObject.
     Cppyy::TCppType_t klass = 0;
@@ -468,11 +469,13 @@ static PyObject* BindObject_(void* addr, PyObject* pyname)
         return nullptr;
     }
 
+    if (do_cast)
+        return BindCppObject(addr, klass, false);
     return BindCppObjectNoCast(addr, klass, false);
 }
 
 //----------------------------------------------------------------------------
-PyObject* BindObject(PyObject*, PyObject* args)
+PyObject* BindObject(PyObject*, PyObject* args, PyObject* kwds)
 {
 // From a long representing an address or a PyCapsule/CObject, bind to a class.
     Py_ssize_t argc = PyTuple_GET_SIZE(args);
@@ -480,6 +483,12 @@ PyObject* BindObject(PyObject*, PyObject* args)
         PyErr_Format(PyExc_TypeError,
             "BindObject takes exactly 2 argumenst (" PY_SSIZE_T_FORMAT " given)", argc);
         return nullptr;
+    }
+
+    bool do_cast = false;
+    if (kwds) {
+        PyObject* cast = PyDict_GetItemString(kwds, "cast");
+        do_cast = cast && PyObject_IsTrue(cast);
     }
 
 // try to convert first argument: either PyCapsule/CObject or long integer
@@ -502,7 +511,7 @@ PyObject* BindObject(PyObject*, PyObject* args)
         }
     }
 
-    return BindObject_(addr, PyTuple_GET_ITEM(args, 1));
+    return BindObject_(addr, PyTuple_GET_ITEM(args, 1), do_cast);
 }
 
 //----------------------------------------------------------------------------
@@ -668,7 +677,7 @@ static PyMethodDef gCPyCppyyMethods[] = {
     {(char*) "AsCObject", (PyCFunction)AsCObject,
       METH_VARARGS, (char*) "Retrieve held object in a CObject"},
     { (char*) "bind_object", (PyCFunction)BindObject,
-     METH_VARARGS, (char*) "Create an object of given type, from given address"},
+      METH_KEYWORDS, (char*) "Create an object of given type, from given address"},
     {(char*) "move", (PyCFunction)Move,
       METH_O, (char*) "Cast the C++ object to become movable"},
     {(char*) "MakeNullPointer", (PyCFunction)MakeNullPointer,
@@ -829,6 +838,9 @@ extern "C" void initlibcppyy()
         PyInt_FromLong((int)TCallContext::kSafe));
 
 // gbl namespace is injected in cppyy.py
+
+// create the memory regulator
+    static MemoryRegulator s_memory_regulator;
 
 #if PY_VERSION_HEX >= 0x03000000
     Py_INCREF(gThisModule);

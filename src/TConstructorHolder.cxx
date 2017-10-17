@@ -3,6 +3,7 @@
 #include "TConstructorHolder.h"
 #include "Executors.h"
 #include "ObjectProxy.h"
+#include "MemoryRegulator.h"
 
 // Standard
 #include <string>
@@ -37,8 +38,8 @@ PyObject* CPyCppyy::TConstructorHolder::Call(
 
 // do not allow instantiation of abstract classes
     if (Cppyy::IsAbstract(this->GetScope())) {
-        PyErr_Format(PyExc_TypeError,
-            "cannot instantiate abstract class \'%s\'", Cppyy::GetScopedFinalName(this->GetScope()).c_str());
+        PyErr_Format(PyExc_TypeError, "cannot instantiate abstract class \'%s\'",
+            Cppyy::GetScopedFinalName(this->GetScope()).c_str());
         return nullptr;
     }
 
@@ -66,21 +67,12 @@ PyObject* CPyCppyy::TConstructorHolder::Call(
     if (address) {
         Py_INCREF(self);
 
-   // note: constructors are no longer set to take ownership by default; instead that is
-   // decided by the method proxy (which carries a creator flag) upon return
+    // note: constructors are no longer set to take ownership by default; instead that is
+    // decided by the method proxy (which carries a creator flag) upon return
         self->Set((void*)address);
 
-#if 0
-   // TODO: write own memory regulator
-   // allow lookup upon destruction on the ROOT/CINT side for TObjects
-      static Cppyy::TCppType_t sTObjectType = (Cppyy::TCppType_t)Cppyy::GetScope( "TObject" );
-   // TODO: cache IsSubtype and offset results ...
-      if ( Cppyy::IsSubtype( GetScope(), sTObjectType ) ) {
-         TObject* object = (TObject*)(address + \
-            Cppyy::GetBaseOffset( GetScope(), sTObjectType, (void*)address, 1 /* up-cast */ ) );
-         TMemoryRegulator::RegisterObject( self, object );
-      }
-#endif
+    // TODO: consistent up or down cast ...
+        MemoryRegulator::RegisterPyObject(self, (Cppyy::TCppObject_t)address);
 
    // done with self
         Py_DECREF(self);

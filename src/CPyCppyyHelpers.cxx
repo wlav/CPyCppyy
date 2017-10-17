@@ -5,6 +5,7 @@
 #include "CPyCppyyType.h"
 #include "ObjectProxy.h"
 #include "MethodProxy.h"
+#include "MemoryRegulator.h"
 #include "TemplateProxy.h"
 #include "PropertyProxy.h"
 #include "Pythonize.h"
@@ -723,113 +724,104 @@ PyObject* CPyCppyy::GetCppGlobal( const std::string& name )
 
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::BindCppObjectNoCast(
-      Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, bool isRef, bool isValue ) {
+        Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, bool isRef, bool isValue) {
 // only known or knowable objects will be bound (null object is ok)
-   if ( ! klass ) {
-      PyErr_SetString( PyExc_TypeError, "attempt to bind C++ object w/o class" );
-      return 0;
-   }
+    if (!klass) {
+        PyErr_SetString(PyExc_TypeError, "attempt to bind C++ object w/o class");
+        return 0;
+    }
 
 // retrieve python class
-   PyObject* pyclass = CreateScopeProxy( klass );
-   if ( ! pyclass )
-      return 0;                    // error has been set in CreateScopeProxy
+    PyObject* pyclass = CreateScopeProxy(klass);
+    if (!pyclass)
+        return nullptr;                 // error has been set in CreateScopeProxy
+
+// TODO: add convenience function to MemoryRegulator to use pyclass directly
+    PyObject* oldPyObject = MemoryRegulator::RetrievePyObject(address, klass);
+    if (oldPyObject)
+        return oldPyObject;
 
 // instantiate an object of this class
-   PyObject* args = PyTuple_New(0);
-   ObjectProxy* pyobj =
-      (ObjectProxy*)((PyTypeObject*)pyclass)->tp_new((PyTypeObject*)pyclass, args, nullptr);
-   Py_DECREF( args );
-   Py_DECREF( pyclass );
+    PyObject* args = PyTuple_New(0);
+    ObjectProxy* pyobj =
+        (ObjectProxy*)((PyTypeObject*)pyclass)->tp_new((PyTypeObject*)pyclass, args, nullptr);
+    Py_DECREF(args);
+    Py_DECREF(pyclass);
 
 // bind, register and return if successful
-   if ( pyobj != 0 ) { // fill proxy value?
-   // TODO: take flags directly instead of separate bool args
-      unsigned flags = (isRef ? ObjectProxy::kIsReference : 0) | (isValue ? ObjectProxy::kIsValue : 0);
-      pyobj->Set( address, (ObjectProxy::EFlags)flags );
-   }
+    if (pyobj != 0) { // fill proxy value?
+    // TODO: take flags directly instead of separate bool args
+        unsigned flags =
+            (isRef ? ObjectProxy::kIsReference : 0) | (isValue ? ObjectProxy::kIsValue : 0);
+        pyobj->Set( address, (ObjectProxy::EFlags)flags );
+    }
 
 // successful completion
-   return (PyObject*)pyobj;
+    return (PyObject*)pyobj;
 }
 
 //----------------------------------------------------------------------------
-PyObject* CPyCppyy::BindCppObject( Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, bool isRef )
+PyObject* CPyCppyy::BindCppObject(
+        Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, bool isRef)
 {
 // if the object is a null pointer, return a typed one (as needed for overloading)
-   if ( ! address )
-      return BindCppObjectNoCast( address, klass, false );
+    if (!address)
+        return BindCppObjectNoCast(address, klass, false);
 
 // only known or knowable objects will be bound
-   if ( ! klass ) {
-      PyErr_SetString( PyExc_TypeError, "attempt to bind C++ object w/o class" );
-      return 0;
-   }
+    if (!klass) {
+        PyErr_SetString(PyExc_TypeError, "attempt to bind C++ object w/o class");
+        return nullptr;
+    }
 
 // get actual class for recycling checking and/or downcasting
-   Cppyy::TCppType_t clActual = isRef ? 0 : Cppyy::GetActualClass( klass, address );
+    Cppyy::TCppType_t clActual = isRef ? 0 : Cppyy::GetActualClass(klass, address);
 
-// TODO: write own memory regulator like in PyPy
-#if 0
-   void* object = 0;
-// obtain pointer to TObject base class (if possible) for memory mgmt; this is
-// done before downcasting, as upcasting from the current class may be easier and
-// downcasting is unnecessary if the python side object gets recycled by the
-// memory regulator
-   TObject* object = 0;
-   static Cppyy::TCppScope_t sTObjectScope = Cppyy::GetScope( "TObject" );
-   if ( ! isRef && Cppyy::IsSubtype( klass, sTObjectScope) ) {
-      object = (TObject*)((Long_t)address + \
-         Cppyy::GetBaseOffset( klass, sTObjectScope, address, 1 /* up-cast */ ) );
-
-   // use the old reference if the object already exists
-      PyObject* oldPyObject = TMemoryRegulator::RetrieveObject( object, clActual ? clActual : klass );
-      if ( oldPyObject )
-         return oldPyObject;
-   }
-#endif
+// TODO: consistently up or down cast
 
 // downcast to real class for object returns
-   if ( clActual && klass != clActual ) {
-      ptrdiff_t offset = Cppyy::GetBaseOffset(
-         clActual, klass, address, -1 /* down-cast */, true /* report errors */ );
-      if ( offset != -1 ) {   // may fail if clActual not fully defined
-         address = (void*)((Long_t)address + offset);
-         klass = clActual;
-      }
-   }
+    if (clActual && klass != clActual) {
+        ptrdiff_t offset = Cppyy::GetBaseOffset(
+            clActual, klass, address, -1 /* down-cast */, true /* report errors */ );
+        if (offset != -1) {   // may fail if clActual not fully defined
+            address = (void*)((Long_t)address + offset);
+            klass = clActual;
+        }
+    }
 
+// use the old reference if the object already exists
+    PyObject* oldPyObject = MemoryRegulator::RetrievePyObject(address, klass);
+    if (oldPyObject)
+        return oldPyObject;
 
 // check if type is pinned
-   bool ignore_pin = std::find(
-     gIgnorePinnings.begin(), gIgnorePinnings.end(), klass ) != gIgnorePinnings.end();
+    bool ignore_pin = std::find(
+        gIgnorePinnings.begin(), gIgnorePinnings.end(), klass ) != gIgnorePinnings.end();
 
-   if ( ! ignore_pin ) {
-      for ( auto it = gPinnedTypes.cbegin(); it != gPinnedTypes.cend(); ++it ) {
-         if ( klass == std::get<0>(*it) || Cppyy::IsSubtype( klass, std::get<0>(*it) ) )
-            klass = std::get<1>(*it);
-     }
-   }
+    if (!ignore_pin) {
+        for (auto it = gPinnedTypes.cbegin(); it != gPinnedTypes.cend(); ++it) {
+            if (klass == std::get<0>(*it) || Cppyy::IsSubtype(klass, std::get<0>(*it)))
+                klass = std::get<1>(*it);
+        }
+    }
 
 // actual binding
-   ObjectProxy* pyobj = (ObjectProxy*)BindCppObjectNoCast( address, klass, isRef );
+    ObjectProxy* pyobj = (ObjectProxy*)BindCppObjectNoCast(address, klass, isRef);
 
-/* TODO: own memory regulator
 // memory management, for TObject's only (for referenced objects, it is assumed
 // that the (typically global) reference itself is zeroed out (or replaced) on
 // destruction; it can't thus be reliably zeroed out from the python side)
-   if ( object && !(pyobj->fFlags & ObjectProxy::kIsReference) ) {
-      TMemoryRegulator::RegisterObject( pyobj, object );
+    if (address && !(pyobj->fFlags & ObjectProxy::kIsReference)) {
+        MemoryRegulator::RegisterPyObject(pyobj, address);
     }
-*/
 
 // completion (returned object may be zero w/ a python exception set)
-   return (PyObject*)pyobj;
+    return (PyObject*)pyobj;
 }
 
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::BindCppObjectArray(
 // TODO: this function exists for symmetry; need to figure out if it's useful
-      Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, Int_t size ) {
-   return TTupleOfInstances_New( address, klass, size );
+        Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, Int_t size) {
+    return TTupleOfInstances_New( address, klass, size );
 }

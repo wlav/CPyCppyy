@@ -18,6 +18,9 @@ typedef struct {
 
 #endif
 
+// Standard
+#include <map>
+
 
 namespace CPyCppyy {
 
@@ -25,13 +28,18 @@ namespace CPyCppyy {
     of CPyCppyyType instances, not in a C++ sense)
       @author  WLAV
       @date    07/06/2017
-      @version 1.0
+      @version 2.0
  */
+
+    typedef std::map<Cppyy::TCppObject_t, PyObject*> CppToPyMap_t;
+    typedef std::map<PyObject*, CppToPyMap_t::iterator> WeakRefMap_t;
 
     class CPyCppyyClass {
     public:
-        PyHeapTypeObject fType;
+        PyHeapTypeObject  fType;
         Cppyy::TCppType_t fCppType;
+        CppToPyMap_t*     fCppObjects;
+        WeakRefMap_t*     fWeakRefs;
 
     private:
         CPyCppyyClass() = delete;
