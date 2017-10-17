@@ -677,7 +677,7 @@ static PyMethodDef gCPyCppyyMethods[] = {
     {(char*) "AsCObject", (PyCFunction)AsCObject,
       METH_VARARGS, (char*) "Retrieve held object in a CObject"},
     { (char*) "bind_object", (PyCFunction)BindObject,
-      METH_KEYWORDS, (char*) "Create an object of given type, from given address"},
+      METH_VARARGS | METH_KEYWORDS, (char*) "Create an object of given type, from given address"},
     {(char*) "move", (PyCFunction)Move,
       METH_O, (char*) "Cast the C++ object to become movable"},
     {(char*) "MakeNullPointer", (PyCFunction)MakeNullPointer,
