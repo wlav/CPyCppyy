@@ -338,22 +338,22 @@ PyObject* CPyCppyy::TVoidArrayExecutor::Execute(
 }
 
 //-----------------------------------------------------------------------------
-#define CPYCPPYY_IMPLEMENT_ARRAY_EXECUTOR( name, type )                        \
-PyObject* CPyCppyy::T##name##ArrayExecutor::Execute(                           \
-      Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt )\
+#define CPYCPPYY_IMPLEMENT_ARRAY_EXECUTOR(name, type)                        \
+PyObject* CPyCppyy::T##name##ArrayExecutor::Execute(                         \
+        Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)\
 {                                                                            \
-   return BufFac_t::Instance()->PyBuffer_FromMemory( (type*)GILCallR( method, self, ctxt ) );\
+    return BufFac_t::Instance()->PyBuffer_FromMemory((type*)GILCallR(method, self, ctxt));\
 }
 
-CPYCPPYY_IMPLEMENT_ARRAY_EXECUTOR( Bool,   bool )
-CPYCPPYY_IMPLEMENT_ARRAY_EXECUTOR( Short,  Short_t )
-CPYCPPYY_IMPLEMENT_ARRAY_EXECUTOR( UShort, UShort_t )
-CPYCPPYY_IMPLEMENT_ARRAY_EXECUTOR( Int,    Int_t )
-CPYCPPYY_IMPLEMENT_ARRAY_EXECUTOR( UInt,   UInt_t )
-CPYCPPYY_IMPLEMENT_ARRAY_EXECUTOR( Long,   Long_t )
-CPYCPPYY_IMPLEMENT_ARRAY_EXECUTOR( ULong,  ULong_t )
-CPYCPPYY_IMPLEMENT_ARRAY_EXECUTOR( Float,  Float_t )
-CPYCPPYY_IMPLEMENT_ARRAY_EXECUTOR( Double, Double_t )
+CPYCPPYY_IMPLEMENT_ARRAY_EXECUTOR(Bool,   bool)
+CPYCPPYY_IMPLEMENT_ARRAY_EXECUTOR(Short,  Short_t)
+CPYCPPYY_IMPLEMENT_ARRAY_EXECUTOR(UShort, UShort_t)
+CPYCPPYY_IMPLEMENT_ARRAY_EXECUTOR(Int,    Int_t)
+CPYCPPYY_IMPLEMENT_ARRAY_EXECUTOR(UInt,   UInt_t)
+CPYCPPYY_IMPLEMENT_ARRAY_EXECUTOR(Long,   Long_t)
+CPYCPPYY_IMPLEMENT_ARRAY_EXECUTOR(ULong,  ULong_t)
+CPYCPPYY_IMPLEMENT_ARRAY_EXECUTOR(Float,  Float_t)
+CPYCPPYY_IMPLEMENT_ARRAY_EXECUTOR(Double, Double_t)
 
 
 //- special cases ------------------------------------------------------------

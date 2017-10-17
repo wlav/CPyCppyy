@@ -592,22 +592,21 @@ bool CPyCppyy::TCStringConverter::ToMemory( PyObject* value, void* address )
 //- pointer/array conversions -------------------------------------------------
 namespace {
 
-   using namespace CPyCppyy;
+    using namespace CPyCppyy;
 
-   inline bool CArraySetArg(
-      PyObject* pyobject, TParameter& para, char tc, int size )
-   {
-   // general case of loading a C array pointer (void* + type code) as function argument
-      if ( pyobject == gNullPtrObject ) {
-         para.fValue.fVoidp = NULL;
-      } else {
-         int buflen = Utility::GetBuffer( pyobject, tc, size, para.fValue.fVoidp );
-         if ( ! para.fValue.fVoidp || buflen == 0 )
-            return false;
-      }
-      para.fTypeCode = 'p';
-      return true;
-   }
+    inline bool CArraySetArg(PyObject* pyobject, TParameter& para, char tc, int size)
+    {
+    // general case of loading a C array pointer (void* + type code) as function argument
+        if (pyobject == gNullPtrObject || (PyInt_Check(pyobject) && PyInt_AsLong(pyobject) == 0)) {
+            para.fValue.fVoidp = nullptr;
+        } else {
+            int buflen = Utility::GetBuffer(pyobject, tc, size, para.fValue.fVoidp);
+            if (!para.fValue.fVoidp || buflen == 0)
+                return false;
+        }
+        para.fTypeCode = 'p';
+        return true;
+    }
 
 } // unnamed namespace
 
@@ -754,53 +753,53 @@ bool CPyCppyy::TVoidArrayConverter::ToMemory( PyObject* value, void* address )
 }
 
 //-----------------------------------------------------------------------------
-#define CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER( name, type, code )               \
-bool CPyCppyy::T##name##ArrayConverter::SetArg(                            \
-      PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */ )       \
+#define CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(name, type, code)                 \
+bool CPyCppyy::T##name##ArrayConverter::SetArg(                              \
+        PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */)      \
 {                                                                            \
-   return CArraySetArg( pyobject, para, code, sizeof(type) );                \
+    return CArraySetArg(pyobject, para, code, sizeof(type));                 \
 }                                                                            \
                                                                              \
-bool CPyCppyy::T##name##ArrayRefConverter::SetArg(                         \
-      PyObject* pyobject, TParameter& para, TCallContext* ctxt )             \
+bool CPyCppyy::T##name##ArrayRefConverter::SetArg(                           \
+        PyObject* pyobject, TParameter& para, TCallContext* ctxt)            \
 {                                                                            \
-   bool result = T##name##ArrayConverter::SetArg( pyobject, para, ctxt );  \
-   para.fTypeCode = 'V';                                                     \
-   return result;                                                            \
+    bool result = T##name##ArrayConverter::SetArg(pyobject, para, ctxt);     \
+    para.fTypeCode = 'V';                                                    \
+    return result;                                                           \
 }                                                                            \
                                                                              \
-PyObject* CPyCppyy::T##name##ArrayConverter::FromMemory( void* address )     \
+PyObject* CPyCppyy::T##name##ArrayConverter::FromMemory(void* address)       \
 {                                                                            \
-   return BufFac_t::Instance()->PyBuffer_FromMemory( *(type**)address, fSize * sizeof(type) );\
+    return BufFac_t::Instance()->PyBuffer_FromMemory(*(type**)address, fSize * sizeof(type));\
 }                                                                            \
                                                                              \
-bool CPyCppyy::T##name##ArrayConverter::ToMemory( PyObject* value, void* address )\
+bool CPyCppyy::T##name##ArrayConverter::ToMemory(PyObject* value, void* address)\
 {                                                                            \
-   void* buf = 0;                                                            \
-   int buflen = Utility::GetBuffer( value, code, sizeof(type), buf );        \
-   if ( ! buf || buflen == 0 )                                               \
-      return false;                                                         \
-   if ( 0 <= fSize ) {                                                       \
-      if ( fSize < buflen/(int)sizeof(type) ) {                              \
-         PyErr_SetString( PyExc_ValueError, "buffer too large for value" );  \
-         return false;                                                      \
-      }                                                                      \
-      memcpy( *(type**)address, buf, 0 < buflen ? ((size_t) buflen) : sizeof(type) );\
-   } else                                                                    \
-      *(type**)address = (type*)buf;                                         \
-   return true;                                                             \
+    void* buf = 0;                                                           \
+    int buflen = Utility::GetBuffer(value, code, sizeof(type), buf);         \
+    if (!buf || buflen == 0)                                                 \
+        return false;                                                        \
+    if (0 <= fSize) {                                                        \
+        if (fSize < buflen/(int)sizeof(type)) {                              \
+            PyErr_SetString(PyExc_ValueError, "buffer too large for value"); \
+            return false;                                                    \
+        }                                                                    \
+        memcpy(*(type**)address, buf, 0 < buflen ? ((size_t)buflen) : sizeof(type));\
+    } else                                                                   \
+        *(type**)address = (type*)buf;                                       \
+    return true;                                                             \
 }
 
 //-----------------------------------------------------------------------------
-CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER( Bool,   bool,   'b' )   // signed char
-CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER( Short,  Short_t,  'h' )
-CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER( UShort, UShort_t, 'H' )
-CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER( Int,    Int_t,    'i' )
-CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER( UInt,   UInt_t,   'I' )
-CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER( Long,   Long_t,   'l' )
-CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER( ULong,  ULong_t,  'L' )
-CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER( Float,  Float_t,  'f' )
-CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER( Double, Double_t, 'd' )
+CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(Bool,   bool,     'b')  // signed char
+CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(Short,  Short_t,  'h')
+CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(UShort, UShort_t, 'H')
+CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(Int,    Int_t,    'i')
+CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(UInt,   UInt_t,   'I')
+CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(Long,   Long_t,   'l')
+CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(ULong,  ULong_t,  'L')
+CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(Float,  Float_t,  'f')
+CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(Double, Double_t, 'd')
 
 //-----------------------------------------------------------------------------
 bool CPyCppyy::TLongLongArrayConverter::SetArg(

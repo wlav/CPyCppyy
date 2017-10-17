@@ -548,10 +548,10 @@ int CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, void*& b
                     buf = 0;      // no match
                 Py_DECREF(pytc);
             } else if (seqmeths->sq_length &&
-                       (int)(buflen / (*(seqmeths->sq_length))(pyobject)) == size) {
+                       (int)(buflen/(*(seqmeths->sq_length))(pyobject)) == size) {
             // this is a gamble ... may or may not be ok, but that's for the user
                 PyErr_Clear();
-            } else if ( buflen == size ) {
+            } else if (buflen == size) {
             // also a gamble, but at least 1 item will fit into the buffer, so very likely ok ...
                 PyErr_Clear();
             } else {
@@ -563,7 +563,7 @@ int CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, void*& b
                 PyObject* pyvalue2 = CPyCppyy_PyUnicode_FromFormat(
                     (char*)"%s and given element size (%ld) do not match needed (%d)",
                     CPyCppyy_PyUnicode_AsString(pyvalue),
-                    seqmeths->sq_length ? (Long_t)(buflen / (*(seqmeths->sq_length))(pyobject)) : (Long_t)buflen,
+                    seqmeths->sq_length ? (Long_t)(buflen/(*(seqmeths->sq_length))(pyobject)) : (Long_t)buflen,
                     size);
                 Py_DECREF(pyvalue);
                 PyErr_Restore(pytype, pyvalue2, pytrace);
