@@ -25,8 +25,8 @@ namespace Cppyy {
     TCppType_t  GetActualClass(TCppType_t klass, TCppObject_t obj);
     size_t      SizeOf(TCppType_t klass);
 
-    bool      IsBuiltin(const std::string& type_name);
-    bool      IsComplete(const std::string& type_name);
+    bool        IsBuiltin(const std::string& type_name);
+    bool        IsComplete(const std::string& type_name);
 
     extern TCppScope_t gGlobalScope;      // for fast access
 
@@ -90,13 +90,15 @@ namespace Cppyy {
     TCppMethod_t GetMethod(TCppScope_t scope, TCppIndex_t imeth);
 
     std::string GetMethodName(TCppMethod_t);
+    std::string GetMethodMangledName(TCppMethod_t);
     std::string GetMethodResultType(TCppMethod_t);
     TCppIndex_t GetMethodNumArgs(TCppMethod_t);
     TCppIndex_t GetMethodReqArgs(TCppMethod_t);
     std::string GetMethodArgName(TCppMethod_t, int iarg);
     std::string GetMethodArgType(TCppMethod_t, int iarg);
     std::string GetMethodArgDefault(TCppMethod_t, int iarg);
-    std::string GetMethodSignature(TCppScope_t scope, TCppIndex_t imeth);
+    std::string GetMethodSignature(TCppScope_t scope, TCppIndex_t imeth, bool show_formalargs);
+    std::string GetMethodPrototype(TCppScope_t scope, TCppIndex_t imeth, bool show_formalargs);
     bool        IsConstMethod(TCppMethod_t);
 
     bool        ExistsMethodTemplate(TCppScope_t scope, const std::string& name);
@@ -110,8 +112,9 @@ namespace Cppyy {
         TCppType_t scope, TCppType_t lc, TCppScope_t rc, const std::string& op);
 
 // method properties ---------------------------------------------------------
-    bool IsConstructor(TCppMethod_t method);
     bool IsPublicMethod(TCppMethod_t method);
+    bool IsConstructor(TCppMethod_t method);
+    bool IsDestructor(TCppMethod_t method);
     bool IsStaticMethod(TCppMethod_t method);
 
 // data member reflection information ----------------------------------------

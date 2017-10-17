@@ -697,9 +697,6 @@ CPyCppyy::TExecutor* CPyCppyy::CreateExecutor(
             } else
                 result = new TCppObjectExecutor(klass);
         }
-    } else if ( Cppyy::IsEnum( realType ) ) {
-    // enums don't resolve to unsigned ints, but that's what they are ...
-        h = gExecFactories.find("UInt_t" + cpd);
     } else {
     // unknown: void* may work ("user knows best"), void will fail on use of return value
         h = (cpd == "") ? gExecFactories.find("void") : gExecFactories.find("void*");
@@ -796,8 +793,8 @@ namespace {
       NFp_t( "int&",               &CreateIntRefExecutor              ),
       NFp_t( "unsigned int",       &CreateULongExecutor               ),
       NFp_t( "unsigned int&",      &CreateUIntRefExecutor             ),
-      NFp_t( "UInt_t",  /* enum */ &CreateULongExecutor               ),
-      NFp_t( "UInt_t&", /* enum */ &CreateUIntRefExecutor             ),
+      NFp_t( "internal_enum_type_t",  &CreateULongExecutor            ),
+      NFp_t( "internal_enum_type_t&", &CreateUIntRefExecutor          ),
       NFp_t( "long",               &CreateLongExecutor                ),
       NFp_t( "long&",              &CreateLongRefExecutor             ),
       NFp_t( "unsigned long",      &CreateULongExecutor               ),
@@ -830,7 +827,7 @@ namespace {
       NFp_t( "unsigned short*",    &CreateUShortArrayExecutor         ),
       NFp_t( "int*",               &CreateIntArrayExecutor            ),
       NFp_t( "unsigned int*",      &CreateUIntArrayExecutor           ),
-      NFp_t( "UInt_t*", /* enum */ &CreateUIntArrayExecutor           ),
+      NFp_t( "internal_enum_type_t*", &CreateUIntArrayExecutor        ),
       NFp_t( "long*",              &CreateLongArrayExecutor           ),
       NFp_t( "unsigned long*",     &CreateULongArrayExecutor          ),
       NFp_t( "float*",             &CreateFloatArrayExecutor          ),

@@ -131,7 +131,7 @@ static PyObject* pt_getattro(PyObject* pyclass, PyObject* pyname)
                 // tickle lazy lookup of data members
                     if (!attr) {
                         Cppyy::TCppIndex_t dmi = Cppyy::GetDatamemberIndex(scope, name);
-                        if ( 0 <= dmi ) attr = (PyObject*)PropertyProxy_New(scope, dmi);
+                        if (0 <= dmi) attr = (PyObject*)PropertyProxy_New(scope, dmi);
                     }
                 }
 
@@ -140,15 +140,14 @@ static PyObject* pt_getattro(PyObject* pyclass, PyObject* pyname)
                     attr = (PyObject*)TemplateProxy_New(name, name, pyclass);
                 }
 
-           /*
-           // enums types requested as type (rather than the constants)
-               if ( ! attr && klass && klass->GetListOfEnums()->FindObject( name.c_str() ) ) {
-               // special case; enum types; for now, pretend int
-               // TODO: although fine for C++98, this isn't correct in C++11
-                   Py_INCREF( &PyInt_Type );
-                   attr = (PyObject*)&PyInt_Type;
-               }
-           */
+            // enums types requested as type (rather than the constants)
+            // TODO: IsEnum should deal with the scope, using klass->GetListOfEnums()->FindObject()
+                if (!attr && Cppyy::IsEnum(Cppyy::GetScopedFinalName(scope)+"::"+name)) {
+                // special case; enum types; for now, pretend int
+                // TODO: although fine for C++98, this isn't correct in C++11
+                    Py_INCREF( &PyInt_Type );
+                    attr = (PyObject*)&PyInt_Type;
+                }
 
                 if (attr) {
                     PyObject_SetAttr(pyclass, pyname, attr);

@@ -299,22 +299,7 @@ static int BuildScopeProxyDict( Cppyy::TCppScope_t scope, PyObject* pyclass ) {
       Py_XDECREF( attr );     // could have be found in base class or non-existent
    }
 
-// collect enums; this must happen before data members, so that we can check on their existence
-/* TODO: enums in Cppyy.cxx
-   TClass* klass = TClass::GetClass( Cppyy::GetFinalName( scope ).c_str() );
-   TList* enums = klass->GetListOfEnums();
-   TIter ienum( enums );
-   TEnum* e = 0;
-   while ( (e = (TEnum*)ienum.Next()) ) {
-      const TSeqCollection* seq = e->GetConstants();
-      for ( Int_t i = 0; i < seq->GetSize(); i++ ) {
-         TEnumConstant* ec = (TEnumConstant*)seq->At( i );
-         AddPropertyToClass( pyclass, scope, ec->GetName(), ec->GetAddress() );
-      }
-   }
-*/
-
-// collect data members
+// collect data members (including enums)
    const Cppyy::TCppIndex_t nDataMembers = Cppyy::GetNumDatamembers( scope );
    for ( Cppyy::TCppIndex_t idata = 0; idata < nDataMembers; ++idata ) {
    // allow only public members

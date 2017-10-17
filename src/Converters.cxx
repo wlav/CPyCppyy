@@ -1449,12 +1449,10 @@ CPyCppyy::TConverter* CPyCppyy::CreateConverter(const std::string& fullType, lon
             else if (cpd == "" )               // by value
                 result = new TValueCppObjectConverter(klass, true);
         }
-    } else if (Cppyy::IsEnum(realType)) {
+    } else if (realType == "internal_enum_type_t") {
     // special case (Cling): represent enums as unsigned integers
         if (cpd == "&")
             h = isConst ? gConvFactories.find("const long&") : gConvFactories.find("long&");
-        else
-            h = gConvFactories.find("UInt_t");
     } else if (realType.find("(*)") != std::string::npos ||
                (realType.find("::*)") != std::string::npos)) {
     // this is a function function pointer
@@ -1581,7 +1579,7 @@ namespace {
       NFp_t( "const int&",                &CreateConstIntRefConverter        ),
       NFp_t( "unsigned int",              &CreateUIntConverter               ),
       NFp_t( "const unsigned int&",       &CreateConstUIntRefConverter       ),
-      NFp_t( "UInt_t", /* enum */         &CreateIntConverter /* yes: Int */ ),
+      NFp_t( "internal_enum_type_t",      &CreateIntConverter /* yes: Int */ ),
       NFp_t( "long",                      &CreateLongConverter               ),
       NFp_t( "long&",                     &CreateLongRefConverter            ),
       NFp_t( "const long&",               &CreateConstLongRefConverter       ),
