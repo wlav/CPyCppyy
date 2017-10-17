@@ -418,7 +418,7 @@ PyObject* addressof(PyObject* pyobj, PyObject* args)
     } else if (PyTuple_Size(args)) {
         PyErr_Clear();
         PyObject* arg0 = PyTuple_GetItem(args, 0);
-        if (arg0 == Py_None || arg0 == gNullPtrObject)
+        if (arg0 == gNullPtrObject || (PyInt_Check(arg0) && PyInt_AsLong(arg0) == 0))
             return PyLong_FromLong(0);
         Utility::GetBuffer(arg0, '*', 1, addr, false);
         if (addr) return PyLong_FromLong((Long_t)addr);
@@ -427,9 +427,9 @@ PyObject* addressof(PyObject* pyobj, PyObject* args)
 // error message
     PyObject* str = PyObject_Str(pyobj);
     if (str && CPyCppyy_PyUnicode_Check(str))
-        PyErr_Format(PyExc_ValueError, "unknown object %s", PyBytes_AS_STRING(str));
+        PyErr_Format(PyExc_TypeError, "unknown object %s", PyBytes_AS_STRING(str));
     else
-        PyErr_Format(PyExc_ValueError, "unknown object at %p", (void*)pyobj);
+        PyErr_Format(PyExc_TypeError, "unknown object at %p", (void*)pyobj);
     Py_XDECREF(str);
     return nullptr;
 }
