@@ -183,7 +183,8 @@ PyObject* buffer_reshape(PyObject* self, PyObject* shape)
         if (shape) {
             PyObject* pystr = PyObject_Str(shape);
             if (pystr) {
-                PyErr_Format(PyExc_TypeError, "tuple object of length 1 expected, received %s", PyString_AsString(pystr));
+                PyErr_Format(PyExc_TypeError, "tuple object of length 1 expected, received %s",
+                    CPyCppyy_PyUnicode_AsStringChecked(pystr));
                 Py_DECREF(pystr);
                 return nullptr;
             }

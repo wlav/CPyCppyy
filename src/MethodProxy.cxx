@@ -30,8 +30,7 @@ class TPythonCallback : public PyCallable {
 public:
     PyObject* fCallable;
 
-    TPythonCallback(PyObject* callable):
-        fCallable(nullptr)
+    TPythonCallback(PyObject* callable) : fCallable(nullptr)
     {
         if (!PyCallable_Check(callable)) {
             PyErr_SetString(PyExc_TypeError, "parameter must be callable");
@@ -168,7 +167,7 @@ static inline PyObject* HandleReturn(
         if (IsCreator(pymeth->fMethodInfo->fFlags)) {
 
         // either be a constructor with a fresh object proxy self ...
-            if (IsConstructor( pymeth->fMethodInfo->fFlags)) {
+            if (IsConstructor(pymeth->fMethodInfo->fFlags)) {
                 if (pymeth->fSelf)
                     pymeth->fSelf->HoldOn();
             }
@@ -217,6 +216,8 @@ static PyObject* mp_doc(MethodProxy* pymeth, void*)
 
 // collect doc strings
     int nMethods = methods.size();
+    if (nMethods == 0)       // from template proxy with no instantiations
+        return nullptr;
     PyObject* doc = methods[0]->GetDocString();
 
 // simple case
@@ -766,7 +767,7 @@ static PyObject* mp_overload(MethodProxy* pymeth, PyObject* sigarg)
             MethodProxy::Methods_t vec; vec.push_back(meth->Clone());
             newmeth->Set(pymeth->fMethodInfo->fName, vec);
 
-            if (pymeth->fSelf && ! IsPseudoFunc(pymeth)) {
+            if (pymeth->fSelf && !IsPseudoFunc(pymeth)) {
                 Py_INCREF(pymeth->fSelf);
                 newmeth->fSelf = pymeth->fSelf;
             }

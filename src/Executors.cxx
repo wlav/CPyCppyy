@@ -387,25 +387,25 @@ PyObject* CPyCppyy::TCppObjectExecutor::Execute(
 
 //-----------------------------------------------------------------------------
 PyObject* CPyCppyy::TCppObjectByValueExecutor::Execute(
-      Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt )
+        Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execution will bring a temporary in existence
-   Cppyy::TCppObject_t value = GILCallO( method, self, ctxt, fClass );
+    Cppyy::TCppObject_t value = GILCallO(method, self, ctxt, fClass);
 
-   if ( ! value ) {
-      if ( ! PyErr_Occurred() )         // callee may have set a python error itself
-         PyErr_SetString( PyExc_ValueError, "NULL result where temporary expected" );
-      return 0;
-   }
+    if (!value) {
+        if (!PyErr_Occurred())         // callee may have set a python error itself
+            PyErr_SetString(PyExc_ValueError, "nullptr result where temporary expected");
+        return nullptr;
+    }
 
 // the result can then be bound
-   ObjectProxy* pyobj = (ObjectProxy*)BindCppObjectNoCast( value, fClass, false, true );
-   if ( ! pyobj )
-      return 0;
+    ObjectProxy* pyobj = (ObjectProxy*)BindCppObjectNoCast(value, fClass, false, true);
+    if (!pyobj)
+        return nullptr;
 
 // python ref counting will now control this object's life span
-   pyobj->HoldOn();
-   return (PyObject*)pyobj;
+    pyobj->HoldOn();
+    return (PyObject*)pyobj;
 }
 
 //-----------------------------------------------------------------------------

@@ -439,10 +439,10 @@ PyObject* CPyCppyy::TMethodHolder::PreProcessArgs(
 
     // demand CPyCppyy object, and an argument that may match down the road
         if (ObjectProxy_Check(pyobj) &&
-             (fScope == Cppyy::gGlobalScope ||               // free global
-             (pyobj->ObjectIsA() == 0)     ||                // null pointer or ctor call
-             (Cppyy::IsSubtype(pyobj->ObjectIsA(), fScope))) // matching types
-         ) {
+             (fScope == Cppyy::gGlobalScope ||                  // free global
+             (pyobj->ObjectIsA() == 0)     ||                   // null pointer or ctor call
+             (Cppyy::IsSubtype(pyobj->ObjectIsA(), fScope)))) { // matching types
+
         // reset self
             self = pyobj;
             Py_INCREF(self);       // corresponding Py_DECREF is in MethodProxy
@@ -457,7 +457,7 @@ PyObject* CPyCppyy::TMethodHolder::PreProcessArgs(
         "unbound method %s::%s must be called with a %s instance as first argument",
         Cppyy::GetFinalName(fScope).c_str(), Cppyy::GetMethodName(fMethod).c_str(),
         Cppyy::GetFinalName(fScope).c_str()));
-    return 0;
+    return nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -469,11 +469,11 @@ bool CPyCppyy::TMethodHolder::ConvertAndSetArgs(PyObject* args, TCallContext* ct
 // argc must be between min and max number of arguments
     if (argc < fArgsRequired) {
         SetPyError_(CPyCppyy_PyUnicode_FromFormat(
-           "takes at least %d arguments (%d given)", fArgsRequired, argc));
+            "takes at least %d arguments (%d given)", fArgsRequired, argc));
         return false;
     } else if (argMax < argc) {
         SetPyError_(CPyCppyy_PyUnicode_FromFormat(
-           "takes at most %d arguments (%d given)", argMax, argc));
+            "takes at most %d arguments (%d given)", argMax, argc));
         return false;
     }
 
@@ -519,25 +519,24 @@ PyObject* CPyCppyy::TMethodHolder::Call(
         ObjectProxy*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt)
 {
 // preliminary check in case keywords are accidently used (they are ignored otherwise)
-    if (kwds != 0 && PyDict_Size(kwds)) {
+    if (kwds && PyDict_Size(kwds)) {
         PyErr_SetString(PyExc_TypeError, "keyword arguments are not yet supported");
-        return 0;
+        return nullptr;
     }
 
 // setup as necessary
     if (!Initialize(ctxt))
-        return 0;                            // important: 0, not Py_None
+        return nullptr;
 
 // fetch self, verify, and put the arguments in usable order
     if (!(args = PreProcessArgs(self, args, kwds)))
-        return 0;
+        return nullptr;
 
 // translate the arguments
-    bool bConvertOk = ConvertAndSetArgs(args, ctxt);
-    Py_DECREF(args);
-
-    if (bConvertOk == false)
-        return 0;                            // important: 0, not Py_None
+    if (!ConvertAndSetArgs(args, ctxt)) {
+        Py_DECREF(args);
+        return nullptr;
+    }
 
 // get the C++ object that this object proxy is a handle for
     void* object = self->GetObject();
@@ -545,7 +544,8 @@ PyObject* CPyCppyy::TMethodHolder::Call(
 // validity check that should not fail
     if (!object) {
         PyErr_SetString(PyExc_ReferenceError, "attempt to access a null-pointer");
-        return 0;
+        Py_DECREF(args);
+        return nullptr;
     }
 
 // get its class
@@ -558,12 +558,13 @@ PyObject* CPyCppyy::TMethodHolder::Call(
 
 // actual call; recycle self instead of returning new object for same address objects
     ObjectProxy* pyobj = (ObjectProxy*)Execute(object, offset, ctxt);
+    Py_DECREF(args);
 
     if (ObjectProxy_Check(pyobj) &&
             derived && pyobj->ObjectIsA() == derived &&
-             pyobj->GetObject() == object) {
+            pyobj->GetObject() == object) {
         Py_INCREF((PyObject*)self);
-        Py_DECREF(pyobj );
+        Py_DECREF(pyobj);
         return (PyObject*)self;
     }
 

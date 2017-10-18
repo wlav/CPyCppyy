@@ -6,7 +6,7 @@
 //- data _____________________________________________________________________
 namespace CPyCppyy {
 
-    TCallContext::ECallFlags TCallContext::sMemoryPolicy = TCallContext::kUseHeuristics;
+    TCallContext::ECallFlags TCallContext::sMemoryPolicy = TCallContext::kUseStrict;
 // this is just a data holder for linking; actual value is set in CPyCppyyModule.cxx
     TCallContext::ECallFlags TCallContext::sSignalPolicy = TCallContext::kSafe;
 

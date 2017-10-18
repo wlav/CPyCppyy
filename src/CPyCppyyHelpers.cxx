@@ -722,9 +722,12 @@ PyObject* CPyCppyy::BindCppObjectNoCast(
         return nullptr;                 // error has been set in CreateScopeProxy
 
 // TODO: add convenience function to MemoryRegulator to use pyclass directly
-    PyObject* oldPyObject = MemoryRegulator::RetrievePyObject(address, klass);
-    if (oldPyObject)
-        return oldPyObject;
+// TODO: make sure that a consistent address is used (may have to be done in BindCppObject)
+    if (!isValue /* always fresh */) {
+        PyObject* oldPyObject = MemoryRegulator::RetrievePyObject(address, klass);
+        if (oldPyObject)
+            return oldPyObject;
+    }
 
 // instantiate an object of this class
     PyObject* args = PyTuple_New(0);
@@ -762,8 +765,6 @@ PyObject* CPyCppyy::BindCppObject(
 // get actual class for recycling checking and/or downcasting
     Cppyy::TCppType_t clActual = isRef ? 0 : Cppyy::GetActualClass(klass, address);
 
-// TODO: consistently up or down cast
-
 // downcast to real class for object returns
     if (clActual && klass != clActual) {
         ptrdiff_t offset = Cppyy::GetBaseOffset(
@@ -773,11 +774,6 @@ PyObject* CPyCppyy::BindCppObject(
             klass = clActual;
         }
     }
-
-// use the old reference if the object already exists
-    PyObject* oldPyObject = MemoryRegulator::RetrievePyObject(address, klass);
-    if (oldPyObject)
-        return oldPyObject;
 
 // check if type is pinned
     bool ignore_pin = std::find(

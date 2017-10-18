@@ -6,55 +6,54 @@
 
 //- public members --------------------------------------------------------------
 PyObject* CPyCppyy::TFunctionHolder::PreProcessArgs(
-      ObjectProxy*& self, PyObject* args, PyObject* )
+        ObjectProxy*& self, PyObject* args, PyObject*)
 {
 // no self means called as a free function; all ok
-   if ( ! self ) {
-      Py_INCREF( args );
-      return args;
-   }
+    if (!self) {
+        Py_INCREF(args);
+        return args;
+    }
 
 // otherwise, add self as part of the function arguments (means bound member)
-   Py_ssize_t sz = PyTuple_GET_SIZE( args );
-   PyObject* newArgs = PyTuple_New( sz + 1 );
-   for ( int i = 0; i < sz; ++i ) {
-      PyObject* item = PyTuple_GET_ITEM( args, i );
-      Py_INCREF( item );
-      PyTuple_SET_ITEM( newArgs, i + 1, item );
-   }
+    Py_ssize_t sz = PyTuple_GET_SIZE(args);
+    PyObject* newArgs = PyTuple_New(sz+1);
+    for (int i = 0; i < sz; ++i) {
+        PyObject* item = PyTuple_GET_ITEM(args, i);
+        Py_INCREF(item);
+        PyTuple_SET_ITEM(newArgs, i+1, item);
+    }
 
-   Py_INCREF( self );
-   PyTuple_SET_ITEM( newArgs, 0, (PyObject*)self );
+    Py_INCREF(self);
+    PyTuple_SET_ITEM(newArgs, 0, (PyObject*)self);
 
-   return newArgs;
+    return newArgs;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// preliminary check in case keywords are accidently used (they are ignored otherwise)
-
+//---------------------------------------------------------------------------
 PyObject* CPyCppyy::TFunctionHolder::Call(
-      ObjectProxy*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt )
+        ObjectProxy*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt)
 {
-   if ( kwds != 0 && PyDict_Size( kwds ) ) {
-      PyErr_SetString( PyExc_TypeError, "keyword arguments are not yet supported" );
-      return 0;
-   }
+// preliminary check in case keywords are accidently used (they are ignored otherwise)
+    if (kwds && PyDict_Size(kwds)) {
+        PyErr_SetString(PyExc_TypeError, "keyword arguments are not yet supported");
+        return nullptr;
+    }
 
 // setup as necessary
-   if ( ! this->Initialize( ctxt ) )
-      return 0;                              // important: 0, not Py_None
+    if (!this->Initialize(ctxt))
+        return nullptr;
 
 // reorder self into args, if necessary
-   if ( ! ( args = this->PreProcessArgs( self, args, kwds ) ) )
-      return 0;
+    if (!(args = this->PreProcessArgs(self, args, kwds)))
+        return nullptr;
 
 // translate the arguments
-   bool bConvertOk = this->ConvertAndSetArgs( args, ctxt );
-   Py_DECREF( args );
+    bool bConvertOk = this->ConvertAndSetArgs(args, ctxt);
+    Py_DECREF(args);
 
-   if ( bConvertOk == false )
-      return 0;                              // important: 0, not Py_None
+    if (bConvertOk == false)
+        return nullptr;
 
 // execute function
-   return this->Execute( 0, 0, ctxt );
+    return this->Execute(nullptr, 0, ctxt);
 }
