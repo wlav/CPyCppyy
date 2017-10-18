@@ -51,7 +51,7 @@
 //- data -----------------------------------------------------------------------
 static PyObject* nullptr_repr(PyObject*)
 {
-    return PyBytes_FromString("nullptr");
+    return CPyCppyy_PyUnicode_FromString("nullptr");
 }
 
 static void nullptr_dealloc(PyObject*)
