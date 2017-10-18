@@ -176,10 +176,23 @@ int cpycppyy_buffer_ass_subscript(PyObject* self, PyObject* idx, PyObject* val) 
 }
 
 //---------------------------------------------------------------------------
-PyObject* buffer_setsize(PyObject* self, PyObject* pynlen)
+PyObject* buffer_reshape(PyObject* self, PyObject* shape)
 {
 // Allow the user to fix up the actual (type-strided) size of the buffer.
-    Py_ssize_t nlen = PyInt_AsSsize_t(pynlen);
+    if (!PyTuple_Check(shape) || PyTuple_GET_SIZE(shape) != 1) {
+        if (shape) {
+            PyObject* pystr = PyObject_Str(shape);
+            if (pystr) {
+                PyErr_Format(PyExc_TypeError, "tuple object of length 1 expected, received %s", PyString_AsString(pystr));
+                Py_DECREF(pystr);
+                return nullptr;
+            }
+        }
+        PyErr_SetString(PyExc_TypeError, "tuple object of length 1 expected");
+        return nullptr;
+    }
+
+    Py_ssize_t nlen = PyInt_AsSsize_t(PyTuple_GET_ITEM(shape, 0));
     if (nlen == -1 && PyErr_Occurred())
         return 0;
 
@@ -228,7 +241,7 @@ PyGetSetDef buffer_getset[] = {
 
 //---------------------------------------------------------------------------
 PyMethodDef buffer_methods[] = {
-    {(char*)"SetSize", (PyCFunction)buffer_setsize, METH_O, nullptr},
+    {(char*)"reshape", (PyCFunction)buffer_reshape, METH_O, nullptr},
     {(char*)nullptr, nullptr, 0, nullptr}
 };
 
