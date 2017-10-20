@@ -10,7 +10,7 @@ namespace CPyCppyy {
 
 namespace {
 
-#define CPYCPPYY_DECLARE_BASIC_EXECUTOR(name)                                 \
+#define CPPYY_DECL_EXEC(name)                                                 \
     class T##name##Executor : public TExecutor {                              \
     public:                                                                   \
         virtual PyObject* Execute(                                            \
@@ -18,44 +18,44 @@ namespace {
     }
 
 // executors for built-ins
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(Bool);
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(BoolConstRef);
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(Char);
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(CharConstRef);
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(UChar);
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(UCharConstRef);
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(Short);
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(Int);
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(Long);
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(ULong);
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(LongLong);
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(ULongLong);
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(Float);
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(Double);
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(LongDouble);
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(Void);
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(CString);
+    CPPYY_DECL_EXEC(Bool);
+    CPPYY_DECL_EXEC(BoolConstRef);
+    CPPYY_DECL_EXEC(Char);
+    CPPYY_DECL_EXEC(CharConstRef);
+    CPPYY_DECL_EXEC(UChar);
+    CPPYY_DECL_EXEC(UCharConstRef);
+    CPPYY_DECL_EXEC(Short);
+    CPPYY_DECL_EXEC(Int);
+    CPPYY_DECL_EXEC(Long);
+    CPPYY_DECL_EXEC(ULong);
+    CPPYY_DECL_EXEC(LongLong);
+    CPPYY_DECL_EXEC(ULongLong);
+    CPPYY_DECL_EXEC(Float);
+    CPPYY_DECL_EXEC(Double);
+    CPPYY_DECL_EXEC(LongDouble);
+    CPPYY_DECL_EXEC(Void);
+    CPPYY_DECL_EXEC(CString);
 
 // pointer/array executors
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(VoidArray);
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(BoolArray);
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(ShortArray);
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(UShortArray);
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(IntArray);
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(UIntArray);
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(LongArray);
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(ULongArray);
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(FloatArray);
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(DoubleArray);
+    CPPYY_DECL_EXEC(VoidArray);
+    CPPYY_DECL_EXEC(BoolArray);
+    CPPYY_DECL_EXEC(ShortArray);
+    CPPYY_DECL_EXEC(UShortArray);
+    CPPYY_DECL_EXEC(IntArray);
+    CPPYY_DECL_EXEC(UIntArray);
+    CPPYY_DECL_EXEC(LongArray);
+    CPPYY_DECL_EXEC(ULongArray);
+    CPPYY_DECL_EXEC(FloatArray);
+    CPPYY_DECL_EXEC(DoubleArray);
 
 // special cases
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(STLString);
+    CPPYY_DECL_EXEC(STLString);
 
     class TCppObjectExecutor : public TExecutor {
     public:
         TCppObjectExecutor(Cppyy::TCppType_t klass) : fClass(klass) {}
         virtual PyObject* Execute(
-          Cppyy::TCppMethod_t, Cppyy::TCppObject_t,TCallContext*);
+            Cppyy::TCppMethod_t, Cppyy::TCppObject_t,TCallContext*);
 
     protected:
         Cppyy::TCppType_t fClass;
@@ -68,31 +68,31 @@ namespace {
             Cppyy::TCppMethod_t, Cppyy::TCppObject_t,TCallContext*);
     };
 
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(Constructor);
-    CPYCPPYY_DECLARE_BASIC_EXECUTOR(PyObject);
+    CPPYY_DECL_EXEC(Constructor);
+    CPPYY_DECL_EXEC(PyObject);
 
-#define CPYCPPYY_DECLARE_BASIC_REFEXECUTOR(name)                              \
+#define CPPYY_DECL_REFEXEC(name)                                              \
     class T##name##RefExecutor : public TRefExecutor {                        \
     public:                                                                   \
         virtual PyObject* Execute(                                            \
             Cppyy::TCppMethod_t, Cppyy::TCppObject_t, TCallContext*);         \
     }
 
-    CPYCPPYY_DECLARE_BASIC_REFEXECUTOR(Bool);
-    CPYCPPYY_DECLARE_BASIC_REFEXECUTOR(Char);
-    CPYCPPYY_DECLARE_BASIC_REFEXECUTOR(UChar);
-    CPYCPPYY_DECLARE_BASIC_REFEXECUTOR(Short);
-    CPYCPPYY_DECLARE_BASIC_REFEXECUTOR(UShort);
-    CPYCPPYY_DECLARE_BASIC_REFEXECUTOR(Int);
-    CPYCPPYY_DECLARE_BASIC_REFEXECUTOR(UInt);
-    CPYCPPYY_DECLARE_BASIC_REFEXECUTOR(Long);
-    CPYCPPYY_DECLARE_BASIC_REFEXECUTOR(ULong);
-    CPYCPPYY_DECLARE_BASIC_REFEXECUTOR(LongLong);
-    CPYCPPYY_DECLARE_BASIC_REFEXECUTOR(ULongLong);
-    CPYCPPYY_DECLARE_BASIC_REFEXECUTOR(Float);
-    CPYCPPYY_DECLARE_BASIC_REFEXECUTOR(Double);
-    CPYCPPYY_DECLARE_BASIC_REFEXECUTOR(LongDouble);
-    CPYCPPYY_DECLARE_BASIC_REFEXECUTOR(STLString);
+    CPPYY_DECL_REFEXEC(Bool);
+    CPPYY_DECL_REFEXEC(Char);
+    CPPYY_DECL_REFEXEC(UChar);
+    CPPYY_DECL_REFEXEC(Short);
+    CPPYY_DECL_REFEXEC(UShort);
+    CPPYY_DECL_REFEXEC(Int);
+    CPPYY_DECL_REFEXEC(UInt);
+    CPPYY_DECL_REFEXEC(Long);
+    CPPYY_DECL_REFEXEC(ULong);
+    CPPYY_DECL_REFEXEC(LongLong);
+    CPPYY_DECL_REFEXEC(ULongLong);
+    CPPYY_DECL_REFEXEC(Float);
+    CPPYY_DECL_REFEXEC(Double);
+    CPPYY_DECL_REFEXEC(LongDouble);
+    CPPYY_DECL_REFEXEC(STLString);
 
 // special cases
     class TCppObjectRefExecutor : public TRefExecutor {

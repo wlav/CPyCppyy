@@ -69,9 +69,9 @@ static inline bool CPyCppyy_PyLong_AsBool( PyObject* pyobject )
    return (bool)l;
 }
 
-static inline Char_t CPyCppyy_PyUnicode_AsChar( PyObject* pyobject ) {
+static inline char CPyCppyy_PyUnicode_AsChar( PyObject* pyobject ) {
 // python string to C++ char conversion
-   return (Char_t)CPyCppyy_PyUnicode_AsString( pyobject )[0];
+   return (char)CPyCppyy_PyUnicode_AsString( pyobject )[0];
 }
 
 static inline UShort_t CPyCppyy_PyLong_AsUShort( PyObject* pyobject )
@@ -302,8 +302,8 @@ bool CPyCppyy::TLongRefConverter::SetArg(
 }
 
 //-----------------------------------------------------------------------------
-CPYCPPYY_IMPLEMENT_BASIC_CONST_CHAR_REF_CONVERTER( Char,  Char_t,  CHAR_MIN,  CHAR_MAX )
-CPYCPPYY_IMPLEMENT_BASIC_CONST_CHAR_REF_CONVERTER( UChar, UChar_t,        0, UCHAR_MAX )
+CPYCPPYY_IMPLEMENT_BASIC_CONST_CHAR_REF_CONVERTER( Char,  char,          CHAR_MIN,  CHAR_MAX )
+CPYCPPYY_IMPLEMENT_BASIC_CONST_CHAR_REF_CONVERTER( UChar, unsigned char,        0, UCHAR_MAX )
 
 CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( Bool,      bool,    CPyCppyy_PyLong_AsBool )
 CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( Short,     Short_t,   CPyCppyy_PyLong_AsShort )
@@ -359,8 +359,8 @@ CPYCPPYY_IMPLEMENT_BASIC_CONVERTER(
    Bool, bool, Long_t, PyInt_FromLong, CPyCppyy_PyLong_AsBool, 'l' )
 
 //-----------------------------------------------------------------------------
-CPYCPPYY_IMPLEMENT_BASIC_CHAR_CONVERTER( Char,  Char_t,  CHAR_MIN, CHAR_MAX  )
-CPYCPPYY_IMPLEMENT_BASIC_CHAR_CONVERTER( UChar, UChar_t,        0, UCHAR_MAX )
+CPYCPPYY_IMPLEMENT_BASIC_CHAR_CONVERTER( Char,  char,          CHAR_MIN, CHAR_MAX  )
+CPYCPPYY_IMPLEMENT_BASIC_CHAR_CONVERTER( UChar, unsigned char,        0, UCHAR_MAX )
 
 //-----------------------------------------------------------------------------
 CPYCPPYY_IMPLEMENT_BASIC_CONVERTER(

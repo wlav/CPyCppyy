@@ -107,7 +107,7 @@ TPyReturn::operator const char*() const
 ////////////////////////////////////////////////////////////////////////////////
 /// Cast python return value to C++ char (may fail).
 
-TPyReturn::operator Char_t() const
+TPyReturn::operator char() const
 {
    std::string s = operator const char*();
    if ( s.size() )

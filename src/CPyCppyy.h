@@ -36,8 +36,6 @@
 #include <sys/types.h>
 
 // selected ROOT types from RtypesCore.h
-typedef char           Char_t;      //Signed Character 1 byte (char)
-typedef unsigned char  UChar_t;     //Unsigned Character 1 byte (unsigned char)
 typedef short          Short_t;     //Signed Short integer 2 bytes (short)
 typedef unsigned short UShort_t;    //Unsigned Short integer 2 bytes (unsigned short)
 #ifdef R__INT16

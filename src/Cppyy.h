@@ -14,7 +14,7 @@ namespace Cppyy {
     typedef void*       TCppObject_t;
     typedef ptrdiff_t   TCppMethod_t;
 
-    typedef Long_t      TCppIndex_t;
+    typedef long        TCppIndex_t;
     typedef void*       TCppFuncAddr_t;
 
 // name to opaque C++ scope representation -----------------------------------
@@ -37,21 +37,21 @@ namespace Cppyy {
     void         Destruct(TCppType_t type, TCppObject_t instance);
 
 // method/function dispatching -----------------------------------------------
-    void         CallV(TCppMethod_t method, TCppObject_t self, void* args);
-    UChar_t      CallB(TCppMethod_t method, TCppObject_t self, void* args);
-    Char_t       CallC(TCppMethod_t method, TCppObject_t self, void* args);
-    Short_t      CallH(TCppMethod_t method, TCppObject_t self, void* args);
-    Int_t        CallI(TCppMethod_t method, TCppObject_t self, void* args);
-    Long_t       CallL(TCppMethod_t method, TCppObject_t self, void* args);
-    Long64_t     CallLL(TCppMethod_t method, TCppObject_t self, void* args);
-    Float_t      CallF(TCppMethod_t method, TCppObject_t self, void* args);
-    Double_t     CallD(TCppMethod_t method, TCppObject_t self, void* args);
-    LongDouble_t CallLD(TCppMethod_t method, TCppObject_t self, void* args);
-    void*        CallR(TCppMethod_t method, TCppObject_t self, void* args);
-    Char_t*      CallS(TCppMethod_t method, TCppObject_t self, void* args, size_t* length);
-    TCppObject_t CallConstructor(TCppMethod_t method, TCppType_t type, void* args);
-    void         CallDestructor(TCppType_t type, TCppObject_t self);
-    TCppObject_t CallO(TCppMethod_t method, TCppObject_t self, void* args, TCppType_t result_type);
+    void          CallV(TCppMethod_t method, TCppObject_t self, void* args);
+    unsigned char CallB(TCppMethod_t method, TCppObject_t self, void* args);
+    char          CallC(TCppMethod_t method, TCppObject_t self, void* args);
+    short         CallH(TCppMethod_t method, TCppObject_t self, void* args);
+    int           CallI(TCppMethod_t method, TCppObject_t self, void* args);
+    long          CallL(TCppMethod_t method, TCppObject_t self, void* args);
+    Long64_t      CallLL(TCppMethod_t method, TCppObject_t self, void* args);
+    float         CallF(TCppMethod_t method, TCppObject_t self, void* args);
+    double        CallD(TCppMethod_t method, TCppObject_t self, void* args);
+    LongDouble_t  CallLD(TCppMethod_t method, TCppObject_t self, void* args);
+    void*         CallR(TCppMethod_t method, TCppObject_t self, void* args);
+    char*         CallS(TCppMethod_t method, TCppObject_t self, void* args, size_t* length);
+    TCppObject_t  CallConstructor(TCppMethod_t method, TCppType_t type, void* args);
+    void          CallDestructor(TCppType_t type, TCppObject_t self);
+    TCppObject_t  CallO(TCppMethod_t method, TCppObject_t self, void* args, TCppType_t result_type);
 
     TCppFuncAddr_t GetFunctionAddress(TCppScope_t scope, TCppIndex_t imeth);
 
@@ -125,11 +125,11 @@ namespace Cppyy {
     TCppIndex_t GetDatamemberIndex(TCppScope_t scope, const std::string& name);
 
 // data member properties ----------------------------------------------------
-    bool  IsPublicData(TCppScope_t scope, TCppIndex_t idata);
-    bool  IsStaticData(TCppScope_t scope, TCppIndex_t idata);
-    bool  IsConstData(TCppScope_t scope, TCppIndex_t idata);
-    bool  IsEnumData(TCppScope_t scope, TCppIndex_t idata);
-    Int_t GetDimensionSize(TCppScope_t scope, TCppIndex_t idata, int dimension);
+    bool IsPublicData(TCppScope_t scope, TCppIndex_t idata);
+    bool IsStaticData(TCppScope_t scope, TCppIndex_t idata);
+    bool IsConstData(TCppScope_t scope, TCppIndex_t idata);
+    bool IsEnumData(TCppScope_t scope, TCppIndex_t idata);
+    int  GetDimensionSize(TCppScope_t scope, TCppIndex_t idata, int dimension);
 
 } // namespace Cppyy
 

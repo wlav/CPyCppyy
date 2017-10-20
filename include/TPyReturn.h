@@ -17,39 +17,43 @@ typedef _object PyObject;
 
 class TPyReturn {
 public:
-   TPyReturn();
-   TPyReturn( PyObject* pyobject );
-   TPyReturn( const TPyReturn& );
-   TPyReturn& operator=( const TPyReturn& );
-   virtual ~TPyReturn();
+    TPyReturn();
+    TPyReturn(PyObject* pyobject);
+    TPyReturn(const TPyReturn&);
+    TPyReturn& operator=(const TPyReturn&);
+    virtual ~TPyReturn();
 
 // conversions to standard types, may fail if unconvertible
-   operator char*() const;
-   operator const char*() const;
-   operator Char_t() const;
+    operator char*() const;
+    operator const char*() const;
+    operator char() const;
 
-   operator Long_t() const;
-   operator Int_t() const { return (Int_t)operator Long_t(); }
-   operator Short_t() const { return (Short_t)operator Long_t(); }
+    operator long() const;
+    operator int() const { return (int)operator long(); }
+    operator short() const { return (short)operator long(); }
 
-   operator ULong_t() const;
-   operator UInt_t() const { return (UInt_t)operator ULong_t(); }
-   operator UShort_t() const { return (UShort_t)operator ULong_t(); }
+    operator unsigned long() const;
+    operator unsigned int() const {
+        return (unsigned int)operator unsigned long();
+    }
+    operator unsigned short() const {
+        return (unsigned short)operator unsigned long();
+    }
 
-   operator Double_t() const;
-   operator Float_t() const { return (Float_t)operator Double_t(); }
+    operator double() const;
+    operator float() const { return (float)operator double(); }
 
 // used for both TObject and PyObject conversions
-   operator void*() const;
+    operator void*() const;
 
-   template<class T>
-   operator T*() const { return (T*)(void*)*this; }
+    template<class T>
+    operator T*() const { return (T*)(void*)*this; }
 
 // used strictly for PyObject conversions
-   operator PyObject*() const;
+    operator PyObject*() const;
 
 private:
-   PyObject* fPyObject;            //! actual python object
+    PyObject* fPyObject;            //! actual python object
 };
 
 #endif // !CPYCPPYY_TPYRETURN

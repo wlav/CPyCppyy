@@ -7,6 +7,7 @@ namespace CPyCppyy {
 
     namespace PyStrings {
 
+        extern PyObject* gAssign;
         extern PyObject* gBases;
         extern PyObject* gBase;
         extern PyObject* gClass;
