@@ -154,12 +154,12 @@ PyObject* LookupCppEntity(PyObject* pyname, PyObject* args)
     if (pyname && CPyCppyy_PyUnicode_CheckExact(pyname))
         cname = CPyCppyy_PyUnicode_AsString(pyname);
     else if (!(args && PyArg_ParseTuple(args, const_cast<char*>("s|l"), &cname, &macro_ok)))
-        return 0;
+        return nullptr;
 
 // we may have been destroyed if this code is called during shutdown
     if (!gThisModule) {
         PyErr_Format(PyExc_AttributeError, "%s", cname);
-        return 0;
+        return nullptr;
     }
 
     std::string name = cname;
@@ -184,6 +184,7 @@ PyObject* LookupCppEntity(PyObject* pyname, PyObject* args)
             return attr;
 
     // 4th attempt: global enum (pretend int, TODO: is fine for C++98, not in C++11)
+        PyErr_Clear();
         if (Cppyy::IsEnum(name)) {
         // TODO: how does this make sense? This only works if this is a class name.
             Py_INCREF(&PyInt_Type);
@@ -193,7 +194,7 @@ PyObject* LookupCppEntity(PyObject* pyname, PyObject* args)
 
 // still here? raise attribute error
     PyErr_Format(PyExc_AttributeError, "%s", name.c_str());
-    return 0;
+    return nullptr;
 }
 
 
@@ -326,7 +327,7 @@ PyObject* SetCppLazyLookup(PyObject*, PyObject* args)
 // this allows for lazy lookups.
     PyDictObject* dict = nullptr;
     if (!PyArg_ParseTuple(args, const_cast<char*>("O!"), &PyDict_Type, &dict))
-        return 0;
+        return nullptr;
 
 // Notwithstanding the code changes, the following does not work for p3.3 and
 // later: once the dictionary is resized for anything other than an insert (see
@@ -520,7 +521,7 @@ static PyObject* Move(PyObject*, PyObject* pyobject)
 // Prepare the given C++ object for moving.
     if (!ObjectProxy_Check(pyobject)) {
         PyErr_SetString(PyExc_TypeError, "C++ object expected");
-        return 0;
+        return nullptr;
     }
 
     ((ObjectProxy*)pyobject)->fFlags |= ObjectProxy::kIsRValue;
