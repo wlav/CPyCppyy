@@ -36,8 +36,6 @@
 #include <sys/types.h>
 
 // selected ROOT types from RtypesCore.h
-typedef short          Short_t;     //Signed Short integer 2 bytes (short)
-typedef unsigned short UShort_t;    //Unsigned Short integer 2 bytes (unsigned short)
 #ifdef R__INT16
 typedef long           Int_t;       //Signed integer 4 bytes
 typedef unsigned long  UInt_t;      //Unsigned integer 4 bytes
@@ -46,21 +44,15 @@ typedef int            Int_t;       //Signed integer 4 bytes (int)
 typedef unsigned int   UInt_t;      //Unsigned integer 4 bytes (unsigned int)
 #endif
 #ifdef R__B64    // Note: Long_t and ULong_t are currently not portable types
-typedef int            Seek_t;      //File pointer (int)
 typedef long           Long_t;      //Signed long integer 8 bytes (long)
 typedef unsigned long  ULong_t;     //Unsigned long integer 8 bytes (unsigned long)
 #else
-typedef int            Seek_t;      //File pointer (int)
 typedef long           Long_t;      //Signed long integer 4 bytes (long)
 typedef unsigned long  ULong_t;     //Unsigned long integer 4 bytes (unsigned long)
 #endif
-typedef float          Float_t;     //Float 4 bytes (float)
 typedef float          Float16_t;   //Float 4 bytes written with a truncated mantissa
-typedef double         Double_t;    //Double 8 bytes
 typedef double         Double32_t;  //Double 8 bytes in memory, written as a 4 bytes float
 typedef long double    LongDouble_t;//Long Double
-typedef char           Text_t;      //General string (char)
-typedef unsigned char  Byte_t;      //Byte (8 bits) (unsigned char)
 #if defined(R__WIN32) && !defined(__CINT__)
 typedef __int64          Long64_t;  //Portable signed long integer 8 bytes
 typedef unsigned __int64 ULong64_t; //Portable unsigned long integer 8 bytes
@@ -72,10 +64,10 @@ typedef unsigned long long ULong64_t;//Portable unsigned long integer 8 bytes
 
 // for 3.3 support
 #if PY_VERSION_HEX < 0x03030000
-   typedef PyDictEntry* (*dict_lookup_func) (PyDictObject*, PyObject*, long);
+   typedef PyDictEntry* (*dict_lookup_func)(PyDictObject*, PyObject*, long);
 #else
    struct PyDictKeyEntry;
-   typedef PyDictKeyEntry* (*dict_lookup_func) (PyDictObject*, PyObject*, Py_hash_t, PyObject***);
+   typedef PyDictKeyEntry* (*dict_lookup_func)(PyDictObject*, PyObject*, Py_hash_t, PyObject***);
 #define PyDictEntry PyDictKeyEntry
 #endif
 
@@ -119,10 +111,10 @@ static inline void* CPyCppyy_PyCapsule_GetPointer(PyObject* capsule, const char*
     return (void*)PyCObject_AsVoidPtr(capsule);
 }
 
-#define CPYCPPYY__long__ "__long__"
-#define CPYCPPYY__idiv__ "__idiv__"
-#define CPYCPPYY__div__  "__div__"
-#define CPYCPPYY__next__ "next"
+#define CPPYY__long__ "__long__"
+#define CPPYY__idiv__ "__idiv__"
+#define CPPYY__div__  "__div__"
+#define CPPYY__next__ "next"
 
 #endif  // ! 3.0
 
@@ -158,10 +150,10 @@ static inline void* CPyCppyy_PyCapsule_GetPointer(PyObject* capsule, const char*
 #define CPyCppyy_PyCapsule_CheckExact    PyCapsule_CheckExact
 #define CPyCppyy_PyCapsule_GetPointer    PyCapsule_GetPointer
 
-#define CPYCPPYY__long__ "__int__"
-#define CPYCPPYY__idiv__ "__itruediv__"
-#define CPYCPPYY__div__  "__truediv__"
-#define CPYCPPYY__next__ "__next__"
+#define CPPYY__long__ "__int__"
+#define CPPYY__idiv__ "__itruediv__"
+#define CPPYY__div__  "__truediv__"
+#define CPPYY__next__ "__next__"
 
 #define Py_TPFLAGS_HAVE_RICHCOMPARE 0
 #define Py_TPFLAGS_CHECKTYPES 0
@@ -202,7 +194,7 @@ typedef int Py_ssize_t;
     (PyInt_Check(obj) || PyLong_Check(obj))
 
 inline Py_ssize_t PyNumber_AsSsize_t(PyObject* obj, PyObject*) {
-    return (Py_ssize_t)PyLong_AsLong( obj );
+    return (Py_ssize_t)PyLong_AsLong(obj);
 }
 
 #else

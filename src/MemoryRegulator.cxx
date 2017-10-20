@@ -155,7 +155,7 @@ bool CPyCppyy::MemoryRegulator::RecursiveRemove(
         ((PyObject*)pyobj)->ob_refcnt = refcnt;
 
     // cleanup object internals
-        pyobj->Release();              // held object is out of scope now anyway
+        pyobj->CppOwns();              // held object is out of scope now anyway
         op_dealloc_nofree(pyobj);      // normal object cleanup, while keeping memory
 
     // reset type object

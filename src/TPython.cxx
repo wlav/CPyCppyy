@@ -545,7 +545,7 @@ PyObject* TPython::ObjectProxy_FromVoidPtr(
 
 // give ownership, for ref-counting, to the python side, if so requested
    if ( python_owns && CPyCppyy::ObjectProxy_Check( pyobject ) )
-      ((CPyCppyy::ObjectProxy*)pyobject)->HoldOn();
+      ((CPyCppyy::ObjectProxy*)pyobject)->PythonOwns();
 
    return pyobject;
 }

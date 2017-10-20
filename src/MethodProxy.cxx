@@ -169,12 +169,12 @@ static inline PyObject* HandleReturn(
         // either be a constructor with a fresh object proxy self ...
             if (IsConstructor(pymeth->fMethodInfo->fFlags)) {
                 if (pymeth->fSelf)
-                    pymeth->fSelf->HoldOn();
+                    pymeth->fSelf->PythonOwns();
             }
 
         // ... or be a method with an object proxy return value
             else if (ObjectProxy_Check(result))
-                ((ObjectProxy*)result)->HoldOn();
+                ((ObjectProxy*)result)->PythonOwns();
         }
 
     // if this new object falls inside self, make sure its lifetime is proper

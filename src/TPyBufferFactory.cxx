@@ -153,14 +153,14 @@ PyObject* name##_buffer_subscript(PyObject* self, PyObject* item) {          \
 }
 
 CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(Bool,   bool,     Long_t,   PyBool_FromLong, PyInt_AsLong)
-CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(Short,  Short_t,  Long_t,   PyInt_FromLong, PyInt_AsLong)
-CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(UShort, UShort_t, Long_t,   PyInt_FromLong, PyInt_AsLong)
+CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(Short,  short,    Long_t,   PyInt_FromLong, PyInt_AsLong)
+CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(UShort, unsigned short, Long_t,   PyInt_FromLong, PyInt_AsLong)
 CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(Int,    Int_t,    Long_t,   PyInt_FromLong, PyInt_AsLong)
 CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(UInt,   UInt_t,   Long_t,   PyLong_FromLong, PyLong_AsLong)
 CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(Long,   Long_t,   Long_t,   PyInt_FromLong, PyInt_AsLong)
 CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(ULong,  ULong_t,  ULong_t,  PyLong_FromUnsignedLong, PyLong_AsUnsignedLong)
-CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(Float,  Float_t,  Double_t, PyFloat_FromDouble, PyFloat_AsDouble)
-CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(Double, Double_t, Double_t, PyFloat_FromDouble, PyFloat_AsDouble)
+CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(Float,  float,  double, PyFloat_FromDouble, PyFloat_AsDouble)
+CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(Double, double, double, PyFloat_FromDouble, PyFloat_AsDouble)
 
 int cpycppyy_buffer_ass_subscript(PyObject* self, PyObject* idx, PyObject* val) {
 // Assign the given value 'val' to the item at index 'idx.'
@@ -282,14 +282,14 @@ CPyCppyy::TPyBufferFactory::TPyBufferFactory()
 {
 // construct python buffer types
     CPYCPPYY_INSTALL_PYBUFFER_METHODS(Bool,   bool)
-    CPYCPPYY_INSTALL_PYBUFFER_METHODS(Short,  Short_t)
-    CPYCPPYY_INSTALL_PYBUFFER_METHODS(UShort, UShort_t)
+    CPYCPPYY_INSTALL_PYBUFFER_METHODS(Short,  short)
+    CPYCPPYY_INSTALL_PYBUFFER_METHODS(UShort, unsigned short)
     CPYCPPYY_INSTALL_PYBUFFER_METHODS(Int,    Int_t)
     CPYCPPYY_INSTALL_PYBUFFER_METHODS(UInt,   UInt_t)
     CPYCPPYY_INSTALL_PYBUFFER_METHODS(Long,   Long_t)
     CPYCPPYY_INSTALL_PYBUFFER_METHODS(ULong,  ULong_t)
-    CPYCPPYY_INSTALL_PYBUFFER_METHODS(Float,  Float_t)
-    CPYCPPYY_INSTALL_PYBUFFER_METHODS(Double, Double_t)
+    CPYCPPYY_INSTALL_PYBUFFER_METHODS(Float,  float)
+    CPYCPPYY_INSTALL_PYBUFFER_METHODS(Double, double)
 }
 
 
@@ -343,11 +343,11 @@ PyObject* CPyCppyy::TPyBufferFactory::PyBuffer_FromMemory(type* address, PyObjec
 }
 
 CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY(Bool,   bool)
-CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY(Short,  Short_t)
-CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY(UShort, UShort_t)
+CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY(Short,  short)
+CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY(UShort, unsigned short)
 CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY(Int,    Int_t)
 CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY(UInt,   UInt_t)
 CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY(Long,   Long_t)
 CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY(ULong,  ULong_t)
-CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY(Float,  Float_t)
-CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY(Double, Double_t)
+CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY(Float,  float)
+CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY(Double, double)

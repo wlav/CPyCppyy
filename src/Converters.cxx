@@ -74,39 +74,39 @@ static inline char CPyCppyy_PyUnicode_AsChar( PyObject* pyobject ) {
    return (char)CPyCppyy_PyUnicode_AsString( pyobject )[0];
 }
 
-static inline UShort_t CPyCppyy_PyLong_AsUShort( PyObject* pyobject )
+static inline unsigned short CPyCppyy_PyLong_AsUShort( PyObject* pyobject )
 {
 // range-checking python integer to C++ unsigend short int conversion
 
 // prevent p2.7 silent conversions and do a range check
    if ( ! (PyLong_Check( pyobject ) || PyInt_Check( pyobject )) ) {
       PyErr_SetString( PyExc_TypeError, "unsigned short conversion expects an integer object" );
-      return (UShort_t)-1;
+      return (unsigned short)-1;
    }
    Long_t l = PyLong_AsLong( pyobject );
    if ( l < 0 || USHRT_MAX < l ) {
       PyErr_Format( PyExc_ValueError, "integer %ld out of range for unsigned short", l );
-      return (UShort_t)-1;
+      return (unsigned short)-1;
 
    }
-   return (UShort_t)l;
+   return (unsigned short)l;
 }
 
-static inline Short_t CPyCppyy_PyLong_AsShort( PyObject* pyobject )
+static inline short CPyCppyy_PyLong_AsShort( PyObject* pyobject )
 {
 // range-checking python integer to C++ short int conversion
 // prevent p2.7 silent conversions and do a range check
    if ( ! (PyLong_Check( pyobject ) || PyInt_Check( pyobject )) ) {
       PyErr_SetString( PyExc_TypeError, "short int conversion expects an integer object" );
-      return (Short_t)-1;
+      return (short)-1;
    }
    Long_t l = PyLong_AsLong( pyobject );
    if ( l < SHRT_MIN || SHRT_MAX < l ) {
       PyErr_Format( PyExc_ValueError, "integer %ld out of range for short int", l );
-      return (Short_t)-1;
+      return (short)-1;
 
    }
-   return (Short_t)l;
+   return (short)l;
 }
 
 static inline Long_t CPyCppyy_PyLong_AsStrictLong( PyObject* pyobject )
@@ -306,8 +306,8 @@ CPYCPPYY_IMPLEMENT_BASIC_CONST_CHAR_REF_CONVERTER( Char,  char,          CHAR_MI
 CPYCPPYY_IMPLEMENT_BASIC_CONST_CHAR_REF_CONVERTER( UChar, unsigned char,        0, UCHAR_MAX )
 
 CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( Bool,      bool,    CPyCppyy_PyLong_AsBool )
-CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( Short,     Short_t,   CPyCppyy_PyLong_AsShort )
-CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( UShort,    UShort_t,  CPyCppyy_PyLong_AsUShort )
+CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( Short,     short,   CPyCppyy_PyLong_AsShort )
+CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( UShort,    unsigned short, CPyCppyy_PyLong_AsUShort )
 CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( Int,       Int_t,     CPyCppyy_PyLong_AsStrictLong )
 CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( UInt,      UInt_t,    PyLongOrInt_AsULong )
 CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( Long,      Long_t,    CPyCppyy_PyLong_AsStrictLong )
@@ -364,9 +364,9 @@ CPYCPPYY_IMPLEMENT_BASIC_CHAR_CONVERTER( UChar, unsigned char,        0, UCHAR_M
 
 //-----------------------------------------------------------------------------
 CPYCPPYY_IMPLEMENT_BASIC_CONVERTER(
-   Short,  Short_t,  Long_t, PyInt_FromLong,  CPyCppyy_PyLong_AsShort, 'l' )
+   Short,  short,  Long_t, PyInt_FromLong,  CPyCppyy_PyLong_AsShort, 'l' )
 CPYCPPYY_IMPLEMENT_BASIC_CONVERTER(
-   UShort, UShort_t, Long_t, PyInt_FromLong,  CPyCppyy_PyLong_AsUShort, 'l' )
+   UShort, unsigned short, Long_t, PyInt_FromLong,  CPyCppyy_PyLong_AsUShort, 'l' )
 CPYCPPYY_IMPLEMENT_BASIC_CONVERTER(
    Int,    Int_t,    Long_t, PyInt_FromLong,  CPyCppyy_PyLong_AsStrictLong, 'l' )
 
@@ -423,9 +423,9 @@ bool CPyCppyy::TUIntConverter::ToMemory( PyObject* value, void* address )
 
 //- floating point converters -------------------------------------------------
 CPYCPPYY_IMPLEMENT_BASIC_CONVERTER(
-   Float,  Float_t,  Double_t, PyFloat_FromDouble, PyFloat_AsDouble, 'f' )
+   Float,  float,  double, PyFloat_FromDouble, PyFloat_AsDouble, 'f' )
 CPYCPPYY_IMPLEMENT_BASIC_CONVERTER(
-   Double, Double_t, Double_t, PyFloat_FromDouble, PyFloat_AsDouble, 'd' )
+   Double, double, double, PyFloat_FromDouble, PyFloat_AsDouble, 'd' )
 
 CPYCPPYY_IMPLEMENT_BASIC_CONVERTER(
    LongDouble, LongDouble_t, LongDouble_t, PyFloat_FromDouble, PyFloat_AsDouble, 'g' )
@@ -453,8 +453,8 @@ bool CPyCppyy::TDoubleRefConverter::SetArg(
 }
 
 //-----------------------------------------------------------------------------
-CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( Float,      Float_t,      PyFloat_AsDouble )
-CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( Double,     Double_t,     PyFloat_AsDouble )
+CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( Float,      float,      PyFloat_AsDouble )
+CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( Double,     double,     PyFloat_AsDouble )
 CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( LongDouble, LongDouble_t, PyFloat_AsDouble )
 
 //-----------------------------------------------------------------------------
@@ -683,7 +683,7 @@ bool CPyCppyy::TVoidArrayConverter::SetArg(
    if ( ObjectProxy_Check( pyobject ) ) {
    // depending on memory policy, some objects are no longer owned when passed to C++
       if ( ! fKeepControl && ! UseStrictOwnership( ctxt ) )
-         ((ObjectProxy*)pyobject)->Release();
+         ((ObjectProxy*)pyobject)->CppOwns();
 
    // set pointer (may be null) and declare success
       para.fValue.fVoidp = ((ObjectProxy*)pyobject)->GetObject();
@@ -728,7 +728,7 @@ bool CPyCppyy::TVoidArrayConverter::ToMemory( PyObject* value, void* address )
    if ( ObjectProxy_Check( value ) ) {
    // depending on memory policy, some objects are no longer owned when passed to C++
       if ( ! fKeepControl && TCallContext::sMemoryPolicy != TCallContext::kUseStrict )
-         ((ObjectProxy*)value)->Release();
+         ((ObjectProxy*)value)->CppOwns();
 
    // set pointer (may be null) and declare success
       *(void**)address = ((ObjectProxy*)value)->GetObject();
@@ -791,15 +791,15 @@ bool CPyCppyy::T##name##ArrayConverter::ToMemory(PyObject* value, void* address)
 }
 
 //-----------------------------------------------------------------------------
-CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(Bool,   bool,     'b')  // signed char
-CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(Short,  Short_t,  'h')
-CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(UShort, UShort_t, 'H')
-CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(Int,    Int_t,    'i')
-CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(UInt,   UInt_t,   'I')
-CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(Long,   Long_t,   'l')
-CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(ULong,  ULong_t,  'L')
-CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(Float,  Float_t,  'f')
-CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(Double, Double_t, 'd')
+CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(Bool,   bool,           'b')  // signed char
+CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(Short,  short,          'h')
+CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(UShort, unsigned short, 'H')
+CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(Int,    Int_t,          'i')
+CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(UInt,   UInt_t,         'I')
+CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(Long,   Long_t,         'l')
+CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(ULong,  ULong_t,        'L')
+CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(Float,  float,          'f')
+CPYCPPYY_IMPLEMENT_ARRAY_CONVERTER(Double, double,         'd')
 
 //-----------------------------------------------------------------------------
 bool CPyCppyy::TLongLongArrayConverter::SetArg(
@@ -882,7 +882,7 @@ bool CPyCppyy::TCppObjectConverter::SetArg(
    if ( pyobj->ObjectIsA() && Cppyy::IsSubtype( pyobj->ObjectIsA(), fClass ) ) {
    // depending on memory policy, some objects need releasing when passed into functions
       if ( ! KeepControl() && ! UseStrictOwnership( ctxt ) )
-         ((ObjectProxy*)pyobject)->Release();
+         ((ObjectProxy*)pyobject)->CppOwns();
 
    // calculate offset between formal and actual arguments
       para.fValue.fVoidp = pyobj->GetObject();
@@ -933,11 +933,11 @@ bool CPyCppyy::TCppObjectConverter::ToMemory( PyObject* value, void* address )
    if ( Cppyy::IsSubtype( ((ObjectProxy*)value)->ObjectIsA(), fClass ) ) {
    // depending on memory policy, some objects need releasing when passed into functions
       if ( ! KeepControl() && TCallContext::sMemoryPolicy != TCallContext::kUseStrict )
-         ((ObjectProxy*)value)->Release();
+         ((ObjectProxy*)value)->CppOwns();
 
    // call assignment operator through a temporarily wrapped object proxy
       PyObject* pyobj = BindCppObjectNoCast( address, fClass );
-      ((ObjectProxy*)pyobj)->Release();     // TODO: might be recycled (?)
+      ((ObjectProxy*)pyobj)->CppOwns();     // TODO: might be recycled (?)
       PyObject* result = PyObject_CallMethod( pyobj, (char*)"__assign__", (char*)"O", value );
       Py_DECREF( pyobj );
       if ( result ) {
@@ -1064,7 +1064,7 @@ bool CPyCppyy::TCppObjectPtrConverter<ISREFERENCE>::SetArg(
    if ( Cppyy::IsSubtype( ((ObjectProxy*)pyobject)->ObjectIsA(), fClass ) ) {
    // depending on memory policy, some objects need releasing when passed into functions
       if ( ! KeepControl() && ! UseStrictOwnership( ctxt ) )
-         ((ObjectProxy*)pyobject)->Release();
+         ((ObjectProxy*)pyobject)->CppOwns();
 
    // set pointer (may be null) and declare success
       if( ((ObjectProxy*)pyobject)->fFlags & ObjectProxy::kIsReference)
@@ -1098,7 +1098,7 @@ bool CPyCppyy::TCppObjectPtrConverter<ISREFERENCE>::ToMemory( PyObject* value, v
    if ( Cppyy::IsSubtype( ((ObjectProxy*)value)->ObjectIsA(), fClass ) ) {
    // depending on memory policy, some objects need releasing when passed into functions
       if ( ! KeepControl() && TCallContext::sMemoryPolicy != TCallContext::kUseStrict )
-         ((ObjectProxy*)value)->Release();
+         ((ObjectProxy*)value)->CppOwns();
 
    // set pointer (may be null) and declare success
       *(void**)address = ((ObjectProxy*)value)->GetObject();
@@ -1282,7 +1282,7 @@ bool CPyCppyy::TSmartPtrCppObjectConverter::SetArg(
    if ( pyobj->fFlags & ObjectProxy::kIsSmartPtr && Cppyy::IsSubtype( pyobj->fSmartPtrType, fClass ) ) {
    // depending on memory policy, some objects need releasing when passed into functions
       if ( fKeepControl && ! UseStrictOwnership( ctxt ) )
-         ((ObjectProxy*)pyobject)->Release();
+         ((ObjectProxy*)pyobject)->CppOwns();
 
    // calculate offset between formal and actual arguments
       para.fValue.fVoidp = pyobj->fSmartPtr;

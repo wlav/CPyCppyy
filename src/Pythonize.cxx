@@ -752,7 +752,7 @@ bool CPyCppyy::Pythonize( PyObject* pyclass, const std::string& name )
 
    else if ( name.find( "iterator" ) != std::string::npos ) {
       ((PyTypeObject*)pyclass)->tp_iternext = (iternextfunc)StlIterNext;
-      Utility::AddToClass( pyclass, CPYCPPYY__next__, (PyCFunction) StlIterNext, METH_NOARGS );
+      Utility::AddToClass( pyclass, CPPYY__next__, (PyCFunction) StlIterNext, METH_NOARGS );
 
    // special case, if operator== is a global overload and included in the dictionary
       if ( ! HasAttrDirect( pyclass, PyStrings::gCppEq, true ) )

@@ -59,12 +59,12 @@ namespace {
 CPPYY_IMPL_GILCALL(void,          V)
 CPPYY_IMPL_GILCALL(unsigned char, B)
 CPPYY_IMPL_GILCALL(char,          C)
-CPPYY_IMPL_GILCALL(Short_t,       H)
+CPPYY_IMPL_GILCALL(short,         H)
 CPPYY_IMPL_GILCALL(Int_t,         I)
 CPPYY_IMPL_GILCALL(Long_t,        L)
 CPPYY_IMPL_GILCALL(Long64_t,      LL)
-CPPYY_IMPL_GILCALL(Float_t,       F)
-CPPYY_IMPL_GILCALL(Double_t,      D)
+CPPYY_IMPL_GILCALL(float,         F)
+CPPYY_IMPL_GILCALL(double,        D)
 CPPYY_IMPL_GILCALL(LongDouble_t,  LD)
 CPPYY_IMPL_GILCALL(void*,         R)
 
@@ -175,7 +175,7 @@ PyObject* CPyCppyy::TShortExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python int return value
-    return PyInt_FromLong((Short_t)GILCallH(method, self, ctxt));
+    return PyInt_FromLong((short)GILCallH(method, self, ctxt));
 }
 
 //-----------------------------------------------------------------------------
@@ -217,7 +217,7 @@ PyObject* CPyCppyy::TFloatExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python float return value
-    return PyFloat_FromDouble( (Double_t)GILCallF( method, self, ctxt ) );
+    return PyFloat_FromDouble((double)GILCallF(method, self, ctxt));
 }
 
 //-----------------------------------------------------------------------------
@@ -225,7 +225,7 @@ PyObject* CPyCppyy::TDoubleExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python float return value
-    return PyFloat_FromDouble((Double_t)GILCallD(method, self, ctxt));
+    return PyFloat_FromDouble((double)GILCallD(method, self, ctxt));
 }
 
 //-----------------------------------------------------------------------------
@@ -233,7 +233,7 @@ PyObject* CPyCppyy::TLongDoubleExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python float return value
-    return PyFloat_FromDouble((Double_t)GILCallLD(method, self, ctxt));
+    return PyFloat_FromDouble((double)GILCallLD(method, self, ctxt));
 }
 
 //-----------------------------------------------------------------------------
@@ -270,16 +270,16 @@ PyObject* CPyCppyy::T##name##RefExecutor::Execute(                            \
 CPPYY_IMPL_REFEXEC(Bool,   bool,   Long_t,   CPyCppyy_PyBool_FromInt,    PyLong_AsLong)
 CPPYY_IMPL_REFEXEC(Char,   char,   Long_t,   CPyCppyy_PyUnicode_FromInt, PyLong_AsLong)
 CPPYY_IMPL_REFEXEC(UChar,  unsigned char,  ULong_t,  CPyCppyy_PyUnicode_FromInt, PyLongOrInt_AsULong)
-CPPYY_IMPL_REFEXEC(Short,  Short_t,  Long_t,   PyInt_FromLong,     PyLong_AsLong)
-CPPYY_IMPL_REFEXEC(UShort, UShort_t, ULong_t,  PyInt_FromLong,     PyLongOrInt_AsULong)
+CPPYY_IMPL_REFEXEC(Short,  short,  Long_t,   PyInt_FromLong,     PyLong_AsLong)
+CPPYY_IMPL_REFEXEC(UShort, unsigned short, ULong_t,  PyInt_FromLong,     PyLongOrInt_AsULong)
 CPPYY_IMPL_REFEXEC(Int,    Int_t,    Long_t,   PyInt_FromLong,     PyLong_AsLong)
 CPPYY_IMPL_REFEXEC(UInt,   UInt_t,   ULong_t,  PyLong_FromUnsignedLong, PyLongOrInt_AsULong)
 CPPYY_IMPL_REFEXEC(Long,   Long_t,   Long_t,   PyLong_FromLong,    PyLong_AsLong)
 CPPYY_IMPL_REFEXEC(ULong,  ULong_t,  ULong_t,  PyLong_FromUnsignedLong, PyLongOrInt_AsULong)
 CPPYY_IMPL_REFEXEC(LongLong,  Long64_t,  Long64_t,   PyLong_FromLongLong,         PyLong_AsLongLong)
 CPPYY_IMPL_REFEXEC(ULongLong, ULong64_t, ULong64_t,  PyLong_FromUnsignedLongLong, PyLongOrInt_AsULong64)
-CPPYY_IMPL_REFEXEC(Float,  Float_t,  Double_t, PyFloat_FromDouble, PyFloat_AsDouble)
-CPPYY_IMPL_REFEXEC(Double, Double_t, Double_t, PyFloat_FromDouble, PyFloat_AsDouble)
+CPPYY_IMPL_REFEXEC(Float,  float,  double, PyFloat_FromDouble, PyFloat_AsDouble)
+CPPYY_IMPL_REFEXEC(Double, double, double, PyFloat_FromDouble, PyFloat_AsDouble)
 CPPYY_IMPL_REFEXEC(LongDouble, LongDouble_t, LongDouble_t, PyFloat_FromDouble, PyFloat_AsDouble)
 
 //-----------------------------------------------------------------------------
@@ -348,14 +348,14 @@ PyObject* CPyCppyy::T##name##ArrayExecutor::Execute(                          \
 }
 
 CPPYY_IMPL_ARRAY_EXEC(Bool,   bool)
-CPPYY_IMPL_ARRAY_EXEC(Short,  Short_t)
-CPPYY_IMPL_ARRAY_EXEC(UShort, UShort_t)
+CPPYY_IMPL_ARRAY_EXEC(Short,  short)
+CPPYY_IMPL_ARRAY_EXEC(UShort, unsigned short)
 CPPYY_IMPL_ARRAY_EXEC(Int,    Int_t)
 CPPYY_IMPL_ARRAY_EXEC(UInt,   UInt_t)
 CPPYY_IMPL_ARRAY_EXEC(Long,   Long_t)
 CPPYY_IMPL_ARRAY_EXEC(ULong,  ULong_t)
-CPPYY_IMPL_ARRAY_EXEC(Float,  Float_t)
-CPPYY_IMPL_ARRAY_EXEC(Double, Double_t)
+CPPYY_IMPL_ARRAY_EXEC(Float,  float)
+CPPYY_IMPL_ARRAY_EXEC(Double, double)
 
 
 //- special cases ------------------------------------------------------------
@@ -406,7 +406,7 @@ PyObject* CPyCppyy::TCppObjectByValueExecutor::Execute(
         return nullptr;
 
 // python ref counting will now control this object's life span
-    pyobj->HoldOn();
+    pyobj->PythonOwns();
     return (PyObject*)pyobj;
 }
 
@@ -489,7 +489,7 @@ PyObject* CPyCppyy::TCppObjectBySmartPtrExecutor::Execute(
 
     if (pyobj) {
         pyobj->SetSmartPtr((void*)value, fClass);
-        pyobj->HoldOn();  // life-time control by python ref-counting
+        pyobj->PythonOwns();  // life-time control by python ref-counting
     }
 
     return (PyObject*)pyobj;

@@ -20,28 +20,30 @@ typedef _object PyObject;
 class TPyArg {
 public:
 // converting constructors
-   TPyArg( PyObject* );
-   TPyArg( Int_t );
-   TPyArg( Long_t );
-   TPyArg( Double_t );
-   TPyArg( const char* );
+    TPyArg(PyObject*);
+    TPyArg(int);
+    TPyArg(long);
+    TPyArg(double);
+    TPyArg(const char*);
 
-   TPyArg( const TPyArg& );
-   TPyArg& operator=( const TPyArg& );
-   virtual ~TPyArg();
+    TPyArg(const TPyArg&);
+    TPyArg& operator=(const TPyArg&);
+    virtual ~TPyArg();
 
 // "extractor"
-   operator PyObject*() const;
+    operator PyObject*() const;
 
 // constructor and generic dispatch
-   static void CallConstructor( PyObject*& pyself, PyObject* pyclass, const std::vector<TPyArg>& args );
-   static void CallConstructor( PyObject*& pyself, PyObject* pyclass );   // default ctor
-   static PyObject* CallMethod( PyObject* pymeth, const std::vector<TPyArg>& args );
-   static void CallDestructor( PyObject*& pyself, PyObject* pymeth, const std::vector<TPyArg>& args );
-   static void CallDestructor( PyObject*& pyself );
+    static void CallConstructor(
+        PyObject*& pyself, PyObject* pyclass, const std::vector<TPyArg>& args);
+    static void CallConstructor(PyObject*& pyself, PyObject* pyclass);   // default ctor
+    static PyObject* CallMethod(PyObject* pymeth, const std::vector<TPyArg>& args);
+    static void CallDestructor(
+        PyObject*& pyself, PyObject* pymeth, const std::vector<TPyArg>& args);
+    static void CallDestructor(PyObject*& pyself);
 
 private:
-   mutable PyObject* fPyObject;        //! converted C++ value as python object
+    mutable PyObject* fPyObject;        //! converted C++ value as python object
 };
 
 #endif // !CPYCPPYY_TPYARG

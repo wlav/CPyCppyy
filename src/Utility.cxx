@@ -44,7 +44,7 @@ namespace {
 
             gC2POperatorMapping["[]"]  = "__getitem__";
             gC2POperatorMapping["()"]  = "__call__";
-            gC2POperatorMapping["/"]   = CPYCPPYY__div__;
+            gC2POperatorMapping["/"]   = CPPYY__div__;
             gC2POperatorMapping["%"]   = "__mod__";
             gC2POperatorMapping["**"]  = "__pow__";
             gC2POperatorMapping["<<"]  = "__lshift__";
@@ -56,7 +56,7 @@ namespace {
             gC2POperatorMapping["+="]  = "__iadd__";
             gC2POperatorMapping["-="]  = "__isub__";
             gC2POperatorMapping["*="]  = "__imul__";
-            gC2POperatorMapping["/="]  = CPYCPPYY__idiv__;
+            gC2POperatorMapping["/="]  = CPPYY__idiv__;
             gC2POperatorMapping["%="]  = "__imod__";
             gC2POperatorMapping["**="] = "__ipow__";
             gC2POperatorMapping["<<="] = "__ilshift__";
@@ -77,7 +77,7 @@ namespace {
             gC2POperatorMapping["const char *"] = gC2POperatorMapping[ "const char*" ];
             gC2POperatorMapping["char *"]       = gC2POperatorMapping[ "char*" ];
             gC2POperatorMapping["int"]          = "__int__";
-            gC2POperatorMapping["long"]         = CPYCPPYY__long__;
+            gC2POperatorMapping["long"]         = CPPYY__long__;
             gC2POperatorMapping["double"]       = "__float__";
 
         // the following type mappings are "okay"; the assumption is that they
@@ -85,10 +85,10 @@ namespace {
         // they are, that it is done consistently)
             gC2POperatorMapping["short"]              = "__int__";
             gC2POperatorMapping["unsigned short"]     = "__int__";
-            gC2POperatorMapping["unsigned int"]       = CPYCPPYY__long__;
-            gC2POperatorMapping["unsigned long"]      = CPYCPPYY__long__;
-            gC2POperatorMapping["long long"]          = CPYCPPYY__long__;
-            gC2POperatorMapping["unsigned long long"] = CPYCPPYY__long__;
+            gC2POperatorMapping["unsigned int"]       = CPPYY__long__;
+            gC2POperatorMapping["unsigned long"]      = CPPYY__long__;
+            gC2POperatorMapping["long long"]          = CPPYY__long__;
+            gC2POperatorMapping["unsigned long long"] = CPPYY__long__;
             gC2POperatorMapping["float"]              = "__float__";
 
             gC2POperatorMapping["->"]  = "__follow__";      // not an actual python operator

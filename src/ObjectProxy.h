@@ -71,8 +71,8 @@ namespace CPyCppyy {
             return ((CPyCppyyClass*)Py_TYPE(this))->fCppType;
         }
 
-        void HoldOn() { fFlags |= kIsOwner; }
-        void Release() { fFlags &= ~kIsOwner; }
+        void PythonOwns() { fFlags |= kIsOwner; }
+        void CppOwns()    { fFlags &= ~kIsOwner; }
 
     public:              // public, as the python C-API works with C structs
         PyObject_HEAD

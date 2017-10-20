@@ -10,19 +10,19 @@ namespace CPyCppyy {
 // general place holder for function parameters
     struct TParameter {
         union Value {
-            bool         fBool;
-            Short_t      fShort;
-            UShort_t     fUShort;
-            Int_t        fInt;
-            UInt_t       fUInt;
-            Long_t       fLong;
-            ULong_t      fULong;
-            Long64_t     fLongLong;
-            ULong64_t    fULongLong;
-            Float_t      fFloat;
-            Double_t     fDouble;
-            LongDouble_t fLongDouble;
-            void*        fVoidp;
+            bool           fBool;
+            short          fShort;
+            unsigned short fUShort;
+            Int_t          fInt;
+            UInt_t         fUInt;
+            Long_t         fLong;
+            ULong_t        fULong;
+            Long64_t       fLongLong;
+            ULong64_t      fULongLong;
+            float          fFloat;
+            double         fDouble;
+            LongDouble_t   fLongDouble;
+            void*          fVoidp;
         } fValue;
         void* fRef;
         char  fTypeCode;

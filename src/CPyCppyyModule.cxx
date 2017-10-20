@@ -594,7 +594,7 @@ PyObject* SetOwnership(PyObject*, PyObject* args)
             &ObjectProxy_Type, (void*)&pyobj, &PyInt_Type, &pykeep))
         return nullptr;
 
-    (bool)PyLong_AsLong(pykeep) ? pyobj->HoldOn() : pyobj->Release();
+    (bool)PyLong_AsLong(pykeep) ? pyobj->PythonOwns() : pyobj->CppOwns();
 
     Py_RETURN_NONE;
 }
