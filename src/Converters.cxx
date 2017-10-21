@@ -109,18 +109,36 @@ static inline short CPyCppyy_PyLong_AsShort( PyObject* pyobject )
    return (short)l;
 }
 
-static inline Long_t CPyCppyy_PyLong_AsStrictLong( PyObject* pyobject )
+static inline int CPyCppyy_PyLong_AsStrictInt( PyObject* pyobject )
 {
 // strict python integer to C++ integer conversion
 
 // p2.7 and later silently converts floats to long, therefore require this
 // check; earlier pythons may raise a SystemError which should be avoided as
 // it is confusing
-   if ( ! (PyLong_Check( pyobject ) || PyInt_Check( pyobject )) ) {
-      PyErr_SetString( PyExc_TypeError, "int/long conversion expects an integer object" );
-      return (Long_t)-1;
-   }
-   return (Long_t)PyLong_AsLong( pyobject );
+    if (!(PyLong_Check(pyobject) || PyInt_Check(pyobject))) {
+        PyErr_SetString(PyExc_TypeError, "int/long conversion expects an integer object");
+        return -1;
+    }
+    long l = PyLong_AsLong(pyobject);
+    if (l < INT_MIN || INT_MAX < l) {
+        PyErr_Format(PyExc_ValueError, "integer %ld out of range for int", l);
+        return (int)-1;
+
+    }
+    return (int)l;
+}
+
+static inline Long_t CPyCppyy_PyLong_AsStrictLong( PyObject* pyobject )
+{
+// strict python integer to C++ long integer conversion
+
+// prevent float -> long (see CPyCppyy_PyLong_AsStrictInt)
+    if ( ! (PyLong_Check( pyobject ) || PyInt_Check( pyobject )) ) {
+        PyErr_SetString( PyExc_TypeError, "int/long conversion expects an integer object" );
+        return (Long_t)-1;
+    }
+    return (Long_t)PyLong_AsLong( pyobject );
 }
 
 
@@ -308,7 +326,7 @@ CPYCPPYY_IMPLEMENT_BASIC_CONST_CHAR_REF_CONVERTER( UChar, unsigned char,        
 CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( Bool,      bool,    CPyCppyy_PyLong_AsBool )
 CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( Short,     short,   CPyCppyy_PyLong_AsShort )
 CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( UShort,    unsigned short, CPyCppyy_PyLong_AsUShort )
-CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( Int,       Int_t,     CPyCppyy_PyLong_AsStrictLong )
+CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( Int,       Int_t,     CPyCppyy_PyLong_AsStrictInt )
 CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( UInt,      UInt_t,    PyLongOrInt_AsULong )
 CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( Long,      Long_t,    CPyCppyy_PyLong_AsStrictLong )
 CPYCPPYY_IMPLEMENT_BASIC_CONST_REF_CONVERTER( ULong,     ULong_t,   PyLongOrInt_AsULong )
@@ -368,7 +386,7 @@ CPYCPPYY_IMPLEMENT_BASIC_CONVERTER(
 CPYCPPYY_IMPLEMENT_BASIC_CONVERTER(
    UShort, unsigned short, Long_t, PyInt_FromLong,  CPyCppyy_PyLong_AsUShort, 'l' )
 CPYCPPYY_IMPLEMENT_BASIC_CONVERTER(
-   Int,    Int_t,    Long_t, PyInt_FromLong,  CPyCppyy_PyLong_AsStrictLong, 'l' )
+   Int,    Int_t,    Long_t, PyInt_FromLong,  CPyCppyy_PyLong_AsStrictInt, 'l' )
 
 //-----------------------------------------------------------------------------
 bool CPyCppyy::TULongConverter::SetArg(
