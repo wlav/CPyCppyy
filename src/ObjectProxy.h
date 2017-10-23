@@ -67,7 +67,7 @@ namespace CPyCppyy {
 
         Cppyy::TCppType_t ObjectIsA() const
         {
-        // Retrieve a pointer to the C++ type; may return NULL.
+        // Retrieve a pointer to the C++ type; may return nullptr.
             return ((CPyCppyyClass*)Py_TYPE(this))->fCppType;
         }
 

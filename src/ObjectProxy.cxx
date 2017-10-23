@@ -121,7 +121,7 @@ static PyMethodDef op_methods[] = {
     {(char*)"_get_smart_ptr", (PyCFunction)op_get_smart_ptr, METH_NOARGS,
       (char*)"get associated smart pointer, if any"},
     {(char*)nullptr, nullptr, 0, nullptr}
-   };
+};
 
 
 //= CPyCppyy object proxy construction/destruction ===========================
