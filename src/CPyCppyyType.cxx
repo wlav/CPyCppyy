@@ -11,8 +11,11 @@
 
 // Standard
 #include <string.h>
+#include <set>
 #include <string>
 #include <vector>
+
+#include <iostream>
 
 
 namespace CPyCppyy {
@@ -188,6 +191,55 @@ static PyObject* pt_getattro(PyObject* pyclass, PyObject* pyname)
 
 
 //-----------------------------------------------------------------------------
+static PyObject* meta_dir(CPyCppyyClass* klass)
+{
+// Collect a list of everything (currently) available in the namespace.
+// The backend can filter by returning empty strings. Special care is
+// taken for functions, which need not be unique (overloading).
+    using namespace Cppyy;
+
+    std::vector<PyObject*> alldir;
+    alldir.reserve(128);
+
+// add (sub)scopes
+    for (TCppIndex_t i = 0; i < GetNumScopes(klass->fCppType); ++i)
+        alldir.push_back(CPyCppyy_PyUnicode_FromString(
+                             GetScopeName(klass->fCppType, i).c_str()));
+
+// add methods
+    std::set<std::string> allmeth;
+    for (TCppIndex_t i = 0; i < GetNumMethods(klass->fCppType); ++i) {
+        TCppIndex_t idx = GetMethodIndexAt(klass->fCppType, i);
+        const std::string& mname = GetMethodName(idx);
+        if (!mname.empty()) allmeth.insert(mname);
+    }
+
+    for (const auto& m : allmeth)
+        alldir.push_back(CPyCppyy_PyUnicode_FromString(m.c_str()));
+
+// add (global) data
+    for (TCppIndex_t i = 0; i < GetNumDatamembers(klass->fCppType); ++i) {
+        const std::string& dname = GetDatamemberName(klass->fCppType, i);
+        if (!dname.empty())
+            alldir.push_back(CPyCppyy_PyUnicode_FromString(dname.c_str()));
+    }
+
+// copy into python list
+    PyObject* pyalldir = PyList_New(alldir.size());
+    for (size_t i = 0; i < alldir.size(); ++i)
+        PyList_SET_ITEM(pyalldir, i, alldir[i]);
+
+    return pyalldir;
+}
+
+//-----------------------------------------------------------------------------
+static PyMethodDef meta_methods[] = {
+    {(char*)"__dir__",  (PyCFunction)meta_dir,  METH_NOARGS, nullptr},
+    {(char*)nullptr, nullptr, 0, nullptr}
+};
+
+
+//-----------------------------------------------------------------------------
 static PyObject* meta_getcppname(CPyCppyyClass* meta, void*)
 {
     return CPyCppyy_PyUnicode_FromString(Cppyy::GetScopedFinalName(meta->fCppType).c_str());
@@ -244,7 +296,7 @@ PyTypeObject CPyCppyyType_Type = {
     0,                             // tp_weaklistoffset
     0,                             // tp_iter
     0,                             // tp_iternext
-    0,                             // tp_methods
+    meta_methods,                  // tp_methods
     0,                             // tp_members
     meta_getset,                   // tp_getset
     &PyType_Type,                  // tp_base
