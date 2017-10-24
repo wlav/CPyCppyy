@@ -200,6 +200,37 @@ static PyObject* op_repr(ObjectProxy* pyobj)
         const_cast<char*>("<cppyy.gbl.%s object at %p>"), clName.c_str(), pyobj->GetObject());
 }
 
+
+//-----------------------------------------------------------------------------
+static PyObject* op_getownership(ObjectProxy* pyobj, void*)
+{
+    return PyBool_FromLong((long)(pyobj->fFlags & ObjectProxy::kIsOwner));
+}
+
+//-----------------------------------------------------------------------------
+static int op_setownership(ObjectProxy* pyobj, PyObject* value, void*)
+{
+// Set the ownership (True is python-owns) for the given object.
+    long shouldown = PyLong_AsLong(value);
+    if (shouldown == -1 && PyErr_Occurred()) {
+        PyErr_SetString(PyExc_ValueError, "__python_owns should be either True or False");
+        return -1;
+    }
+
+    (bool)shouldown ? pyobj->PythonOwns() : pyobj->CppOwns();
+
+    return 0;
+}
+
+
+//-----------------------------------------------------------------------------
+static PyGetSetDef op_getset[] = {
+    {(char*)"__python_owns__", (getter)op_getownership, (setter)op_setownership,
+      (char*)"If true, python manages the life time of this object", nullptr},
+ {(char*)nullptr, nullptr, nullptr, nullptr, nullptr}
+};
+
+
 //= CPyCppyy type number stubs to allow dynamic overrides =====================
 #define CPYCPPYY_STUB(name, op, pystring)                                     \
 static PyObject* op_##name##_stub(PyObject* left, PyObject* right)            \
@@ -326,7 +357,7 @@ PyTypeObject ObjectProxy_Type = {
     0,                             // tp_iternext
     op_methods,                    // tp_methods
     0,                             // tp_members
-    0,                             // tp_getset
+    op_getset,                     // tp_getset
     0,                             // tp_base
     0,                             // tp_dict
     0,                             // tp_descr_get
