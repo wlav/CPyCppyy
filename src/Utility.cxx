@@ -11,8 +11,6 @@
 #include "PyCallable.h"
 
 // Standard
-#include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <algorithm>
 #include <list>
@@ -126,18 +124,18 @@ namespace {
 
 
 //- public functions ---------------------------------------------------------
-ULong_t CPyCppyy::PyLongOrInt_AsULong( PyObject* pyobject )
+unsigned long CPyCppyy::PyLongOrInt_AsULong(PyObject* pyobject)
 {
 // Convert <pybject> to C++ unsigned long, with bounds checking, allow int -> ulong.
-    ULong_t ul = PyLong_AsUnsignedLong( pyobject );
-    if ( PyErr_Occurred() && PyInt_Check( pyobject ) ) {
+    unsigned long ul = PyLong_AsUnsignedLong( pyobject );
+    if (PyErr_Occurred() && PyInt_Check(pyobject)) {
         PyErr_Clear();
-        Long_t i = PyInt_AS_LONG( pyobject );
-        if ( 0 <= i ) {
-            ul = (ULong_t)i;
+        long i = PyInt_AS_LONG(pyobject);
+        if (0 <= i) {
+            ul = (unsigned long)i;
         } else {
             PyErr_SetString( PyExc_ValueError,
-                "can\'t convert negative value to unsigned long" );
+                "can\'t convert negative value to unsigned long");
         }
     }
 
@@ -145,18 +143,18 @@ ULong_t CPyCppyy::PyLongOrInt_AsULong( PyObject* pyobject )
 }
 
 //----------------------------------------------------------------------------
-ULong64_t CPyCppyy::PyLongOrInt_AsULong64( PyObject* pyobject )
+ULong64_t CPyCppyy::PyLongOrInt_AsULong64(PyObject* pyobject)
 {
 // Convert <pyobject> to C++ unsigned long long, with bounds checking.
-    ULong64_t ull = PyLong_AsUnsignedLongLong( pyobject );
-    if ( PyErr_Occurred() && PyInt_Check( pyobject ) ) {
+    ULong64_t ull = PyLong_AsUnsignedLongLong(pyobject);
+    if ( PyErr_Occurred() && PyInt_Check(pyobject)) {
         PyErr_Clear();
-        Long_t i = PyInt_AS_LONG( pyobject );
-        if ( 0 <= i ) {
+        long i = PyInt_AS_LONG(pyobject);
+        if (0 <= i) {
             ull = (ULong64_t)i;
         } else {
             PyErr_SetString( PyExc_ValueError,
-               "can\'t convert negative value to unsigned long long" );
+                "can\'t convert negative value to unsigned long long");
         }
     }
 
@@ -165,31 +163,31 @@ ULong64_t CPyCppyy::PyLongOrInt_AsULong64( PyObject* pyobject )
 
 //----------------------------------------------------------------------------
 bool CPyCppyy::Utility::AddToClass(
-      PyObject* pyclass, const char* label, PyCFunction cfunc, int flags )
+     PyObject* pyclass, const char* label, PyCFunction cfunc, int flags)
 {
 // Add the given function to the class under name 'label'.
 
 // use list for clean-up (.so's are unloaded only at interpreter shutdown)
-    static std::list< PyMethodDef > s_pymeths;
+    static std::list<PyMethodDef> s_pymeths;
 
-    s_pymeths.push_back( PyMethodDef() );
+    s_pymeths.push_back(PyMethodDef());
     PyMethodDef* pdef = &s_pymeths.back();
-    pdef->ml_name  = const_cast< char* >( label );
+    pdef->ml_name  = const_cast<char*>(label);
     pdef->ml_meth  = cfunc;
     pdef->ml_flags = flags;
     pdef->ml_doc   = NULL;
 
-    PyObject* func = PyCFunction_New( pdef, NULL );
-    PyObject* method = TCustomInstanceMethod_New( func, NULL, pyclass );
-    bool isOk = PyObject_SetAttrString( pyclass, pdef->ml_name, method ) == 0;
-    Py_DECREF( method );
-    Py_DECREF( func );
+    PyObject* func = PyCFunction_New(pdef, NULL);
+    PyObject* method = TCustomInstanceMethod_New(func, NULL, pyclass);
+    bool isOk = PyObject_SetAttrString(pyclass, pdef->ml_name, method) == 0;
+    Py_DECREF(method);
+    Py_DECREF(func);
 
-    if ( PyErr_Occurred() )
+    if (PyErr_Occurred())
         return false;
 
-    if ( ! isOk ) {
-        PyErr_Format( PyExc_TypeError, "could not add method %s", label );
+    if (!isOk) {
+        PyErr_Format(PyExc_TypeError, "could not add method %s", label);
         return false;
     }
 
@@ -197,41 +195,41 @@ bool CPyCppyy::Utility::AddToClass(
 }
 
 //----------------------------------------------------------------------------
-bool CPyCppyy::Utility::AddToClass( PyObject* pyclass, const char* label, const char* func )
+bool CPyCppyy::Utility::AddToClass(PyObject* pyclass, const char* label, const char* func)
 {
 // Add the given function to the class under name 'label'.
-    PyObject* pyfunc = PyObject_GetAttrString( pyclass, const_cast< char* >( func ) );
-    if ( ! pyfunc )
+    PyObject* pyfunc = PyObject_GetAttrString(pyclass, const_cast<char*>(func));
+    if (!pyfunc)
         return false;
 
-    bool isOk = PyObject_SetAttrString( pyclass, const_cast< char* >( label ), pyfunc ) == 0;
+    bool isOk = PyObject_SetAttrString(pyclass, const_cast<char*>(label), pyfunc) == 0;
 
-    Py_DECREF( pyfunc );
+    Py_DECREF(pyfunc);
     return isOk;
 }
 
 //----------------------------------------------------------------------------
-bool CPyCppyy::Utility::AddToClass( PyObject* pyclass, const char* label, PyCallable* pyfunc )
+bool CPyCppyy::Utility::AddToClass(PyObject* pyclass, const char* label, PyCallable* pyfunc)
 {
 // Add the given function to the class under name 'label'.
     MethodProxy* method =
-        (MethodProxy*)PyObject_GetAttrString( pyclass, const_cast< char* >( label ) );
+        (MethodProxy*)PyObject_GetAttrString(pyclass, const_cast<char*>(label));
 
-    if ( ! method || ! MethodProxy_Check( method ) ) {
+    if (!method || !MethodProxy_Check(method)) {
     // not adding to existing MethodProxy; add callable directly to the class
-        if ( PyErr_Occurred() )
+        if (PyErr_Occurred())
             PyErr_Clear();
-        Py_XDECREF( (PyObject*)method );
-        method = MethodProxy_New( label, pyfunc );
+        Py_XDECREF((PyObject*)method);
+        method = MethodProxy_New(label, pyfunc);
         bool isOk = PyObject_SetAttrString(
-            pyclass, const_cast< char* >( label ), (PyObject*)method ) == 0;
-        Py_DECREF( method );
+            pyclass, const_cast<char*>(label), (PyObject*)method) == 0;
+        Py_DECREF(method);
         return isOk;
     }
 
-    method->AddMethod( pyfunc );
+    method->AddMethod(pyfunc);
 
-    Py_DECREF( method );
+    Py_DECREF(method);
     return true;
 }
 
@@ -241,16 +239,16 @@ bool CPyCppyy::Utility::AddUsingToClass(PyObject* pyclass, const char* method)
 // Helper to add base class methods to the derived class one (this covers the
 // 'using' cases, which the dictionary does not provide).
     MethodProxy* derivedMethod =
-        (MethodProxy*)PyObject_GetAttrString( pyclass, const_cast<char*>(method));
-    if ( ! MethodProxy_Check( derivedMethod ) ) {
-        Py_XDECREF( derivedMethod );
+        (MethodProxy*)PyObject_GetAttrString(pyclass, const_cast<char*>(method));
+    if (!MethodProxy_Check(derivedMethod)) {
+        Py_XDECREF(derivedMethod);
         return false;
     }
 
-    PyObject* mro = PyObject_GetAttr( pyclass, PyStrings::gMRO );
-    if ( ! mro || ! PyTuple_Check( mro ) ) {
-        Py_XDECREF( mro );
-        Py_DECREF( derivedMethod );
+    PyObject* mro = PyObject_GetAttr(pyclass, PyStrings::gMRO);
+    if (!mro || ! PyTuple_Check(mro)) {
+        Py_XDECREF(mro);
+        Py_DECREF(derivedMethod);
         return false;
     }
 
@@ -271,7 +269,7 @@ bool CPyCppyy::Utility::AddUsingToClass(PyObject* pyclass, const char* method)
         baseMethod = 0;
     }
 
-    Py_DECREF( mro );
+    Py_DECREF(mro);
 
     if (!MethodProxy_Check(baseMethod)) {
         Py_XDECREF(baseMethod);
@@ -340,7 +338,7 @@ Cppyy::TCppMethod_t FindAndAddOperator(const std::string& lcname, const std::str
     if (idx == (Cppyy::TCppIndex_t)-1)
         return (Cppyy::TCppMethod_t)0;
 
-    return Cppyy::GetMethod( scope, idx );
+    return Cppyy::GetMethod(scope, idx);
 }
 
 bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& lcname,
@@ -454,7 +452,7 @@ std::string CPyCppyy::Utility::ConstructTemplateArgs(PyObject* pyname, PyObject*
             PyObject* tpName = PyObject_GetAttr(tn, PyStrings::gName);
 
         // special case for strings
-            if (strcmp(CPyCppyy_PyUnicode_AsString(tpName), "str" ) == 0)
+            if (strcmp(CPyCppyy_PyUnicode_AsString(tpName), "str") == 0)
                 tmpl_name << "std::string";
             else
                 tmpl_name << CPyCppyy_PyUnicode_AsString(tpName);
@@ -468,7 +466,7 @@ std::string CPyCppyy::Utility::ConstructTemplateArgs(PyObject* pyname, PyObject*
             Py_DECREF(pystr);
         } else {
             PyErr_SetString(PyExc_SyntaxError,
-                    "could not construct C++ name from provided template argument.");
+                "could not construct C++ name from provided template argument.");
             return "";
         }
 

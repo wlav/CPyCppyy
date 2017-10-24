@@ -15,8 +15,8 @@ namespace CPyCppyy {
     extern bool gDictLookupActive;
 
 // additional converter functions
-    ULong_t PyLongOrInt_AsULong(PyObject* pyobject);
-    ULong64_t PyLongOrInt_AsULong64(PyObject* pyobject);
+    unsigned long PyLongOrInt_AsULong(PyObject* pyobject);
+    ULong64_t     PyLongOrInt_AsULong64(PyObject* pyobject);
 
     namespace Utility {
 
