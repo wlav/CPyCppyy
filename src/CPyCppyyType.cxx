@@ -28,7 +28,6 @@ static PyObject* meta_alloc(PyTypeObject* metatype, Py_ssize_t nitems)
 static void meta_dealloc(CPyCppyyClass* metatype)
 {
     delete metatype->fCppObjects; metatype->fCppObjects = nullptr;
-    delete metatype->fWeakRefs;   metatype->fWeakRefs   = nullptr;
     return PyType_Type.tp_dealloc((PyObject*)metatype);
 }
 
@@ -63,7 +62,6 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
         return nullptr;
 
     result->fCppObjects = new CppToPyMap_t;
-    result->fWeakRefs   = new WeakRefMap_t;
 
 // initialization of class (based on metatype)
     const char* mp = strstr(subtype->tp_name, "_meta");

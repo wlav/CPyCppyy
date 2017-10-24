@@ -28,15 +28,15 @@
 
 //- data _______________________________________________________________________
 namespace CPyCppyy {
-   extern PyObject* gThisModule;
+    extern PyObject* gThisModule;
 
 // TODO: move this to Cppyy.cxx (if possible) (and gPinnedTypes should be a hashmap)
-   extern std::vector<std::pair<Cppyy::TCppType_t, Cppyy::TCppType_t> > gPinnedTypes;
-   extern std::vector<Cppyy::TCppType_t> gIgnorePinnings;
+    extern std::vector<std::pair<Cppyy::TCppType_t, Cppyy::TCppType_t>> gPinnedTypes;
+    extern std::vector<Cppyy::TCppType_t> gIgnorePinnings;
 }
 
 // to prevent having to walk scopes, track python classes by C++ class
-typedef std::map< Cppyy::TCppScope_t, PyObject* > PyClassMap_t;
+typedef std::map<Cppyy::TCppScope_t, PyObject*> PyClassMap_t;
 static PyClassMap_t gPyClasses;
 
 
@@ -104,47 +104,47 @@ static PyObject* CreateNewCppProxyClass(Cppyy::TCppScope_t klass, PyObject* pyba
 
 static inline
 void AddPropertyToClass1(
-      PyObject* pyclass, CPyCppyy::PropertyProxy* property, bool isStatic )
+    PyObject* pyclass, CPyCppyy::PropertyProxy* property, bool isStatic)
 {
 // allow access at the instance level
-   PyObject_SetAttrString( pyclass,
-      const_cast< char* >( property->GetName().c_str() ), (PyObject*)property );
+    PyObject_SetAttrString(pyclass,
+        const_cast<char*>(property->GetName().c_str()), (PyObject*)property);
 
 // allow access at the class level (always add after setting instance level)
-   if ( isStatic ) {
-      PyObject_SetAttrString( (PyObject*)Py_TYPE(pyclass),
-         const_cast< char* >( property->GetName().c_str() ), (PyObject*)property );
-   }
+    if (isStatic) {
+        PyObject_SetAttrString((PyObject*)Py_TYPE(pyclass),
+            const_cast<char*>(property->GetName().c_str()), (PyObject*)property);
+    }
 }
 
 static inline
 void AddPropertyToClass( PyObject* pyclass,
-      Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t idata )
+    Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t idata )
 {
-   CPyCppyy::PropertyProxy* property = CPyCppyy::PropertyProxy_New( scope, idata );
-   AddPropertyToClass1( pyclass, property, Cppyy::IsStaticData( scope, idata ) );
-   Py_DECREF( property );
+    CPyCppyy::PropertyProxy* property = CPyCppyy::PropertyProxy_New( scope, idata );
+    AddPropertyToClass1( pyclass, property, Cppyy::IsStaticData( scope, idata ) );
+    Py_DECREF( property );
 }
 
 static inline
 void AddPropertyToClass( PyObject* pyclass,
-      Cppyy::TCppScope_t scope, const std::string& name, void* address )
+    Cppyy::TCppScope_t scope, const std::string& name, void* address )
 {
-   CPyCppyy::PropertyProxy* property =
-      CPyCppyy::PropertyProxy_NewConstant( scope, name, address );
-   AddPropertyToClass1( pyclass, property, true );
-   Py_DECREF( property );
+    CPyCppyy::PropertyProxy* property =
+        CPyCppyy::PropertyProxy_NewConstant( scope, name, address );
+    AddPropertyToClass1( pyclass, property, true );
+    Py_DECREF( property );
 }
 
 
 static inline
 void AddToGlobalScope(
-      const char* label, const char* /* hdr */, void* obj, Cppyy::TCppType_t klass )
+    const char* label, const char* /* hdr */, void* obj, Cppyy::TCppType_t klass )
 {
 // Bind the given object with the given class in the global scope with the
 // given label for its reference.
-   PyModule_AddObject( CPyCppyy::gThisModule, const_cast< char* >( label ),
-      CPyCppyy::BindCppObjectNoCast( obj, klass ) );
+    PyModule_AddObject( CPyCppyy::gThisModule, const_cast< char* >( label ),
+        CPyCppyy::BindCppObjectNoCast( obj, klass ) );
 }
 
 } // namespace CPyCppyy
@@ -158,188 +158,188 @@ static int BuildScopeProxyDict( Cppyy::TCppScope_t scope, PyObject* pyclass ) {
 // proxy object.
 
 // some properties that'll affect building the dictionary
-   bool isNamespace = Cppyy::IsNamespace( scope );
-   bool hasConstructor = false;
+    bool isNamespace = Cppyy::IsNamespace( scope );
+    bool hasConstructor = false;
 
 // load all public methods and data members
-   typedef std::vector< PyCallable* > Callables_t;
-   typedef std::map< std::string, Callables_t > CallableCache_t;
-   CallableCache_t cache;
+    typedef std::vector< PyCallable* > Callables_t;
+    typedef std::map< std::string, Callables_t > CallableCache_t;
+    CallableCache_t cache;
 
 // bypass custom __getattr__ for efficiency
-   getattrofunc oldgetattro = Py_TYPE(pyclass)->tp_getattro;
-   Py_TYPE(pyclass)->tp_getattro = PyType_Type.tp_getattro;
+    getattrofunc oldgetattro = Py_TYPE(pyclass)->tp_getattro;
+    Py_TYPE(pyclass)->tp_getattro = PyType_Type.tp_getattro;
 
 // functions in namespaces are properly found through lazy lookup, so do not
 // create them until needed (the same is not true for data members)
-   const Cppyy::TCppIndex_t nMethods =
-      Cppyy::IsNamespace( scope ) ? 0 : Cppyy::GetNumMethods( scope );
-   for ( Cppyy::TCppIndex_t imeth = 0; imeth < nMethods; ++imeth ) {
-      Cppyy::TCppMethod_t method = Cppyy::GetMethod( scope, imeth );
+    const Cppyy::TCppIndex_t nMethods =
+        Cppyy::IsNamespace( scope ) ? 0 : Cppyy::GetNumMethods( scope );
+    for ( Cppyy::TCppIndex_t imeth = 0; imeth < nMethods; ++imeth ) {
+        Cppyy::TCppMethod_t method = Cppyy::GetMethod( scope, imeth );
 
-   // process the method based on its name
-      std::string mtCppName = Cppyy::GetMethodName( method );
+    // process the method based on its name
+        std::string mtCppName = Cppyy::GetMethodName( method );
 
-   // special case trackers
-      bool setupSetItem = false;
-      bool isConstructor = Cppyy::IsConstructor( method );
-      bool isTemplate = isConstructor ? false : Cppyy::IsMethodTemplate( scope, imeth );
+    // special case trackers
+        bool setupSetItem = false;
+        bool isConstructor = Cppyy::IsConstructor( method );
+        bool isTemplate = isConstructor ? false : Cppyy::IsMethodTemplate( scope, imeth );
 
-   // filter empty names (happens for namespaces, is bug?)
-      if ( mtCppName == "" )
-         continue;
-
-   // filter C++ destructors
-      if ( mtCppName[0] == '~' )
-         continue;
-
-   // translate operators
-      std::string mtName = Utility::MapOperatorName( mtCppName, Cppyy::GetMethodNumArgs( method ) );
-
-   // operator[]/() returning a reference type will be used for __setitem__
-      if ( mtName == "__call__" || mtName == "__getitem__" ) {
-         const std::string& qual_return = Cppyy::ResolveName( Cppyy::GetMethodResultType( method ) );
-         if ( qual_return.find( "const", 0, 5 ) == std::string::npos ) {
-            const std::string& cpd = Utility::Compound( qual_return );
-            if ( ! cpd.empty() && cpd[ cpd.size() - 1 ] == '&' ) {
-               setupSetItem = true;
-            }
-         }
-      }
-
-   // public methods are normally visible, private methods are mangled python-wise
-   // note the overload implications which are name based, and note that genreflex
-   // does not create the interface methods for private/protected methods ...
-   // TODO: check whether Cling allows private method calling; otherwise delete this
-      if ( ! Cppyy::IsPublicMethod( method ) ) {
-         if ( isConstructor )                // don't expose private ctors
+    // filter empty names (happens for namespaces, is bug?)
+        if ( mtCppName == "" )
             continue;
-         else {                              // mangle private methods
-         // TODO: drop use of TClassEdit here ...
-         //            const std::string& clName = TClassEdit::ShortType(
-         //               Cppyy::GetFinalName( scope ).c_str(), TClassEdit::kDropAlloc );
-            const std::string& clName = Cppyy::GetFinalName( scope );
-            mtName = "_" + clName + "__" + mtName;
-         }
-      }
 
-   // template members; handled by adding a dispatcher to the class
-      if ( isTemplate ) {
-      // TODO: the following is incorrect if both base and derived have the same
-      // templated method (but that is an unlikely scenario anyway)
-         PyObject* attr = PyObject_GetAttrString( pyclass, const_cast< char* >( mtName.c_str() ) );
-         if ( ! TemplateProxy_Check( attr ) ) {
-            PyErr_Clear();
-            TemplateProxy* pytmpl = TemplateProxy_New( mtCppName, mtName, pyclass );
-            if ( MethodProxy_Check( attr ) ) pytmpl->AddOverload( (MethodProxy*)attr );
-            PyObject_SetAttrString(
-               pyclass, const_cast< char* >( mtName.c_str() ), (PyObject*)pytmpl );
-            Py_DECREF( pytmpl );
-         }
-         Py_XDECREF( attr );
-      // continue processing to actually add the method so that the proxy can find
-      // it on the class when called explicitly
-      }
+    // filter C++ destructors
+        if ( mtCppName[0] == '~' )
+            continue;
 
-   // construct the holder
-      PyCallable* pycall = 0;
-      if ( Cppyy::IsStaticMethod( method ) ) // class method
-         pycall = new TClassMethodHolder( scope, method );
-      else if ( isNamespace )                // free function
-         pycall = new TFunctionHolder( scope, method );
-      else if ( isConstructor ) {            // constructor
-         pycall = new TConstructorHolder( scope, method );
-         mtName = "__init__";
-         hasConstructor = true;
-      } else                                 // member function
-         pycall = new TMethodHolder( scope, method );
+    // translate operators
+        std::string mtName = Utility::MapOperatorName( mtCppName, Cppyy::GetMethodNumArgs( method ) );
 
-   // lookup method dispatcher and store method
-      Callables_t& md = (*(cache.insert(
-         std::make_pair( mtName, Callables_t() ) ).first)).second;
-      md.push_back( pycall );
+    // operator[]/() returning a reference type will be used for __setitem__
+        if ( mtName == "__call__" || mtName == "__getitem__" ) {
+            const std::string& qual_return = Cppyy::ResolveName( Cppyy::GetMethodResultType( method ) );
+            if ( qual_return.find( "const", 0, 5 ) == std::string::npos ) {
+                const std::string& cpd = Utility::Compound( qual_return );
+                if ( ! cpd.empty() && cpd[ cpd.size() - 1 ] == '&' ) {
+                    setupSetItem = true;
+                }
+            }
+        }
 
-   // special case for operator[]/() that returns by ref, use for getitem/call and setitem
-      if ( setupSetItem ) {
-         Callables_t& setitem = (*(cache.insert(
-            std::make_pair( std::string( "__setitem__" ), Callables_t() ) ).first)).second;
-         setitem.push_back( new TSetItemHolder( scope, method ) );
-      }
+    // public methods are normally visible, private methods are mangled python-wise
+    // note the overload implications which are name based, and note that genreflex
+    // does not create the interface methods for private/protected methods ...
+    // TODO: check whether Cling allows private method calling; otherwise delete this
+        if ( ! Cppyy::IsPublicMethod( method ) ) {
+            if (isConstructor)              // don't expose private ctors
+                continue;
+            else {                           // mangle private methods
+            // TODO: drop use of TClassEdit here ...
+            //            const std::string& clName = TClassEdit::ShortType(
+            //               Cppyy::GetFinalName( scope ).c_str(), TClassEdit::kDropAlloc );
+                const std::string& clName = Cppyy::GetFinalName( scope );
+                mtName = "_" + clName + "__" + mtName;
+           }
+       }
 
-      if ( isTemplate ) {
-         PyObject* attr = PyObject_GetAttrString( pyclass, const_cast< char* >( mtName.c_str() ) );
-         ((TemplateProxy*)attr)->AddTemplate( pycall->Clone() );
-         Py_DECREF( attr );
-      }
-   }
+    // template members; handled by adding a dispatcher to the class
+        if ( isTemplate ) {
+        // TODO: the following is incorrect if both base and derived have the same
+        // templated method (but that is an unlikely scenario anyway)
+            PyObject* attr = PyObject_GetAttrString( pyclass, const_cast< char* >( mtName.c_str() ) );
+            if ( ! TemplateProxy_Check( attr ) ) {
+                PyErr_Clear();
+                TemplateProxy* pytmpl = TemplateProxy_New( mtCppName, mtName, pyclass );
+                if ( MethodProxy_Check( attr ) ) pytmpl->AddOverload( (MethodProxy*)attr );
+                PyObject_SetAttrString(
+                    pyclass, const_cast< char* >( mtName.c_str() ), (PyObject*)pytmpl );
+                Py_DECREF( pytmpl );
+            }
+            Py_XDECREF( attr );
+        // continue processing to actually add the method so that the proxy can find
+        // it on the class when called explicitly
+        }
+
+    // construct the holder
+        PyCallable* pycall = 0;
+        if (Cppyy::IsStaticMethod(method))  // class method
+            pycall = new TClassMethodHolder( scope, method );
+        else if (isNamespace)               // free function
+            pycall = new TFunctionHolder( scope, method );
+        else if (isConstructor) {           // constructor
+            pycall = new TConstructorHolder( scope, method );
+            mtName = "__init__";
+            hasConstructor = true;
+        } else                              // member function
+            pycall = new TMethodHolder( scope, method );
+
+    // lookup method dispatcher and store method
+        Callables_t& md = (*(cache.insert(
+            std::make_pair( mtName, Callables_t() ) ).first)).second;
+        md.push_back( pycall );
+
+    // special case for operator[]/() that returns by ref, use for getitem/call and setitem
+        if ( setupSetItem ) {
+            Callables_t& setitem = (*(cache.insert(
+                std::make_pair( std::string( "__setitem__" ), Callables_t() ) ).first)).second;
+            setitem.push_back( new TSetItemHolder( scope, method ) );
+        }
+
+        if ( isTemplate ) {
+            PyObject* attr = PyObject_GetAttrString( pyclass, const_cast< char* >( mtName.c_str() ) );
+            ((TemplateProxy*)attr)->AddTemplate( pycall->Clone() );
+            Py_DECREF( attr );
+        }
+    }
 
 // add a pseudo-default ctor, if none defined
-   if ( ! isNamespace && ! hasConstructor )
-      cache[ "__init__" ].push_back( new TConstructorHolder( scope, (Cppyy::TCppMethod_t)0 ) );
+    if ( ! isNamespace && ! hasConstructor )
+        cache[ "__init__" ].push_back( new TConstructorHolder( scope, (Cppyy::TCppMethod_t)0 ) );
 
 // add the methods to the class dictionary
-   for ( CallableCache_t::iterator imd = cache.begin(); imd != cache.end(); ++imd ) {
-   // in order to prevent removing templated editions of this method (which were set earlier,
-   // above, as a different proxy object), we'll check and add this method flagged as a generic
-   // one (to be picked up by the templated one as appropriate) if a template exists
-      PyObject* attr = PyObject_GetAttrString( pyclass, const_cast< char* >( imd->first.c_str() ) );
-      if ( TemplateProxy_Check( attr ) ) {
-      // template exists, supply it with the non-templated method overloads
-         for ( Callables_t::iterator cit = imd->second.begin(); cit != imd->second.end(); ++cit )
-            ((TemplateProxy*)attr)->AddOverload( *cit );
-      } else {
-         if ( ! attr ) PyErr_Clear();
-      // normal case, add a new method
-         MethodProxy* method = MethodProxy_New( imd->first, imd->second );
-         PyObject_SetAttrString(
-            pyclass, const_cast< char* >( method->GetName().c_str() ), (PyObject*)method );
-         Py_DECREF( method );
-      }
+    for ( CallableCache_t::iterator imd = cache.begin(); imd != cache.end(); ++imd ) {
+    // in order to prevent removing templated editions of this method (which were set earlier,
+    // above, as a different proxy object), we'll check and add this method flagged as a generic
+    // one (to be picked up by the templated one as appropriate) if a template exists
+        PyObject* attr = PyObject_GetAttrString( pyclass, const_cast< char* >( imd->first.c_str() ) );
+        if ( TemplateProxy_Check( attr ) ) {
+        // template exists, supply it with the non-templated method overloads
+            for ( Callables_t::iterator cit = imd->second.begin(); cit != imd->second.end(); ++cit )
+                ((TemplateProxy*)attr)->AddOverload( *cit );
+        } else {
+            if ( ! attr ) PyErr_Clear();
+        // normal case, add a new method
+            MethodProxy* method = MethodProxy_New( imd->first, imd->second );
+            PyObject_SetAttrString(
+                pyclass, const_cast< char* >( method->GetName().c_str() ), (PyObject*)method );
+            Py_DECREF( method );
+        }
 
-      Py_XDECREF( attr );     // could have be found in base class or non-existent
-   }
+        Py_XDECREF( attr );       // could have be found in base class or non-existent
+    }
 
-// collect data members (including enums)
-   const Cppyy::TCppIndex_t nDataMembers = Cppyy::GetNumDatamembers( scope );
-   for ( Cppyy::TCppIndex_t idata = 0; idata < nDataMembers; ++idata ) {
-   // allow only public members
-      if ( ! Cppyy::IsPublicData( scope, idata ) )
-         continue;
-
-   // enum datamembers (this in conjunction with previously collected enums above)
-      if ( Cppyy::IsEnumData( scope, idata ) && Cppyy::IsStaticData( scope, idata ) ) {
-      // some implementation-specific data members have no address: ignore them
-         if ( ! Cppyy::GetDatamemberOffset( scope, idata ) )
+ // collect data members (including enums)
+    const Cppyy::TCppIndex_t nDataMembers = Cppyy::GetNumDatamembers( scope );
+    for ( Cppyy::TCppIndex_t idata = 0; idata < nDataMembers; ++idata ) {
+    // allow only public members
+        if ( ! Cppyy::IsPublicData( scope, idata ) )
             continue;
 
-      // two options: this is a static variable, or it is the enum value, the latter
-      // already exists, so check for it and move on if set
-         PyObject* eset = PyObject_GetAttrString( pyclass,
-            const_cast<char*>( Cppyy::GetDatamemberName( scope, idata ).c_str()) );
-         if ( eset ) {
-            Py_DECREF( eset );
-            continue;
-         }
+    // enum datamembers (this in conjunction with previously collected enums above)
+        if ( Cppyy::IsEnumData( scope, idata ) && Cppyy::IsStaticData( scope, idata ) ) {
+        // some implementation-specific data members have no address: ignore them
+            if ( ! Cppyy::GetDatamemberOffset( scope, idata ) )
+                continue;
 
-         PyErr_Clear();
+        // two options: this is a static variable, or it is the enum value, the latter
+        // already exists, so check for it and move on if set
+            PyObject* eset = PyObject_GetAttrString( pyclass,
+                const_cast<char*>( Cppyy::GetDatamemberName( scope, idata ).c_str()) );
+            if ( eset ) {
+                Py_DECREF( eset );
+                continue;
+            }
 
-      // it could still be that this is an anonymous enum, which is not in the list
-      // provided by the class
-         if ( strstr( Cppyy::GetDatamemberType( scope, idata ).c_str(), "(anonymous)" ) != 0 ) {
-            AddPropertyToClass( pyclass, scope, idata );
-            continue;
-         }
-      }
+            PyErr_Clear();
 
-   // properties (aka public (static) data members)
-      AddPropertyToClass( pyclass, scope, idata );
-   }
+        // it could still be that this is an anonymous enum, which is not in the list
+        // provided by the class
+            if ( strstr( Cppyy::GetDatamemberType( scope, idata ).c_str(), "(anonymous)" ) != 0 ) {
+                AddPropertyToClass( pyclass, scope, idata );
+                continue;
+            }
+        }
+
+    // properties (aka public (static) data members)
+        AddPropertyToClass( pyclass, scope, idata );
+    }
 
 // restore custom __getattr__
-   Py_TYPE(pyclass)->tp_getattro = oldgetattro;
+    Py_TYPE(pyclass)->tp_getattro = oldgetattro;
 
 // all ok, done
-   return 0;
+    return 0;
 }
 
 //----------------------------------------------------------------------------
@@ -431,7 +431,7 @@ PyObject* CPyCppyy::GetScopeProxy( Cppyy::TCppScope_t scope )
    PyClassMap_t::iterator pci = gPyClasses.find( scope );
    if ( pci != gPyClasses.end() ) {
       PyObject* pyclass = PyWeakref_GetObject( pci->second );
-      if ( pyclass ) {
+      if ( pyclass != Py_None ) {
          Py_INCREF( pyclass );
          return pyclass;
       }
@@ -738,10 +738,12 @@ PyObject* CPyCppyy::BindCppObjectNoCast(
 
 // bind, register and return if successful
     if (pyobj != 0) { // fill proxy value?
-    // TODO: take flags directly instead of separate bool args
         unsigned flags =
             (isRef ? ObjectProxy::kIsReference : 0) | (isValue ? ObjectProxy::kIsValue : 0);
-        pyobj->Set( address, (ObjectProxy::EFlags)flags );
+        pyobj->Set(address, (ObjectProxy::EFlags)flags);
+
+        if (address && !isRef)
+            MemoryRegulator::RegisterPyObject(pyobj, address);
     }
 
 // successful completion
@@ -786,18 +788,8 @@ PyObject* CPyCppyy::BindCppObject(
         }
     }
 
-// actual binding
-    ObjectProxy* pyobj = (ObjectProxy*)BindCppObjectNoCast(address, klass, isRef);
-
-// memory management, for TObject's only (for referenced objects, it is assumed
-// that the (typically global) reference itself is zeroed out (or replaced) on
-// destruction; it can't thus be reliably zeroed out from the python side)
-    if (address && !(pyobj->fFlags & ObjectProxy::kIsReference)) {
-        MemoryRegulator::RegisterPyObject(pyobj, address);
-    }
-
-// completion (returned object may be zero w/ a python exception set)
-    return (PyObject*)pyobj;
+// actual binding (returned object may be zero w/ a python exception set)
+    return BindCppObjectNoCast(address, klass, isRef);
 }
 
 //----------------------------------------------------------------------------

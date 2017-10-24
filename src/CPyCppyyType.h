@@ -32,14 +32,12 @@ namespace CPyCppyy {
  */
 
     typedef std::map<Cppyy::TCppObject_t, PyObject*> CppToPyMap_t;
-    typedef std::map<PyObject*, CppToPyMap_t::iterator> WeakRefMap_t;
 
     class CPyCppyyClass {
     public:
         PyHeapTypeObject  fType;
         Cppyy::TCppType_t fCppType;
         CppToPyMap_t*     fCppObjects;
-        WeakRefMap_t*     fWeakRefs;
 
     private:
         CPyCppyyClass() = delete;

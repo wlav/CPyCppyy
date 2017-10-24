@@ -3,6 +3,7 @@
 #include "PyStrings.h"
 #include "ObjectProxy.h"
 #include "CPyCppyyHelpers.h"
+#include "MemoryRegulator.h"
 #include "TypeManip.h"
 #include "Utility.h"
 
@@ -29,6 +30,9 @@
 //----------------------------------------------------------------------------
 void CPyCppyy::op_dealloc_nofree(ObjectProxy* pyobj) {
 // Destroy the held C++ object, if owned; does not deallocate the proxy.
+    if (!(pyobj->fFlags & ObjectProxy::kIsReference))
+        MemoryRegulator::UnregisterPyObject(pyobj, pyobj->ObjectIsA());
+
     if (pyobj->fFlags & ObjectProxy::kIsValue) {
         if (!(pyobj->fFlags & ObjectProxy::kIsSmartPtr) ) {
             Cppyy::CallDestructor(pyobj->ObjectIsA(), pyobj->GetObject());
