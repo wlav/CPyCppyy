@@ -205,8 +205,8 @@ static PyObject* meta_dir(CPyCppyyClass* klass)
 // add methods
     std::set<std::string> allmeth;
     for (TCppIndex_t i = 0; i < GetNumMethods(klass->fCppType); ++i) {
-        TCppIndex_t idx = GetMethodIndexAt(klass->fCppType, i);
-        const std::string& mname = GetMethodName(idx);
+        TCppMethod_t meth = GetMethod(klass->fCppType, i);
+        const std::string& mname = GetMethodName(meth);
         if (!mname.empty()) allmeth.insert(mname);
     }
 

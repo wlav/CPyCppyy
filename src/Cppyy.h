@@ -83,7 +83,6 @@ namespace Cppyy {
 
 // method/function reflection information ------------------------------------
     TCppIndex_t GetNumMethods(TCppScope_t scope);
-    TCppIndex_t GetMethodIndexAt(TCppScope_t scope, TCppIndex_t imeth);
     std::vector<Cppyy::TCppIndex_t> GetMethodIndicesFromName(
         TCppScope_t scope, const std::string& name);
 
