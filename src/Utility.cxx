@@ -175,10 +175,10 @@ bool CPyCppyy::Utility::AddToClass(
     pdef->ml_name  = const_cast<char*>(label);
     pdef->ml_meth  = cfunc;
     pdef->ml_flags = flags;
-    pdef->ml_doc   = NULL;
+    pdef->ml_doc   = nullptr;
 
-    PyObject* func = PyCFunction_New(pdef, NULL);
-    PyObject* method = TCustomInstanceMethod_New(func, NULL, pyclass);
+    PyObject* func = PyCFunction_New(pdef, nullptr);
+    PyObject* method = TCustomInstanceMethod_New(func, nullptr, pyclass);
     bool isOk = PyObject_SetAttrString(pyclass, pdef->ml_name, method) == 0;
     Py_DECREF(method);
     Py_DECREF(func);
@@ -656,7 +656,7 @@ Py_ssize_t CPyCppyy::Utility::ArraySize(const std::string& name)
         std::string::size_type idx = cleanName.rfind('[');
         if ( idx != std::string::npos ) {
             const std::string asize = cleanName.substr(idx+1, cleanName.size()-2);
-            return strtoul(asize.c_str(), NULL, 0);
+            return strtoul(asize.c_str(), nullptr, 0);
         }
     }
 
