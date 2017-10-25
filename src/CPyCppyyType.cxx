@@ -18,6 +18,8 @@
 
 namespace CPyCppyy {
 
+extern PyTypeObject ObjectProxy_Type;
+
 //= CPyCppyy type proxy construction/destruction =============================
 static PyObject* meta_alloc(PyTypeObject* metatype, Py_ssize_t nitems)
 {
@@ -36,6 +38,10 @@ static PyObject* meta_repr(CPyCppyyClass* metatype)
 {
 // Specialized b/c type_repr expects __module__ to live in the dictionary,
 // whereas it is a property (to save memory).
+    if ((void*)metatype == (void*)&ObjectProxy_Type)
+        return CPyCppyy_PyUnicode_FromFormat(
+            const_cast<char*>("<class cppyy.ObjectProxy at %p>"), metatype);
+
     std::string clName = Cppyy::GetScopedFinalName(metatype->fCppType);
     TypeManip::cppscope_to_pyscope(clName);
 
@@ -86,7 +92,7 @@ static PyObject* pt_getattro(PyObject* pyclass, PyObject* pyname)
 {
 // normal type-based lookup
     PyObject* attr = PyType_Type.tp_getattro(pyclass, pyname);
-    if (attr)
+    if (attr || pyclass == (PyObject*)&ObjectProxy_Type)
         return attr;
 
 // more elaborate search in case of failure (eg. for inner classes on demand)
@@ -194,6 +200,9 @@ static PyObject* meta_dir(CPyCppyyClass* klass)
 // taken for functions, which need not be unique (overloading).
     using namespace Cppyy;
 
+    if ((void*)klass == (void*)&ObjectProxy_Type)
+        return PyList_New(0);
+
     std::vector<PyObject*> alldir;
     alldir.reserve(128);
 
@@ -238,12 +247,17 @@ static PyMethodDef meta_methods[] = {
 //-----------------------------------------------------------------------------
 static PyObject* meta_getcppname(CPyCppyyClass* meta, void*)
 {
+    if ((void*)meta == (void*)&ObjectProxy_Type)
+        return CPyCppyy_PyUnicode_FromString("ObjectProxy_Type");
     return CPyCppyy_PyUnicode_FromString(Cppyy::GetScopedFinalName(meta->fCppType).c_str());
 }
 
 //-----------------------------------------------------------------------------
 static PyObject* meta_getmodule(CPyCppyyClass* meta, void*)
 {
+    if ((void*)meta == (void*)&ObjectProxy_Type)
+        return CPyCppyy_PyUnicode_FromString("cppyy.gbl");
+
     std::string modname = Cppyy::GetScopedFinalName(meta->fCppType);
     std::string::size_type pos = modname.rfind("::");
     if (modname.empty() || pos == std::string::npos)
