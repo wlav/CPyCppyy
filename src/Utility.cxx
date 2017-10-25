@@ -487,13 +487,13 @@ bool CPyCppyy::Utility::InitProxy(PyObject* module, PyTypeObject* pytype, const 
 // Initialize a proxy class for use by python, and add it to the module.
 
 // finalize proxy type
-    if (PyType_Ready( pytype ) < 0)
+    if (PyType_Ready(pytype) < 0)
         return false;
 
 // add proxy type to the given module
     Py_INCREF(pytype);       // PyModule_AddObject steals reference
     if (PyModule_AddObject(module, (char*)name, (PyObject*)pytype) < 0) {
-        Py_DECREF( pytype );
+        Py_DECREF(pytype);
         return false;
     }
 
