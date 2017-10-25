@@ -95,9 +95,9 @@ static PyObject* CreateNewCppProxyClass(Cppyy::TCppScope_t klass, PyObject* pyba
     PyObject* pyclass =
         ((PyTypeObject*)pymeta)->tp_new((PyTypeObject*)pymeta, args, nullptr);
 
-    Py_DECREF( args );
-    Py_DECREF( pymeta );
-    Py_DECREF( pybases );
+    Py_DECREF(args);
+    Py_DECREF(pymeta);
+    Py_DECREF(pybases);
 
     return pyclass;
 }
