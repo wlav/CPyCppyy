@@ -57,7 +57,7 @@ CPYCPPYY_PREPARE_PYBUFFER_TYPE(Float)
 CPYCPPYY_PREPARE_PYBUFFER_TYPE(Double)
 
 // implement get, str, and length functions
-Py_ssize_t buffer_length( PyObject* self )
+Py_ssize_t buffer_length(PyObject* self)
 {
 // Retrieve the (type-strided) size of the the buffer; may be a guess.
 #if PY_VERSION_HEX < 0x03000000
@@ -92,7 +92,7 @@ const char* buffer_get(PyObject* self, int idx)
 // Retrieve the buffer as a linear char array.
     if (idx < 0 || idx >= buffer_length(self)) {
         PyErr_SetString(PyExc_IndexError, "buffer index out of range");
-        return 0;
+        return nullptr;
     }
 
 #if PY_VERSION_HEX < 0x02050000
@@ -195,7 +195,7 @@ PyObject* buffer_reshape(PyObject* self, PyObject* shape)
 
     Py_ssize_t nlen = PyInt_AsSsize_t(PyTuple_GET_ITEM(shape, 0));
     if (nlen == -1 && PyErr_Occurred())
-        return 0;
+        return nullptr;
 
 #if PY_VERSION_HEX < 0x03000000
     ((PyBufferTop_t*)self)->fSize = nlen * ((PyBufferTop_t*)self)->fItemSize;

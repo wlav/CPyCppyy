@@ -8,10 +8,10 @@
 #include "TemplateProxy.h"
 #include "PyStrings.h"
 #include "TypeManip.h"
+#include "Utility.h"
 
 // Standard
 #include <string.h>
-#include <set>
 #include <string>
 #include <vector>
 
@@ -192,7 +192,11 @@ static PyObject* pt_getattro(PyObject* pyclass, PyObject* pyname)
 }
 
 
-//-----------------------------------------------------------------------------
+//----------------------------------------------------------------------------
+// p2.7 does not have a __dir__ in object, and object.__dir__ in p3 does not
+// quite what I'd expected of it, so the following pulls in the internal code
+#include "PyObjectDir27.inc"
+
 static PyObject* meta_dir(CPyCppyyClass* klass)
 {
 // Collect a list of everything (currently) available in the namespace.
@@ -203,43 +207,63 @@ static PyObject* meta_dir(CPyCppyyClass* klass)
     if ((void*)klass == (void*)&ObjectProxy_Type)
         return PyList_New(0);
 
-    std::vector<PyObject*> alldir;
-    alldir.reserve(128);
+    PyObject* defdir = _generic_dir((PyObject*)klass);
+    if (!IsNamespace(klass->fCppType))
+        return defdir;
+
+    PyObject* alldir = PySet_New(defdir);
+    Py_DECREF(defdir);
 
 // add (sub)scopes
-    for (TCppIndex_t i = 0; i < GetNumScopes(klass->fCppType); ++i)
-        alldir.push_back(CPyCppyy_PyUnicode_FromString(
-                             GetScopeName(klass->fCppType, i).c_str()));
-
-// add methods
-    std::set<std::string> allmeth;
-    for (TCppIndex_t i = 0; i < GetNumMethods(klass->fCppType); ++i) {
-        TCppMethod_t meth = GetMethod(klass->fCppType, i);
-        const std::string& mname = GetMethodName(meth);
-        if (!mname.empty()) allmeth.insert(mname);
+    for (TCppIndex_t i = 0; i < GetNumScopes(klass->fCppType); ++i) {
+        PyObject* entry = CPyCppyy_PyUnicode_FromString(
+                              GetScopeName(klass->fCppType, i).c_str());
+        PySet_Add(alldir, entry);
+        Py_DECREF(entry);
     }
 
-    for (const auto& m : allmeth)
-        alldir.push_back(CPyCppyy_PyUnicode_FromString(m.c_str()));
+// add methods
+    for (TCppIndex_t i = 0; i < GetNumMethods(klass->fCppType); ++i) {
+        TCppMethod_t meth = GetMethod(klass->fCppType, i);
+        if (IsPublicMethod(meth)) {
+            const std::string& mname = GetMethodName(meth);
+            if (!mname.empty()) {
+                PyObject* entry = CPyCppyy_PyUnicode_FromString(
+                    CPyCppyy::Utility::MapOperatorName(mname, GetMethodNumArgs(meth)).c_str());
+                PySet_Add(alldir, entry);
+                Py_DECREF(entry);
+            }
+        }
+    }
 
 // add (global) data
     for (TCppIndex_t i = 0; i < GetNumDatamembers(klass->fCppType); ++i) {
-        const std::string& dname = GetDatamemberName(klass->fCppType, i);
-        if (!dname.empty())
-            alldir.push_back(CPyCppyy_PyUnicode_FromString(dname.c_str()));
+        if (IsPublicData(klass->fCppType, i)) {
+            const std::string& dname = GetDatamemberName(klass->fCppType, i);
+            if (!dname.empty()) {
+                PyObject* entry = CPyCppyy_PyUnicode_FromString(dname.c_str());
+                PySet_Add(alldir, entry);
+                Py_DECREF(entry);
+            }
+        }
     }
 
+#if PY_VERSION_HEX < 0x03000000
 // copy into python list
-    PyObject* pyalldir = PyList_New(alldir.size());
-    for (size_t i = 0; i < alldir.size(); ++i)
-        PyList_SET_ITEM(pyalldir, i, alldir[i]);
-
-    return pyalldir;
+    Py_ssize_t nentries = PySet_GET_SIZE(alldir);
+    PyObject* ll_alldir = PyList_New(nentries);
+    for (Py_ssize_t i = 0; i < nentries; ++i)
+        PyList_SET_ITEM(ll_alldir, i, PySet_Pop(alldir));
+    Py_DECREF(alldir);
+    return ll_alldir;
+#else
+    return alldir;
+#endif
 }
 
 //-----------------------------------------------------------------------------
 static PyMethodDef meta_methods[] = {
-    {(char*)"__dir__",  (PyCFunction)meta_dir,  METH_NOARGS, nullptr},
+    {(char*)"__dir__", (PyCFunction)meta_dir, METH_NOARGS, nullptr},
     {(char*)nullptr, nullptr, 0, nullptr}
 };
 

@@ -532,40 +532,41 @@ PyObject* CPyCppyy::TCppObjectBySmartPtrRefExecutor::Execute(
 
    // todo: assignment not done yet
    //
-   /*} else {
+  /*} else {
 
-     PyObject* result = BindCppObject( (void*)value, fClass );
+       PyObject* result = BindCppObject( (void*)value, fClass );
 
    // this generic code is quite slow compared to its C++ equivalent ...
-      PyObject* assign = PyObject_GetAttrString( result, const_cast< char* >( "__assign__" ) );
-      if ( ! assign ) {
-         PyErr_Clear();
-         PyObject* descr = PyObject_Str( result );
-         if ( descr && PyBytes_CheckExact( descr ) ) {
-            PyErr_Format( PyExc_TypeError, "can not assign to return object (%s)",
-                          PyBytes_AS_STRING( descr ) );
-         } else {
-            PyErr_SetString( PyExc_TypeError, "can not assign to result" );
-         }
-         Py_XDECREF( descr );
-         Py_DECREF( result );
-         Py_DECREF( fAssignable ); fAssignable = 0;
-         return 0;
-      }
+       PyObject* assign = PyObject_GetAttrString(result, const_cast<char*>("__assign__"));
+       if (!assign) {
+           PyErr_Clear();
+           PyObject* descr = PyObject_Str(result);
+           if ( descr && PyBytes_CheckExact(descr)) {
+               PyErr_Format(PyExc_TypeError, "can not assign to return object (%s)",
+                   PyBytes_AS_STRING(descr));
+           } else {
+               PyErr_SetString(PyExc_TypeError, "can not assign to result");
+           }
+           Py_XDECREF(descr);
+           Py_DECREF(result);
+           Py_DECREF(fAssignable); fAssignable = nullptr;
+           return nullptr;
+       }
 
-      PyObject* res2 = PyObject_CallFunction( assign, const_cast< char* >( "O" ), fAssignable );
+       PyObject* res2 = PyObject_CallFunction(
+           assign, const_cast<char*>("O"), fAssignable);
 
 
-      Py_DECREF( assign );
-      Py_DECREF( result );
-      Py_DECREF( fAssignable ); fAssignable = 0;
+       Py_DECREF(assign);
+       Py_DECREF(result);
+       Py_DECREF(fAssignable); fAssignable = nullptr;
 
-      if ( res2 ) {
-         Py_DECREF( res2 );             // typically, *this from operator=()
-         Py_RETURN_NONE;
-      }
+       if (res2) {
+           Py_DECREF(res2);             // typically, *this from operator=()
+           Py_RETURN_NONE;
+       }
 
-      return 0;
+       return nullptr;
    }
    */
 }

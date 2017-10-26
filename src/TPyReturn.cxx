@@ -153,7 +153,7 @@ TPyReturn::operator void*() const
 // Cast python return value to ROOT object with dictionary (may fail; note that
 // you have to use the void* converter, as CINT will not call any other).
     if (fPyObject == Py_None)
-        return 0;
+        return nullptr;
 
     if (CPyCppyy::ObjectProxy_Check(fPyObject )) {
         ((CPyCppyy::ObjectProxy*)fPyObject)->CppOwns();
@@ -167,7 +167,7 @@ TPyReturn::operator PyObject*() const
 {
 // Direct return of the held PyObject; note the new reference.
     if (fPyObject == Py_None)
-        return 0;
+        return nullptr;
 
     Py_INCREF(fPyObject);
     return fPyObject;

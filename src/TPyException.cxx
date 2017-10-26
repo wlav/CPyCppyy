@@ -32,5 +32,5 @@ CPyCppyy::TPyException::~TPyException() noexcept
 const char* CPyCppyy::TPyException::what() const noexcept
 {
 // Return reason for throwing this exception: a python exception was raised.
-   return "python exception";
+    return "python exception";
 }

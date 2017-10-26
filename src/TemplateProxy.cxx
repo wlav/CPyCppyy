@@ -168,7 +168,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
     if (nArgs == 0) {
         PyErr_Format(PyExc_TypeError, "template method \'%s\' with no arguments must be explicit",
             CPyCppyy_PyUnicode_AsString(pytmpl->fPyName));
-        return 0;
+        return nullptr;
     }
 
 // case 2: non-instantiating obj->method< t0, t1, ... >( a0, a1, ... )
@@ -309,7 +309,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
 // moderately generic error message, but should be clear enough
     PyErr_Format(PyExc_TypeError, "can not resolve method template call for \'%s\'",
         CPyCppyy_PyUnicode_AsString(pytmpl->fPyName));
-    return 0;
+    return nullptr;
 }
 
 //----------------------------------------------------------------------------
@@ -359,7 +359,7 @@ static PyObject* tpp_subscript(TemplateProxy* pytmpl, PyObject* args)
         Py_DECREF(pytmpl_name);
     }
 
-    return 0;
+    return nullptr;
 }
 
 

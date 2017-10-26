@@ -35,13 +35,13 @@ namespace CPyCppyy {
 class TPyException : public std::exception {
 public:
 // default constructor
-   TPyException();
+    TPyException();
 
 // destructor
-   virtual ~TPyException() noexcept;
+    virtual ~TPyException() noexcept;
 
 // give reason for raised exception
-   virtual const char* what() const noexcept;
+    virtual const char* what() const noexcept;
 };
 
 } // namespace CPyCppyy

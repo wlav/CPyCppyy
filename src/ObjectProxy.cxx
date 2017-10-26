@@ -348,7 +348,7 @@ PyTypeObject ObjectProxy_Type = {
         Py_TPFLAGS_BASETYPE |
         Py_TPFLAGS_HAVE_GC |
         Py_TPFLAGS_CHECKTYPES,     // tp_flags
-    (char*)"cppyy object proxy (internal)",       // tp_doc
+    (char*)"cppyy object proxy (internal)",  // tp_doc
     0,                             // tp_traverse
     0,                             // tp_clear
     (richcmpfunc)op_richcompare,   // tp_richcompare

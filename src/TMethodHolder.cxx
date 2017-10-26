@@ -31,7 +31,7 @@ inline void CPyCppyy::TMethodHolder::Copy_(const TMethodHolder& /* other */)
 // fScope and fMethod handled separately
 
 // do not copy caches
-    fExecutor     = 0;
+    fExecutor     = nullptr;
     fArgsRequired = -1;
 
 // being uninitialized will trigger setting up caches as appropriate
@@ -375,7 +375,7 @@ PyObject* CPyCppyy::TMethodHolder::GetArgDefault(int iarg)
 {
 // get the default value (if any) of argument iarg of this method
     if (iarg >= (int)GetMaxArgs())
-        return 0;
+        return nullptr;
 
     const std::string& defvalue = Cppyy::GetMethodArgDefault(fMethod, iarg);
     if (!defvalue.empty()) {
@@ -391,7 +391,7 @@ PyObject* CPyCppyy::TMethodHolder::GetArgDefault(int iarg)
         return pyval;
     }
 
-    return 0;
+    return nullptr;
 }
 
 //----------------------------------------------------------------------------

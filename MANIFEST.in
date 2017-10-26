@@ -4,3 +4,7 @@ include LICENSE.txt
 # Include all headers
 include include/*.h
 include src/*.h
+
+# Include source files
+include src/*.cxx
+include src/*.inc

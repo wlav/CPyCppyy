@@ -42,7 +42,7 @@ public:
 
     virtual ~TPythonCallback() {
         Py_DECREF(fCallable);
-        fCallable = 0;
+        fCallable = nullptr;
     }
 
     virtual PyObject* GetSignature(bool show_formalargs = true) {
