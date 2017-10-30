@@ -2,7 +2,7 @@
 #define CPYCPPYY_TEMPLATEPROXY_H
 
 // Bindings
-#include "CPyCppyyType.h"
+#include "CPPScope.h"
 
 // Standard
 #include <string>
@@ -64,7 +64,7 @@ namespace CPyCppyy {
             const std::string& cppname, const std::string& pyname, PyObject* pyclass)
     {
     // Create and initialize a new template method proxy for the class.
-        if (!CPyCppyyType_Check(pyclass)) return nullptr;
+        if (!CPPScope_Check(pyclass)) return nullptr;
 
         TemplateProxy* pytmpl =
             (TemplateProxy*)TemplateProxy_Type.tp_new(&TemplateProxy_Type, nullptr, nullptr);

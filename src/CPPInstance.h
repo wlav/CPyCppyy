@@ -11,7 +11,7 @@
 
 
 // Bindings
-#include "CPyCppyyType.h"
+#include "CPPScope.h"
 #include "Cppyy.h"
 #include "TCallContext.h"
 
@@ -68,7 +68,7 @@ namespace CPyCppyy {
         Cppyy::TCppType_t ObjectIsA() const
         {
         // Retrieve a pointer to the C++ type; may return nullptr.
-            return ((CPyCppyyClass*)Py_TYPE(this))->fCppType;
+            return ((CPPClass*)Py_TYPE(this))->fCppType;
         }
 
         void PythonOwns() { fFlags |= kIsOwner; }

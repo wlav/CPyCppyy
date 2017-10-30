@@ -1,6 +1,6 @@
 // Bindings
 #include "CPyCppyy.h"
-#include "CPyCppyyType.h"
+#include "CPPScope.h"
 #include "MethodProxy.h"
 #include "PropertyProxy.h"
 #include "CPyCppyyHelpers.h"
@@ -27,14 +27,14 @@ static PyObject* meta_alloc(PyTypeObject* metatype, Py_ssize_t nitems)
 }
 
 //----------------------------------------------------------------------------
-static void meta_dealloc(CPyCppyyClass* metatype)
+static void meta_dealloc(CPPScope* metatype)
 {
     delete metatype->fCppObjects; metatype->fCppObjects = nullptr;
     return PyType_Type.tp_dealloc((PyObject*)metatype);
 }
 
 //----------------------------------------------------------------------------
-static PyObject* meta_repr(CPyCppyyClass* metatype)
+static PyObject* meta_repr(CPPScope* metatype)
 {
 // Specialized b/c type_repr expects __module__ to live in the dictionary,
 // whereas it is a property (to save memory).
@@ -53,7 +53,7 @@ static PyObject* meta_repr(CPyCppyyClass* metatype)
 //= CPyCppyy type metaclass behavior =========================================
 static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
 {
-// Called when CPyCppyyType acts as a metaclass; since type_new always resets
+// Called when CPPScope acts as a metaclass; since type_new always resets
 // tp_alloc, and since it does not call tp_init on types, the metaclass is
 // being fixed up here, and the class is initialized here as well.
 
@@ -63,7 +63,7 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
     subtype->tp_dealloc = (destructor)meta_dealloc;
 
 // creation of the python-side class
-    CPyCppyyClass* result = (CPyCppyyClass*)PyType_Type.tp_new(subtype, args, kwds);
+    CPPScope* result = (CPPScope*)PyType_Type.tp_new(subtype, args, kwds);
     if (!result)
         return nullptr;
 
@@ -71,7 +71,7 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
 
 // initialization of class (based on metatype)
     const char* mp = strstr(subtype->tp_name, "_meta");
-    if (!mp || !CPyCppyyType_CheckExact(subtype)) {
+    if (!mp || !CPPScope_CheckExact(subtype)) {
     // there has been a user meta class override in a derived class, so do
     // the consistent thing, thus allowing user control over naming
         result->fCppType = Cppyy::GetScope(
@@ -81,7 +81,7 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
     // C++ type from the meta class to make sure that the latter category
     // has fCppType properly set (it inherits the meta class, but has an
     // otherwise unknown (or wrong) C++ type)
-        result->fCppType = ((CPyCppyyClass*)subtype)->fCppType;
+        result->fCppType = ((CPPScope*)subtype)->fCppType;
     }
 
     return (PyObject*)result;
@@ -107,9 +107,9 @@ static PyObject* pt_getattro(PyObject* pyclass, PyObject* pyname)
 
         // namespaces may have seen updates in their list of global functions, which
         // are available as "methods" even though they're not really that
-            if (!attr && CPyCppyyType_Check(pyclass)) {
+            if (!attr && CPPScope_Check(pyclass)) {
                 PyErr_Clear();
-                Cppyy::TCppScope_t scope = ((CPyCppyyClass*)pyclass)->fCppType;
+                Cppyy::TCppScope_t scope = ((CPPScope*)pyclass)->fCppType;
 
                 if (Cppyy::IsNamespace(scope)) {
                 // tickle lazy lookup of functions
@@ -161,7 +161,7 @@ static PyObject* pt_getattro(PyObject* pyclass, PyObject* pyname)
                 }
             }
 
-            if (!attr && !CPyCppyyType_Check(pyclass) /* at global or module-level only */) {
+            if (!attr && !CPPScope_Check(pyclass) /* at global or module-level only */) {
                 PyErr_Clear();
             // get the attribute as a global
                 attr = GetCppGlobal(name /*, tag */);
@@ -197,7 +197,7 @@ static PyObject* pt_getattro(PyObject* pyclass, PyObject* pyname)
 // quite what I'd expected of it, so the following pulls in the internal code
 #include "PyObjectDir27.inc"
 
-static PyObject* meta_dir(CPyCppyyClass* klass)
+static PyObject* meta_dir(CPPScope* klass)
 {
 // Collect a list of everything (currently) available in the namespace.
 // The backend can filter by returning empty strings. Special care is
@@ -269,7 +269,7 @@ static PyMethodDef meta_methods[] = {
 
 
 //-----------------------------------------------------------------------------
-static PyObject* meta_getcppname(CPyCppyyClass* meta, void*)
+static PyObject* meta_getcppname(CPPScope* meta, void*)
 {
     if ((void*)meta == (void*)&CPPInstance_Type)
         return CPyCppyy_PyUnicode_FromString("CPPInstance_Type");
@@ -277,7 +277,7 @@ static PyObject* meta_getcppname(CPyCppyyClass* meta, void*)
 }
 
 //-----------------------------------------------------------------------------
-static PyObject* meta_getmodule(CPyCppyyClass* meta, void*)
+static PyObject* meta_getmodule(CPPScope* meta, void*)
 {
     if ((void*)meta == (void*)&CPPInstance_Type)
         return CPyCppyy_PyUnicode_FromString("cppyy.gbl");
@@ -302,10 +302,10 @@ static PyGetSetDef meta_getset[] = {
 
 
 //= CPyCppyy object proxy type type ==========================================
-PyTypeObject CPyCppyyType_Type = {
+PyTypeObject CPPScope_Type = {
     PyVarObject_HEAD_INIT(&PyType_Type, 0)
-    (char*)"cppyy.CPyCppyyType",   // tp_name
-    sizeof(CPyCppyy::CPyCppyyClass),              // tp_basicsize
+    (char*)"cppyy.CPPScope",       // tp_name
+    sizeof(CPyCppyy::CPPScope),    // tp_basicsize
     0,                             // tp_itemsize
     0,                             // tp_dealloc
     0,                             // tp_print

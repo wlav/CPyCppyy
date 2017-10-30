@@ -1,7 +1,7 @@
 // Bindings
 #include "CPyCppyy.h"
 #include "PyStrings.h"
-#include "CPyCppyyType.h"
+#include "CPPScope.h"
 #include "CPPInstance.h"
 #include "MethodProxy.h"
 #include "TemplateProxy.h"
@@ -452,8 +452,8 @@ static PyObject* BindObject_(void* addr, PyObject* pyname, bool do_cast=false)
 // Helper to factorize the common code between MakeNullPointer and BindObject.
     Cppyy::TCppType_t klass = 0;
     if (!CPyCppyy_PyUnicode_Check(pyname)) {      // not string, then class
-        if (CPyCppyyType_Check(pyname))
-            klass = ((CPyCppyyClass*)pyname)->fCppType;
+        if (CPPScope_Check(pyname))
+            klass = ((CPPClass*)pyname)->fCppType;
         else
             pyname = PyObject_GetAttr(pyname, PyStrings::gName);
     } else
@@ -617,10 +617,10 @@ PyObject* SetTypePinning(PyObject*, PyObject* args)
 {
 // Add a pinning so that objects of type `derived' are interpreted as
 // objects of type `base'.
-    CPyCppyyClass* derived = nullptr, *base = nullptr;
+    CPPClass* derived = nullptr, *base = nullptr;
     if (!PyArg_ParseTuple(args, const_cast<char*>("O!O!"),
-                          &CPyCppyyType_Type, &derived,
-                          &CPyCppyyType_Type, &base))
+                          &CPPScope_Type, &derived,
+                          &CPPScope_Type, &base))
         return nullptr;
     gPinnedTypes.push_back(std::make_pair(derived->fCppType, base->fCppType));
 
@@ -631,9 +631,9 @@ PyObject* SetTypePinning(PyObject*, PyObject* args)
 PyObject* IgnoreTypePinning(PyObject*, PyObject* args)
 {
 // Add an exception to the type pinning for objects of type `derived'.
-    CPyCppyyClass* derived = nullptr;
+    CPPClass* derived = nullptr;
     if (!PyArg_ParseTuple(args, const_cast<char*>("O!"),
-                          &CPyCppyyType_Type, &derived))
+                          &CPPScope_Type, &derived))
         return nullptr;
     gIgnorePinnings.push_back(derived->fCppType);
 
@@ -645,10 +645,10 @@ PyObject* Cast(PyObject*, PyObject* args)
 {
 // Cast `obj' to type `type'.
     CPPInstance* obj = nullptr;
-    CPyCppyyClass* type = nullptr;
+    CPPClass* type = nullptr;
     if (!PyArg_ParseTuple(args, const_cast<char*>("O!O!"),
                           &CPPInstance_Type, &obj,
-                          &CPyCppyyType_Type, &type))
+                          &CPPScope_Type, &type))
         return nullptr;
 // TODO: this misses an offset calculation, and reference type must not
 // be cast ...
@@ -782,7 +782,7 @@ extern "C" void initlibcppyy()
     PyModule_AddObject(gThisModule, "PythonizationScope", CPyCppyy_PyUnicode_FromString("__global__"));
 
 // inject meta type
-    if (!Utility::InitProxy(gThisModule, &CPyCppyyType_Type, "CPyCppyyType"))
+    if (!Utility::InitProxy(gThisModule, &CPPScope_Type, "CPPScope"))
         CPYCPPYY_INIT_ERROR;
 
 // inject object proxy type

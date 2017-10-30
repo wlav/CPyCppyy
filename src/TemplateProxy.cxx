@@ -251,7 +251,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
         Py_XDECREF(pytc);
     }
 
-    Cppyy::TCppScope_t scope = ((CPyCppyyClass*)pytmpl->fPyClass)->fCppType;
+    Cppyy::TCppScope_t scope = ((CPPClass*)pytmpl->fPyClass)->fCppType;
     const std::string& tmplname = CPyCppyy_PyUnicode_AsString(pytmpl->fCppName);
 
 // case 4a: instantiating obj->method< T0, T1, ... >( type(a0), type(a1), ... )( a0, a1, ... )
@@ -343,7 +343,7 @@ static PyObject* tpp_subscript(TemplateProxy* pytmpl, PyObject* args)
         else {
         // lookup failed: try instantiating
             PyErr_Clear();
-            Cppyy::TCppScope_t scope = ((CPyCppyyClass*)pytmpl->fPyClass)->fCppType;
+            Cppyy::TCppScope_t scope = ((CPPClass*)pytmpl->fPyClass)->fCppType;
 
        // the following causes instantiation as necessary
             Cppyy::TCppMethod_t cppmeth = Cppyy::GetMethodTemplate(scope, meth_name, "");

@@ -314,8 +314,8 @@ bool CPyCppyy::Utility::AddBinaryOperator(
 {
 // Install binary operator op in pyclass, working on two instances of pyclass.
     std::string cname;
-    if (CPyCppyyType_Check(pyclass))
-        cname = Cppyy::GetScopedFinalName(((CPyCppyyClass*)pyclass)->fCppType);
+    if (CPPScope_Check(pyclass))
+        cname = Cppyy::GetScopedFinalName(((CPPScope*)pyclass)->fCppType);
     else {
         PyObject* pyname = PyObject_GetAttr(pyclass, PyStrings::gName);
         cname = Cppyy::ResolveName(CPyCppyy_PyUnicode_AsString(pyname));
@@ -446,8 +446,8 @@ std::string CPyCppyy::Utility::ConstructTemplateArgs(PyObject* pyname, PyObject*
         PyObject* tn = PyTuple_GET_ITEM(args, i);
         if (CPyCppyy_PyUnicode_Check(tn)) {
             tmpl_name << CPyCppyy_PyUnicode_AsString(tn);
-        } else if (CPyCppyyType_Check(tn)) {
-            tmpl_name << Cppyy::GetScopedFinalName(((CPyCppyyClass*)tn)->fCppType);
+        } else if (CPPScope_Check(tn)) {
+            tmpl_name << Cppyy::GetScopedFinalName(((CPPClass*)tn)->fCppType);
         } else if (PyObject_HasAttr(tn, PyStrings::gName)) {
             PyObject* tpName = PyObject_GetAttr(tn, PyStrings::gName);
 

@@ -106,10 +106,10 @@ bool CPyCppyy::MemoryRegulator::RecursiveRemove(
         return false;
 
     PyObject* pyscope = GetScopeProxy(klass);
-    if (!CPyCppyyType_Check(pyscope))
+    if (!CPPScope_Check(pyscope))
         return false;
 
-    CPyCppyyClass* pyclass = (CPyCppyyClass*)pyscope;
+    CPPClass* pyclass = (CPPClass*)pyscope;
     if (!pyclass->fCppObjects)     // table may have been deleted on shutdown
         return false;
 
@@ -176,8 +176,8 @@ bool CPyCppyy::MemoryRegulator::RegisterPyObject(
     if (!(pyobj && cppobj))
         return false;
 
-    CPyCppyyClass* pyclass = (CPyCppyyClass*)Py_TYPE(pyobj);
-    CppToPyMap_t* cppobjs = ((CPyCppyyClass*)Py_TYPE(pyobj))->fCppObjects;    
+    CPPClass* pyclass = (CPPClass*)Py_TYPE(pyobj);
+    CppToPyMap_t* cppobjs = ((CPPClass*)Py_TYPE(pyobj))->fCppObjects;    
     CppToPyMap_t::iterator ppo = cppobjs->find(cppobj);
     if (ppo == pyclass->fCppObjects->end()) {
         PyObject* pyref = PyWeakref_NewRef((PyObject*)pyobj, gEraseCallback);
@@ -197,10 +197,10 @@ bool CPyCppyy::MemoryRegulator::UnregisterPyObject(
         return false;
 
     PyObject* pyscope = GetScopeProxy(klass);
-    if (!CPyCppyyType_Check(pyscope))
+    if (!CPPScope_Check(pyscope))
         return false;
 
-    CPyCppyyClass* pyclass = (CPyCppyyClass*)pyscope;
+    CPPClass* pyclass = (CPPClass*)pyscope;
     CppToPyMap_t::iterator ppo = pyclass->fCppObjects->find(cppobj);
     if (ppo != pyclass->fCppObjects->end()) {
         Py_DECREF(ppo->second);
@@ -220,10 +220,10 @@ PyObject* CPyCppyy::MemoryRegulator::RetrievePyObject(
        return nullptr;
 
     PyObject* pyscope = GetScopeProxy(klass);
-    if (!CPyCppyyType_Check(pyscope))
+    if (!CPPScope_Check(pyscope))
         return nullptr;
 
-    CPyCppyyClass* pyclass = (CPyCppyyClass*)pyscope;
+    CPPClass* pyclass = (CPPClass*)pyscope;
     CppToPyMap_t::iterator ppo = pyclass->fCppObjects->find(cppobj);
     if (ppo != pyclass->fCppObjects->end() ) {
         PyObject* pyobj = PyWeakref_GetObject(ppo->second);
@@ -246,7 +246,7 @@ PyObject* CPyCppyy::MemoryRegulator::EraseCallback(PyObject*, PyObject* pyref)
 // called when one of the python objects we've registered is going away
     CPPInstance* pyobj = (CPPInstance*)PyWeakref_GetObject(pyref);
     if ((PyObject*)pyobj != Py_None) {
-        CPyCppyyClass* pyclass = (CPyCppyyClass*)Py_TYPE(pyobj);
+        CPPClass* pyclass = (CPPClass*)Py_TYPE(pyobj);
         if (pyobj->GetObject()) {
         // erase if tracked
             void* cppobj = pyobj->GetObject();

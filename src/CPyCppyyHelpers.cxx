@@ -2,7 +2,7 @@
 #include "CPyCppyy.h"
 #include "PyStrings.h"
 #include "CPyCppyyHelpers.h"
-#include "CPyCppyyType.h"
+#include "CPPScope.h"
 #include "CPPInstance.h"
 #include "MethodProxy.h"
 #include "MemoryRegulator.h"
@@ -74,7 +74,7 @@ static PyObject* CreateNewCppProxyClass(Cppyy::TCppScope_t klass, PyObject* pyba
     PyDict_SetItem(PyTuple_GET_ITEM(args, 2), PyStrings::gModule, Py_True);
     Py_DECREF(pymetabases);
 
-    PyObject* pymeta = PyType_Type.tp_new(&CPyCppyyType_Type, args, nullptr);
+    PyObject* pymeta = PyType_Type.tp_new(&CPPScope_Type, args, nullptr);
 
     Py_DECREF(args);
     if (!pymeta) {
@@ -84,7 +84,7 @@ static PyObject* CreateNewCppProxyClass(Cppyy::TCppScope_t klass, PyObject* pyba
     }
 
 // set the klass id, in case there is derivation Python-side
-    ((CPyCppyyClass*)pymeta)->fCppType = klass;
+    ((CPPClass*)pymeta)->fCppType = klass;
 
 // alright, and now we really badly want to get rid of the dummy ...
     PyObject* dictproxy = PyObject_GetAttr(pymeta, PyStrings::gDict);
@@ -486,8 +486,8 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
 // determine complete scope name, if a python parent has been given
     std::string scName = "";
     if (parent) {
-        if (CPyCppyyType_Check(parent))
-            scName = Cppyy::GetScopedFinalName(((CPyCppyyClass*)parent)->fCppType);
+        if (CPPScope_Check(parent))
+            scName = Cppyy::GetScopedFinalName(((CPPScope*)parent)->fCppType);
         else {
             PyObject* parname = PyObject_GetAttr(parent, PyStrings::gName);
             if (!parname) {
@@ -579,7 +579,7 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
 
         }
 
-        if (parent && !CPyCppyyType_Check(parent)) {
+        if (parent && !CPPScope_Check(parent)) {
         // Special case: parent found is not one of ours (it's e.g. a pure Python module), so
         // continuing would fail badly. One final lookup, then out of here ...
             std::string unscoped = scope_name.substr(last, std::string::npos);

@@ -324,7 +324,7 @@ PyNumberMethods op_as_number = {
 
 //= CPyCppyy object proxy type ===============================================
 PyTypeObject CPPInstance_Type = {
-    PyVarObject_HEAD_INIT(&CPyCppyyType_Type, 0)
+    PyVarObject_HEAD_INIT(&CPPScope_Type, 0)
     (char*)"cppyy.CPPInstance",    // tp_name
     sizeof(CPPInstance),           // tp_basicsize
     0,                             // tp_itemsize
