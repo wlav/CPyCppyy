@@ -1,7 +1,7 @@
 // Bindings
 #include "CPyCppyy.h"
 #include "PyStrings.h"
-#include "ObjectProxy.h"
+#include "CPPInstance.h"
 #include "CPyCppyyHelpers.h"
 #include "MemoryRegulator.h"
 #include "TypeManip.h"
@@ -15,26 +15,25 @@
 //                          Python-side proxy objects
 //                          =========================
 //
-// C++ objects are represented in Python by ObjectProxy's, which encapsulate
+// C++ objects are represented in Python by CPPInstances, which encapsulate
 // them using either a pointer (normal), pointer-to-pointer (kIsReference set),
 // or as an owned value (kIsValue set). Objects held as reference are never
 // owned, otherwise the object is owned if kIsOwner is set.
 //
-// In addition to encapsulation, ObjectProxy offers pickling (using TBufferFile
-// with a copy into a Python string); rudimentary comparison operators (based on
-// pointer value and class comparisons); stubs for numeric operators; and a
-// representation that prints the C++ pointer values, rather than the PyObject*
-// ones as is the default.
+// In addition to encapsulation, CPPInstance offers rudimentary comparison
+// operators (based on pointer value and class comparisons); stubs (with lazy
+// lookups) for numeric operators; and a representation that prints the C++
+//  pointer values, rather than the PyObject* ones as is the default.
 
 
 //----------------------------------------------------------------------------
-void CPyCppyy::op_dealloc_nofree(ObjectProxy* pyobj) {
+void CPyCppyy::op_dealloc_nofree(CPPInstance* pyobj) {
 // Destroy the held C++ object, if owned; does not deallocate the proxy.
-    if (!(pyobj->fFlags & ObjectProxy::kIsReference))
+    if (!(pyobj->fFlags & CPPInstance::kIsReference))
         MemoryRegulator::UnregisterPyObject(pyobj, pyobj->ObjectIsA());
 
-    if (pyobj->fFlags & ObjectProxy::kIsValue) {
-        if (!(pyobj->fFlags & ObjectProxy::kIsSmartPtr) ) {
+    if (pyobj->fFlags & CPPInstance::kIsValue) {
+        if (!(pyobj->fFlags & CPPInstance::kIsSmartPtr) ) {
             Cppyy::CallDestructor(pyobj->ObjectIsA(), pyobj->GetObject());
             Cppyy::Deallocate(pyobj->ObjectIsA(), pyobj->GetObject());
         } else {
@@ -42,8 +41,8 @@ void CPyCppyy::op_dealloc_nofree(ObjectProxy* pyobj) {
             Cppyy::Deallocate(pyobj->fSmartPtrType, pyobj->fSmartPtr);
         }
     }
-    else if (pyobj->fObject && (pyobj->fFlags & ObjectProxy::kIsOwner)) {
-        if (!(pyobj->fFlags & ObjectProxy::kIsSmartPtr)) {
+    else if (pyobj->fObject && (pyobj->fFlags & CPPInstance::kIsOwner)) {
+        if (!(pyobj->fFlags & CPPInstance::kIsSmartPtr)) {
             Cppyy::Destruct(pyobj->ObjectIsA(), pyobj->GetObject());
         } else {
             Cppyy::Destruct(pyobj->fSmartPtrType, pyobj->fSmartPtr);
@@ -56,7 +55,7 @@ void CPyCppyy::op_dealloc_nofree(ObjectProxy* pyobj) {
 namespace CPyCppyy {
 
 //= CPyCppyy object proxy null-ness checking =================================
-static PyObject* op_nonzero(ObjectProxy* self)
+static PyObject* op_nonzero(CPPInstance* self)
 {
 // Null of the proxy is determined by null-ness of the held C++ object.
     PyObject* result = self->GetObject() ? Py_True : Py_False;
@@ -65,7 +64,7 @@ static PyObject* op_nonzero(ObjectProxy* self)
 }
 
 //= CPyCppyy object explicit destruction =====================================
-static PyObject* op_destruct(ObjectProxy* self)
+static PyObject* op_destruct(CPPInstance* self)
 {
 // User access to force deletion of the object. Needed in case of a true
 // garbage collector (like in PyPy), to allow the user control over when
@@ -105,9 +104,9 @@ static PyObject* op_dispatch(PyObject* self, PyObject* args, PyObject* /* kdws *
 }
 
 //= CPyCppyy smart pointer support ===========================================
-static PyObject* op_get_smart_ptr(ObjectProxy* self)
+static PyObject* op_get_smart_ptr(CPPInstance* self)
 {
-    if (!(self->fFlags & ObjectProxy::kIsSmartPtr)) {
+    if (!(self->fFlags & CPPInstance::kIsSmartPtr)) {
         Py_RETURN_NONE;
     }
 
@@ -129,10 +128,10 @@ static PyMethodDef op_methods[] = {
 
 
 //= CPyCppyy object proxy construction/destruction ===========================
-static ObjectProxy* op_new(PyTypeObject* subtype, PyObject*, PyObject*)
+static CPPInstance* op_new(PyTypeObject* subtype, PyObject*, PyObject*)
 {
 // Create a new object proxy (holder only).
-    ObjectProxy* pyobj = (ObjectProxy*)subtype->tp_alloc(subtype, 0);
+    CPPInstance* pyobj = (CPPInstance*)subtype->tp_alloc(subtype, 0);
     pyobj->fObject = nullptr;
     pyobj->fFlags  = 0;
 
@@ -140,7 +139,7 @@ static ObjectProxy* op_new(PyTypeObject* subtype, PyObject*, PyObject*)
 }
 
 //----------------------------------------------------------------------------
-static void op_dealloc( ObjectProxy* pyobj )
+static void op_dealloc( CPPInstance* pyobj )
 {
 // Remove (Python-side) memory held by the object proxy.
     op_dealloc_nofree(pyobj);
@@ -148,7 +147,7 @@ static void op_dealloc( ObjectProxy* pyobj )
 }
 
 //----------------------------------------------------------------------------
-static PyObject* op_richcompare(ObjectProxy* self, ObjectProxy* other, int op)
+static PyObject* op_richcompare(CPPInstance* self, CPPInstance* other, int op)
 {
 // Rich set of comparison objects; only equals and not-equals are defined.
     if (op != Py_EQ && op != Py_NE) {
@@ -163,7 +162,7 @@ static PyObject* op_richcompare(ObjectProxy* self, ObjectProxy* other, int op)
         bIsEq = true;
 
 // type + held pointer value defines identity (will cover if other is not
-// actually an ObjectProxy, as ob_type will be unequal)
+// actually an CPPInstance, as ob_type will be unequal)
     else if (Py_TYPE(self) == Py_TYPE(other) && self->GetObject() == other->GetObject())
         bIsEq = true;
 
@@ -175,19 +174,19 @@ static PyObject* op_richcompare(ObjectProxy* self, ObjectProxy* other, int op)
 }
 
 //----------------------------------------------------------------------------
-static PyObject* op_repr(ObjectProxy* pyobj)
+static PyObject* op_repr(CPPInstance* pyobj)
 {
 // Build a representation string of the object proxy that shows the address
 // of the C++ object that is held, as well as its type.
     Cppyy::TCppType_t klass = pyobj->ObjectIsA();
     std::string clName = klass ? Cppyy::GetScopedFinalName(klass) : "<unknown>";
-    if (pyobj->fFlags & ObjectProxy::kIsReference)
+    if (pyobj->fFlags & CPPInstance::kIsReference)
         clName.append("*");
 
     TypeManip::cppscope_to_pyscope(clName);
 
     std::string smartPtrName;
-    if (pyobj->fFlags & ObjectProxy::kIsSmartPtr) {
+    if (pyobj->fFlags & CPPInstance::kIsSmartPtr) {
         Cppyy::TCppType_t smartPtrType = pyobj->fSmartPtrType;
         smartPtrName = smartPtrType ?
             Cppyy::GetScopedFinalName( smartPtrType ) : "unknown smart pointer";
@@ -202,13 +201,13 @@ static PyObject* op_repr(ObjectProxy* pyobj)
 
 
 //-----------------------------------------------------------------------------
-static PyObject* op_getownership(ObjectProxy* pyobj, void*)
+static PyObject* op_getownership(CPPInstance* pyobj, void*)
 {
-    return PyBool_FromLong((long)(pyobj->fFlags & ObjectProxy::kIsOwner));
+    return PyBool_FromLong((long)(pyobj->fFlags & CPPInstance::kIsOwner));
 }
 
 //-----------------------------------------------------------------------------
-static int op_setownership(ObjectProxy* pyobj, PyObject* value, void*)
+static int op_setownership(CPPInstance* pyobj, PyObject* value, void*)
 {
 // Set the ownership (True is python-owns) for the given object.
     long shouldown = PyLong_AsLong(value);
@@ -235,8 +234,8 @@ static PyGetSetDef op_getset[] = {
 #define CPYCPPYY_STUB(name, op, pystring)                                     \
 static PyObject* op_##name##_stub(PyObject* left, PyObject* right)            \
 {                                                                             \
-    if (!ObjectProxy_Check(left)) {                                           \
-        if (ObjectProxy_Check(right)) {                                       \
+    if (!CPPInstance_Check(left)) {                                           \
+        if (CPPInstance_Check(right)) {                                       \
             std::swap(left, right);                                           \
         } else {                                                              \
             Py_INCREF(Py_NotImplemented);                                     \
@@ -324,10 +323,10 @@ PyNumberMethods op_as_number = {
 
 
 //= CPyCppyy object proxy type ===============================================
-PyTypeObject ObjectProxy_Type = {
+PyTypeObject CPPInstance_Type = {
     PyVarObject_HEAD_INIT(&CPyCppyyType_Type, 0)
-    (char*)"cppyy.ObjectProxy",    // tp_name
-    sizeof(ObjectProxy),           // tp_basicsize
+    (char*)"cppyy.CPPInstance",    // tp_name
+    sizeof(CPPInstance),           // tp_basicsize
     0,                             // tp_itemsize
     (destructor)op_dealloc,        // tp_dealloc
     0,                             // tp_print

@@ -3,7 +3,7 @@
 #include "PyStrings.h"
 #include "DeclareConverters.h"
 #include "TCallContext.h"
-#include "ObjectProxy.h"
+#include "CPPInstance.h"
 #include "TPyBufferFactory.h"
 #include "TCustomPyTypes.h"
 #include "TTupleOfInstances.h"
@@ -698,13 +698,13 @@ bool CPyCppyy::TVoidArrayConverter::SetArg(
     PyObject* pyobject, TParameter& para, TCallContext* ctxt)
 {
 // just convert pointer if it is a C++ object
-    if (ObjectProxy_Check(pyobject)) {
+    if (CPPInstance_Check(pyobject)) {
     // depending on memory policy, some objects are no longer owned when passed to C++
         if (!fKeepControl && !UseStrictOwnership(ctxt))
-            ((ObjectProxy*)pyobject)->CppOwns();
+            ((CPPInstance*)pyobject)->CppOwns();
 
    // set pointer (may be null) and declare success
-        para.fValue.fVoidp = ((ObjectProxy*)pyobject)->GetObject();
+        para.fValue.fVoidp = ((CPPInstance*)pyobject)->GetObject();
         para.fTypeCode = 'p';
         return true;
     }
@@ -743,13 +743,13 @@ PyObject* CPyCppyy::TVoidArrayConverter::FromMemory( void* address )
 bool CPyCppyy::TVoidArrayConverter::ToMemory(PyObject* value, void* address)
 {
 // just convert pointer if it is a C++ object
-    if (ObjectProxy_Check(value)) {
+    if (CPPInstance_Check(value)) {
     // depending on memory policy, some objects are no longer owned when passed to C++
         if (!fKeepControl && TCallContext::sMemoryPolicy != TCallContext::kUseStrict)
-            ((ObjectProxy*)value)->CppOwns();
+            ((CPPInstance*)value)->CppOwns();
 
     // set pointer (may be null) and declare success
-        *(void**)address = ((ObjectProxy*)value)->GetObject();
+        *(void**)address = ((CPPInstance*)value)->GetObject();
         return true;
     }
 
@@ -886,7 +886,7 @@ bool CPyCppyy::TCppObjectConverter::SetArg(
     PyObject* pyobject, TParameter& para, TCallContext* ctxt)
 {
 // convert <pyobject> to C++ instance*, set arg for call
-    if (!ObjectProxy_Check(pyobject)) {
+    if (!CPPInstance_Check(pyobject)) {
         if (GetAddressSpecialCase(pyobject, para.fValue.fVoidp)) {
             para.fTypeCode = 'p';      // allow special cases such as nullptr
             return true;
@@ -896,11 +896,11 @@ bool CPyCppyy::TCppObjectConverter::SetArg(
         return false;
     }
 
-    ObjectProxy* pyobj = (ObjectProxy*)pyobject;
+    CPPInstance* pyobj = (CPPInstance*)pyobject;
     if (pyobj->ObjectIsA() && Cppyy::IsSubtype( pyobj->ObjectIsA(), fClass)) {
     // depending on memory policy, some objects need releasing when passed into functions
         if (!KeepControl() && !UseStrictOwnership(ctxt))
-            ((ObjectProxy*)pyobject)->CppOwns();
+            ((CPPInstance*)pyobject)->CppOwns();
 
     // calculate offset between formal and actual arguments
         para.fValue.fVoidp = pyobj->GetObject();
@@ -928,7 +928,7 @@ PyObject* CPyCppyy::TCppObjectConverter::FromMemory(void* address)
 bool CPyCppyy::TCppObjectConverter::ToMemory(PyObject* value, void* address)
 {
 // convert <value> to C++ instance, write it at <address>
-    if (!ObjectProxy_Check(value)) {
+    if (!CPPInstance_Check(value)) {
         void* ptr = nullptr;
         if (GetAddressSpecialCase(value, ptr)) {
             *(void**)address = ptr;          // allow special cases such as nullptr
@@ -939,14 +939,14 @@ bool CPyCppyy::TCppObjectConverter::ToMemory(PyObject* value, void* address)
         return false;
     }
 
-    if (Cppyy::IsSubtype( ((ObjectProxy*)value)->ObjectIsA(), fClass)) {
+    if (Cppyy::IsSubtype( ((CPPInstance*)value)->ObjectIsA(), fClass)) {
     // depending on memory policy, some objects need releasing when passed into functions
         if (!KeepControl() && TCallContext::sMemoryPolicy != TCallContext::kUseStrict)
-            ((ObjectProxy*)value)->CppOwns();
+            ((CPPInstance*)value)->CppOwns();
 
     // call assignment operator through a temporarily wrapped object proxy
         PyObject* pyobj = BindCppObjectNoCast(address, fClass);
-        ((ObjectProxy*)pyobj)->CppOwns();     // TODO: might be recycled (?)
+        ((CPPInstance*)pyobj)->CppOwns();     // TODO: might be recycled (?)
         PyObject* result = PyObject_CallMethod(pyobj, (char*)"__assign__", (char*)"O", value);
         Py_DECREF(pyobj);
         if (result) {
@@ -965,10 +965,10 @@ bool CPyCppyy::TValueCppObjectConverter::SetArg(
     PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */)
 {
 // convert <pyobject> to C++ instance, set arg for call
-    if (!ObjectProxy_Check(pyobject))
+    if (!CPPInstance_Check(pyobject))
         return false;
 
-    ObjectProxy* pyobj = (ObjectProxy*)pyobject;
+    CPPInstance* pyobj = (CPPInstance*)pyobject;
     if (pyobj->ObjectIsA() && Cppyy::IsSubtype( pyobj->ObjectIsA(), fClass)) {
     // calculate offset between formal and actual arguments
         para.fValue.fVoidp = pyobj->GetObject();
@@ -992,12 +992,12 @@ bool CPyCppyy::TRefCppObjectConverter::SetArg(
         PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */)
 {
 // convert <pyobject> to C++ instance&, set arg for call
-    if (!ObjectProxy_Check(pyobject))
+    if (!CPPInstance_Check(pyobject))
         return false;
-    ObjectProxy* pyobj = (ObjectProxy*)pyobject;
+    CPPInstance* pyobj = (CPPInstance*)pyobject;
 
 // reject moves
-    if (pyobj->fFlags & ObjectProxy::kIsRValue)
+    if (pyobj->fFlags & CPPInstance::kIsRValue)
         return false;
 
     if (pyobj->ObjectIsA() && Cppyy::IsSubtype(pyobj->ObjectIsA(), fClass)) {
@@ -1030,14 +1030,14 @@ bool CPyCppyy::TMoveCppObjectConverter::SetArg(
     PyObject* pyobject, TParameter& para, TCallContext* ctxt)
 {
 // convert <pyobject> to C++ instance&&, set arg for call
-    if (!ObjectProxy_Check(pyobject))
+    if (!CPPInstance_Check(pyobject))
         return false;
-    ObjectProxy* pyobj = (ObjectProxy*)pyobject;
+    CPPInstance* pyobj = (CPPInstance*)pyobject;
 
 // moving is same as by-ref, but have to check that move is allowed
     int moveit_reason = 0;
-    if (pyobj->fFlags & ObjectProxy::kIsRValue) {
-        pyobj->fFlags &= ~ObjectProxy::kIsRValue;
+    if (pyobj->fFlags & CPPInstance::kIsRValue) {
+        pyobj->fFlags &= ~CPPInstance::kIsRValue;
         moveit_reason = 2;
     } else if (pyobject->ob_refcnt == refcount_cutoff) {
         moveit_reason = 1;
@@ -1046,7 +1046,7 @@ bool CPyCppyy::TMoveCppObjectConverter::SetArg(
     if (moveit_reason) {
         bool result = this->TRefCppObjectConverter::SetArg(pyobject, para, ctxt);
         if (!result && moveit_reason == 2)       // restore the movability flag?
-            ((ObjectProxy*)pyobject)->fFlags |= ObjectProxy::kIsRValue;
+            ((CPPInstance*)pyobject)->fFlags |= CPPInstance::kIsRValue;
         return result;
     }
 
@@ -1060,20 +1060,20 @@ bool CPyCppyy::TCppObjectPtrConverter<ISREFERENCE>::SetArg(
     PyObject* pyobject, TParameter& para, TCallContext* ctxt)
 {
 // convert <pyobject> to C++ instance**, set arg for call
-    if (!ObjectProxy_Check(pyobject))
+    if (!CPPInstance_Check(pyobject))
         return false;              // not a cppyy object (TODO: handle SWIG etc.)
 
-    if (Cppyy::IsSubtype(((ObjectProxy*)pyobject)->ObjectIsA(), fClass)) {
+    if (Cppyy::IsSubtype(((CPPInstance*)pyobject)->ObjectIsA(), fClass)) {
     // depending on memory policy, some objects need releasing when passed into functions
         if (!KeepControl() && !UseStrictOwnership(ctxt))
-            ((ObjectProxy*)pyobject)->CppOwns();
+            ((CPPInstance*)pyobject)->CppOwns();
 
     // set pointer (may be null) and declare success
-        if (((ObjectProxy*)pyobject)->fFlags & ObjectProxy::kIsReference)
+        if (((CPPInstance*)pyobject)->fFlags & CPPInstance::kIsReference)
         // If given object is already a reference (aka pointer) then we should not take the address of it
-            para.fValue.fVoidp = ((ObjectProxy*)pyobject)->fObject;
+            para.fValue.fVoidp = ((CPPInstance*)pyobject)->fObject;
         else
-            para.fValue.fVoidp = &((ObjectProxy*)pyobject)->fObject;
+            para.fValue.fVoidp = &((CPPInstance*)pyobject)->fObject;
         para.fTypeCode = ISREFERENCE ? 'V' : 'p';
         return true;
     }
@@ -1094,16 +1094,16 @@ template <bool ISREFERENCE>
 bool CPyCppyy::TCppObjectPtrConverter<ISREFERENCE>::ToMemory(PyObject* value, void* address)
 {
 // convert <value> to C++ instance*, write it at <address>
-    if (!ObjectProxy_Check(value))
+    if (!CPPInstance_Check(value))
         return false;              // not a cppyy object (TODO: handle SWIG etc.)
 
-    if (Cppyy::IsSubtype(((ObjectProxy*)value)->ObjectIsA(), fClass)) {
+    if (Cppyy::IsSubtype(((CPPInstance*)value)->ObjectIsA(), fClass)) {
     // depending on memory policy, some objects need releasing when passed into functions
         if (!KeepControl() && TCallContext::sMemoryPolicy != TCallContext::kUseStrict)
-            ((ObjectProxy*)value)->CppOwns();
+            ((CPPInstance*)value)->CppOwns();
 
     // set pointer (may be null) and declare success
-        *(void**)address = ((ObjectProxy*)value)->GetObject();
+        *(void**)address = ((CPPInstance*)value)->GetObject();
         return true;
     }
 
@@ -1131,12 +1131,12 @@ bool CPyCppyy::TCppObjectArrayConverter::SetArg(
         return false;
 
     PyObject* first = PyTuple_GetItem(pyobject, 0);
-    if (!ObjectProxy_Check(first))
+    if (!CPPInstance_Check(first))
         return false;              // should not happen
 
-    if (Cppyy::IsSubtype(((ObjectProxy*)first)->ObjectIsA(), fClass)) {
+    if (Cppyy::IsSubtype(((CPPInstance*)first)->ObjectIsA(), fClass)) {
     // no memory policies supported; set pointer (may be null) and declare success
-        para.fValue.fVoidp = ((ObjectProxy*)first)->fObject;
+        para.fValue.fVoidp = ((CPPInstance*)first)->fObject;
         para.fTypeCode = 'p';
         return true;
     }
@@ -1171,11 +1171,11 @@ bool CPyCppyy::TCppObjectArrayConverter::ToMemory(PyObject* /* value */, void* /
 bool CPyCppyy::TSTLIteratorConverter::SetArg(
     PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */)
 {
-    if (!ObjectProxy_Check(pyobject))
+    if (!CPPInstance_Check(pyobject))
         return false;
 
 // just set the pointer value, no check
-    ObjectProxy* pyobj = (ObjectProxy*)pyobject;
+    CPPInstance* pyobj = (CPPInstance*)pyobject;
     para.fValue.fVoidp = pyobj->GetObject();
     para.fTypeCode = 'V';
     return true;
@@ -1187,8 +1187,8 @@ bool CPyCppyy::TVoidPtrRefConverter::SetArg(
     PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */)
 {
 // convert <pyobject> to C++ void*&, set arg for call
-    if (ObjectProxy_Check(pyobject)) {
-        para.fValue.fVoidp = &((ObjectProxy*)pyobject)->fObject;
+    if (CPPInstance_Check(pyobject)) {
+        para.fValue.fVoidp = &((CPPInstance*)pyobject)->fObject;
         para.fTypeCode = 'V';
         return true;
     }
@@ -1201,9 +1201,9 @@ bool CPyCppyy::TVoidPtrPtrConverter::SetArg(
       PyObject* pyobject, TParameter& para, TCallContext* /* ctxt */)
 {
 // convert <pyobject> to C++ void**, set arg for call
-    if (ObjectProxy_Check(pyobject)) {
+    if (CPPInstance_Check(pyobject)) {
     // this is a C++ object, take and set its address
-        para.fValue.fVoidp = &((ObjectProxy*)pyobject)->fObject;
+        para.fValue.fVoidp = &((CPPInstance*)pyobject)->fObject;
         para.fTypeCode = 'p';
         return true;
     }
@@ -1269,7 +1269,7 @@ bool CPyCppyy::TSmartPtrCppObjectConverter::SetArg(
 {
     char typeCode = fHandlePtr ? 'p' : 'V';
 
-    if (!ObjectProxy_Check(pyobject)) {
+    if (!CPPInstance_Check(pyobject)) {
         if (fHandlePtr && GetAddressSpecialCase( pyobject, para.fValue.fVoidp)) {
             para.fTypeCode = typeCode;      // allow special cases such as nullptr
             return true;
@@ -1278,13 +1278,13 @@ bool CPyCppyy::TSmartPtrCppObjectConverter::SetArg(
         return false;
     }
 
-    ObjectProxy* pyobj = (ObjectProxy*)pyobject;
+    CPPInstance* pyobj = (CPPInstance*)pyobject;
 
 // for the case where we have a 'hidden' smart pointer:
-    if (pyobj->fFlags & ObjectProxy::kIsSmartPtr && Cppyy::IsSubtype(pyobj->fSmartPtrType, fClass)) {
+    if (pyobj->fFlags & CPPInstance::kIsSmartPtr && Cppyy::IsSubtype(pyobj->fSmartPtrType, fClass)) {
     // depending on memory policy, some objects need releasing when passed into functions
         if (fKeepControl && !UseStrictOwnership(ctxt))
-            ((ObjectProxy*)pyobject)->CppOwns();
+            ((CPPInstance*)pyobject)->CppOwns();
 
     // calculate offset between formal and actual arguments
         para.fValue.fVoidp = pyobj->fSmartPtr;
@@ -1322,7 +1322,7 @@ PyObject* CPyCppyy::TSmartPtrCppObjectConverter::FromMemory(void* address)
 
 // obtain raw pointer
     std::vector<TParameter> args;
-    ObjectProxy* pyobj = (ObjectProxy*) BindCppObject(
+    CPPInstance* pyobj = (CPPInstance*) BindCppObject(
         Cppyy::CallR((Cppyy::TCppMethod_t)fDereferencer, address, &args ), fRawPtrType);
     if (pyobj)
         pyobj->SetSmartPtr((void*)address, fClass);

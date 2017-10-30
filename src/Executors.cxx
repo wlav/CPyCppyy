@@ -2,7 +2,7 @@
 #include "CPyCppyy.h"
 #include "PyStrings.h"
 #include "DeclareExecutors.h"
-#include "ObjectProxy.h"
+#include "CPPInstance.h"
 #include "TPyBufferFactory.h"
 #include "TypeManip.h"
 #include "CPyCppyyHelpers.h"
@@ -401,7 +401,7 @@ PyObject* CPyCppyy::TCppObjectByValueExecutor::Execute(
     }
 
 // the result can then be bound
-    ObjectProxy* pyobj = (ObjectProxy*)BindCppObjectNoCast(value, fClass, false, true);
+    CPPInstance* pyobj = (CPPInstance*)BindCppObjectNoCast(value, fClass, false, true);
     if (!pyobj)
         return nullptr;
 
@@ -484,7 +484,7 @@ PyObject* CPyCppyy::TCppObjectBySmartPtrExecutor::Execute(
     }
 
 // fixme? - why doesn't this do the same as `self._get_smart_ptr().get()'
-    ObjectProxy* pyobj = (ObjectProxy*)BindCppObject(
+    CPPInstance* pyobj = (CPPInstance*)BindCppObject(
         (void*)GILCallR((Cppyy::TCppMethod_t)fDereferencer, value, ctxt), fRawPtrType);
 
     if (pyobj) {
@@ -503,7 +503,7 @@ PyObject* CPyCppyy::TCppObjectBySmartPtrPtrExecutor::Execute(
         return nullptr;
 
 // todo: why doesn't this do the same as `self._get_smart_ptr().get()'
-    ObjectProxy* pyobj = (ObjectProxy*) BindCppObject(
+    CPPInstance* pyobj = (CPPInstance*) BindCppObject(
         (void*)GILCallR((Cppyy::TCppMethod_t)fDereferencer, value, ctxt), fRawPtrType);
 
     if (pyobj)
@@ -522,7 +522,7 @@ PyObject* CPyCppyy::TCppObjectBySmartPtrRefExecutor::Execute(
     //if ( ! fAssignable ) {
 
 // fixme? - why doesn't this do the same as `self._get_smart_ptr().get()'
-    ObjectProxy* pyobj = (ObjectProxy*)BindCppObject(
+    CPPInstance* pyobj = (CPPInstance*)BindCppObject(
         (void*)GILCallR((Cppyy::TCppMethod_t)fDereferencer, value, ctxt), fRawPtrType);
 
     if (pyobj)

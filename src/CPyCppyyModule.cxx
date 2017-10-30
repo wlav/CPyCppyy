@@ -2,7 +2,7 @@
 #include "CPyCppyy.h"
 #include "PyStrings.h"
 #include "CPyCppyyType.h"
-#include "ObjectProxy.h"
+#include "CPPInstance.h"
 #include "MethodProxy.h"
 #include "TemplateProxy.h"
 #include "PropertyProxy.h"
@@ -362,13 +362,13 @@ PyObject* MakeCppTemplateClass(PyObject*, PyObject* args)
 }
 
 //----------------------------------------------------------------------------
-void* GetObjectProxyAddress(PyObject*, PyObject* args)
+void* GetCPPInstanceAddress(PyObject*, PyObject* args)
 {
 // Helper to get the address (address-of-address) of various object proxy types.
-    ObjectProxy* pyobj = 0;
+    CPPInstance* pyobj = 0;
     PyObject* pyname = 0;
     if (PyArg_ParseTuple(args, const_cast<char*>("O|O!"), &pyobj,
-                         &CPyCppyy_PyUnicode_Type, &pyname) && ObjectProxy_Check(pyobj)) {
+                         &CPyCppyy_PyUnicode_Type, &pyname) && CPPInstance_Check(pyobj)) {
         if (!pyobj->fObject)
             return nullptr;  // note: no error set
 
@@ -411,7 +411,7 @@ void* GetObjectProxyAddress(PyObject*, PyObject* args)
 PyObject* addressof(PyObject* pyobj, PyObject* args)
 {
 // Return object proxy address as a value (cppyy-style), or the same for an array.
-    void* addr = GetObjectProxyAddress(pyobj, args);
+    void* addr = GetCPPInstanceAddress(pyobj, args);
     if (addr)
         return PyLong_FromLong(*(Long_t*)addr);
     else if (!PyErr_Occurred()) {
@@ -439,7 +439,7 @@ PyObject* addressof(PyObject* pyobj, PyObject* args)
 PyObject* AsCObject(PyObject* dummy, PyObject* args)
 {
 // Return object proxy as an opaque CObject.
-    void* addr = GetObjectProxyAddress(dummy, args);
+    void* addr = GetCPPInstanceAddress(dummy, args);
     if (addr)
         return CPyCppyy_PyCapsule_New((void*)(*(Long_t*)addr), nullptr, nullptr);
 
@@ -519,12 +519,12 @@ PyObject* BindObject(PyObject*, PyObject* args, PyObject* kwds)
 static PyObject* Move(PyObject*, PyObject* pyobject)
 {
 // Prepare the given C++ object for moving.
-    if (!ObjectProxy_Check(pyobject)) {
+    if (!CPPInstance_Check(pyobject)) {
         PyErr_SetString(PyExc_TypeError, "C++ object expected");
         return nullptr;
     }
 
-    ((ObjectProxy*)pyobject)->fFlags |= ObjectProxy::kIsRValue;
+    ((CPPInstance*)pyobject)->fFlags |= CPPInstance::kIsRValue;
     Py_INCREF(pyobject);
     return pyobject;
 }
@@ -589,9 +589,9 @@ PyObject* SetSignalPolicy(PyObject*, PyObject* args)
 PyObject* SetOwnership(PyObject*, PyObject* args)
 {
 // Set the ownership (True is python-owns) for the given object.
-    ObjectProxy* pyobj = nullptr; PyObject* pykeep = nullptr;
+    CPPInstance* pyobj = nullptr; PyObject* pykeep = nullptr;
     if (!PyArg_ParseTuple(args, const_cast<char*>("O!O!"),
-            &ObjectProxy_Type, (void*)&pyobj, &PyInt_Type, &pykeep))
+            &CPPInstance_Type, (void*)&pyobj, &PyInt_Type, &pykeep))
         return nullptr;
 
     (bool)PyLong_AsLong(pykeep) ? pyobj->PythonOwns() : pyobj->CppOwns();
@@ -644,16 +644,16 @@ PyObject* IgnoreTypePinning(PyObject*, PyObject* args)
 PyObject* Cast(PyObject*, PyObject* args)
 {
 // Cast `obj' to type `type'.
-    ObjectProxy* obj = nullptr;
+    CPPInstance* obj = nullptr;
     CPyCppyyClass* type = nullptr;
     if (!PyArg_ParseTuple(args, const_cast<char*>("O!O!"),
-                          &ObjectProxy_Type, &obj,
+                          &CPPInstance_Type, &obj,
                           &CPyCppyyType_Type, &type))
         return nullptr;
 // TODO: this misses an offset calculation, and reference type must not
 // be cast ...
     return BindCppObjectNoCast(obj->GetObject(), type->fCppType,
-                               obj->fFlags & ObjectProxy::kIsReference);
+                               obj->fFlags & CPPInstance::kIsReference);
 }
 
 } // unnamed namespace
@@ -786,7 +786,7 @@ extern "C" void initlibcppyy()
         CPYCPPYY_INIT_ERROR;
 
 // inject object proxy type
-    if (!Utility::InitProxy(gThisModule, &ObjectProxy_Type, "ObjectProxy"))
+    if (!Utility::InitProxy(gThisModule, &CPPInstance_Type, "CPPInstance"))
         CPYCPPYY_INIT_ERROR;
 
 // inject method proxy type

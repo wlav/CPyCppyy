@@ -5,7 +5,7 @@
 namespace CPyCppyy {
 
     using namespace Cppyy;
-    class ObjectProxy;
+    class CPPInstance;
 
     class MemoryRegulator {
     public:
@@ -15,7 +15,7 @@ namespace CPyCppyy {
         static bool RecursiveRemove(TCppObject_t cppobj, TCppType_t klass);
 
     // add a python object to the table of managed objects
-        static bool RegisterPyObject(ObjectProxy* pyobj, void* cppobj);
+        static bool RegisterPyObject(CPPInstance* pyobj, void* cppobj);
 
     // remove a python object from the table of managed objects, w/o notification
         static bool UnregisterPyObject(TCppObject_t cppobj, TCppType_t klass);

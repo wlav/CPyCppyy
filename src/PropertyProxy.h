@@ -10,7 +10,7 @@
 
 namespace CPyCppyy {
 
-    class ObjectProxy;
+    class CPPInstance;
 
     class PropertyProxy {
     public:
@@ -18,7 +18,7 @@ namespace CPyCppyy {
         void Set(Cppyy::TCppScope_t scope, const std::string& name, void* address);
 
         std::string GetName() { return fName; }
-        void* GetAddress(ObjectProxy* pyobj /* owner */);
+        void* GetAddress(CPPInstance* pyobj /* owner */);
 
     public:             // public, as the python C-API works with C structs
         PyObject_HEAD

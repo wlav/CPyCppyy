@@ -38,19 +38,19 @@ public:
 // enter an interactive python session (exit with ^D)
     static void Prompt();
 
-// type verifiers for ObjectProxy
-    static bool ObjectProxy_Check( PyObject* pyobject );
-    static bool ObjectProxy_CheckExact( PyObject* pyobject );
+// type verifiers for CPPInstance
+    static bool CPPInstance_Check( PyObject* pyobject );
+    static bool CPPInstance_CheckExact( PyObject* pyobject );
 
 // type verifiers for MethodProxy
     static bool MethodProxy_Check( PyObject* pyobject );
     static bool MethodProxy_CheckExact( PyObject* pyobject );
 
 // object proxy to void* conversion
-    static void* ObjectProxy_AsVoidPtr( PyObject* pyobject );
+    static void* CPPInstance_AsVoidPtr( PyObject* pyobject );
 
 // void* to object proxy conversion, returns a new reference
-    static PyObject* ObjectProxy_FromVoidPtr(
+    static PyObject* CPPInstance_FromVoidPtr(
         void* addr, const char* classname, bool python_owns = false );
 
     virtual ~TPython() { }

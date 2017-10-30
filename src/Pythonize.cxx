@@ -2,7 +2,7 @@
 #include "CPyCppyy.h"
 #include "PyStrings.h"
 #include "Pythonize.h"
-#include "ObjectProxy.h"
+#include "CPPInstance.h"
 #include "MethodProxy.h"
 #include "CPyCppyyHelpers.h"
 #include "Utility.h"
@@ -123,7 +123,7 @@ PyObject* PyStyleIndex(PyObject* self, PyObject* index)
 }
 
 //-----------------------------------------------------------------------------
-inline PyObject* CallSelfIndex(ObjectProxy* self, PyObject* idx, const char* meth)
+inline PyObject* CallSelfIndex(CPPInstance* self, PyObject* idx, const char* meth)
 {
 // Helper; call method with signature: meth(pyindex).
     Py_INCREF((PyObject*)self);
@@ -215,7 +215,7 @@ PyObject* GenObjectIsEqual(PyObject* self, PyObject* obj)
 
 // failed: fallback to generic rich comparison
     PyErr_Clear();
-    return ObjectProxy_Type.tp_richcompare(self, obj, Py_EQ);
+    return CPPInstance_Type.tp_richcompare(self, obj, Py_EQ);
 }
 
 //-----------------------------------------------------------------------------
@@ -234,7 +234,7 @@ PyObject* GenObjectIsNotEqual(PyObject* self, PyObject* obj)
 
 // failed: fallback to generic rich comparison
     PyErr_Clear();
-    return ObjectProxy_Type.tp_richcompare(self, obj, Py_NE);
+    return CPPInstance_Type.tp_richcompare(self, obj, Py_NE);
 }
 
 //- vector behavior as primitives ----------------------------------------------
@@ -340,7 +340,7 @@ static PyObject* vector_iter(PyObject* v) {
     return (PyObject*)vi;
 }
 
-PyObject* VectorGetItem(ObjectProxy* self, PySliceObject* index)
+PyObject* VectorGetItem(CPPInstance* self, PySliceObject* index)
 {
 // Implement python's __getitem__ for std::vector<>s.
     if (PySlice_Check(index)) {
@@ -367,7 +367,7 @@ PyObject* VectorGetItem(ObjectProxy* self, PySliceObject* index)
     return CallSelfIndex(self, (PyObject*)index, "_vector__at");
 }
 
-PyObject* VectorBoolSetItem(ObjectProxy* self, PyObject* args)
+PyObject* VectorBoolSetItem(CPPInstance* self, PyObject* args)
 {
 // std::vector<bool> is a special-case in C++, and its return type depends on
 // the compiler: treat it special here as well
@@ -411,9 +411,9 @@ PyObject* MapContains(PyObject* self, PyObject* obj)
     PyObject* result = nullptr;
 
     PyObject* iter = CallPyObjMethod(self, "find", obj);
-    if (ObjectProxy_Check(iter)) {
+    if (CPPInstance_Check(iter)) {
         PyObject* end = CallPyObjMethod(self, "end");
-        if (ObjectProxy_Check(end)) {
+        if (CPPInstance_Check(end)) {
             if (!PyObject_RichCompareBool(iter, end, Py_EQ)) {
                 Py_INCREF(Py_True);
                 result = Py_True;
@@ -482,7 +482,7 @@ PyObject* PairUnpack(PyObject* self, PyObject* pyindex)
     if (idx == -1 && PyErr_Occurred())
         return nullptr;
 
-    if (!ObjectProxy_Check(self) || !((ObjectProxy*)self)->GetObject()) {
+    if (!CPPInstance_Check(self) || !((CPPInstance*)self)->GetObject()) {
         PyErr_SetString(PyExc_TypeError, "unsubscriptable object");
         return nullptr;
     }
@@ -498,7 +498,7 @@ PyObject* PairUnpack(PyObject* self, PyObject* pyindex)
 }
 
 //- simplistic len() functions -----------------------------------------------
-PyObject* ReturnTwo(ObjectProxy*, PyObject*) {
+PyObject* ReturnTwo(CPPInstance*, PyObject*) {
     return PyInt_FromLong(2);
 }
 
@@ -516,12 +516,12 @@ static inline PyObject* CPyCppyy_PyString_FromCppString(std::string* s) {
 #define CPPYY_IMPL_STRING_PYTHONIZATION(type, name)                          \
 inline PyObject* name##GetData(PyObject* self)                               \
 {                                                                            \
-    if (CPyCppyy::ObjectProxy_Check(self)) {                                 \
-        type* obj = ((type*)((ObjectProxy*)self)->GetObject());              \
+    if (CPyCppyy::CPPInstance_Check(self)) {                                 \
+        type* obj = ((type*)((CPPInstance*)self)->GetObject());              \
         if (obj) {                                                           \
             return CPyCppyy_PyString_FromCppString(obj);                     \
         } else {                                                             \
-            return ObjectProxy_Type.tp_str(self);                            \
+            return CPPInstance_Type.tp_str(self);                            \
         }                                                                    \
     }                                                                        \
     PyErr_Format(PyExc_TypeError, "object mismatch (%s expected)", #type);   \

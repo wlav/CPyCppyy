@@ -42,7 +42,7 @@ namespace CPyCppyy {
 
     public:               // public, as the python C-API works with C structs
         PyObject_HEAD
-        ObjectProxy*   fSelf;        // must be first (same layout as TemplateProxy)
+        CPPInstance*   fSelf;        // must be first (same layout as TemplateProxy)
         MethodInfo_t*  fMethodInfo;
 
     private:

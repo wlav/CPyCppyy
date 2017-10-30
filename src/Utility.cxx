@@ -2,7 +2,7 @@
 #include "CPyCppyy.h"
 #include "PyStrings.h"
 #include "Utility.h"
-#include "ObjectProxy.h"
+#include "CPPInstance.h"
 #include "MethodProxy.h"
 #include "TFunctionHolder.h"
 #include "TCustomPyTypes.h"
@@ -294,7 +294,7 @@ bool CPyCppyy::Utility::AddBinaryOperator(
 // gC2POperatorMapping (i.e. if it is ambiguous at the member level).
 
 // this should be a given, nevertheless ...
-    if (!ObjectProxy_Check(left))
+    if (!CPPInstance_Check(left))
         return false;
 
 // retrieve the class names to match the signature of any found global functions
@@ -667,8 +667,8 @@ Py_ssize_t CPyCppyy::Utility::ArraySize(const std::string& name)
 std::string CPyCppyy::Utility::ClassName(PyObject* pyobj)
 {
 // Retrieve the class name from the given Python instance.
-    if (ObjectProxy_Check(pyobj))
-        return Cppyy::GetScopedFinalName(((ObjectProxy*)pyobj)->ObjectIsA());
+    if (CPPInstance_Check(pyobj))
+        return Cppyy::GetScopedFinalName(((CPPInstance*)pyobj)->ObjectIsA());
 
 // generic Python object ...
     std::string clname = "<unknown>";

@@ -3,7 +3,7 @@
 #include "PyStrings.h"
 #include "CPyCppyyHelpers.h"
 #include "CPyCppyyType.h"
-#include "ObjectProxy.h"
+#include "CPPInstance.h"
 #include "MethodProxy.h"
 #include "MemoryRegulator.h"
 #include "TemplateProxy.h"
@@ -56,8 +56,8 @@ static PyObject* CreateNewCppProxyClass(Cppyy::TCppScope_t klass, PyObject* pyba
     Py_XINCREF(pybases);
     if (!pybases) {
         pybases = PyTuple_New(1);
-        Py_INCREF((PyObject*)(void*)&ObjectProxy_Type);
-        PyTuple_SET_ITEM(pybases, 0, (PyObject*)(void*)&ObjectProxy_Type);
+        Py_INCREF((PyObject*)(void*)&CPPInstance_Type);
+        PyTuple_SET_ITEM(pybases, 0, (PyObject*)(void*)&CPPInstance_Type);
     }
 
     PyObject* pymetabases = PyTuple_New(PyTuple_GET_SIZE(pybases));
@@ -390,8 +390,8 @@ static PyObject* BuildCppClassBases(Cppyy::TCppType_t klass)
 
 // build all the bases
     if (nbases == 0) {
-        Py_INCREF((PyObject*)(void*)&ObjectProxy_Type);
-        PyTuple_SET_ITEM(pybases, 0, (PyObject*)(void*)&ObjectProxy_Type);
+        Py_INCREF((PyObject*)(void*)&CPPInstance_Type);
+        PyTuple_SET_ITEM(pybases, 0, (PyObject*)(void*)&CPPInstance_Type);
     } else {
         for (std::vector<std::string>::size_type ibase = 0; ibase < nbases; ++ibase) {
             PyObject* pyclass = CreateScopeProxy(uqb[ibase]);
@@ -404,11 +404,11 @@ static PyObject* BuildCppClassBases(Cppyy::TCppType_t klass)
         }
 
     // special case, if true python types enter the hierarchy, make sure that
-    // the first base seen is still the ObjectProxy_Type
-        if (!PyObject_IsSubclass(PyTuple_GET_ITEM(pybases, 0), (PyObject*)&ObjectProxy_Type)) {
+    // the first base seen is still the CPPInstance_Type
+        if (!PyObject_IsSubclass(PyTuple_GET_ITEM(pybases, 0), (PyObject*)&CPPInstance_Type)) {
             PyObject* newpybases = PyTuple_New(nbases+1);
-            Py_INCREF((PyObject*)(void*)&ObjectProxy_Type);
-            PyTuple_SET_ITEM(newpybases, 0, (PyObject*)(void*)&ObjectProxy_Type);
+            Py_INCREF((PyObject*)(void*)&CPPInstance_Type);
+            PyTuple_SET_ITEM(newpybases, 0, (PyObject*)(void*)&CPPInstance_Type);
             for (int ibase = 0; ibase < (int)nbases; ++ibase) {
                 PyObject* pyclass = PyTuple_GET_ITEM(pybases, ibase);
                 Py_INCREF(pyclass);
@@ -732,16 +732,16 @@ PyObject* CPyCppyy::BindCppObjectNoCast(
 
 // instantiate an object of this class
     PyObject* args = PyTuple_New(0);
-    ObjectProxy* pyobj =
-        (ObjectProxy*)((PyTypeObject*)pyclass)->tp_new((PyTypeObject*)pyclass, args, nullptr);
+    CPPInstance* pyobj =
+        (CPPInstance*)((PyTypeObject*)pyclass)->tp_new((PyTypeObject*)pyclass, args, nullptr);
     Py_DECREF(args);
     Py_DECREF(pyclass);
 
 // bind, register and return if successful
     if (pyobj != 0) { // fill proxy value?
         unsigned flags =
-            (isRef ? ObjectProxy::kIsReference : 0) | (isValue ? ObjectProxy::kIsValue : 0);
-        pyobj->Set(address, (ObjectProxy::EFlags)flags);
+            (isRef ? CPPInstance::kIsReference : 0) | (isValue ? CPPInstance::kIsValue : 0);
+        pyobj->Set(address, (CPPInstance::EFlags)flags);
 
         if (address && !isRef)
             MemoryRegulator::RegisterPyObject(pyobj, address);

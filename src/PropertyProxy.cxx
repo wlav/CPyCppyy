@@ -2,7 +2,7 @@
 #include "CPyCppyy.h"
 #include "PyStrings.h"
 #include "PropertyProxy.h"
-#include "ObjectProxy.h"
+#include "CPPInstance.h"
 #include "Utility.h"
 
 
@@ -19,7 +19,7 @@ namespace CPyCppyy {
 namespace {
 
 //= CPyCppyy property proxy property behaviour ===============================
-PyObject* pp_get(PropertyProxy* pyprop, ObjectProxy* pyobj, PyObject*)
+PyObject* pp_get(PropertyProxy* pyprop, CPPInstance* pyobj, PyObject*)
 {
 // normal getter access
     void* address = pyprop->GetAddress(pyobj);
@@ -46,7 +46,7 @@ PyObject* pp_get(PropertyProxy* pyprop, ObjectProxy* pyobj, PyObject*)
     // of the data member's lifetime, if it is a bound type (it doesn't matter
     // for builtin types, b/c those are copied over into python types and thus
     // end up being "stand-alone")
-        if (pyobj && ObjectProxy_Check(result)) {
+        if (pyobj && CPPInstance_Check(result)) {
             if (PyObject_SetAttr(result, PyStrings::gLifeLine, (PyObject*)pyobj) == -1)
                 PyErr_Clear();     // ignored
         }
@@ -59,7 +59,7 @@ PyObject* pp_get(PropertyProxy* pyprop, ObjectProxy* pyobj, PyObject*)
 }
 
 //-----------------------------------------------------------------------------
-int pp_set(PropertyProxy* pyprop, ObjectProxy* pyobj, PyObject* value)
+int pp_set(PropertyProxy* pyprop, CPPInstance* pyobj, PyObject* value)
 {
 /// Set the value of the C++ datum held.
     const int errret = -1;
@@ -216,7 +216,7 @@ void CPyCppyy::PropertyProxy::Set(Cppyy::TCppScope_t scope, const std::string& n
 }
 
 //-----------------------------------------------------------------------------
-void* CPyCppyy::PropertyProxy::GetAddress(ObjectProxy* pyobj)
+void* CPyCppyy::PropertyProxy::GetAddress(CPPInstance* pyobj)
 {
 // class attributes, global properties
     if (fProperty & kIsStaticData)
@@ -229,7 +229,7 @@ void* CPyCppyy::PropertyProxy::GetAddress(ObjectProxy* pyobj)
     }
 
 // instance attributes; requires valid object for full address
-    if (!ObjectProxy_Check(pyobj)) {
+    if (!CPPInstance_Check(pyobj)) {
         PyErr_Format(PyExc_TypeError,
             "object instance required for access to property \"%s\"", GetName().c_str());
         return nullptr;

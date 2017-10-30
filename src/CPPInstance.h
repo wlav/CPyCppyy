@@ -1,9 +1,9 @@
-#ifndef CPYCPPYY_OBJECTPROXY_H
-#define CPYCPPYY_OBJECTPROXY_H
+#ifndef CPYCPPYY_CPPINSTANCE_H
+#define CPYCPPYY_CPPINSTANCE_H
 
 //////////////////////////////////////////////////////////////////////////////
 //                                                                          //
-// CpyCppyy::ObjectProxy                                                    //
+// CpyCppyy::CPPInstance                                                    //
 //                                                                          //
 // Python-side proxy, encapsulaties a C++ object.                           //
 //                                                                          //
@@ -16,11 +16,11 @@
 #include "TCallContext.h"
 
 
-// TODO: have an ObjectProxy derived or alternative type for smart pointers
+// TODO: have an CPPInstance derived or alternative type for smart pointers
 
 namespace CPyCppyy {
 
-    class ObjectProxy {
+    class CPPInstance {
     public:
         enum EFlags {
             kNone        = 0x0,
@@ -82,29 +82,29 @@ namespace CPyCppyy {
         Cppyy::TCppType_t fSmartPtrType;
 
     private:
-        ObjectProxy() = delete;
+        CPPInstance() = delete;
     };
 
 
 //- object proxy type and type verification ----------------------------------
-    extern PyTypeObject ObjectProxy_Type;
+    extern PyTypeObject CPPInstance_Type;
 
     template<typename T>
-    inline bool ObjectProxy_Check(T* object)
+    inline bool CPPInstance_Check(T* object)
     {
-        return object && PyObject_TypeCheck(object, &ObjectProxy_Type);
+        return object && PyObject_TypeCheck(object, &CPPInstance_Type);
     }
 
     template<typename T>
-    inline bool ObjectProxy_CheckExact(T* object)
+    inline bool CPPInstance_CheckExact(T* object)
     {
-        return object && Py_TYPE(object) == &ObjectProxy_Type;
+        return object && Py_TYPE(object) == &CPPInstance_Type;
     }
 
 
 //- helper for memory regulation (no PyTypeObject equiv. member in p2.2) -----
-    void op_dealloc_nofree(ObjectProxy*);
+    void op_dealloc_nofree(CPPInstance*);
 
 } // namespace CPyCppyy
 
-#endif // !CPYCPPYY_OBJECTPROXY_H
+#endif // !CPYCPPYY_CPPINSTANCE_H

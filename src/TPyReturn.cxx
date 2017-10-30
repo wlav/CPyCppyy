@@ -1,7 +1,7 @@
 // Bindings
 #include "CPyCppyy.h"
 #include "TPyReturn.h"
-#include "ObjectProxy.h"
+#include "CPPInstance.h"
 
 // Standard
 #include <stdexcept>
@@ -155,9 +155,9 @@ TPyReturn::operator void*() const
     if (fPyObject == Py_None)
         return nullptr;
 
-    if (CPyCppyy::ObjectProxy_Check(fPyObject )) {
-        ((CPyCppyy::ObjectProxy*)fPyObject)->CppOwns();
-        return ((CPyCppyy::ObjectProxy*)fPyObject)->GetObject();
+    if (CPyCppyy::CPPInstance_Check(fPyObject )) {
+        ((CPyCppyy::CPPInstance*)fPyObject)->CppOwns();
+        return ((CPyCppyy::CPPInstance*)fPyObject)->GetObject();
     } else
         return fPyObject;               // borrows reference
 }

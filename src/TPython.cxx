@@ -2,7 +2,7 @@
 #include "CPyCppyy.h"
 #include "PyStrings.h"
 #include "TPython.h"
-#include "ObjectProxy.h"
+#include "CPPInstance.h"
 #include "MethodProxy.h"
 #include "CPyCppyyHelpers.h"
 
@@ -66,9 +66,9 @@
 //
 // The API part provides (direct) C++ access to the bindings functionality of
 // CPyCppyy. It allows verifying that you deal with a CPyCppyy pyobject in the
-// first place (ObjectProxy_Check for ObjectProxy and any derived types, as well
-// as ObjectProxy_CheckExact for ObjectProxy's only); and it allows conversions
-// of void* to an ObjectProxy and vice versa.
+// first place (CPPInstance_Check for CPPInstance and any derived types, as well
+// as CPPInstance_CheckExact for CPPInstance's only); and it allows conversions
+// of void* to an CPPInstance and vice versa.
 
 
 //- data ---------------------------------------------------------------------
@@ -371,7 +371,7 @@ const TPyReturn TPython::Eval(const char* expr)
     }
 
 // results that require no convserion
-    if (result == Py_None || CPyCppyy::ObjectProxy_Check(result) ||
+    if (result == Py_None || CPyCppyy::CPPInstance_Check(result) ||
             PyBytes_Check(result) ||
             PyFloat_Check(result) || PyLong_Check(result) || PyInt_Check(result))
         return TPyReturn(result);
@@ -420,26 +420,26 @@ void TPython::Prompt() {
 }
 
 //-----------------------------------------------------------------------------
-bool TPython::ObjectProxy_Check(PyObject* pyobject)
+bool TPython::CPPInstance_Check(PyObject* pyobject)
 {
-// Test whether the type of the given pyobject is of ObjectProxy type or any
+// Test whether the type of the given pyobject is of CPPInstance type or any
 // derived type.
     if (!Initialize())
         return false;
 
 // detailed walk through inheritance hierarchy
-    return CPyCppyy::ObjectProxy_Check(pyobject);
+    return CPyCppyy::CPPInstance_Check(pyobject);
 }
 
 //-----------------------------------------------------------------------------
-bool TPython::ObjectProxy_CheckExact(PyObject* pyobject)
+bool TPython::CPPInstance_CheckExact(PyObject* pyobject)
 {
-// Test whether the type of the given pyobject is ObjectProxy type.
+// Test whether the type of the given pyobject is CPPInstance type.
     if (!Initialize())
         return false;
 
 // direct pointer comparison of type member
-    return CPyCppyy::ObjectProxy_CheckExact( pyobject );
+    return CPyCppyy::CPPInstance_CheckExact( pyobject );
 }
 
 //-----------------------------------------------------------------------------
@@ -466,22 +466,22 @@ bool TPython::MethodProxy_CheckExact(PyObject* pyobject)
 }
 
 //-----------------------------------------------------------------------------
-void* TPython::ObjectProxy_AsVoidPtr(PyObject* pyobject)
+void* TPython::CPPInstance_AsVoidPtr(PyObject* pyobject)
 {
-// Extract the object pointer held by the ObjectProxy pyobject.
+// Extract the object pointer held by the CPPInstance pyobject.
     if (!Initialize())
         return nullptr;
 
 // check validity of cast
-    if (!CPyCppyy::ObjectProxy_Check(pyobject))
+    if (!CPyCppyy::CPPInstance_Check(pyobject))
         return nullptr;
 
 // get held object (may be null)
-    return ((CPyCppyy::ObjectProxy*)pyobject)->GetObject();
+    return ((CPyCppyy::CPPInstance*)pyobject)->GetObject();
 }
 
 //-----------------------------------------------------------------------------
-PyObject* TPython::ObjectProxy_FromVoidPtr(
+PyObject* TPython::CPPInstance_FromVoidPtr(
     void* addr, const char* classname, bool python_owns)
 {
 // Bind the addr to a python object of class defined by classname.
@@ -492,8 +492,8 @@ PyObject* TPython::ObjectProxy_FromVoidPtr(
     PyObject* pyobject = CPyCppyy::BindCppObjectNoCast(addr, Cppyy::GetScope(classname), false);
 
 // give ownership, for ref-counting, to the python side, if so requested
-    if (python_owns && CPyCppyy::ObjectProxy_Check(pyobject))
-        ((CPyCppyy::ObjectProxy*)pyobject)->PythonOwns();
+    if (python_owns && CPyCppyy::CPPInstance_Check(pyobject))
+        ((CPyCppyy::CPPInstance*)pyobject)->PythonOwns();
 
     return pyobject;
 }

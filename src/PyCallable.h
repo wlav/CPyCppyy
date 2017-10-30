@@ -7,7 +7,7 @@
 
 namespace CPyCppyy {
 
-    class ObjectProxy;
+    class CPPInstance;
 
     class PyCallable {
     public:
@@ -30,7 +30,7 @@ namespace CPyCppyy {
 
     public:
         virtual PyObject* Call(
-            ObjectProxy*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt = nullptr) = 0;
+            CPPInstance*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt = nullptr) = 0;
     };
 
 } // namespace CPyCppyy

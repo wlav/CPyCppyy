@@ -1,7 +1,7 @@
 // Bindings
 #include "CPyCppyy.h"
 #include "MemoryRegulator.h"
-#include "ObjectProxy.h"
+#include "CPPInstance.h"
 #include "CPyCppyyHelpers.h"
 
 // Standard
@@ -119,7 +119,7 @@ bool CPyCppyy::MemoryRegulator::RecursiveRemove(
 
     if (ppo != cppobjs->end()) {
     // get the tracked object and cleanup weak reference
-        ObjectProxy* pyobj = (ObjectProxy*)PyWeakref_GetObject(ppo->second);
+        CPPInstance* pyobj = (CPPInstance*)PyWeakref_GetObject(ppo->second);
         Py_DECREF(ppo->second);
         if (!pyobj) {
             cppobjs->erase(ppo);
@@ -170,7 +170,7 @@ bool CPyCppyy::MemoryRegulator::RecursiveRemove(
 
 //-----------------------------------------------------------------------------
 bool CPyCppyy::MemoryRegulator::RegisterPyObject(
-        ObjectProxy* pyobj, Cppyy::TCppObject_t cppobj)
+        CPPInstance* pyobj, Cppyy::TCppObject_t cppobj)
 {
 // start tracking <cppobj> proxied by <pyobj>
     if (!(pyobj && cppobj))
@@ -244,7 +244,7 @@ PyObject* CPyCppyy::MemoryRegulator::RetrievePyObject(
 PyObject* CPyCppyy::MemoryRegulator::EraseCallback(PyObject*, PyObject* pyref)
 {
 // called when one of the python objects we've registered is going away
-    ObjectProxy* pyobj = (ObjectProxy*)PyWeakref_GetObject(pyref);
+    CPPInstance* pyobj = (CPPInstance*)PyWeakref_GetObject(pyref);
     if ((PyObject*)pyobj != Py_None) {
         CPyCppyyClass* pyclass = (CPyCppyyClass*)Py_TYPE(pyobj);
         if (pyobj->GetObject()) {

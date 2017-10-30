@@ -24,7 +24,7 @@ bool CPyCppyy::TSetItemHolder::InitExecutor_(TExecutor*& executor, TCallContext*
 
 //-----------------------------------------------------------------------------
 PyObject* CPyCppyy::TSetItemHolder::PreProcessArgs(
-    ObjectProxy*& self, PyObject* args, PyObject* kwds)
+    CPPInstance*& self, PyObject* args, PyObject* kwds)
 {
 // Prepare executor with a buffer for the return value.
     int nArgs = PyTuple_GET_SIZE(args);

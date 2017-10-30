@@ -17,7 +17,7 @@ namespace CPyCppyy {
 
     public:
         virtual PyObject* Call(
-            ObjectProxy*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt = nullptr);
+            CPPInstance*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt = nullptr);
 
     protected:
         virtual bool InitExecutor_(TExecutor*&, TCallContext* ctxt = nullptr);

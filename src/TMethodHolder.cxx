@@ -3,7 +3,7 @@
 #include "TMethodHolder.h"
 #include "Converters.h"
 #include "Executors.h"
-#include "ObjectProxy.h"
+#include "CPPInstance.h"
 #include "CPyCppyyHelpers.h"
 #include "TPyException.h"
 #include "PyStrings.h"
@@ -425,7 +425,7 @@ bool CPyCppyy::TMethodHolder::Initialize(TCallContext* ctxt)
 
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::TMethodHolder::PreProcessArgs(
-        ObjectProxy*& self, PyObject* args, PyObject*)
+        CPPInstance*& self, PyObject* args, PyObject*)
 {
 // verify existence of self, return if ok
     if (self) {
@@ -435,10 +435,10 @@ PyObject* CPyCppyy::TMethodHolder::PreProcessArgs(
 
 // otherwise, check for a suitable 'self' in args and update accordingly
     if (PyTuple_GET_SIZE(args) != 0) {
-        ObjectProxy* pyobj = (ObjectProxy*)PyTuple_GET_ITEM(args, 0);
+        CPPInstance* pyobj = (CPPInstance*)PyTuple_GET_ITEM(args, 0);
 
     // demand CPyCppyy object, and an argument that may match down the road
-        if (ObjectProxy_Check(pyobj) &&
+        if (CPPInstance_Check(pyobj) &&
              (fScope == Cppyy::gGlobalScope ||                  // free global
              (pyobj->ObjectIsA() == 0)     ||                   // null pointer or ctor call
              (Cppyy::IsSubtype(pyobj->ObjectIsA(), fScope)))) { // matching types
@@ -516,7 +516,7 @@ PyObject* CPyCppyy::TMethodHolder::Execute(void* self, ptrdiff_t offset, TCallCo
 
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::TMethodHolder::Call(
-        ObjectProxy*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt)
+        CPPInstance*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt)
 {
 // preliminary check in case keywords are accidently used (they are ignored otherwise)
     if (kwds && PyDict_Size(kwds)) {
@@ -557,10 +557,10 @@ PyObject* CPyCppyy::TMethodHolder::Call(
         offset = Cppyy::GetBaseOffset(derived, fScope, object, 1 /* up-cast */);
 
 // actual call; recycle self instead of returning new object for same address objects
-    ObjectProxy* pyobj = (ObjectProxy*)Execute(object, offset, ctxt);
+    CPPInstance* pyobj = (CPPInstance*)Execute(object, offset, ctxt);
     Py_DECREF(args);
 
-    if (ObjectProxy_Check(pyobj) &&
+    if (CPPInstance_Check(pyobj) &&
             derived && pyobj->ObjectIsA() == derived &&
             pyobj->GetObject() == object) {
         Py_INCREF((PyObject*)self);

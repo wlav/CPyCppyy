@@ -1,12 +1,12 @@
 // Bindings
 #include "CPyCppyy.h"
 #include "TFunctionHolder.h"
-#include "ObjectProxy.h"
+#include "CPPInstance.h"
 
 
 //- public members --------------------------------------------------------------
 PyObject* CPyCppyy::TFunctionHolder::PreProcessArgs(
-        ObjectProxy*& self, PyObject* args, PyObject*)
+        CPPInstance*& self, PyObject* args, PyObject*)
 {
 // no self means called as a free function; all ok
     if (!self) {
@@ -31,7 +31,7 @@ PyObject* CPyCppyy::TFunctionHolder::PreProcessArgs(
 
 //---------------------------------------------------------------------------
 PyObject* CPyCppyy::TFunctionHolder::Call(
-        ObjectProxy*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt)
+        CPPInstance*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt)
 {
 // preliminary check in case keywords are accidently used (they are ignored otherwise)
     if (kwds && PyDict_Size(kwds)) {

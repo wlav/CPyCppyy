@@ -11,7 +11,7 @@
 #define CO_NOFREE       0x0040
 #endif
 #include "MethodProxy.h"
-#include "ObjectProxy.h"
+#include "CPPInstance.h"
 #include "TCallContext.h"
 #include "TPyException.h"
 #include "PyStrings.h"
@@ -76,7 +76,7 @@ public:
     virtual PyCallable* Clone() { return new TPythonCallback( *this ); }
 
     virtual PyObject* Call(
-            ObjectProxy*& self, PyObject* args, PyObject* kwds, TCallContext* /* ctxt = 0 */) {
+            CPPInstance*& self, PyObject* args, PyObject* kwds, TCallContext* /* ctxt = 0 */) {
 
         PyObject* newArgs = nullptr;
         if (self) {
@@ -146,7 +146,7 @@ static int PriorityCmp(PyCallable* left, PyCallable* right)
 }
 
 // return helper
-static inline void ResetCallState(ObjectProxy*& selfnew, ObjectProxy* selfold, bool clear) {
+static inline void ResetCallState(CPPInstance*& selfnew, CPPInstance* selfold, bool clear) {
     if (selfnew != selfold) {
         Py_XDECREF(selfnew);
         selfnew = selfold;
@@ -158,7 +158,7 @@ static inline void ResetCallState(ObjectProxy*& selfnew, ObjectProxy* selfold, b
 
 // helper to factor out return logic of mp_call
 static inline PyObject* HandleReturn(
-        MethodProxy* pymeth, ObjectProxy* oldSelf, PyObject* result) {
+        MethodProxy* pymeth, CPPInstance* oldSelf, PyObject* result) {
 
 // special case for python exceptions, propagated through C++ layer
     if (result) {
@@ -173,14 +173,14 @@ static inline PyObject* HandleReturn(
             }
 
         // ... or be a method with an object proxy return value
-            else if (ObjectProxy_Check(result))
-                ((ObjectProxy*)result)->PythonOwns();
+            else if (CPPInstance_Check(result))
+                ((CPPInstance*)result)->PythonOwns();
         }
 
     // if this new object falls inside self, make sure its lifetime is proper
-        if (ObjectProxy_Check(pymeth->fSelf) && ObjectProxy_Check(result)) {
+        if (CPPInstance_Check(pymeth->fSelf) && CPPInstance_Check(result)) {
             ptrdiff_t offset = (ptrdiff_t)(
-                (ObjectProxy*)result)->GetObject() - (ptrdiff_t)pymeth->fSelf->GetObject();
+                (CPPInstance*)result)->GetObject() - (ptrdiff_t)pymeth->fSelf->GetObject();
             if (0 <= offset && offset < (ptrdiff_t)Cppyy::SizeOf(pymeth->fSelf->ObjectIsA())) {
                 if (PyObject_SetAttr(result, PyStrings::gLifeLine, (PyObject*)pymeth->fSelf) == -1)
                     PyErr_Clear();     // ignored
@@ -247,7 +247,7 @@ static PyObject* mp_meth_func(MethodProxy* pymeth, void*)
 
 // new method is unbound, use of 'meth' is for keeping track whether this
 // proxy is used in the capacity of a method or a function
-    newPyMeth->fSelf = (ObjectProxy*)newPyMeth;
+    newPyMeth->fSelf = (CPPInstance*)newPyMeth;
 
     return (PyObject*)newPyMeth;
 }
@@ -556,7 +556,7 @@ static PyObject* mp_call(MethodProxy* pymeth, PyObject* args, PyObject* kwds)
     if (IsPseudoFunc(pymeth))
         pymeth->fSelf = nullptr;
 
-    ObjectProxy* oldSelf = pymeth->fSelf;
+    CPPInstance* oldSelf = pymeth->fSelf;
 
 // get local handles to proxy internals
     auto& methods     = pymeth->fMethodInfo->fMethods;
@@ -652,7 +652,7 @@ static PyObject* mp_call(MethodProxy* pymeth, PyObject* args, PyObject* kwds)
 }
 
 //-----------------------------------------------------------------------------
-static MethodProxy* mp_descrget(MethodProxy* pymeth, ObjectProxy* pyobj, PyObject*)
+static MethodProxy* mp_descrget(MethodProxy* pymeth, CPPInstance* pyobj, PyObject*)
 {
 // Descriptor; create and return a new bound method proxy (language requirement).
     MethodProxy* newPyMeth = (MethodProxy*)MethodProxy_Type.tp_alloc(&MethodProxy_Type, 0);

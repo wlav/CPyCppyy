@@ -13,9 +13,9 @@ namespace CPyCppyy {
 
         virtual PyCallable* Clone() { return new TFunctionHolder(*this); }
 
-        virtual PyObject* PreProcessArgs(ObjectProxy*& self, PyObject* args, PyObject* kwds);
+        virtual PyObject* PreProcessArgs(CPPInstance*& self, PyObject* args, PyObject* kwds);
         virtual PyObject* Call(
-            ObjectProxy*&, PyObject* args, PyObject* kwds, TCallContext* ctx = nullptr);
+            CPPInstance*&, PyObject* args, PyObject* kwds, TCallContext* ctx = nullptr);
     };
 
 } // namespace CPyCppyy

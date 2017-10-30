@@ -35,10 +35,10 @@ namespace CPyCppyy {
 
     public:
         virtual PyObject* Call(
-            ObjectProxy*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt = nullptr);
+            CPPInstance*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt = nullptr);
 
         virtual bool      Initialize(TCallContext* ctxt = nullptr);
-        virtual PyObject* PreProcessArgs(ObjectProxy*& self, PyObject* args, PyObject* kwds);
+        virtual PyObject* PreProcessArgs(CPPInstance*& self, PyObject* args, PyObject* kwds);
         virtual bool      ConvertAndSetArgs(PyObject* args, TCallContext* ctxt = nullptr);
         virtual PyObject* Execute(void* self, ptrdiff_t offset, TCallContext* ctxt = nullptr);
 

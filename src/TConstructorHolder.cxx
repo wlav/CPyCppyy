@@ -2,7 +2,7 @@
 #include "CPyCppyy.h"
 #include "TConstructorHolder.h"
 #include "Executors.h"
-#include "ObjectProxy.h"
+#include "CPPInstance.h"
 #include "MemoryRegulator.h"
 
 // Standard
@@ -28,7 +28,7 @@ PyObject* CPyCppyy::TConstructorHolder::GetDocString()
 
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::TConstructorHolder::Call(
-        ObjectProxy*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt)
+        CPPInstance*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt)
 {
 // preliminary check in case keywords are accidently used (they are ignored otherwise)
     if (kwds && PyDict_Size(kwds)) {

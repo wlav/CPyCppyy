@@ -17,7 +17,7 @@ namespace CPyCppyy {
 
     public:
         virtual PyCallable* Clone() { return new TSetItemHolder(*this); }
-        virtual PyObject* PreProcessArgs(ObjectProxy*& self, PyObject* args, PyObject* kwds);
+        virtual PyObject* PreProcessArgs(CPPInstance*& self, PyObject* args, PyObject* kwds);
 
     protected:
         virtual bool InitExecutor_(TExecutor*&, TCallContext* ctxt = nullptr);

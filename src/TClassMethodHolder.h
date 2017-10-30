@@ -13,7 +13,7 @@ namespace CPyCppyy {
 
         virtual PyCallable* Clone() { return new TClassMethodHolder(*this); }
         virtual PyObject* Call(
-            ObjectProxy*&, PyObject* args, PyObject* kwds, TCallContext* ctxt = nullptr);
+            CPPInstance*&, PyObject* args, PyObject* kwds, TCallContext* ctxt = nullptr);
     };
 
 } // namespace CPyCppyy
