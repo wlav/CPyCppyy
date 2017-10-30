@@ -7,21 +7,17 @@
 
 namespace CPyCppyy {
 
-    class TExecutor;
-    class TMemberAdapter;
-    class TScopeAdapter;
+class TSetItemHolder : public CPPMethod {
+public:
+    using CPPMethod::CPPMethod;
 
-    class TSetItemHolder : public CPPMethod {
-    public:
-        using CPPMethod::CPPMethod;
+public:
+    virtual PyCallable* Clone() { return new TSetItemHolder(*this); }
+    virtual PyObject* PreProcessArgs(CPPInstance*& self, PyObject* args, PyObject* kwds);
 
-    public:
-        virtual PyCallable* Clone() { return new TSetItemHolder(*this); }
-        virtual PyObject* PreProcessArgs(CPPInstance*& self, PyObject* args, PyObject* kwds);
-
-    protected:
-        virtual bool InitExecutor_(TExecutor*&, TCallContext* ctxt = nullptr);
-    };
+protected:
+    virtual bool InitExecutor_(TExecutor*&, TCallContext* ctxt = nullptr);
+};
 
 } // namespace CPyCppyy
 

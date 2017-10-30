@@ -7,14 +7,14 @@
 
 namespace CPyCppyy {
 
-    class TClassMethodHolder : public CPPMethod {
-    public:
-        using CPPMethod::CPPMethod;
+class TClassMethodHolder : public CPPMethod {
+public:
+    using CPPMethod::CPPMethod;
 
-        virtual PyCallable* Clone() { return new TClassMethodHolder(*this); }
-        virtual PyObject* Call(
-            CPPInstance*&, PyObject* args, PyObject* kwds, TCallContext* ctxt = nullptr);
-    };
+    virtual PyCallable* Clone() { return new TClassMethodHolder(*this); }
+    virtual PyObject* Call(
+        CPPInstance*&, PyObject* args, PyObject* kwds, TCallContext* ctxt = nullptr);
+};
 
 } // namespace CPyCppyy
 

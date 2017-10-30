@@ -42,5 +42,4 @@ typedef TPyBufferFactory BufFac_t;
 
 } // namespace CPyCppyy
 
-
 #endif // !CPYCPPYY_TPYBUFFERFACTORY_H

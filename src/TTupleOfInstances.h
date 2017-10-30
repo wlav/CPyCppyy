@@ -10,22 +10,22 @@ namespace CPyCppyy {
  */
 
 //- custom tuple type that can pass through C-style arrays -------------------
-    extern PyTypeObject TTupleOfInstances_Type;
+extern PyTypeObject TTupleOfInstances_Type;
 
-    template<typename T>
-    inline bool TTupleOfInstances_Check(T* object)
-    {
-        return object && PyObject_TypeCheck(object, &TTupleOfInstances_Type);
-    }
+template<typename T>
+inline bool TTupleOfInstances_Check(T* object)
+{
+    return object && PyObject_TypeCheck(object, &TTupleOfInstances_Type);
+}
 
-    template<typename T>
-    inline bool TTupleOfInstances_CheckExact(T* object)
-    {
-        return object && Py_TYPE(object) == &TTupleOfInstances_Type;
-    }
+template<typename T>
+inline bool TTupleOfInstances_CheckExact(T* object)
+{
+    return object && Py_TYPE(object) == &TTupleOfInstances_Type;
+}
 
-    PyObject* TTupleOfInstances_New(
-        Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, Py_ssize_t nelems);
+PyObject* TTupleOfInstances_New(
+    Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, Py_ssize_t nelems);
 
 } // namespace CPyCppyy
 
