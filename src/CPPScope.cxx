@@ -1,12 +1,12 @@
 // Bindings
 #include "CPyCppyy.h"
 #include "CPPScope.h"
-#include "MethodProxy.h"
+#include "CPPOverload.h"
 #include "PropertyProxy.h"
-#include "CPyCppyyHelpers.h"
-#include "TFunctionHolder.h"
-#include "TemplateProxy.h"
+#include "ProxyWrappers.h"
 #include "PyStrings.h"
+#include "TemplateProxy.h"
+#include "TFunctionHolder.h"
 #include "TypeManip.h"
 #include "Utility.h"
 
@@ -129,7 +129,7 @@ static PyObject* pt_getattro(PyObject* pyclass, PyObject* pyname)
                         // Note: can't re-use Utility::AddClass here, as there's the risk of
                         // a recursive call. Simply add method directly, as we're guaranteed
                         // that it doesn't exist yet.
-                            attr = (PyObject*)MethodProxy_New(name, overloads);
+                            attr = (PyObject*)CPPOverload_New(name, overloads);
                         }
                     }
 

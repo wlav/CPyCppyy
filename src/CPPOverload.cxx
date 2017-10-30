@@ -10,7 +10,7 @@
 // python2.2 does not have CO_NOFREE defined
 #define CO_NOFREE       0x0040
 #endif
-#include "MethodProxy.h"
+#include "CPPOverload.h"
 #include "CPPInstance.h"
 #include "TCallContext.h"
 #include "TPyException.h"
@@ -98,7 +98,7 @@ public:
 };
 
 // helper to test whether a method is used in a pseudo-function modus
-static inline bool IsPseudoFunc(MethodProxy* pymeth)
+static inline bool IsPseudoFunc(CPPOverload* pymeth)
 {
     return (void*)pymeth == (void*)pymeth->fSelf;
 }
@@ -146,7 +146,8 @@ static int PriorityCmp(PyCallable* left, PyCallable* right)
 }
 
 // return helper
-static inline void ResetCallState(CPPInstance*& selfnew, CPPInstance* selfold, bool clear) {
+static inline void ResetCallState(CPPInstance*& selfnew, CPPInstance* selfold, bool clear)
+{
     if (selfnew != selfold) {
         Py_XDECREF(selfnew);
         selfnew = selfold;
@@ -158,7 +159,8 @@ static inline void ResetCallState(CPPInstance*& selfnew, CPPInstance* selfold, b
 
 // helper to factor out return logic of mp_call
 static inline PyObject* HandleReturn(
-        MethodProxy* pymeth, CPPInstance* oldSelf, PyObject* result) {
+    CPPOverload* pymeth, CPPInstance* oldSelf, PyObject* result)
+{
 
 // special case for python exceptions, propagated through C++ layer
     if (result) {
@@ -188,7 +190,7 @@ static inline PyObject* HandleReturn(
         }
     }
 
-// reset self as necessary to allow re-use of the MethodProxy
+// reset self as necessary to allow re-use of the CPPOverload
     ResetCallState(pymeth->fSelf, oldSelf, false);
 
     return result;
@@ -196,23 +198,23 @@ static inline PyObject* HandleReturn(
 
 
 //= CPyCppyy method proxy object behaviour ===================================
-static PyObject* mp_name(MethodProxy* pymeth, void*)
+static PyObject* mp_name(CPPOverload* pymeth, void*)
 {
     return CPyCppyy_PyUnicode_FromString(pymeth->GetName().c_str());
 }
 
 //-----------------------------------------------------------------------------
-static PyObject* mp_module(MethodProxy* /* pymeth */, void*)
+static PyObject* mp_module(CPPOverload* /* pymeth */, void*)
 {
     Py_INCREF(PyStrings::gThisModule);
     return PyStrings::gThisModule;
 }
 
 //-----------------------------------------------------------------------------
-static PyObject* mp_doc(MethodProxy* pymeth, void*)
+static PyObject* mp_doc(CPPOverload* pymeth, void*)
 {
 // Build python document string ('__doc__') from all C++-side overloads.
-    MethodProxy::Methods_t& methods = pymeth->fMethodInfo->fMethods;
+    CPPOverload::Methods_t& methods = pymeth->fMethodInfo->fMethods;
 
 // collect doc strings
     int nMethods = methods.size();
@@ -236,10 +238,10 @@ static PyObject* mp_doc(MethodProxy* pymeth, void*)
 }
 
 //-----------------------------------------------------------------------------
-static PyObject* mp_meth_func(MethodProxy* pymeth, void*)
+static PyObject* mp_meth_func(CPPOverload* pymeth, void*)
 {
 // Create a new method proxy to be returned.
-    MethodProxy* newPyMeth = (MethodProxy*)MethodProxy_Type.tp_alloc(&MethodProxy_Type, 0);
+    CPPOverload* newPyMeth = (CPPOverload*)CPPOverload_Type.tp_alloc(&CPPOverload_Type, 0);
 
 // method info is shared, as it contains the collected overload knowledge
     *pymeth->fMethodInfo->fRefCount += 1;
@@ -253,7 +255,7 @@ static PyObject* mp_meth_func(MethodProxy* pymeth, void*)
 }
 
 //-----------------------------------------------------------------------------
-static PyObject* mp_meth_self(MethodProxy* pymeth, void*)
+static PyObject* mp_meth_self(CPPOverload* pymeth, void*)
 {
 // Return the bound self, if any; in case of pseudo-function role, pretend
 // that the data member im_self does not exist.
@@ -270,7 +272,7 @@ static PyObject* mp_meth_self(MethodProxy* pymeth, void*)
 }
 
 //-----------------------------------------------------------------------------
-static PyObject* mp_meth_class(MethodProxy* pymeth, void*)
+static PyObject* mp_meth_class(CPPOverload* pymeth, void*)
 {
 // Return scoping class; in case of pseudo-function role, pretend that there
 // is no encompassing class (i.e. global scope).
@@ -286,18 +288,18 @@ static PyObject* mp_meth_class(MethodProxy* pymeth, void*)
 }
 
 //-----------------------------------------------------------------------------
-static PyObject* mp_func_closure(MethodProxy* /* pymeth */, void*)
+static PyObject* mp_func_closure(CPPOverload* /* pymeth */, void*)
 {
 // Stub only, to fill out the python function interface.
     Py_RETURN_NONE;
 }
 
 //-----------------------------------------------------------------------------
-static PyObject* mp_func_code(MethodProxy* pymeth, void*)
+static PyObject* mp_func_code(CPPOverload* pymeth, void*)
 {
 // Code details are used in module inspect to fill out interactive help()
 #if PY_VERSION_HEX < 0x03000000
-    MethodProxy::Methods_t& methods = pymeth->fMethodInfo->fMethods;
+    CPPOverload::Methods_t& methods = pymeth->fMethodInfo->fMethods;
 
 // collect arguments only if there is just 1 overload, otherwise put in a
 // fake *args (see below for co_varnames)
@@ -366,11 +368,11 @@ static PyObject* mp_func_code(MethodProxy* pymeth, void*)
 }
 
 //-----------------------------------------------------------------------------
-static PyObject* mp_func_defaults(MethodProxy* pymeth, void*)
+static PyObject* mp_func_defaults(CPPOverload* pymeth, void*)
 {
 // Create a tuple of default values, if there is only one method (otherwise
 // leave undefined: this is only used by inspect for interactive help())
-    MethodProxy::Methods_t& methods = pymeth->fMethodInfo->fMethods;
+    CPPOverload::Methods_t& methods = pymeth->fMethodInfo->fMethods;
 
     if (methods.size() != 1)
         return PyTuple_New(0);
@@ -391,7 +393,7 @@ static PyObject* mp_func_defaults(MethodProxy* pymeth, void*)
 }
 
 //-----------------------------------------------------------------------------
-static PyObject* mp_func_globals(MethodProxy* /* pymeth */, void*)
+static PyObject* mp_func_globals(CPPOverload* /* pymeth */, void*)
 {
 // Return this function's global dict (hard-wired to be the cppyy module); used
 // for lookup of names from co_code indexing into co_names.
@@ -401,14 +403,14 @@ static PyObject* mp_func_globals(MethodProxy* /* pymeth */, void*)
 }
 
 //-----------------------------------------------------------------------------
-PyObject* mp_getcreates(MethodProxy* pymeth, void*)
+PyObject* mp_getcreates(CPPOverload* pymeth, void*)
 {
 // Get '_creates' boolean, which determines ownership of return values.
     return PyInt_FromLong((long)IsCreator(pymeth->fMethodInfo->fFlags));
 }
 
 //-----------------------------------------------------------------------------
-static int mp_setcreates(MethodProxy* pymeth, PyObject* value, void*)
+static int mp_setcreates(CPPOverload* pymeth, PyObject* value, void*)
 {
 // Set '_creates' boolean, which determines ownership of return values.
     if (!value) {        // means that _creates is being deleted
@@ -431,7 +433,7 @@ static int mp_setcreates(MethodProxy* pymeth, PyObject* value, void*)
 }
 
 //-----------------------------------------------------------------------------
-static PyObject* mp_getmempolicy(MethodProxy* pymeth, void*)
+static PyObject* mp_getmempolicy(CPPOverload* pymeth, void*)
 {
 // Get '_mempolicy' enum, which determines ownership of call arguments.
     if (pymeth->fMethodInfo->fFlags & TCallContext::kUseHeuristics)
@@ -444,7 +446,7 @@ static PyObject* mp_getmempolicy(MethodProxy* pymeth, void*)
 }
 
 //-----------------------------------------------------------------------------
-static int mp_setmempolicy(MethodProxy* pymeth, PyObject* value, void*)
+static int mp_setmempolicy(CPPOverload* pymeth, PyObject* value, void*)
 {
 // Set '_mempolicy' enum, which determines ownership of call arguments.
     long mempolicy = PyLong_AsLong(value);
@@ -464,7 +466,7 @@ static int mp_setmempolicy(MethodProxy* pymeth, PyObject* value, void*)
 }
 
 //-----------------------------------------------------------------------------
-static PyObject* mp_get_manage_smart_ptr(MethodProxy* pymeth, void*)
+static PyObject* mp_get_manage_smart_ptr(CPPOverload* pymeth, void*)
 {
 // Get '_manage_smart_ptr' boolean, which determines whether or not to
 // manage returned smart pointers intelligently.
@@ -473,7 +475,7 @@ static PyObject* mp_get_manage_smart_ptr(MethodProxy* pymeth, void*)
 }
 
 //-----------------------------------------------------------------------------
-static int mp_set_manage_smart_ptr(MethodProxy* pymeth, PyObject* value, void*)
+static int mp_set_manage_smart_ptr(CPPOverload* pymeth, PyObject* value, void*)
 {
 // Set '_manage_smart_ptr' boolean, which determines whether or not to
 // manage returned smart pointers intelligently.
@@ -489,7 +491,7 @@ static int mp_set_manage_smart_ptr(MethodProxy* pymeth, PyObject* value, void*)
 }
 
 //-----------------------------------------------------------------------------
-static PyObject* mp_getthreaded(MethodProxy* pymeth, void*)
+static PyObject* mp_getthreaded(CPPOverload* pymeth, void*)
 {
 // Get '_threaded' boolean, which determines whether the GIL will be released.
     return PyInt_FromLong(
@@ -497,7 +499,7 @@ static PyObject* mp_getthreaded(MethodProxy* pymeth, void*)
 }
 
 //-----------------------------------------------------------------------------
-static int mp_setthreaded(MethodProxy* pymeth, PyObject* value, void*)
+static int mp_setthreaded(CPPOverload* pymeth, PyObject* value, void*)
 {
 // Set '_threaded' boolean, which determines whether the GIL will be released.
     long isthreaded = PyLong_AsLong(value);
@@ -547,7 +549,7 @@ static PyGetSetDef mp_getset[] = {
 };
 
 //= CPyCppyy method proxy function behavior ==================================
-static PyObject* mp_call(MethodProxy* pymeth, PyObject* args, PyObject* kwds)
+static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
 {
 // Call the appropriate overload of this method.
 
@@ -582,7 +584,7 @@ static PyObject* mp_call(MethodProxy* pymeth, PyObject* args, PyObject* kwds)
     uint64_t sighash = HashSignature(args);
 
 // look for known signatures ...
-    MethodProxy::DispatchMap_t::iterator m = dispatchMap.find(sighash);
+    CPPOverload::DispatchMap_t::iterator m = dispatchMap.find(sighash);
     if (m != dispatchMap.end()) {
         int index = m->second;
         PyObject* result = methods[index]->Call(pymeth->fSelf, args, kwds, &ctxt);
@@ -652,10 +654,10 @@ static PyObject* mp_call(MethodProxy* pymeth, PyObject* args, PyObject* kwds)
 }
 
 //-----------------------------------------------------------------------------
-static MethodProxy* mp_descrget(MethodProxy* pymeth, CPPInstance* pyobj, PyObject*)
+static CPPOverload* mp_descrget(CPPOverload* pymeth, CPPInstance* pyobj, PyObject*)
 {
 // Descriptor; create and return a new bound method proxy (language requirement).
-    MethodProxy* newPyMeth = (MethodProxy*)MethodProxy_Type.tp_alloc(&MethodProxy_Type, 0);
+    CPPOverload* newPyMeth = (CPPOverload*)CPPOverload_Type.tp_alloc(&CPPOverload_Type, 0);
 
 // method info is shared, as it contains the collected overload knowledge
     *pymeth->fMethodInfo->fRefCount += 1;
@@ -670,19 +672,19 @@ static MethodProxy* mp_descrget(MethodProxy* pymeth, CPPInstance* pyobj, PyObjec
 
 
 //= CPyCppyy method proxy construction/destruction ===========================
-static MethodProxy* mp_new(PyTypeObject*, PyObject*, PyObject*)
+static CPPOverload* mp_new(PyTypeObject*, PyObject*, PyObject*)
 {
 // Create a new method proxy object.
-    MethodProxy* pymeth = PyObject_GC_New(MethodProxy, &MethodProxy_Type);
+    CPPOverload* pymeth = PyObject_GC_New(CPPOverload, &CPPOverload_Type);
     pymeth->fSelf = nullptr;
-    pymeth->fMethodInfo = new MethodProxy::MethodInfo_t;
+    pymeth->fMethodInfo = new CPPOverload::MethodInfo_t;
 
     PyObject_GC_Track(pymeth);
     return pymeth;
 }
 
 //-----------------------------------------------------------------------------
-static void mp_dealloc(MethodProxy* pymeth)
+static void mp_dealloc(CPPOverload* pymeth)
 {
 // Deallocate memory held by method proxy object.
     PyObject_GC_UnTrack(pymeth);
@@ -699,7 +701,7 @@ static void mp_dealloc(MethodProxy* pymeth)
 }
 
 //-----------------------------------------------------------------------------
-static Py_ssize_t mp_hash(MethodProxy* pymeth)
+static Py_ssize_t mp_hash(CPPOverload* pymeth)
 {
 // Hash of method proxy object for insertion into dictionaries; with actual
 // method (fMethodInfo) shared, its address is best suited.
@@ -707,7 +709,7 @@ static Py_ssize_t mp_hash(MethodProxy* pymeth)
 }
 
 //-----------------------------------------------------------------------------
-static int mp_traverse(MethodProxy* pymeth, visitproc visit, void* args)
+static int mp_traverse(CPPOverload* pymeth, visitproc visit, void* args)
 {
 // Garbage collector traverse of held python member objects.
     if (pymeth->fSelf && ! IsPseudoFunc(pymeth))
@@ -717,7 +719,7 @@ static int mp_traverse(MethodProxy* pymeth, visitproc visit, void* args)
 }
 
 //-----------------------------------------------------------------------------
-static int mp_clear(MethodProxy* pymeth)
+static int mp_clear(CPPOverload* pymeth)
 {
 // Garbage collector clear of held python member objects.
     if (!IsPseudoFunc(pymeth))
@@ -728,7 +730,7 @@ static int mp_clear(MethodProxy* pymeth)
 }
 
 //-----------------------------------------------------------------------------
-static PyObject* mp_richcompare(MethodProxy* self, MethodProxy* other, int op)
+static PyObject* mp_richcompare(CPPOverload* self, CPPOverload* other, int op)
 {
 // Rich set of comparison objects; only equals is defined.
     if (op != Py_EQ)
@@ -745,7 +747,7 @@ static PyObject* mp_richcompare(MethodProxy* self, MethodProxy* other, int op)
 
 
 //= CPyCppyy method proxy access to internals ================================
-static PyObject* mp_overload(MethodProxy* pymeth, PyObject* sigarg)
+static PyObject* mp_overload(CPPOverload* pymeth, PyObject* sigarg)
 {
 // Select and call a specific C++ overload, based on its signature.
     if (!CPyCppyy_PyUnicode_Check(sigarg)) {
@@ -756,15 +758,15 @@ static PyObject* mp_overload(MethodProxy* pymeth, PyObject* sigarg)
 
     PyObject* sig1 = CPyCppyy_PyUnicode_FromFormat("(%s)", CPyCppyy_PyUnicode_AsString(sigarg));
 
-    MethodProxy::Methods_t& methods = pymeth->fMethodInfo->fMethods;
+    CPPOverload::Methods_t& methods = pymeth->fMethodInfo->fMethods;
     for (auto& meth : methods) {
 
         PyObject* sig2 = meth->GetSignature(false);
         if (PyObject_RichCompareBool(sig1, sig2, Py_EQ)) {
             Py_DECREF(sig2);
 
-            MethodProxy* newmeth = mp_new(nullptr, nullptr, nullptr);
-            MethodProxy::Methods_t vec; vec.push_back(meth->Clone());
+            CPPOverload* newmeth = mp_new(nullptr, nullptr, nullptr);
+            CPPOverload::Methods_t vec; vec.push_back(meth->Clone());
             newmeth->Set(pymeth->fMethodInfo->fName, vec);
 
             if (pymeth->fSelf && !IsPseudoFunc(pymeth)) {
@@ -786,7 +788,7 @@ static PyObject* mp_overload(MethodProxy* pymeth, PyObject* sigarg)
 }
 
 //= CPyCppyy method proxy access to internals ================================
-static PyObject* mp_add_overload(MethodProxy* pymeth, PyObject* new_overload)
+static PyObject* mp_add_overload(CPPOverload* pymeth, PyObject* new_overload)
 {
     TPythonCallback* cb = new TPythonCallback(new_overload);
     pymeth->AddMethod(cb);
@@ -805,10 +807,10 @@ static PyMethodDef mp_methods[] = {
 
 
 //= CPyCppyy method proxy type ===============================================
-PyTypeObject MethodProxy_Type = {
+PyTypeObject CPPOverload_Type = {
     PyVarObject_HEAD_INIT(&PyType_Type, 0)
-    (char*)"cppyy.MethodProxy",    // tp_name
-    sizeof(MethodProxy),           // tp_basicsize
+    (char*)"cppyy.CPPOverload",    // tp_name
+    sizeof(CPPOverload),           // tp_basicsize
     0,                             // tp_itemsize
     (destructor)mp_dealloc,        // tp_dealloc
     0,                             // tp_print
@@ -866,7 +868,7 @@ PyTypeObject MethodProxy_Type = {
 
 
 //- public members -----------------------------------------------------------
-void CPyCppyy::MethodProxy::Set(const std::string& name, std::vector<PyCallable*>& methods)
+void CPyCppyy::CPPOverload::Set(const std::string& name, std::vector<PyCallable*>& methods)
 {
 // Fill in the data of a freshly created method proxy.
     fMethodInfo->fName = name;
@@ -885,7 +887,7 @@ void CPyCppyy::MethodProxy::Set(const std::string& name, std::vector<PyCallable*
 }
 
 //-----------------------------------------------------------------------------
-void CPyCppyy::MethodProxy::AddMethod(PyCallable* pc)
+void CPyCppyy::CPPOverload::AddMethod(PyCallable* pc)
 {
 // Fill in the data of a freshly created method proxy.
     fMethodInfo->fMethods.push_back(pc);
@@ -893,7 +895,7 @@ void CPyCppyy::MethodProxy::AddMethod(PyCallable* pc)
 }
 
 //-----------------------------------------------------------------------------
-void CPyCppyy::MethodProxy::AddMethod(MethodProxy* meth)
+void CPyCppyy::CPPOverload::AddMethod(CPPOverload* meth)
 {
     fMethodInfo->fMethods.insert(fMethodInfo->fMethods.end(),
         meth->fMethodInfo->fMethods.begin(), meth->fMethodInfo->fMethods.end());
@@ -901,7 +903,7 @@ void CPyCppyy::MethodProxy::AddMethod(MethodProxy* meth)
 }
 
 //-----------------------------------------------------------------------------
-CPyCppyy::MethodProxy::MethodInfo_t::~MethodInfo_t()
+CPyCppyy::CPPOverload::MethodInfo_t::~MethodInfo_t()
 {
 // Destructor (this object is reference counted).
     for (Methods_t::iterator it = fMethods.begin(); it != fMethods.end(); ++it) {

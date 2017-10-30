@@ -11,7 +11,7 @@
 namespace CPyCppyy {
 
     class PyCallable;
-    class MethodProxy;
+    class CPPOverload;
 
 /** Template proxy object to return functions and methods
       @author  WLAV
@@ -27,15 +27,15 @@ namespace CPyCppyy {
 
     public:              // public, as the python C-API works with C structs
         PyObject_HEAD
-        PyObject* fSelf;           // must be first (same layout as MethodProxy)
+        PyObject* fSelf;           // must be first (same layout as CPPOverload)
         PyObject* fCppName;
         PyObject* fPyClass;
         PyObject* fPyName;
-        MethodProxy* fNonTemplated;     // holder for non-template overloads
-        MethodProxy* fTemplated;        // holder for templated overloads
+        CPPOverload* fNonTemplated;     // holder for non-template overloads
+        CPPOverload* fTemplated;        // holder for templated overloads
 
     public:
-        void AddOverload(MethodProxy* mp);
+        void AddOverload(CPPOverload* mp);
         void AddOverload(PyCallable* pc);
         void AddTemplate(PyCallable* pc);
 

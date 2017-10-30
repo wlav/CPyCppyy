@@ -1,11 +1,11 @@
 // Bindings
 #include "CPyCppyy.h"
-#include "PyStrings.h"
 #include "DeclareExecutors.h"
 #include "CPPInstance.h"
+#include "ProxyWrappers.h"
+#include "PyStrings.h"
 #include "TPyBufferFactory.h"
 #include "TypeManip.h"
-#include "CPyCppyyHelpers.h"
 #include "Utility.h"
 
 // Standard
@@ -586,7 +586,7 @@ PyObject* CPyCppyy::TConstructorExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t klass, TCallContext* ctxt)
 {
 // package return address in PyObject* for caller to handle appropriately (see
-// TConstructorHolder for the actual build of the PyObject)
+// CPPConstructor for the actual build of the PyObject)
     return (PyObject*)GILCallConstructor(method, (Cppyy::TCppType_t)klass, ctxt);
 }
 

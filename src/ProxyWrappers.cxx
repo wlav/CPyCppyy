@@ -1,17 +1,17 @@
 // Bindings
 #include "CPyCppyy.h"
-#include "PyStrings.h"
-#include "CPyCppyyHelpers.h"
-#include "CPPScope.h"
+#include "ProxyWrappers.h"
 #include "CPPInstance.h"
-#include "MethodProxy.h"
+#include "CPPConstructor.h"
+#include "CPPMethod.h"
+#include "CPPOverload.h"
+#include "CPPScope.h"
 #include "MemoryRegulator.h"
-#include "TemplateProxy.h"
 #include "PropertyProxy.h"
+#include "PyStrings.h"
 #include "Pythonize.h"
-#include "TMethodHolder.h"
-#include "TConstructorHolder.h"
 #include "TClassMethodHolder.h"
+#include "TemplateProxy.h"
 #include "TFunctionHolder.h"
 #include "TSetItemHolder.h"
 #include "TTupleOfInstances.h"
@@ -231,7 +231,7 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass) {
             if (!TemplateProxy_Check(attr)) {
                 PyErr_Clear();
                 TemplateProxy* pytmpl = TemplateProxy_New(mtCppName, mtName, pyclass);
-                if (MethodProxy_Check(attr)) pytmpl->AddOverload((MethodProxy*)attr);
+                if (CPPOverload_Check(attr)) pytmpl->AddOverload((CPPOverload*)attr);
                 PyObject_SetAttrString(
                     pyclass, const_cast<char*>(mtName.c_str()), (PyObject*)pytmpl);
                 Py_DECREF(pytmpl);
@@ -248,11 +248,11 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass) {
         else if (isNamespace)               // free function
             pycall = new TFunctionHolder(scope, method);
         else if (isConstructor) {           // constructor
-            pycall = new TConstructorHolder(scope, method);
+            pycall = new CPPConstructor(scope, method);
             mtName = "__init__";
             hasConstructor = true;
         } else                              // member function
-            pycall = new TMethodHolder(scope, method);
+            pycall = new CPPMethod(scope, method);
 
     // lookup method dispatcher and store method
         Callables_t& md = (*(cache.insert(
@@ -275,7 +275,7 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass) {
 
 // add a pseudo-default ctor, if none defined
     if (!isNamespace && !hasConstructor)
-        cache["__init__"].push_back(new TConstructorHolder(scope, (Cppyy::TCppMethod_t)0));
+        cache["__init__"].push_back(new CPPConstructor(scope, (Cppyy::TCppMethod_t)0));
 
 // add the methods to the class dictionary
     for (CallableCache_t::iterator imd = cache.begin(); imd != cache.end(); ++imd) {
@@ -290,7 +290,7 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass) {
         } else {
             if (!attr) PyErr_Clear();
         // normal case, add a new method
-            MethodProxy* method = MethodProxy_New(imd->first, imd->second);
+            CPPOverload* method = CPPOverload_New(imd->first, imd->second);
             PyObject_SetAttrString(
                 pyclass, const_cast<char* >(method->GetName().c_str()), (PyObject*)method);
             Py_DECREF(method);
@@ -699,7 +699,7 @@ PyObject* CPyCppyy::GetCppGlobal(const std::string& name)
         for (auto method : methods)
             overloads.push_back(new TFunctionHolder(
                 Cppyy::gGlobalScope, Cppyy::GetMethod(Cppyy::gGlobalScope, method)));
-        return (PyObject*)MethodProxy_New(name, overloads);
+        return (PyObject*)CPPOverload_New(name, overloads);
     }
 
 // nothing found

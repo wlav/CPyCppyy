@@ -1,15 +1,14 @@
 // Bindings
 #include "CPyCppyy.h"
-#include "PyStrings.h"
 #include "Pythonize.h"
-#include "CPPInstance.h"
-#include "MethodProxy.h"
-#include "CPyCppyyHelpers.h"
-#include "Utility.h"
-#include "PyCallable.h"
-#include "TPyBufferFactory.h"
-#include "TFunctionHolder.h"
 #include "Converters.h"
+#include "CPPInstance.h"
+#include "CPPOverload.h"
+#include "ProxyWrappers.h"
+#include "PyCallable.h"
+#include "PyStrings.h"
+#include "TFunctionHolder.h"
+#include "TPyBufferFactory.h"
 #include "Utility.h"
 
 // Standard
@@ -33,7 +32,7 @@ bool HasAttrDirect(PyObject* pyclass, PyObject* pyname, bool mustBeCPyCppyy = fa
 // prevents calls to Py_TYPE(pyclass)->tp_getattr, which is unnecessary for our
 // purposes here and could tickle problems w/ spurious lookups into ROOT meta
     PyObject* attr = PyType_Type.tp_getattro(pyclass, pyname);
-    if (attr != 0 && (!mustBeCPyCppyy || MethodProxy_Check(attr))) {
+    if (attr != 0 && (!mustBeCPyCppyy || CPPOverload_Check(attr))) {
         Py_DECREF(attr);
         return true;
     }
@@ -242,7 +241,7 @@ typedef struct {
     PyObject_HEAD
     PyObject*                vi_vector;
     void*                    vi_data;
-    CPyCppyy::TConverter*    vi_converter;
+    CPyCppyy::Converter*     vi_converter;
     Py_ssize_t               vi_pos;
     Py_ssize_t               vi_len;
     Py_ssize_t               vi_stride;
@@ -691,8 +690,8 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
     Utility::AddBinaryOperator(pyclass, "!=", "__ne__");
 
 // map operator==() through GenObjectIsEqual to allow comparison to None (true is to
-// require that the located method is a MethodProxy; this prevents circular calls as
-// GenObjectIsEqual is no MethodProxy)
+// require that the located method is a CPPOverload; this prevents circular calls as
+// GenObjectIsEqual is no CPPOverload)
     if (HasAttrDirect(pyclass, PyStrings::gEq, true)) {
         Utility::AddToClass(pyclass, "__cpp_eq__",  "__eq__");
         Utility::AddToClass(pyclass, "__eq__", (PyCFunction)GenObjectIsEqual, METH_O);

@@ -1,9 +1,9 @@
 // Bindings
 #include "CPyCppyy.h"
-#include "PyStrings.h"
 #include "CPPInstance.h"
-#include "CPyCppyyHelpers.h"
 #include "MemoryRegulator.h"
+#include "ProxyWrappers.h"
+#include "PyStrings.h"
 #include "TypeManip.h"
 #include "Utility.h"
 
@@ -78,7 +78,7 @@ static PyObject* op_destruct(CPPInstance* self)
 static PyObject* op_dispatch(PyObject* self, PyObject* args, PyObject* /* kdws */)
 {
 // User-side __dispatch__ method to allow selection of a specific overloaded
-// method. The actual selection is in the __overload__() method of MethodProxy.
+// method. The actual selection is in the __overload__() method of CPPOverload.
     PyObject *mname = nullptr, *sigarg = nullptr;
     if (!PyArg_ParseTuple(args, const_cast<char*>("O!O!:__dispatch__"),
             &CPyCppyy_PyUnicode_Type, &mname, &CPyCppyy_PyUnicode_Type, &sigarg))

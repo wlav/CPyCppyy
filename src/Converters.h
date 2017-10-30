@@ -9,61 +9,61 @@
 
 namespace CPyCppyy {
 
-    struct TParameter;
-    struct TCallContext;
+struct TParameter;
+struct TCallContext;
 
-    class TConverter {
-    public:
-        virtual ~TConverter() {}
+class Converter {
+public:
+    virtual ~Converter() {}
 
-    public:
-        virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr) = 0;
-        virtual PyObject* FromMemory(void* address);
-        virtual bool ToMemory(PyObject* value, void* address);
-    };
+public:
+    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr) = 0;
+    virtual PyObject* FromMemory(void* address);
+    virtual bool ToMemory(PyObject* value, void* address);
+};
 
 // converters for special cases
-    class TVoidArrayConverter : public TConverter {
-    public:
-        TVoidArrayConverter(bool keepControl = true) { fKeepControl = keepControl; }
+class VoidArrayConverter : public Converter {
+public:
+    VoidArrayConverter(bool keepControl = true) { fKeepControl = keepControl; }
 
-    public:
-        virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);
-        virtual PyObject* FromMemory(void* address);
-        virtual bool ToMemory(PyObject* value, void* address);
+public:
+    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);
+    virtual PyObject* FromMemory(void* address);
+    virtual bool ToMemory(PyObject* value, void* address);
 
-    protected:
-        virtual bool GetAddressSpecialCase(PyObject* pyobject, void*& address);
-        bool KeepControl() { return fKeepControl; }
+protected:
+    virtual bool GetAddressSpecialCase(PyObject* pyobject, void*& address);
+    bool KeepControl() { return fKeepControl; }
 
-    private:
-        bool fKeepControl;
-    };
+private:
+    bool fKeepControl;
+};
 
-    class TCppObjectConverter : public TVoidArrayConverter {
-    public:
-        TCppObjectConverter(Cppyy::TCppType_t klass, bool keepControl = false) :
-            TVoidArrayConverter(keepControl), fClass(klass) {}
+class CppObjectConverter : public VoidArrayConverter {
+public:
+    CppObjectConverter(Cppyy::TCppType_t klass, bool keepControl = false) :
+        VoidArrayConverter(keepControl), fClass(klass) {}
 
-    public:
-        virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);
-        virtual PyObject* FromMemory(void* address);
-        virtual bool ToMemory(PyObject* value, void* address);
+public:
+    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);
+    virtual PyObject* FromMemory(void* address);
+    virtual bool ToMemory(PyObject* value, void* address);
         
-    protected:
-        Cppyy::TCppType_t fClass;
-    };
+protected:
+    Cppyy::TCppType_t fClass;
+};
 
-    class TStrictCppObjectConverter : public TCppObjectConverter {
-    public:
-        using TCppObjectConverter::TCppObjectConverter;
+class StrictCppObjectConverter : public CppObjectConverter {
+public:
+    using CppObjectConverter::CppObjectConverter;
 
-    protected:
-        virtual bool GetAddressSpecialCase(PyObject*, void*&) { return false; }
-    };
+protected:
+    virtual bool GetAddressSpecialCase(PyObject*, void*&) { return false; }
+};
 
 // create converter from fully qualified type
-    TConverter* CreateConverter(const std::string& fullType, Long_t size = -1);
+Converter* CreateConverter(const std::string& fullType, Long_t size = -1);
 
 } // namespace CPyCppyy
 

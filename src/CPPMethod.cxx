@@ -1,12 +1,12 @@
 // Bindings
 #include "CPyCppyy.h"
-#include "TMethodHolder.h"
+#include "CPPMethod.h"
+#include "CPPInstance.h"
 #include "Converters.h"
 #include "Executors.h"
-#include "CPPInstance.h"
-#include "CPyCppyyHelpers.h"
-#include "TPyException.h"
+#include "ProxyWrappers.h"
 #include "PyStrings.h"
+#include "TPyException.h"
 #include "Utility.h"
 
 // Standard
@@ -26,7 +26,7 @@ namespace CPyCppyy {
 
 
 //- private helpers ----------------------------------------------------------
-inline void CPyCppyy::TMethodHolder::Copy_(const TMethodHolder& /* other */)
+inline void CPyCppyy::CPPMethod::Copy_(const CPPMethod& /* other */)
 {
 // fScope and fMethod handled separately
 
@@ -39,7 +39,7 @@ inline void CPyCppyy::TMethodHolder::Copy_(const TMethodHolder& /* other */)
 }
 
 //----------------------------------------------------------------------------
-inline void CPyCppyy::TMethodHolder::Destroy_() const
+inline void CPyCppyy::CPPMethod::Destroy_() const
 {
 // destroy executor and argument converters
     delete fExecutor;
@@ -49,11 +49,11 @@ inline void CPyCppyy::TMethodHolder::Destroy_() const
 }
 
 //----------------------------------------------------------------------------
-inline PyObject* CPyCppyy::TMethodHolder::CallFast(
+inline PyObject* CPyCppyy::CPPMethod::CallFast(
         void* self, ptrdiff_t offset, TCallContext* ctxt)
 {
 // Helper code to prevent some duplication; this is called from CallSafe() as well
-// as directly from TMethodHolder::Execute in fast mode.
+// as directly from CPPMethod::Execute in fast mode.
    PyObject* result = nullptr;
 
    try {       // C++ try block
@@ -104,7 +104,7 @@ inline PyObject* CPyCppyy::TMethodHolder::CallFast(
 }
 
 //----------------------------------------------------------------------------
-inline PyObject* CPyCppyy::TMethodHolder::CallSafe(
+inline PyObject* CPyCppyy::CPPMethod::CallSafe(
         void* self, ptrdiff_t offset, TCallContext* ctxt)
 {
 // Helper code to prevent some code duplication; this code embeds a "try/catch"
@@ -123,7 +123,7 @@ inline PyObject* CPyCppyy::TMethodHolder::CallSafe(
 }
 
 //----------------------------------------------------------------------------
-bool CPyCppyy::TMethodHolder::InitConverters_()
+bool CPyCppyy::CPPMethod::InitConverters_()
 {
 // build buffers for argument dispatching
     const size_t nArgs = Cppyy::GetMethodNumArgs(fMethod);
@@ -142,7 +142,7 @@ bool CPyCppyy::TMethodHolder::InitConverters_()
                 // the spelling "const string&" (and will be "const std::string&")
                 (fullType == "const std::string&" || fullType == "const std::string &"
                 || fullType == "const string&" || fullType == "const string &")) {
-            fConverters[iarg] = new TStrictCppObjectConverter(
+            fConverters[iarg] = new StrictCppObjectConverter(
                 Cppyy::GetScope("string"), false ); // TODO: this is sooo wrong
    // -- CLING WORKAROUND
         } else
@@ -158,7 +158,7 @@ bool CPyCppyy::TMethodHolder::InitConverters_()
 }
 
 //----------------------------------------------------------------------------
-bool CPyCppyy::TMethodHolder::InitExecutor_(TExecutor*& executor, TCallContext* ctxt)
+bool CPyCppyy::CPPMethod::InitExecutor_(TExecutor*& executor, TCallContext* ctxt)
 {
 // install executor conform to the return type
     executor = CreateExecutor(
@@ -173,7 +173,7 @@ bool CPyCppyy::TMethodHolder::InitExecutor_(TExecutor*& executor, TCallContext* 
 }
 
 //----------------------------------------------------------------------------
-std::string CPyCppyy::TMethodHolder::GetSignatureString(bool fa)
+std::string CPyCppyy::CPPMethod::GetSignatureString(bool fa)
 {
 // built a signature representation (used for doc strings)
     std::stringstream sig; sig << "(";
@@ -200,7 +200,7 @@ std::string CPyCppyy::TMethodHolder::GetSignatureString(bool fa)
 }
 
 //----------------------------------------------------------------------------
-void CPyCppyy::TMethodHolder::SetPyError_(PyObject* msg)
+void CPyCppyy::CPPMethod::SetPyError_(PyObject* msg)
 {
 // helper to report errors in a consistent format (derefs msg)
     PyObject *etype, *evalue, *etrace;
@@ -245,7 +245,7 @@ void CPyCppyy::TMethodHolder::SetPyError_(PyObject* msg)
 }
 
 //- constructors and destructor ----------------------------------------------
-CPyCppyy::TMethodHolder::TMethodHolder(
+CPyCppyy::CPPMethod::CPPMethod(
         Cppyy::TCppScope_t scope, Cppyy::TCppMethod_t method) :
     fMethod(method), fScope(scope), fExecutor(nullptr), fArgsRequired(-1),
     fIsInitialized(false)
@@ -254,14 +254,14 @@ CPyCppyy::TMethodHolder::TMethodHolder(
 }
 
 //----------------------------------------------------------------------------
-CPyCppyy::TMethodHolder::TMethodHolder(const TMethodHolder& other) :
+CPyCppyy::CPPMethod::CPPMethod(const CPPMethod& other) :
         PyCallable(other), fMethod(other.fMethod), fScope(other.fScope)
 {
     Copy_(other);
 }
 
 //----------------------------------------------------------------------------
-CPyCppyy::TMethodHolder& CPyCppyy::TMethodHolder::operator=(const TMethodHolder& other)
+CPyCppyy::CPPMethod& CPyCppyy::CPPMethod::operator=(const CPPMethod& other)
 {
     if (this != &other) {
         Destroy_();
@@ -274,14 +274,14 @@ CPyCppyy::TMethodHolder& CPyCppyy::TMethodHolder::operator=(const TMethodHolder&
 }
 
 //----------------------------------------------------------------------------
-CPyCppyy::TMethodHolder::~TMethodHolder()
+CPyCppyy::CPPMethod::~CPPMethod()
 {
     Destroy_();
 }
 
 
 //- public members -----------------------------------------------------------
-PyObject* CPyCppyy::TMethodHolder::GetPrototype(bool fa)
+PyObject* CPyCppyy::CPPMethod::GetPrototype(bool fa)
 {
 // construct python string from the method's prototype
     return CPyCppyy_PyUnicode_FromFormat("%s%s %s::%s%s",
@@ -292,7 +292,7 @@ PyObject* CPyCppyy::TMethodHolder::GetPrototype(bool fa)
 }
 
 //----------------------------------------------------------------------------
-int CPyCppyy::TMethodHolder::GetPriority()
+int CPyCppyy::CPPMethod::GetPriority()
 {
 // Method priorities exist (in lieu of true overloading) there to prevent
 // void* or <unknown>* from usurping otherwise valid calls. TODO: extend this
@@ -341,13 +341,13 @@ int CPyCppyy::TMethodHolder::GetPriority()
 }
 
 //----------------------------------------------------------------------------
-int CPyCppyy::TMethodHolder::GetMaxArgs()
+int CPyCppyy::CPPMethod::GetMaxArgs()
 {
     return Cppyy::GetMethodNumArgs(fMethod);
 }
 
 //----------------------------------------------------------------------------
-PyObject* CPyCppyy::TMethodHolder::GetCoVarNames()
+PyObject* CPyCppyy::CPPMethod::GetCoVarNames()
 {
 // Build a tuple of the argument types/names.
     int co_argcount = (int)GetMaxArgs() /* +1 for self */;
@@ -371,7 +371,7 @@ PyObject* CPyCppyy::TMethodHolder::GetCoVarNames()
     return co_varnames;
 }
 
-PyObject* CPyCppyy::TMethodHolder::GetArgDefault(int iarg)
+PyObject* CPyCppyy::CPPMethod::GetArgDefault(int iarg)
 {
 // get the default value (if any) of argument iarg of this method
     if (iarg >= (int)GetMaxArgs())
@@ -395,14 +395,14 @@ PyObject* CPyCppyy::TMethodHolder::GetArgDefault(int iarg)
 }
 
 //----------------------------------------------------------------------------
-PyObject* CPyCppyy::TMethodHolder::GetScopeProxy()
+PyObject* CPyCppyy::CPPMethod::GetScopeProxy()
 {
 // Get or build the scope of this method.
     return CreateScopeProxy(fScope);
 }
 
 //----------------------------------------------------------------------------
-bool CPyCppyy::TMethodHolder::Initialize(TCallContext* ctxt)
+bool CPyCppyy::CPPMethod::Initialize(TCallContext* ctxt)
 {
 // done if cache is already setup
     if (fIsInitialized == true)
@@ -424,7 +424,7 @@ bool CPyCppyy::TMethodHolder::Initialize(TCallContext* ctxt)
 }
 
 //----------------------------------------------------------------------------
-PyObject* CPyCppyy::TMethodHolder::PreProcessArgs(
+PyObject* CPyCppyy::CPPMethod::PreProcessArgs(
         CPPInstance*& self, PyObject* args, PyObject*)
 {
 // verify existence of self, return if ok
@@ -445,7 +445,7 @@ PyObject* CPyCppyy::TMethodHolder::PreProcessArgs(
 
         // reset self
             self = pyobj;
-            Py_INCREF(self);       // corresponding Py_DECREF is in MethodProxy
+            Py_INCREF(self);       // corresponding Py_DECREF is in CPPOverload
 
         // offset args by 1 (new ref)
             return PyTuple_GetSlice(args, 1, PyTuple_GET_SIZE(args));
@@ -461,7 +461,7 @@ PyObject* CPyCppyy::TMethodHolder::PreProcessArgs(
 }
 
 //----------------------------------------------------------------------------
-bool CPyCppyy::TMethodHolder::ConvertAndSetArgs(PyObject* args, TCallContext* ctxt)
+bool CPyCppyy::CPPMethod::ConvertAndSetArgs(PyObject* args, TCallContext* ctxt)
 {
     int argc = PyTuple_GET_SIZE(args);
     int argMax = fConverters.size();
@@ -491,7 +491,7 @@ bool CPyCppyy::TMethodHolder::ConvertAndSetArgs(PyObject* args, TCallContext* ct
 }
 
 //----------------------------------------------------------------------------
-PyObject* CPyCppyy::TMethodHolder::Execute(void* self, ptrdiff_t offset, TCallContext* ctxt)
+PyObject* CPyCppyy::CPPMethod::Execute(void* self, ptrdiff_t offset, TCallContext* ctxt)
 {
 // call the interface method
     PyObject* result = 0;
@@ -515,7 +515,7 @@ PyObject* CPyCppyy::TMethodHolder::Execute(void* self, ptrdiff_t offset, TCallCo
 }
 
 //----------------------------------------------------------------------------
-PyObject* CPyCppyy::TMethodHolder::Call(
+PyObject* CPyCppyy::CPPMethod::Call(
         CPPInstance*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt)
 {
 // preliminary check in case keywords are accidently used (they are ignored otherwise)
@@ -572,14 +572,14 @@ PyObject* CPyCppyy::TMethodHolder::Call(
 }
 
 //- protected members --------------------------------------------------------
-PyObject* CPyCppyy::TMethodHolder::GetSignature(bool fa)
+PyObject* CPyCppyy::CPPMethod::GetSignature(bool fa)
 {
 // construct python string from the method's signature
     return CPyCppyy_PyUnicode_FromString(GetSignatureString(fa).c_str());
 }
 
 //----------------------------------------------------------------------------
-std::string CPyCppyy::TMethodHolder::GetReturnTypeName()
+std::string CPyCppyy::CPPMethod::GetReturnTypeName()
 {
     return Cppyy::GetMethodResultType(fMethod);
 }

@@ -8,7 +8,7 @@
 bool CPyCppyy::TSetItemHolder::InitExecutor_(TExecutor*& executor, TCallContext*)
 {
 // basic call will do
-    if (!TMethodHolder::InitExecutor_(executor))
+    if (!CPPMethod::InitExecutor_(executor))
         return false;
 
 // check to make sure we're dealing with a RefExecutor
@@ -66,7 +66,7 @@ PyObject* CPyCppyy::TSetItemHolder::PreProcessArgs(
     }
 
 // actual call into C++
-    PyObject* result = TMethodHolder::PreProcessArgs(self, unrolled ? unrolled : subset, kwds);
+    PyObject* result = CPPMethod::PreProcessArgs(self, unrolled ? unrolled : subset, kwds);
     Py_XDECREF(unrolled);
     Py_DECREF(subset);
     return result;

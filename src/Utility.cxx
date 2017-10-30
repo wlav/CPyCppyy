@@ -1,14 +1,15 @@
 // Bindings
 #include "CPyCppyy.h"
-#include "PyStrings.h"
 #include "Utility.h"
 #include "CPPInstance.h"
-#include "MethodProxy.h"
-#include "TFunctionHolder.h"
+#include "CPPOverload.h"
+#include "ProxyWrappers.h"
+#include "PyCallable.h"
+#include "PyStrings.h"
 #include "TCustomPyTypes.h"
 #include "TemplateProxy.h"
-#include "CPyCppyyHelpers.h"
-#include "PyCallable.h"
+#include "TFunctionHolder.h"
+
 
 // Standard
 #include <string.h>
@@ -212,15 +213,15 @@ bool CPyCppyy::Utility::AddToClass(PyObject* pyclass, const char* label, const c
 bool CPyCppyy::Utility::AddToClass(PyObject* pyclass, const char* label, PyCallable* pyfunc)
 {
 // Add the given function to the class under name 'label'.
-    MethodProxy* method =
-        (MethodProxy*)PyObject_GetAttrString(pyclass, const_cast<char*>(label));
+    CPPOverload* method =
+        (CPPOverload*)PyObject_GetAttrString(pyclass, const_cast<char*>(label));
 
-    if (!method || !MethodProxy_Check(method)) {
-    // not adding to existing MethodProxy; add callable directly to the class
+    if (!method || !CPPOverload_Check(method)) {
+    // not adding to existing CPPOverload; add callable directly to the class
         if (PyErr_Occurred())
             PyErr_Clear();
         Py_XDECREF((PyObject*)method);
-        method = MethodProxy_New(label, pyfunc);
+        method = CPPOverload_New(label, pyfunc);
         bool isOk = PyObject_SetAttrString(
             pyclass, const_cast<char*>(label), (PyObject*)method) == 0;
         Py_DECREF(method);
@@ -238,9 +239,9 @@ bool CPyCppyy::Utility::AddUsingToClass(PyObject* pyclass, const char* method)
 {
 // Helper to add base class methods to the derived class one (this covers the
 // 'using' cases, which the dictionary does not provide).
-    MethodProxy* derivedMethod =
-        (MethodProxy*)PyObject_GetAttrString(pyclass, const_cast<char*>(method));
-    if (!MethodProxy_Check(derivedMethod)) {
+    CPPOverload* derivedMethod =
+        (CPPOverload*)PyObject_GetAttrString(pyclass, const_cast<char*>(method));
+    if (!CPPOverload_Check(derivedMethod)) {
         Py_XDECREF(derivedMethod);
         return false;
     }
@@ -252,9 +253,9 @@ bool CPyCppyy::Utility::AddUsingToClass(PyObject* pyclass, const char* method)
         return false;
     }
 
-    MethodProxy* baseMethod = 0;
+    CPPOverload* baseMethod = 0;
     for (int i = 1; i < PyTuple_GET_SIZE(mro); ++i) {
-        baseMethod = (MethodProxy*)PyObject_GetAttrString(
+        baseMethod = (CPPOverload*)PyObject_GetAttrString(
             PyTuple_GET_ITEM(mro, i), const_cast<char*>(method));
 
         if (!baseMethod) {
@@ -262,7 +263,7 @@ bool CPyCppyy::Utility::AddUsingToClass(PyObject* pyclass, const char* method)
             continue;
         }
 
-        if (MethodProxy_Check(baseMethod))
+        if (CPPOverload_Check(baseMethod))
             break;
 
         Py_DECREF(baseMethod);
@@ -271,7 +272,7 @@ bool CPyCppyy::Utility::AddUsingToClass(PyObject* pyclass, const char* method)
 
     Py_DECREF(mro);
 
-    if (!MethodProxy_Check(baseMethod)) {
+    if (!CPPOverload_Check(baseMethod)) {
         Py_XDECREF(baseMethod);
         Py_DECREF(derivedMethod);
         return false;
@@ -393,31 +394,31 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& 
 
 #if 0
    // TODO: figure out what this was for ...
-    if ( ! pyfunc && _pr_int.GetClass() &&
-             lcname.find( "iterator" ) != std::string::npos &&
-             rcname.find( "iterator" ) != std::string::npos ) {
+    if (!pyfunc && _pr_int.GetClass() &&
+            lcname.find( "iterator" ) != std::string::npos &&
+            rcname.find( "iterator" ) != std::string::npos) {
    // TODO: gets called too often; make sure it's purely lazy calls only; also try to
    // find a better notion for which classes (other than iterators) this is supposed to
    // work; right now it fails for cases where None is passed
         std::stringstream fname;
-        if ( strncmp( op, "==", 2 ) == 0 ) { fname << "is_equal<"; }
-        else if ( strncmp( op, "!=", 2 ) == 0 ) { fname << "is_not_equal<"; }
+        if (strncmp(op, "==", 2) == 0) { fname << "is_equal<"; }
+        else if (strncmp(op, "!=", 2) == 0) { fname << "is_not_equal<"; }
         else { fname << "not_implemented<"; }
-        fname  << lcname << ", " << rcname << ">";
-        Cppyy::TCppMethod_t func = (Cppyy::TCppMethod_t)Cppyy_pr_int->GetMethodAny( fname.str().c_str() );
-        if ( func ) pyfunc = new TFunctionHolder( Cppyy::GetScope( "_cpycppyy_internal" ), func );
+        fname << lcname << ", " << rcname << ">";
+        Cppyy::TCppMethod_t func = (Cppyy::TCppMethod_t)Cppyy_pr_int->GetMethodAny(fname.str().c_str());
+        if (func) pyfunc = new TFunctionHolder(Cppyy::GetScope("_cpycppyy_internal"), func);
     }
 
 // last chance: there could be a non-instantiated templated method
     TClass* lc = TClass::GetClass( lcname.c_str() );
-    if ( lc && strcmp(op, "==") != 0 && strcmp(op, "!=") != 0 ) {
+    if (lc && strcmp(op, "==") != 0 && strcmp(op, "!=") != 0) {
         std::string opname = "operator"; opname += op;
         gInterpreter->LoadFunctionTemplates(lc);
         gInterpreter->GetFunctionTemplate(lc->GetClassInfo(), opname.c_str());
         TFunctionTemplate*f = lc->GetFunctionTemplate(opname.c_str());
         Cppyy::TCppMethod_t func =
             (Cppyy::TCppMethod_t)lc->GetMethodWithPrototype( opname.c_str(), rcname.c_str() );
-        if ( func && f ) pyfunc = new TMethodHolder( Cppyy::GetScope( lcname ), func );
+        if (func && f) pyfunc = new CPPMethod(Cppyy::GetScope(lcname), func);
     }
 #endif
 

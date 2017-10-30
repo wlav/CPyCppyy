@@ -1,9 +1,9 @@
 // Bindings
 #include "CPyCppyy.h"
 #include "TemplateProxy.h"
-#include "MethodProxy.h"
+#include "CPPOverload.h"
 #include "TFunctionHolder.h"
-#include "TMethodHolder.h"
+#include "CPPMethod.h"
 #include "PyCallable.h"
 #include "PyStrings.h"
 #include "Utility.h"
@@ -21,12 +21,12 @@ void TemplateProxy::Set(const std::string& cppname, const std::string& pyname, P
     fPyClass      = pyclass;
     fSelf         = nullptr;
     std::vector<PyCallable*> dummy;
-    fNonTemplated = MethodProxy_New(pyname, dummy);
-    fTemplated    = MethodProxy_New(pyname, dummy);
+    fNonTemplated = CPPOverload_New(pyname, dummy);
+    fTemplated    = CPPOverload_New(pyname, dummy);
 }
 
 //----------------------------------------------------------------------------
-void TemplateProxy::AddOverload(MethodProxy* mp) {
+void TemplateProxy::AddOverload(CPPOverload* mp) {
 // Store overloads of this templated method.
     fNonTemplated->AddMethod(mp);
 }
@@ -148,11 +148,11 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
 
 // simply forward the call: all non-templated methods are defined on class definition
 // and thus already available
-    PyObject* pymeth = MethodProxy_Type.tp_descr_get(
-        (PyObject*)pytmpl->fNonTemplated, pytmpl->fSelf, (PyObject*)&MethodProxy_Type);
-    if (MethodProxy_Check(pymeth)) {
+    PyObject* pymeth = CPPOverload_Type.tp_descr_get(
+        (PyObject*)pytmpl->fNonTemplated, pytmpl->fSelf, (PyObject*)&CPPOverload_Type);
+    if (CPPOverload_Check(pymeth)) {
     // now call the method with the arguments
-        PyObject* result = MethodProxy_Type.tp_call(pymeth, args, kwds);
+        PyObject* result = CPPOverload_Type.tp_call(pymeth, args, kwds);
         Py_DECREF(pymeth); pymeth = 0;
         if (result)
             return result;
@@ -186,11 +186,11 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
     PyErr_Clear();
 
 // case 3: loop over all previously instantiated templates
-    pymeth = MethodProxy_Type.tp_descr_get(
-        (PyObject*)pytmpl->fTemplated, pytmpl->fSelf, (PyObject*)&MethodProxy_Type);
-    if (MethodProxy_Check(pymeth)) {
+    pymeth = CPPOverload_Type.tp_descr_get(
+        (PyObject*)pytmpl->fTemplated, pytmpl->fSelf, (PyObject*)&CPPOverload_Type);
+    if (CPPOverload_Check(pymeth)) {
     // now call the method with the arguments
-        PyObject* result = MethodProxy_Type.tp_call(pymeth, args, kwds);
+        PyObject* result = CPPOverload_Type.tp_call(pymeth, args, kwds);
         Py_DECREF(pymeth); pymeth = 0;
         if (result)
             return result;
@@ -264,12 +264,12 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
             if (cppmeth) {    // overload stops here
                 if (Cppyy::IsNamespace(scope) || Cppyy::IsStaticMethod(cppmeth)) {
                     pytmpl->fTemplated->AddMethod(new TFunctionHolder(scope, cppmeth));
-                    pymeth = (PyObject*)MethodProxy_New(
+                    pymeth = (PyObject*)CPPOverload_New(
                         tmplname, new TFunctionHolder(scope, cppmeth));
                 } else {
-                    pytmpl->fTemplated->AddMethod(new TMethodHolder(scope, cppmeth));
-                    pymeth = (PyObject*)MethodProxy_New(
-                        tmplname, new TMethodHolder(scope, cppmeth));
+                    pytmpl->fTemplated->AddMethod(new CPPMethod(scope, cppmeth));
+                    pymeth = (PyObject*)CPPOverload_New(
+                        tmplname, new CPPMethod(scope, cppmeth));
                 }
                 PyObject_SetAttrString(pytmpl->fPyClass, (char*)tmplname.c_str(), (PyObject*)pymeth);
                 Py_DECREF(pymeth);
@@ -277,7 +277,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
                     pytmpl->fSelf ? pytmpl->fSelf : pytmpl->fPyClass, (char*)tmplname.c_str());
 
             // now call the method directly
-                PyObject* result = MethodProxy_Type.tp_call(pymeth, args, kwds);
+                PyObject* result = CPPOverload_Type.tp_call(pymeth, args, kwds);
                 Py_DECREF(pymeth);
                 return result;
             }
@@ -287,22 +287,22 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
   /*
 
    // case 4b/5: instantiating obj->method< t0, t1, ... >( a0, a1, ... )
-      if ( pyname_v1 ) {
-         std::string mname = CPyCppyy_PyUnicode_AsString( pyname_v1 );
+      if (pyname_v1) {
+          std::string mname = CPyCppyy_PyUnicode_AsString(pyname_v1);
        // the following causes instantiation as necessary
-         TMethod* cppmeth = klass ? klass->GetMethodAny( mname.c_str() ) : 0;
-         if ( cppmeth ) {    // overload stops here
-            pymeth = (PyObject*)MethodProxy_New(
-               mname, new TMethodHolder( Cppyy::GetScope( klass->GetName() ), (Cppyy::TCppMethod_t)cppmeth ) );
-            PyObject_SetAttr( pytmpl->fPyClass, pyname_v1, (PyObject*)pymeth );
-            if ( mname != cppmeth->GetName() ) // happens with typedefs and template default arguments
-               PyObject_SetAttrString( pytmpl->fPyClass, (char*)mname.c_str(), (PyObject*)pymeth );
-            Py_DECREF( pymeth );
-            pymeth = PyObject_GetAttr( pytmpl->fSelf ? pytmpl->fSelf : pytmpl->fPyClass, pyname_v1 );
-            Py_DECREF( pyname_v1 );
-            return pymeth;         // callable method, next step is by user
+          TMethod* cppmeth = klass ? klass->GetMethodAny(mname.c_str()) : 0;
+          if (cppmeth) {    // overload stops here
+              pymeth = (PyObject*)CPPOverload_New(
+                  mname, new CPPMethod(Cppyy::GetScope( klass->GetName( ), (Cppyy::TCppMethod_t)cppmeth));
+              PyObject_SetAttr(pytmpl->fPyClass, pyname_v1, (PyObject*)pymeth);
+              if (mname != cppmeth->GetName()) // happens with typedefs and template default arguments
+                  PyObject_SetAttrString(pytmpl->fPyClass, (char*)mname.c_str(), (PyObject*)pymeth);
+              Py_DECREF(pymeth);
+              pymeth = PyObject_GetAttr(pytmpl->fSelf ? pytmpl->fSelf : pytmpl->fPyClass, pyname_v1);
+              Py_DECREF(pyname_v1);
+              return pymeth;         // callable method, next step is by user
          }
-         Py_DECREF( pyname_v1 );
+         Py_DECREF(pyname_v1);
       }
    */
 
@@ -348,7 +348,7 @@ static PyObject* tpp_subscript(TemplateProxy* pytmpl, PyObject* args)
        // the following causes instantiation as necessary
             Cppyy::TCppMethod_t cppmeth = Cppyy::GetMethodTemplate(scope, meth_name, "");
             if (cppmeth) {    // overload stops here
-                pymeth = (PyObject*)MethodProxy_New(meth_name, new TMethodHolder(scope, cppmeth));
+                pymeth = (PyObject*)CPPOverload_New(meth_name, new CPPMethod(scope, cppmeth));
                 PyObject_SetAttr(pytmpl->fPyClass, pytmpl_name, (PyObject*)pymeth);
                 Py_DECREF(pymeth);
                 pymeth = PyObject_GetAttr(pytmpl->fSelf ? pytmpl->fSelf : pytmpl->fPyClass, pytmpl_name);

@@ -1,8 +1,8 @@
 // Bindings
 #include "CPyCppyy.h"
-#include "TConstructorHolder.h"
-#include "Executors.h"
+#include "CPPConstructor.h"
 #include "CPPInstance.h"
+#include "Executors.h"
 #include "MemoryRegulator.h"
 
 // Standard
@@ -10,7 +10,7 @@
 
 
 //- protected members --------------------------------------------------------
-bool CPyCppyy::TConstructorHolder::InitExecutor_(TExecutor*& executor, TCallContext*)
+bool CPyCppyy::CPPConstructor::InitExecutor_(TExecutor*& executor, TCallContext*)
 {
 // pick up special case new object executor
     executor = CreateExecutor("__init__");
@@ -18,7 +18,7 @@ bool CPyCppyy::TConstructorHolder::InitExecutor_(TExecutor*& executor, TCallCont
 }
 
 //- public members -----------------------------------------------------------
-PyObject* CPyCppyy::TConstructorHolder::GetDocString()
+PyObject* CPyCppyy::CPPConstructor::GetDocString()
 {
 // GetMethod() may return an empty function if this is just a special case place holder
     const std::string& clName = Cppyy::GetFinalName(this->GetScope());
@@ -27,7 +27,7 @@ PyObject* CPyCppyy::TConstructorHolder::GetDocString()
 }
 
 //----------------------------------------------------------------------------
-PyObject* CPyCppyy::TConstructorHolder::Call(
+PyObject* CPyCppyy::CPPConstructor::Call(
         CPPInstance*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt)
 {
 // preliminary check in case keywords are accidently used (they are ignored otherwise)

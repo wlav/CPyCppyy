@@ -2,7 +2,7 @@
 #include "CPyCppyy.h"
 #include "MemoryRegulator.h"
 #include "CPPInstance.h"
-#include "CPyCppyyHelpers.h"
+#include "ProxyWrappers.h"
 
 // Standard
 #include <assert.h>

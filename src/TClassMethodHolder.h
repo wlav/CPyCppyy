@@ -2,14 +2,14 @@
 #define CPYCPPYY_TCLASSMETHODHOLDER_H
 
 // Bindings
-#include "TMethodHolder.h"
+#include "CPPMethod.h"
 
 
 namespace CPyCppyy {
 
-    class TClassMethodHolder : public TMethodHolder {
+    class TClassMethodHolder : public CPPMethod {
     public:
-        using TMethodHolder::TMethodHolder;
+        using CPPMethod::CPPMethod;
 
         virtual PyCallable* Clone() { return new TClassMethodHolder(*this); }
         virtual PyObject* Call(

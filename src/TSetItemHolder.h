@@ -2,7 +2,7 @@
 #define CPYCPPYY_TSETITEMHOLDER_H
 
 // Bindings
-#include "TMethodHolder.h"
+#include "CPPMethod.h"
 
 
 namespace CPyCppyy {
@@ -11,9 +11,9 @@ namespace CPyCppyy {
     class TMemberAdapter;
     class TScopeAdapter;
 
-    class TSetItemHolder : public TMethodHolder {
+    class TSetItemHolder : public CPPMethod {
     public:
-        using TMethodHolder::TMethodHolder;
+        using CPPMethod::CPPMethod;
 
     public:
         virtual PyCallable* Clone() { return new TSetItemHolder(*this); }

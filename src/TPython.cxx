@@ -1,10 +1,10 @@
 // Bindings
 #include "CPyCppyy.h"
-#include "PyStrings.h"
 #include "TPython.h"
 #include "CPPInstance.h"
-#include "MethodProxy.h"
-#include "CPyCppyyHelpers.h"
+#include "CPPOverload.h"
+#include "ProxyWrappers.h"
+#include "PyStrings.h"
 
 // Standard
 #include <stdio.h>
@@ -443,26 +443,26 @@ bool TPython::CPPInstance_CheckExact(PyObject* pyobject)
 }
 
 //-----------------------------------------------------------------------------
-bool TPython::MethodProxy_Check(PyObject* pyobject)
+bool TPython::CPPOverload_Check(PyObject* pyobject)
 {
-// Test whether the type of the given pyobject is of MethodProxy type or any
+// Test whether the type of the given pyobject is of CPPOverload type or any
 // derived type.
     if (!Initialize())
         return false;
 
 // detailed walk through inheritance hierarchy
-    return CPyCppyy::MethodProxy_Check(pyobject);
+    return CPyCppyy::CPPOverload_Check(pyobject);
 }
 
 //-----------------------------------------------------------------------------
-bool TPython::MethodProxy_CheckExact(PyObject* pyobject)
+bool TPython::CPPOverload_CheckExact(PyObject* pyobject)
 {
-// Test whether the type of the given pyobject is MethodProxy type.
+// Test whether the type of the given pyobject is CPPOverload type.
     if (!Initialize())
         return false;
 
 // direct pointer comparison of type member
-    return CPyCppyy::MethodProxy_CheckExact(pyobject);
+    return CPyCppyy::CPPOverload_CheckExact(pyobject);
 }
 
 //-----------------------------------------------------------------------------

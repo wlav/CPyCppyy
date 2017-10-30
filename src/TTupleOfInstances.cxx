@@ -1,7 +1,7 @@
 // Bindings
 #include "CPyCppyy.h"
 #include "TTupleOfInstances.h"
-#include "CPyCppyyHelpers.h"
+#include "ProxyWrappers.h"
 
 
 namespace CPyCppyy {

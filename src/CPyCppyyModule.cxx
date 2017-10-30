@@ -1,18 +1,18 @@
 // Bindings
 #include "CPyCppyy.h"
-#include "PyStrings.h"
-#include "CPPScope.h"
 #include "CPPInstance.h"
-#include "MethodProxy.h"
-#include "TemplateProxy.h"
-#include "PropertyProxy.h"
-#include "TPyBufferFactory.h"
-#include "TCustomPyTypes.h"
-#include "TTupleOfInstances.h"
-#include "CPyCppyyHelpers.h"
-#include "TCallContext.h"
-#include "Utility.h"
+#include "CPPOverload.h"
+#include "CPPScope.h"
 #include "MemoryRegulator.h"
+#include "PropertyProxy.h"
+#include "ProxyWrappers.h"
+#include "PyStrings.h"
+#include "TemplateProxy.h"
+#include "TCallContext.h"
+#include "TCustomPyTypes.h"
+#include "TPyBufferFactory.h"
+#include "TTupleOfInstances.h"
+#include "Utility.h"
 
 // Standard
 #include <string>
@@ -790,7 +790,7 @@ extern "C" void initlibcppyy()
         CPYCPPYY_INIT_ERROR;
 
 // inject method proxy type
-    if (!Utility::InitProxy(gThisModule, &MethodProxy_Type, "MethodProxy"))
+    if (!Utility::InitProxy(gThisModule, &CPPOverload_Type, "CPPOverload"))
         CPYCPPYY_INIT_ERROR;
 
 // inject template proxy type
