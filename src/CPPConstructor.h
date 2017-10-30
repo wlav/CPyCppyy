@@ -20,7 +20,7 @@ public:
         CPPInstance*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt = nullptr);
 
 protected:
-    virtual bool InitExecutor_(TExecutor*&, TCallContext* ctxt = nullptr);
+    virtual bool InitExecutor_(Executor*&, TCallContext* ctxt = nullptr);
 };
 
 } // namespace CPyCppyy

@@ -11,7 +11,7 @@
 
 namespace CPyCppyy {
 
-class TExecutor;
+class Executor;
 class Converter;
 
 class CPPMethod : public PyCallable {
@@ -45,11 +45,11 @@ public:
 protected:
     Cppyy::TCppMethod_t GetMethod()   { return fMethod; }
     Cppyy::TCppScope_t  GetScope()    { return fScope; }
-    TExecutor*          GetExecutor() { return fExecutor; }
+    Executor*           GetExecutor() { return fExecutor; }
     std::string         GetSignatureString(bool show_formalargs = true);
     std::string         GetReturnTypeName();
 
-    virtual bool InitExecutor_(TExecutor*&, TCallContext* ctxt = nullptr);
+    virtual bool InitExecutor_(Executor*&, TCallContext* ctxt = nullptr);
 
 private:
     void Copy_(const CPPMethod&);
@@ -66,7 +66,7 @@ private:
 // representation
     Cppyy::TCppMethod_t fMethod;
     Cppyy::TCppScope_t  fScope;
-    TExecutor*          fExecutor;
+    Executor*           fExecutor;
 
 // call dispatch buffers
     std::vector<Converter*> fConverters;

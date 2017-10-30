@@ -158,7 +158,7 @@ bool CPyCppyy::CPPMethod::InitConverters_()
 }
 
 //----------------------------------------------------------------------------
-bool CPyCppyy::CPPMethod::InitExecutor_(TExecutor*& executor, TCallContext* ctxt)
+bool CPyCppyy::CPPMethod::InitExecutor_(Executor*& executor, TCallContext* ctxt)
 {
 // install executor conform to the return type
     executor = CreateExecutor(

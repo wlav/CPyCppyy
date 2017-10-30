@@ -15,10 +15,10 @@
 #include <utility>
 
 
-//- data ______________________________________________________________________
+//- data _____________________________________________________________________
 namespace CPyCppyy {
 
-    typedef TExecutor* (*ExecutorFactory_t) ();
+    typedef Executor* (*ExecutorFactory_t) ();
     typedef std::map<std::string, ExecutorFactory_t> ExecFactories_t;
     static ExecFactories_t gExecFactories;
 
@@ -26,7 +26,7 @@ namespace CPyCppyy {
 }
 
 
-//- helpers -------------------------------------------------------------------
+//- helpers ------------------------------------------------------------------
 namespace {
 
     class GILControl {
@@ -49,11 +49,12 @@ namespace {
 
 } // unnamed namespace
 
-#define CPPYY_IMPL_GILCALL(rtype, tcode)                                \
-    static inline rtype GILCall##tcode(                                 \
-        Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CPyCppyy::TCallContext* ctxt) { \
-        GILControl gc(ctxt);                                            \
-        return Cppyy::Call##tcode(method, self, &ctxt->fArgs);          \
+#define CPPYY_IMPL_GILCALL(rtype, tcode)                                     \
+static inline rtype GILCall##tcode(                                          \
+    Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CPyCppyy::TCallContext* ctxt)\
+{                                                                            \
+    GILControl gc(ctxt);                                                     \
+    return Cppyy::Call##tcode(method, self, &ctxt->fArgs);                   \
 }
 
 CPPYY_IMPL_GILCALL(void,          V)
@@ -107,8 +108,8 @@ static inline PyObject* CPyCppyy_PyBool_FromInt(int b)
 }
 
 
-//- executors for built-ins ---------------------------------------------------
-PyObject* CPyCppyy::TBoolExecutor::Execute(
+//- executors for built-ins --------------------------------------------------
+PyObject* CPyCppyy::BoolExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python bool return value
@@ -118,16 +119,16 @@ PyObject* CPyCppyy::TBoolExecutor::Execute(
     return result;
 }
 
-//-----------------------------------------------------------------------------
-PyObject* CPyCppyy::TBoolConstRefExecutor::Execute(
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::BoolConstRefExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python bool return value
     return CPyCppyy_PyBool_FromInt(*((bool*)GILCallR(method, self, ctxt)));
 }
 
-//-----------------------------------------------------------------------------
-PyObject* CPyCppyy::TCharExecutor::Execute(
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::CharExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method with argument <self, ctxt>, construct python string return value
@@ -135,8 +136,8 @@ PyObject* CPyCppyy::TCharExecutor::Execute(
     return CPyCppyy_PyUnicode_FromInt((int)GILCallC(method, self, ctxt));
 }
 
-//-----------------------------------------------------------------------------
-PyObject* CPyCppyy::TCharConstRefExecutor::Execute(
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::CharConstRefExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python string return value
@@ -144,8 +145,8 @@ PyObject* CPyCppyy::TCharConstRefExecutor::Execute(
     return CPyCppyy_PyUnicode_FromInt(*((char*)GILCallR(method, self, ctxt)));
 }
 
-//-----------------------------------------------------------------------------
-PyObject* CPyCppyy::TUCharExecutor::Execute(
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::UCharExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method> with argument <self, args>, construct python string return value
@@ -153,8 +154,8 @@ PyObject* CPyCppyy::TUCharExecutor::Execute(
     return CPyCppyy_PyUnicode_FromInt((unsigned char)GILCallB(method, self, ctxt));
 }
 
-//-----------------------------------------------------------------------------
-PyObject* CPyCppyy::TUCharConstRefExecutor::Execute(
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::UCharConstRefExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt )
 {
 // execute <method> with argument <self, ctxt>, construct python string return value
@@ -162,40 +163,40 @@ PyObject* CPyCppyy::TUCharConstRefExecutor::Execute(
     return CPyCppyy_PyUnicode_FromInt(*((unsigned char*)GILCallR(method, self, ctxt)));
 }
 
-//-----------------------------------------------------------------------------
-PyObject* CPyCppyy::TIntExecutor::Execute(
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::IntExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python int return value
     return PyInt_FromLong((int)GILCallI(method, self, ctxt));
 }
 
-//-----------------------------------------------------------------------------
-PyObject* CPyCppyy::TShortExecutor::Execute(
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::ShortExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python int return value
     return PyInt_FromLong((short)GILCallH(method, self, ctxt));
 }
 
-//-----------------------------------------------------------------------------
-PyObject* CPyCppyy::TLongExecutor::Execute(
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::LongExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python long return value
     return PyLong_FromLong((Long_t)GILCallL(method, self, ctxt));
 }
 
-//-----------------------------------------------------------------------------
-PyObject* CPyCppyy::TULongExecutor::Execute(
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::ULongExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python unsigned long return value
    return PyLong_FromUnsignedLong((ULong_t)GILCallLL(method, self, ctxt));
 }
 
-//-----------------------------------------------------------------------------
-PyObject* CPyCppyy::TLongLongExecutor::Execute(
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::LongLongExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt )
 {
 // execute <method> with argument <self, ctxt>, construct python long long return value
@@ -203,8 +204,8 @@ PyObject* CPyCppyy::TLongLongExecutor::Execute(
     return PyLong_FromLongLong( result );
 }
 
-//-----------------------------------------------------------------------------
-PyObject* CPyCppyy::TULongLongExecutor::Execute(
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::ULongLongExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python unsigned long long return value
@@ -212,32 +213,32 @@ PyObject* CPyCppyy::TULongLongExecutor::Execute(
     return PyLong_FromUnsignedLongLong(result);
 }
 
-//-----------------------------------------------------------------------------
-PyObject* CPyCppyy::TFloatExecutor::Execute(
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::FloatExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python float return value
     return PyFloat_FromDouble((double)GILCallF(method, self, ctxt));
 }
 
-//-----------------------------------------------------------------------------
-PyObject* CPyCppyy::TDoubleExecutor::Execute(
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::DoubleExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python float return value
     return PyFloat_FromDouble((double)GILCallD(method, self, ctxt));
 }
 
-//-----------------------------------------------------------------------------
-PyObject* CPyCppyy::TLongDoubleExecutor::Execute(
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::LongDoubleExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python float return value
     return PyFloat_FromDouble((double)GILCallLD(method, self, ctxt));
 }
 
-//-----------------------------------------------------------------------------
-bool CPyCppyy::TRefExecutor::SetAssignable(PyObject* pyobject)
+//----------------------------------------------------------------------------
+bool CPyCppyy::RefExecutor::SetAssignable(PyObject* pyobject)
 {
 // prepare "buffer" for by-ref returns, used with __setitem__
     if (pyobject) {
@@ -250,21 +251,21 @@ bool CPyCppyy::TRefExecutor::SetAssignable(PyObject* pyobject)
     return false;
 }
 
-//-----------------------------------------------------------------------------
-#define CPPYY_IMPL_REFEXEC(name, type, stype, F1, F2)                         \
-PyObject* CPyCppyy::T##name##RefExecutor::Execute(                            \
-    Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt) \
-{                                                                             \
-    type* ref = (type*)GILCallR(method, self, ctxt);                          \
-    if (!fAssignable)                                                         \
-        return F1((stype)*ref);                                               \
-    else {                                                                    \
-        *ref = (type)F2(fAssignable);                                         \
-        Py_DECREF(fAssignable);                                               \
-        fAssignable = nullptr;                                                \
-        Py_INCREF(Py_None);                                                   \
-        return Py_None;                                                       \
-    }                                                                         \
+//----------------------------------------------------------------------------
+#define CPPYY_IMPL_REFEXEC(name, type, stype, F1, F2)                        \
+PyObject* CPyCppyy::name##RefExecutor::Execute(                              \
+    Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)\
+{                                                                            \
+    type* ref = (type*)GILCallR(method, self, ctxt);                         \
+    if (!fAssignable)                                                        \
+        return F1((stype)*ref);                                              \
+    else {                                                                   \
+        *ref = (type)F2(fAssignable);                                        \
+        Py_DECREF(fAssignable);                                              \
+        fAssignable = nullptr;                                               \
+        Py_INCREF(Py_None);                                                  \
+        return Py_None;                                                      \
+    }                                                                        \
 }
 
 CPPYY_IMPL_REFEXEC(Bool,   bool,   Long_t,   CPyCppyy_PyBool_FromInt,    PyLong_AsLong)
@@ -282,8 +283,8 @@ CPPYY_IMPL_REFEXEC(Float,  float,  double, PyFloat_FromDouble, PyFloat_AsDouble)
 CPPYY_IMPL_REFEXEC(Double, double, double, PyFloat_FromDouble, PyFloat_AsDouble)
 CPPYY_IMPL_REFEXEC(LongDouble, LongDouble_t, LongDouble_t, PyFloat_FromDouble, PyFloat_AsDouble)
 
-//-----------------------------------------------------------------------------
-PyObject* CPyCppyy::TSTLStringRefExecutor::Execute(
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::STLStringRefExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, return python string return value
@@ -302,8 +303,8 @@ PyObject* CPyCppyy::TSTLStringRefExecutor::Execute(
     }
 }
 
-//-----------------------------------------------------------------------------
-PyObject* CPyCppyy::TVoidExecutor::Execute(
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::VoidExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, return None
@@ -311,8 +312,8 @@ PyObject* CPyCppyy::TVoidExecutor::Execute(
     Py_RETURN_NONE;
 }
 
-//-----------------------------------------------------------------------------
-PyObject* CPyCppyy::TCStringExecutor::Execute(
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::CStringExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python string return value
@@ -326,8 +327,8 @@ PyObject* CPyCppyy::TCStringExecutor::Execute(
 }
 
 
-//- pointer/array executors ---------------------------------------------------
-PyObject* CPyCppyy::TVoidArrayExecutor::Execute(
+//- pointer/array executors --------------------------------------------------
+PyObject* CPyCppyy::VoidArrayExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python long return value
@@ -339,11 +340,11 @@ PyObject* CPyCppyy::TVoidArrayExecutor::Execute(
     return BufFac_t::Instance()->PyBuffer_FromMemory(result, sizeof(void*));
 }
 
-//-----------------------------------------------------------------------------
-#define CPPYY_IMPL_ARRAY_EXEC(name, type)                                     \
-PyObject* CPyCppyy::T##name##ArrayExecutor::Execute(                          \
-    Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt) \
-{                                                                             \
+//----------------------------------------------------------------------------
+#define CPPYY_IMPL_ARRAY_EXEC(name, type)                                    \
+PyObject* CPyCppyy::name##ArrayExecutor::Execute(                            \
+    Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)\
+{                                                                            \
     return BufFac_t::Instance()->PyBuffer_FromMemory((type*)GILCallR(method, self, ctxt));\
 }
 
@@ -359,7 +360,7 @@ CPPYY_IMPL_ARRAY_EXEC(Double, double)
 
 
 //- special cases ------------------------------------------------------------
-PyObject* CPyCppyy::TSTLStringExecutor::Execute(
+PyObject* CPyCppyy::STLStringExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python string return value
@@ -379,16 +380,16 @@ PyObject* CPyCppyy::TSTLStringExecutor::Execute(
     return pyresult;
 }
 
-//-----------------------------------------------------------------------------
-PyObject* CPyCppyy::TCppObjectExecutor::Execute(
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::CppObjectExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python proxy object return value
     return BindCppObject((void*)GILCallR(method, self, ctxt), fClass);
 }
 
-//-----------------------------------------------------------------------------
-PyObject* CPyCppyy::TCppObjectByValueExecutor::Execute(
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::CppObjectByValueExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execution will bring a temporary in existence
@@ -410,8 +411,8 @@ PyObject* CPyCppyy::TCppObjectByValueExecutor::Execute(
     return (PyObject*)pyobj;
 }
 
-//-----------------------------------------------------------------------------
-PyObject* CPyCppyy::TCppObjectRefExecutor::Execute(
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::CppObjectRefExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // executor binds the result to the left-hand side, overwriting if an old object
@@ -451,8 +452,8 @@ PyObject* CPyCppyy::TCppObjectRefExecutor::Execute(
     }
 }
 
-//-----------------------------------------------------------------------------
-PyObject* CPyCppyy::TCppObjectPtrPtrExecutor::Execute(
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::CppObjectPtrPtrExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python C++ proxy object
@@ -460,8 +461,8 @@ PyObject* CPyCppyy::TCppObjectPtrPtrExecutor::Execute(
     return BindCppObject((void*)GILCallR(method, self, ctxt), fClass, true);
 }
 
-//-----------------------------------------------------------------------------
-PyObject* CPyCppyy::TCppObjectPtrRefExecutor::Execute(
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::CppObjectPtrRefExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python C++ proxy object
@@ -470,8 +471,8 @@ PyObject* CPyCppyy::TCppObjectPtrRefExecutor::Execute(
 }
 
 
-//- smart pointers ------------------------------------------------------------
-PyObject* CPyCppyy::TCppObjectBySmartPtrExecutor::Execute(
+//- smart pointers -----------------------------------------------------------
+PyObject* CPyCppyy::CppObjectBySmartPtrExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // smart pointer executor
@@ -495,7 +496,7 @@ PyObject* CPyCppyy::TCppObjectBySmartPtrExecutor::Execute(
     return (PyObject*)pyobj;
 }
 
-PyObject* CPyCppyy::TCppObjectBySmartPtrPtrExecutor::Execute(
+PyObject* CPyCppyy::CppObjectBySmartPtrPtrExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
     Cppyy::TCppObject_t value = GILCallR(method, self, ctxt);
@@ -512,7 +513,7 @@ PyObject* CPyCppyy::TCppObjectBySmartPtrPtrExecutor::Execute(
     return (PyObject*)pyobj;
 }
 
-PyObject* CPyCppyy::TCppObjectBySmartPtrRefExecutor::Execute(
+PyObject* CPyCppyy::CppObjectBySmartPtrRefExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
     Cppyy::TCppObject_t value = GILCallR(method, self, ctxt);
@@ -572,8 +573,8 @@ PyObject* CPyCppyy::TCppObjectBySmartPtrRefExecutor::Execute(
 }
 
 
-//-----------------------------------------------------------------------------
-PyObject* CPyCppyy::TCppObjectArrayExecutor::Execute(
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::CppObjectArrayExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct TTupleOfInstances from
@@ -581,8 +582,8 @@ PyObject* CPyCppyy::TCppObjectArrayExecutor::Execute(
     return BindCppObjectArray((void*)GILCallR(method, self, ctxt), fClass, fArraySize);
 }
 
-//-----------------------------------------------------------------------------
-PyObject* CPyCppyy::TConstructorExecutor::Execute(
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::ConstructorExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t klass, TCallContext* ctxt)
 {
 // package return address in PyObject* for caller to handle appropriately (see
@@ -590,8 +591,8 @@ PyObject* CPyCppyy::TConstructorExecutor::Execute(
     return (PyObject*)GILCallConstructor(method, (Cppyy::TCppType_t)klass, ctxt);
 }
 
-//-----------------------------------------------------------------------------
-PyObject* CPyCppyy::TPyObjectExecutor::Execute(
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::PyObjectExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, return python object
@@ -599,8 +600,8 @@ PyObject* CPyCppyy::TPyObjectExecutor::Execute(
 }
 
 
-//- factories -----------------------------------------------------------------
-CPyCppyy::TExecutor* CPyCppyy::CreateExecutor(
+//- factories ----------------------------------------------------------------
+CPyCppyy::Executor* CPyCppyy::CreateExecutor(
     const std::string& fullType, bool manage_smart_ptr)
 {
 // The matching of the fulltype to an executor factory goes through up to 4 levels:
@@ -658,7 +659,7 @@ CPyCppyy::TExecutor* CPyCppyy::CreateExecutor(
     }
 
 // C++ classes and special cases (enum)
-    TExecutor* result = 0;
+    Executor* result = 0;
     if (Cppyy::TCppType_t klass = Cppyy::GetScope(realType)) {
         if (manage_smart_ptr && Cppyy::IsSmartPtr(realType)) {
             const std::vector<Cppyy::TCppIndex_t> methods =
@@ -669,11 +670,11 @@ CPyCppyy::TExecutor* CPyCppyy::CreateExecutor(
                     TypeManip::clean_type(Cppyy::GetMethodResultType(method)));
                 if (rawPtrType) {
                     if (cpd == "") {
-                        result = new TCppObjectBySmartPtrExecutor(klass, rawPtrType, method);
+                        result = new CppObjectBySmartPtrExecutor(klass, rawPtrType, method);
                     } else if (cpd == "*") {
-                        result = new TCppObjectBySmartPtrPtrExecutor(klass, rawPtrType, method);
+                        result = new CppObjectBySmartPtrPtrExecutor(klass, rawPtrType, method);
                     } else if (cpd == "&") {
-                        result = new TCppObjectBySmartPtrRefExecutor(klass, rawPtrType, method);
+                        result = new CppObjectBySmartPtrRefExecutor(klass, rawPtrType, method);
                     } // else if (cpd == "**") {
                 //  } else if (cpd == "*&" || cpd == "&*") {
                 //  } else if (cpd == "[]") {
@@ -684,21 +685,21 @@ CPyCppyy::TExecutor* CPyCppyy::CreateExecutor(
 
         if (!result) {
             if (cpd == "")
-                result = new TCppObjectByValueExecutor(klass);
+                result = new CppObjectByValueExecutor(klass);
             else if (cpd == "&")
-                result = new TCppObjectRefExecutor(klass);
+                result = new CppObjectRefExecutor(klass);
             else if (cpd == "**")
-                result = new TCppObjectPtrPtrExecutor(klass);
+                result = new CppObjectPtrPtrExecutor(klass);
             else if (cpd == "*&"|| cpd == "&*" )
-                result = new TCppObjectPtrRefExecutor(klass);
+                result = new CppObjectPtrRefExecutor(klass);
             else if (cpd == "[]") {
                 Py_ssize_t asize = Utility::ArraySize(resolvedType);
                 if (0 < asize)
-                    result = new TCppObjectArrayExecutor(klass, asize);
+                    result = new CppObjectArrayExecutor(klass, asize);
                 else
-                    result = new TCppObjectPtrRefExecutor(klass);
+                    result = new CppObjectPtrRefExecutor(klass);
             } else
-                result = new TCppObjectExecutor(klass);
+                result = new CppObjectExecutor(klass);
         }
     } else {
     // unknown: void* may work ("user knows best"), void will fail on use of return value
@@ -713,11 +714,11 @@ CPyCppyy::TExecutor* CPyCppyy::CreateExecutor(
 }
 
 
-//-----------------------------------------------------------------------------
-#define CPPYY_EXECUTOR_FACTORY(name)                                          \
-TExecutor* Create##name##Executor()                                           \
-{                                                                             \
-    return new T##name##Executor;                                             \
+//----------------------------------------------------------------------------
+#define CPPYY_EXECUTOR_FACTORY(name)                                         \
+Executor* Create##name##Executor()                                           \
+{                                                                            \
+    return new name##Executor;                                               \
 }
 
 namespace {

@@ -10,7 +10,7 @@
 
 
 //- protected members --------------------------------------------------------
-bool CPyCppyy::CPPConstructor::InitExecutor_(TExecutor*& executor, TCallContext*)
+bool CPyCppyy::CPPConstructor::InitExecutor_(Executor*& executor, TCallContext*)
 {
 // pick up special case new object executor
     executor = CreateExecutor("__init__");

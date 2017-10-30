@@ -5,14 +5,14 @@
 
 
 //- protected members ---------------------------------------------------------
-bool CPyCppyy::TSetItemHolder::InitExecutor_(TExecutor*& executor, TCallContext*)
+bool CPyCppyy::TSetItemHolder::InitExecutor_(Executor*& executor, TCallContext*)
 {
 // basic call will do
     if (!CPPMethod::InitExecutor_(executor))
         return false;
 
 // check to make sure we're dealing with a RefExecutor
-    if (!dynamic_cast<TRefExecutor*>(executor)) {
+    if (!dynamic_cast<RefExecutor*>(executor)) {
         PyErr_Format(PyExc_NotImplementedError,
             "no __setitem__ handler for return type (%s)",
             this->GetReturnTypeName().c_str());
@@ -34,7 +34,7 @@ PyObject* CPyCppyy::TSetItemHolder::PreProcessArgs(
     }
 
 // strip the last element of args to be used on return
-    ((TRefExecutor*)this->GetExecutor())->SetAssignable(PyTuple_GET_ITEM(args, nArgs-1));
+    ((RefExecutor*)this->GetExecutor())->SetAssignable(PyTuple_GET_ITEM(args, nArgs-1));
     PyObject* subset = PyTuple_GetSlice(args, 0, nArgs-1);
 
 // see whether any of the arguments is a tuple itself

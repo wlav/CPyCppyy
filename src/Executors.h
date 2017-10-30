@@ -9,17 +9,17 @@ namespace CPyCppyy {
 
 class TCallContext;
 
-class TExecutor {
+class Executor {
 public:
-    virtual ~TExecutor() {}
+    virtual ~Executor() {}
     virtual PyObject* Execute(
         Cppyy::TCppMethod_t, Cppyy::TCppObject_t, TCallContext*) = 0;
 };
 
 // special case needed for TSetItemHolder
-class TRefExecutor : public TExecutor {
+class RefExecutor : public Executor {
 public:
-    TRefExecutor() : fAssignable(nullptr) {}
+    RefExecutor() : fAssignable(nullptr) {}
     virtual bool SetAssignable(PyObject*);
 
 protected:
@@ -27,7 +27,7 @@ protected:
 };
 
 // create executor from fully qualified type
-TExecutor* CreateExecutor(const std::string& fullType, bool manage_smart_ptr = true);
+Executor* CreateExecutor(const std::string& fullType, bool manage_smart_ptr = true);
 
 } // namespace CPyCppyy
 
