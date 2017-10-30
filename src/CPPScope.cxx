@@ -30,6 +30,7 @@ static PyObject* meta_alloc(PyTypeObject* metatype, Py_ssize_t nitems)
 static void meta_dealloc(CPPScope* metatype)
 {
     delete metatype->fCppObjects; metatype->fCppObjects = nullptr;
+    free(metatype->fModuleName);
     return PyType_Type.tp_dealloc((PyObject*)metatype);
 }
 
@@ -68,6 +69,7 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
         return nullptr;
 
     result->fCppObjects = new CppToPyMap_t;
+    result->fModuleName = nullptr;
 
 // initialization of class (based on metatype)
     const char* mp = strstr(subtype->tp_name, "_meta");
@@ -282,6 +284,9 @@ static PyObject* meta_getmodule(CPPScope* meta, void*)
     if ((void*)meta == (void*)&CPPInstance_Type)
         return CPyCppyy_PyUnicode_FromString("cppyy.gbl");
 
+    if (meta->fModuleName)
+        return CPyCppyy_PyUnicode_FromString(meta->fModuleName);
+
     std::string modname = Cppyy::GetScopedFinalName(meta->fCppType);
     std::string::size_type pos = modname.rfind("::");
     if (modname.empty() || pos == std::string::npos)
@@ -294,9 +299,30 @@ static PyObject* meta_getmodule(CPPScope* meta, void*)
 }
 
 //-----------------------------------------------------------------------------
+static int meta_setmodule(CPPScope* meta, PyObject* value, void*)
+{
+    if ((void*)meta == (void*)&CPPInstance_Type) {
+        PyErr_SetString(PyExc_AttributeError,
+            "attribute \'__module__\' of 'cppyy.CPPScope\' objects is not writable");
+        return -1;
+    }
+
+    const char* newname = CPyCppyy_PyUnicode_AsStringChecked(value);
+    if (!value)
+        return -1;
+
+    free(meta->fModuleName);
+    Py_ssize_t sz = CPyCppyy_PyUnicode_GET_SIZE(value);
+    meta->fModuleName = (char*)malloc(sz+1);
+    memcpy(meta->fModuleName, newname, sz+1);
+
+    return 0;
+}
+
+//-----------------------------------------------------------------------------
 static PyGetSetDef meta_getset[] = {
     {(char*)"__cppname__", (getter)meta_getcppname, nullptr, nullptr, nullptr},
-    {(char*)"__module__",  (getter)meta_getmodule,  nullptr, nullptr, nullptr},
+    {(char*)"__module__",  (getter)meta_getmodule,  (setter)meta_setmodule, nullptr, nullptr},
     {(char*)nullptr, nullptr, nullptr, nullptr, nullptr}
 };
 

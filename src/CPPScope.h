@@ -38,6 +38,7 @@ public:
     PyHeapTypeObject  fType;
     Cppyy::TCppType_t fCppType;
     CppToPyMap_t*     fCppObjects;
+    char*             fModuleName;
 
 private:
     CPPScope() = delete;
