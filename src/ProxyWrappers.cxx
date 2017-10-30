@@ -1,19 +1,19 @@
 // Bindings
 #include "CPyCppyy.h"
 #include "ProxyWrappers.h"
-#include "CPPInstance.h"
+#include "CPPClassMethod.h"
 #include "CPPConstructor.h"
+#include "CPPFunction.h"
+#include "CPPInstance.h"
 #include "CPPMethod.h"
 #include "CPPOverload.h"
 #include "CPPScope.h"
+#include "CPPSetItem.h"
 #include "MemoryRegulator.h"
 #include "PropertyProxy.h"
 #include "PyStrings.h"
 #include "Pythonize.h"
-#include "TClassMethodHolder.h"
 #include "TemplateProxy.h"
-#include "TFunctionHolder.h"
-#include "TSetItemHolder.h"
 #include "TTupleOfInstances.h"
 #include "TypeManip.h"
 #include "Utility.h"
@@ -244,9 +244,9 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass) {
     // construct the holder
         PyCallable* pycall = 0;
         if (Cppyy::IsStaticMethod(method))  // class method
-            pycall = new TClassMethodHolder(scope, method);
+            pycall = new CPPClassMethod(scope, method);
         else if (isNamespace)               // free function
-            pycall = new TFunctionHolder(scope, method);
+            pycall = new CPPFunction(scope, method);
         else if (isConstructor) {           // constructor
             pycall = new CPPConstructor(scope, method);
             mtName = "__init__";
@@ -263,7 +263,7 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass) {
         if (setupSetItem) {
             Callables_t& setitem = (*(cache.insert(
                 std::make_pair(std::string("__setitem__"), Callables_t())).first)).second;
-            setitem.push_back( new TSetItemHolder(scope, method));
+            setitem.push_back(new CPPSetItem(scope, method));
         }
 
         if (isTemplate) {
@@ -697,7 +697,7 @@ PyObject* CPyCppyy::GetCppGlobal(const std::string& name)
     if (!methods.empty()) {
         std::vector<PyCallable*> overloads;
         for (auto method : methods)
-            overloads.push_back(new TFunctionHolder(
+            overloads.push_back(new CPPFunction(
                 Cppyy::gGlobalScope, Cppyy::GetMethod(Cppyy::gGlobalScope, method)));
         return (PyObject*)CPPOverload_New(name, overloads);
     }

@@ -1,12 +1,12 @@
 // Bindings
 #include "CPyCppyy.h"
 #include "CPPScope.h"
+#include "CPPFunction.h"
 #include "CPPOverload.h"
 #include "PropertyProxy.h"
 #include "ProxyWrappers.h"
 #include "PyStrings.h"
 #include "TemplateProxy.h"
-#include "TFunctionHolder.h"
 #include "TypeManip.h"
 #include "Utility.h"
 
@@ -123,7 +123,7 @@ static PyObject* pt_getattro(PyObject* pyclass, PyObject* pyname)
                             for (size_t imeth = 0; imeth < nmeth; ++imeth) {
                                 Cppyy::TCppMethod_t method = Cppyy::GetMethod(scope, imeth);
                                 if (Cppyy::GetMethodName(method) == name)
-                                    overloads.push_back(new TFunctionHolder(scope, method));
+                                    overloads.push_back(new CPPFunction(scope, method));
                             }
 
                         // Note: can't re-use Utility::AddClass here, as there's the risk of

@@ -1,11 +1,11 @@
 // Bindings
 #include "CPyCppyy.h"
-#include "TSetItemHolder.h"
+#include "CPPSetItem.h"
 #include "Executors.h"
 
 
 //- protected members ---------------------------------------------------------
-bool CPyCppyy::TSetItemHolder::InitExecutor_(Executor*& executor, TCallContext*)
+bool CPyCppyy::CPPSetItem::InitExecutor_(Executor*& executor, TCallContext*)
 {
 // basic call will do
     if (!CPPMethod::InitExecutor_(executor))
@@ -23,7 +23,7 @@ bool CPyCppyy::TSetItemHolder::InitExecutor_(Executor*& executor, TCallContext*)
 }
 
 //-----------------------------------------------------------------------------
-PyObject* CPyCppyy::TSetItemHolder::PreProcessArgs(
+PyObject* CPyCppyy::CPPSetItem::PreProcessArgs(
     CPPInstance*& self, PyObject* args, PyObject* kwds)
 {
 // Prepare executor with a buffer for the return value.

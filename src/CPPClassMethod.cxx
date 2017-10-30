@@ -1,11 +1,11 @@
 // Bindings
 #include "CPyCppyy.h"
-#include "TClassMethodHolder.h"
+#include "CPPClassMethod.h"
 
 
 //- public members --------------------------------------------------------------
-PyObject* CPyCppyy::TClassMethodHolder::Call(
-        CPPInstance*&, PyObject* args, PyObject* kwds, TCallContext* ctxt)
+PyObject* CPyCppyy::CPPClassMethod::Call(
+    CPPInstance*&, PyObject* args, PyObject* kwds, TCallContext* ctxt)
 {
 // preliminary check in case keywords are accidently used (they are ignored otherwise)
     if (kwds && PyDict_Size(kwds)) {

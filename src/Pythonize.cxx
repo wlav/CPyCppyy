@@ -7,7 +7,6 @@
 #include "ProxyWrappers.h"
 #include "PyCallable.h"
 #include "PyStrings.h"
-#include "TFunctionHolder.h"
 #include "TPyBufferFactory.h"
 #include "Utility.h"
 

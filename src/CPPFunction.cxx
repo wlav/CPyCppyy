@@ -1,11 +1,11 @@
 // Bindings
 #include "CPyCppyy.h"
-#include "TFunctionHolder.h"
+#include "CPPFunction.h"
 #include "CPPInstance.h"
 
 
 //- public members --------------------------------------------------------------
-PyObject* CPyCppyy::TFunctionHolder::PreProcessArgs(
+PyObject* CPyCppyy::CPPFunction::PreProcessArgs(
         CPPInstance*& self, PyObject* args, PyObject*)
 {
 // no self means called as a free function; all ok
@@ -30,7 +30,7 @@ PyObject* CPyCppyy::TFunctionHolder::PreProcessArgs(
 }
 
 //---------------------------------------------------------------------------
-PyObject* CPyCppyy::TFunctionHolder::Call(
+PyObject* CPyCppyy::CPPFunction::Call(
         CPPInstance*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt)
 {
 // preliminary check in case keywords are accidently used (they are ignored otherwise)

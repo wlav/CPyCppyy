@@ -1,9 +1,9 @@
 // Bindings
 #include "CPyCppyy.h"
 #include "TemplateProxy.h"
-#include "CPPOverload.h"
-#include "TFunctionHolder.h"
+#include "CPPFunction.h"
 #include "CPPMethod.h"
+#include "CPPOverload.h"
 #include "PyCallable.h"
 #include "PyStrings.h"
 #include "Utility.h"
@@ -263,9 +263,9 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
             Cppyy::TCppMethod_t cppmeth = Cppyy::GetMethodTemplate(scope, tmplname, proto);
             if (cppmeth) {    // overload stops here
                 if (Cppyy::IsNamespace(scope) || Cppyy::IsStaticMethod(cppmeth)) {
-                    pytmpl->fTemplated->AddMethod(new TFunctionHolder(scope, cppmeth));
+                    pytmpl->fTemplated->AddMethod(new CPPFunction(scope, cppmeth));
                     pymeth = (PyObject*)CPPOverload_New(
-                        tmplname, new TFunctionHolder(scope, cppmeth));
+                        tmplname, new CPPFunction(scope, cppmeth));
                 } else {
                     pytmpl->fTemplated->AddMethod(new CPPMethod(scope, cppmeth));
                     pymeth = (PyObject*)CPPOverload_New(

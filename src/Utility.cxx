@@ -1,6 +1,7 @@
 // Bindings
 #include "CPyCppyy.h"
 #include "Utility.h"
+#include "CPPFunction.h"
 #include "CPPInstance.h"
 #include "CPPOverload.h"
 #include "ProxyWrappers.h"
@@ -8,7 +9,6 @@
 #include "PyStrings.h"
 #include "TCustomPyTypes.h"
 #include "TemplateProxy.h"
-#include "TFunctionHolder.h"
 
 
 // Standard
@@ -368,12 +368,12 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& 
     PyCallable* pyfunc = 0;
     if (gnucxx) {
         Cppyy::TCppMethod_t func = FindAndAddOperator(lcname, rcname, op, gnucxx);
-        if (func) pyfunc = new TFunctionHolder(gnucxx, func);
+        if (func) pyfunc = new CPPFunction(gnucxx, func);
     }
 
     if (!pyfunc && std__1) {
         Cppyy::TCppMethod_t func = FindAndAddOperator(lcname, rcname, op, std__1);
-        if (func) pyfunc = new TFunctionHolder(std__1, func);
+        if (func) pyfunc = new CPPFunction(std__1, func);
     }
 
     if (!pyfunc) {
@@ -382,14 +382,14 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& 
             Cppyy::TCppScope_t lcscope = Cppyy::GetScope(lcname.substr(0, pos).c_str());
             if (lcscope) {
                 Cppyy::TCppMethod_t func = FindAndAddOperator(lcname, rcname, op, lcscope);
-                if (func) pyfunc = new TFunctionHolder(lcscope, func);
+                if (func) pyfunc = new CPPFunction(lcscope, func);
             }
         }
     }
 
     if (!pyfunc) {
         Cppyy::TCppMethod_t func = FindAndAddOperator(lcname, rcname, op);
-        if (func) pyfunc = new TFunctionHolder(Cppyy::gGlobalScope, func);
+        if (func) pyfunc = new CPPFunction(Cppyy::gGlobalScope, func);
     }
 
 #if 0
@@ -406,7 +406,7 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& 
         else { fname << "not_implemented<"; }
         fname << lcname << ", " << rcname << ">";
         Cppyy::TCppMethod_t func = (Cppyy::TCppMethod_t)Cppyy_pr_int->GetMethodAny(fname.str().c_str());
-        if (func) pyfunc = new TFunctionHolder(Cppyy::GetScope("_cpycppyy_internal"), func);
+        if (func) pyfunc = new CPpFunction(Cppyy::GetScope("_cpycppyy_internal"), func);
     }
 
 // last chance: there could be a non-instantiated templated method

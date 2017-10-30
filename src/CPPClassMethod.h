@@ -1,5 +1,5 @@
-#ifndef CPYCPPYY_TCLASSMETHODHOLDER_H
-#define CPYCPPYY_TCLASSMETHODHOLDER_H
+#ifndef CPYCPPYY_CPPCLASSMETHOD_H
+#define CPYCPPYY_CPPCLASSMETHOD_H
 
 // Bindings
 #include "CPPMethod.h"
@@ -7,15 +7,15 @@
 
 namespace CPyCppyy {
 
-class TClassMethodHolder : public CPPMethod {
+class CPPClassMethod : public CPPMethod {
 public:
     using CPPMethod::CPPMethod;
 
-    virtual PyCallable* Clone() { return new TClassMethodHolder(*this); }
+    virtual PyCallable* Clone() { return new CPPClassMethod(*this); }
     virtual PyObject* Call(
         CPPInstance*&, PyObject* args, PyObject* kwds, TCallContext* ctxt = nullptr);
 };
 
 } // namespace CPyCppyy
 
-#endif // !CPYCPPYY_TCLASSMETHODHOLDER_H
+#endif // !CPYCPPYY_CPPCLASSMETHOD_H

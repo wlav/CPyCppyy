@@ -16,7 +16,7 @@ public:
         Cppyy::TCppMethod_t, Cppyy::TCppObject_t, TCallContext*) = 0;
 };
 
-// special case needed for TSetItemHolder
+// special case needed for CPPSetItem
 class RefExecutor : public Executor {
 public:
     RefExecutor() : fAssignable(nullptr) {}

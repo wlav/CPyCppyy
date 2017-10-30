@@ -1,5 +1,5 @@
-#ifndef CPYCPPYY_TFUNCTIONHOLDER_H
-#define CPYCPPYY_TFUNCTIONHOLDER_H
+#ifndef CPYCPPYY_CPPFUNCTION_H
+#define CPYCPPYY_CPPFUNCTION_H
 
 // Bindings
 #include "CPPMethod.h"
@@ -7,11 +7,11 @@
 
 namespace CPyCppyy {
 
-class TFunctionHolder : public CPPMethod {
+class CPPFunction : public CPPMethod {
 public:
     using CPPMethod::CPPMethod;
 
-    virtual PyCallable* Clone() { return new TFunctionHolder(*this); }
+    virtual PyCallable* Clone() { return new CPPFunction(*this); }
 
     virtual PyObject* PreProcessArgs(CPPInstance*& self, PyObject* args, PyObject* kwds);
     virtual PyObject* Call(
@@ -20,4 +20,4 @@ public:
 
 } // namespace CPyCppyy
 
-#endif // !CPYCPPYY_TFUNCTIONHOLDER_H
+#endif // !CPYCPPYY_CPPFUNCTION_H
