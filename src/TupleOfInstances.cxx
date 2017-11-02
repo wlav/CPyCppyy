@@ -1,13 +1,13 @@
 // Bindings
 #include "CPyCppyy.h"
-#include "TTupleOfInstances.h"
+#include "TupleOfInstances.h"
 #include "ProxyWrappers.h"
 
 
 namespace CPyCppyy {
 
 //= support for C-style arrays of objects ====================================
-PyObject* TTupleOfInstances_New(
+PyObject* TupleOfInstances_New(
     Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, Py_ssize_t nelems)
 {
 // TODO: the extra copy is inefficient, but it appears that the only way to
@@ -24,7 +24,7 @@ PyObject* TTupleOfInstances_New(
 
     PyObject* args = PyTuple_New(1);
     Py_INCREF(tup); PyTuple_SET_ITEM(args, 0, tup);
-    PyObject* arr = PyTuple_Type.tp_new(&TTupleOfInstances_Type, args, nullptr);
+    PyObject* arr = PyTuple_Type.tp_new(&TupleOfInstances_Type, args, nullptr);
     if (PyErr_Occurred()) PyErr_Print();
 
     Py_DECREF(args);
@@ -34,7 +34,7 @@ PyObject* TTupleOfInstances_New(
 }
 
 //= CPyCppyy custom tuple-like array type ====================================
-PyTypeObject TTupleOfInstances_Type = {
+PyTypeObject TupleOfInstances_Type = {
     PyVarObject_HEAD_INIT(&PyType_Type, 0)
     (char*)"cppyy.InstancesArray", // tp_name
     0,                             // tp_basicsize

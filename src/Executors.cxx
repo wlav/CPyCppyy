@@ -577,7 +577,7 @@ PyObject* CPyCppyy::CppObjectBySmartPtrRefExecutor::Execute(
 PyObject* CPyCppyy::CppObjectArrayExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, TCallContext* ctxt)
 {
-// execute <method> with argument <self, ctxt>, construct TTupleOfInstances from
+// execute <method> with argument <self, ctxt>, construct TupleOfInstances from
 // return value
     return BindCppObjectArray((void*)GILCallR(method, self, ctxt), fClass, fArraySize);
 }

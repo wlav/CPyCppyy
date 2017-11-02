@@ -8,7 +8,7 @@
 #include "TCallContext.h"
 #include "TCustomPyTypes.h"
 #include "TPyBufferFactory.h"
-#include "TTupleOfInstances.h"
+#include "TupleOfInstances.h"
 #include "TypeManip.h"
 #include "Utility.h"
 
@@ -556,12 +556,12 @@ bool CPyCppyy::CStringConverter::SetArg(
     if (PyErr_Occurred())
         return false;
 
-    fBuffer = std::string( s, CPyCppyy_PyUnicode_GET_SIZE( pyobject ) );
+    fBuffer = std::string(s, CPyCppyy_PyUnicode_GET_SIZE(pyobject));
 
 // verify (too long string will cause truncation, no crash)
-    if (fMaxSize < (UInt_t)fBuffer.size())
+    if (fMaxSize != -1 && fMaxSize < (long)fBuffer.size())
         PyErr_Warn( PyExc_RuntimeWarning, (char*)"string too long for char array (truncated)");
-    else if (fMaxSize != UINT_MAX)
+    else if (fMaxSize != -1)
         fBuffer.resize(fMaxSize, '\0');      // padd remainder of buffer as needed
 
 // set the value and declare success
@@ -574,7 +574,7 @@ PyObject* CPyCppyy::CStringConverter::FromMemory(void* address)
 {
 // construct python object from C++ const char* read at <address>
     if (address && *(char**)address) {
-        if (fMaxSize != UINT_MAX) {          // need to prevent reading beyond boundary
+        if (fMaxSize != -1) {      // need to prevent reading beyond boundary
             std::string buf(*(char**)address, fMaxSize);    // cut on fMaxSize
             return CPyCppyy_PyUnicode_FromString(buf.c_str());   // cut on \0
         }
@@ -598,7 +598,7 @@ bool CPyCppyy::CStringConverter::ToMemory(PyObject* value, void* address)
     if (fMaxSize < (UInt_t)CPyCppyy_PyUnicode_GET_SIZE(value))
         PyErr_Warn(PyExc_RuntimeWarning, (char*)"string too long for char array (truncated)");
 
-    if (fMaxSize != UINT_MAX)
+    if (fMaxSize != -1)
         strncpy(*(char**)address, s, fMaxSize);   // padds remainder
     else
     // coverity[secure_coding] - can't help it, it's intentional.
@@ -647,7 +647,7 @@ bool CPyCppyy::NonConstCStringConverter::SetArg(
 PyObject* CPyCppyy::NonConstCStringConverter::FromMemory(void* address)
 {
 // assume this is a buffer access if the size is known; otherwise assume string
-    if (fMaxSize != UINT_MAX)
+    if (fMaxSize != -1)
         return CPyCppyy_PyUnicode_FromStringAndSize(*(char**)address, fMaxSize);
     return this->CStringConverter::FromMemory(address);
 }
@@ -1123,7 +1123,7 @@ bool CPyCppyy::CppObjectArrayConverter::SetArg(
     PyObject* pyobject, TParameter& para, TCallContext* /* txt */ )
 {
 // convert <pyobject> to C++ instance**, set arg for call
-    if (!TTupleOfInstances_CheckExact(pyobject))
+    if (!TupleOfInstances_CheckExact(pyobject))
         return false;              // no guarantee that the tuple is okay
 
 // treat the first instance of the tuple as the start of the array, and pass it

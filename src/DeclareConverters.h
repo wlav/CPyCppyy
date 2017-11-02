@@ -90,7 +90,7 @@ public:
 
 class CStringConverter : public Converter {
 public:
-    CStringConverter(UInt_t maxSize = UINT_MAX) : fMaxSize(maxSize) {}
+    CStringConverter(long maxSize = -1) : fMaxSize(maxSize) {}
 
 public:
     virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);
@@ -99,12 +99,12 @@ public:
 
 protected:
     std::string fBuffer;
-    UInt_t fMaxSize;
+    long fMaxSize;
 };
 
 class NonConstCStringConverter : public CStringConverter {
 public:
-    NonConstCStringConverter(UInt_t maxSize = UINT_MAX) : CStringConverter(maxSize) {}
+    NonConstCStringConverter(long maxSize = -1) : CStringConverter(maxSize) {}
 
 public:
     virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);
@@ -113,7 +113,7 @@ public:
 
 class NonConstUCStringConverter : public NonConstCStringConverter {
 public:
-    NonConstUCStringConverter(UInt_t maxSize = UINT_MAX) : NonConstCStringConverter(maxSize) {}
+    NonConstUCStringConverter(long maxSize = -1) : NonConstCStringConverter(maxSize) {}
 
 public:
     virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);

@@ -14,7 +14,7 @@
 #include "PyStrings.h"
 #include "Pythonize.h"
 #include "TemplateProxy.h"
-#include "TTupleOfInstances.h"
+#include "TupleOfInstances.h"
 #include "TypeManip.h"
 #include "Utility.h"
 
@@ -430,7 +430,7 @@ PyObject* CPyCppyy::GetScopeProxy(Cppyy::TCppScope_t scope)
 // Retrieve scope proxy from the known ones.
     PyClassMap_t::iterator pci = gPyClasses.find(scope);
     if (pci != gPyClasses.end()) {
-        PyObject* pyclass = PyWeakref_GetObject( pci->second );
+        PyObject* pyclass = PyWeakref_GetObject(pci->second);
         if (pyclass != Py_None) {
             Py_INCREF(pyclass);
             return pyclass;
@@ -455,7 +455,7 @@ PyObject* CPyCppyy::CreateScopeProxy(Cppyy::TCppScope_t scope)
 PyObject* CPyCppyy::CreateScopeProxy(PyObject*, PyObject* args)
 {
 // Build a python shadow class for the named C++ class.
-    std::string cname = CPyCppyy_PyUnicode_AsString( PyTuple_GetItem( args, 0 ) );
+    std::string cname = CPyCppyy_PyUnicode_AsString(PyTuple_GetItem(args, 0));
     if (PyErr_Occurred())
         return nullptr;
 
@@ -798,5 +798,5 @@ PyObject* CPyCppyy::BindCppObjectArray(
     Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, Int_t size)
 {
 // TODO: this function exists for symmetry; need to figure out if it's useful
-    return TTupleOfInstances_New(address, klass, size);
+    return TupleOfInstances_New(address, klass, size);
 }

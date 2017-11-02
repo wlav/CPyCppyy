@@ -5,6 +5,9 @@
 #include "CPPInstance.h"
 #include "Utility.h"
 
+// Standard
+#include <limits.h>
+
 
 namespace CPyCppyy {
 
@@ -192,6 +195,9 @@ void CPyCppyy::PropertyProxy::Set(Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t i
     int size = Cppyy::GetDimensionSize(scope, idata, 0);
     if (0 < size)
         fProperty |= kIsArrayType;
+
+    if (size == INT_MAX)      // meaning: incomplete array type
+        size = -1;
 
     std::string fullType = Cppyy::GetDatamemberType(scope, idata);
     if (Cppyy::IsEnumData(scope, idata)) {

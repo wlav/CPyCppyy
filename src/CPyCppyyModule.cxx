@@ -11,7 +11,7 @@
 #include "TCallContext.h"
 #include "TCustomPyTypes.h"
 #include "TPyBufferFactory.h"
-#include "TTupleOfInstances.h"
+#include "TupleOfInstances.h"
 #include "Utility.h"
 
 // Standard
@@ -817,7 +817,7 @@ extern "C" void initlibcppyy()
     if (!Utility::InitProxy(gThisModule, &TCustomInstanceMethod_Type, "InstanceMethod"))
         CPYCPPYY_INIT_ERROR;
 
-    if (!Utility::InitProxy(gThisModule, &TTupleOfInstances_Type, "InstancesArray"))
+    if (!Utility::InitProxy(gThisModule, &TupleOfInstances_Type, "InstancesArray"))
        CPYCPPYY_INIT_ERROR;
 
     if (!Utility::InitProxy(gThisModule, &PyNullPtr_t_Type, "nullptr_t"))
