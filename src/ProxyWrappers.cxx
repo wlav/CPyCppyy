@@ -642,10 +642,6 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
 // store a ref from cppyy scope id to new python class
     gPyClasses[klass] = PyWeakref_NewRef(pyclass, nullptr);
 
-// add a ref in the class to its scope
-    PyObject_SetAttrString(
-        pyclass, "__scope__", CPyCppyy_PyUnicode_FromString(scName.c_str()));
-
     Py_DECREF(pyactual);
     Py_DECREF(parent);
 
