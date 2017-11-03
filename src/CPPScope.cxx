@@ -288,14 +288,28 @@ static PyObject* meta_getmodule(CPPScope* meta, void*)
         return CPyCppyy_PyUnicode_FromString(meta->fModuleName);
 
     std::string modname = Cppyy::GetScopedFinalName(meta->fCppType);
-    std::string::size_type pos = modname.rfind("::");
-    if (modname.empty() || pos == std::string::npos)
+    std::string::size_type pos1 = modname.rfind("::");
+    if (modname.empty() || pos1 == std::string::npos)
         return CPyCppyy_PyUnicode_FromString(const_cast<char*>("cppyy.gbl"));
 
-    modname = modname.substr(0, pos);
-    TypeManip::cppscope_to_pyscope(modname);
+    PyObject* pymodule = nullptr;
+    std::string::size_type pos2 = modname.rfind("::", pos1-1);
+    pos2 = (pos2 == std::string::npos) ? 0 : pos2 + 2;
+    PyObject* pyscope = CPyCppyy::GetScopeProxy(Cppyy::GetScope(modname.substr(0, pos1)));
+    if (pyscope) {
+        pymodule = PyObject_GetAttr(pyscope, PyStrings::gModule);
+        CPyCppyy_PyUnicode_AppendAndDel(&pymodule,
+            CPyCppyy_PyUnicode_FromString(('.'+modname.substr(pos2, pos1-pos2)).c_str()));
 
-    return CPyCppyy_PyUnicode_FromString(("cppyy.gbl."+modname).c_str());
+        Py_DECREF(pyscope);
+    }
+
+    if (pymodule)
+        return pymodule;
+    PyErr_Clear();
+
+    TypeManip::cppscope_to_pyscope(modname);
+    return CPyCppyy_PyUnicode_FromString(("cppyy.gbl."+modname.substr(0, pos1)).c_str());
 }
 
 //-----------------------------------------------------------------------------
