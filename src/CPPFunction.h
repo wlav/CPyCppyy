@@ -15,7 +15,7 @@ public:
 
     virtual PyObject* PreProcessArgs(CPPInstance*& self, PyObject* args, PyObject* kwds);
     virtual PyObject* Call(
-        CPPInstance*&, PyObject* args, PyObject* kwds, TCallContext* ctx = nullptr);
+        CPPInstance*&, PyObject* args, PyObject* kwds, CallContext* ctx = nullptr);
 };
 
 } // namespace CPyCppyy

@@ -2,7 +2,7 @@
 #define CPYCPPYY_PYCALLABLE_H
 
 // Bindings
-#include "TCallContext.h"
+#include "CallContext.h"
 
 
 namespace CPyCppyy {
@@ -30,7 +30,7 @@ public:
 
 public:
     virtual PyObject* Call(
-        CPPInstance*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt = nullptr) = 0;
+        CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt = nullptr) = 0;
 };
 
 } // namespace CPyCppyy

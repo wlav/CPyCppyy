@@ -50,7 +50,7 @@ inline void CPyCppyy::CPPMethod::Destroy_() const
 
 //----------------------------------------------------------------------------
 inline PyObject* CPyCppyy::CPPMethod::CallFast(
-        void* self, ptrdiff_t offset, TCallContext* ctxt)
+        void* self, ptrdiff_t offset, CallContext* ctxt)
 {
 // Helper code to prevent some duplication; this is called from CallSafe() as well
 // as directly from CPPMethod::Execute in fast mode.
@@ -69,9 +69,9 @@ inline PyObject* CPyCppyy::CPPMethod::CallFast(
       // TODO: write w/ot use of TClass
 
    // map user exceptions .. this needs to move to Cppyy.cxx
-      TClass* cl = TClass::GetClass( typeid(e) );
+      TClass* cl = TClass::GetClass(typeid(e));
 
-      PyObject* pyUserExcepts = PyObject_GetAttrString( gThisModule, "UserExceptions" );
+      PyObject* pyUserExcepts = PyObject_GetAttrString(gThisModule, "UserExceptions");
       std::string exception_type;
       if (cl) exception_type = cl->GetName();
       else {
@@ -80,17 +80,17 @@ inline PyObject* CPyCppyy::CPPMethod::CallFast(
          if (errorCode) exception_type = typeid(e).name();
          else exception_type = demangled.get();
       }
-      PyObject* pyexc = PyDict_GetItemString( pyUserExcepts, exception_type.c_str() );
-      if ( !pyexc ) {
+      PyObject* pyexc = PyDict_GetItemString(pyUserExcepts, exception_type.c_str());
+      if (!pyexc) {
          PyErr_Clear();
-         pyexc = PyDict_GetItemString( pyUserExcepts, ("std::"+exception_type).c_str() );
+         pyexc = PyDict_GetItemString(pyUserExcepts, ("std::"+exception_type).c_str());
       }
-      Py_DECREF( pyUserExcepts );
+      Py_DECREF(pyUserExcepts);
 
-      if ( pyexc ) {
-         PyErr_Format( pyexc, "%s", e.what() );
+      if (pyexc) {
+         PyErr_Format(pyexc, "%s", e.what());
       } else {
-         PyErr_Format( PyExc_Exception, "%s (C++ exception of type %s)", e.what(), exception_type.c_str() );
+         PyErr_Format(PyExc_Exception, "%s (C++ exception of type %s)", e.what(), exception_type.c_str());
       }
    */
 
@@ -105,7 +105,7 @@ inline PyObject* CPyCppyy::CPPMethod::CallFast(
 
 //----------------------------------------------------------------------------
 inline PyObject* CPyCppyy::CPPMethod::CallSafe(
-        void* self, ptrdiff_t offset, TCallContext* ctxt)
+        void* self, ptrdiff_t offset, CallContext* ctxt)
 {
 // Helper code to prevent some code duplication; this code embeds a "try/catch"
 // block that saves the stack for restoration in case of an otherwise fatal signal.
@@ -113,10 +113,10 @@ inline PyObject* CPyCppyy::CPPMethod::CallSafe(
 
 //   TRY {       // ROOT "try block"
     result = CallFast(self, offset, ctxt);
-   //   } CATCH( excode ) {
-   //      PyErr_SetString( PyExc_SystemError, "problem in C++; program state has been reset" );
+   //   } CATCH(excode) {
+   //      PyErr_SetString(PyExc_SystemError, "problem in C++; program state has been reset");
    //      result = 0;
-   //      Throw( excode );
+   //      Throw(excode);
    //   } ENDTRY;
 
     return result;
@@ -143,7 +143,7 @@ bool CPyCppyy::CPPMethod::InitConverters_()
                 (fullType == "const std::string&" || fullType == "const std::string &"
                 || fullType == "const string&" || fullType == "const string &")) {
             fConverters[iarg] = new StrictCppObjectConverter(
-                Cppyy::GetScope("string"), false ); // TODO: this is sooo wrong
+                Cppyy::GetScope("string"), false);    // TODO: this is sooo wrong
    // -- CLING WORKAROUND
         } else
             fConverters[iarg] = CreateConverter(fullType);
@@ -158,7 +158,7 @@ bool CPyCppyy::CPPMethod::InitConverters_()
 }
 
 //----------------------------------------------------------------------------
-bool CPyCppyy::CPPMethod::InitExecutor_(Executor*& executor, TCallContext* ctxt)
+bool CPyCppyy::CPPMethod::InitExecutor_(Executor*& executor, CallContext* ctxt)
 {
 // install executor conform to the return type
     executor = CreateExecutor(
@@ -311,14 +311,14 @@ int CPyCppyy::CPPMethod::GetPriority()
             if (strstr(aname.c_str(), "void*"))
             // TODO: figure out in general all void* converters
                 priority -= 10000;     // void*/void** shouldn't be too greedy
-            else if (strstr( aname.c_str(), "float"))
+            else if (strstr(aname.c_str(), "float"))
                 priority -= 1000;      // double preferred (no float in python)
-            else if (strstr( aname.c_str(), "long double"))
+            else if (strstr(aname.c_str(), "long double"))
                 priority -= 100;       // id, but better than float
-            else if (strstr( aname.c_str(), "double"))
+            else if (strstr(aname.c_str(), "double"))
                 priority -= 10;        // char, int, long can't convert float,
                                        // but vv. works, so prefer the int types
-            else if (strstr( aname.c_str(), "bool"))
+            else if (strstr(aname.c_str(), "bool"))
                 priority += 1;         // bool over int (does accept 1 and 0)
 
         } else if (aname.rfind("&&", aname.size()-2) != std::string::npos) {
@@ -402,7 +402,7 @@ PyObject* CPyCppyy::CPPMethod::GetScopeProxy()
 }
 
 //----------------------------------------------------------------------------
-bool CPyCppyy::CPPMethod::Initialize(TCallContext* ctxt)
+bool CPyCppyy::CPPMethod::Initialize(CallContext* ctxt)
 {
 // done if cache is already setup
     if (fIsInitialized == true)
@@ -461,7 +461,7 @@ PyObject* CPyCppyy::CPPMethod::PreProcessArgs(
 }
 
 //----------------------------------------------------------------------------
-bool CPyCppyy::CPPMethod::ConvertAndSetArgs(PyObject* args, TCallContext* ctxt)
+bool CPyCppyy::CPPMethod::ConvertAndSetArgs(PyObject* args, CallContext* ctxt)
 {
     int argc = PyTuple_GET_SIZE(args);
     int argMax = fConverters.size();
@@ -491,12 +491,12 @@ bool CPyCppyy::CPPMethod::ConvertAndSetArgs(PyObject* args, TCallContext* ctxt)
 }
 
 //----------------------------------------------------------------------------
-PyObject* CPyCppyy::CPPMethod::Execute(void* self, ptrdiff_t offset, TCallContext* ctxt)
+PyObject* CPyCppyy::CPPMethod::Execute(void* self, ptrdiff_t offset, CallContext* ctxt)
 {
 // call the interface method
     PyObject* result = 0;
 
-    if (TCallContext::sSignalPolicy == TCallContext::kFast) {
+    if (CallContext::sSignalPolicy == CallContext::kFast) {
     // bypasses try block (i.e. segfaults will abort)
         result = CallFast(self, offset, ctxt);
     } else {
@@ -516,7 +516,7 @@ PyObject* CPyCppyy::CPPMethod::Execute(void* self, ptrdiff_t offset, TCallContex
 
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::CPPMethod::Call(
-        CPPInstance*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt)
+        CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt)
 {
 // preliminary check in case keywords are accidently used (they are ignored otherwise)
     if (kwds && PyDict_Size(kwds)) {

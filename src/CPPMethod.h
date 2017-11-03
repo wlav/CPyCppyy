@@ -35,12 +35,12 @@ public:
 
 public:
     virtual PyObject* Call(
-        CPPInstance*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt = nullptr);
+        CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt = nullptr);
 
-    virtual bool      Initialize(TCallContext* ctxt = nullptr);
+    virtual bool      Initialize(CallContext* ctxt = nullptr);
     virtual PyObject* PreProcessArgs(CPPInstance*& self, PyObject* args, PyObject* kwds);
-    virtual bool      ConvertAndSetArgs(PyObject* args, TCallContext* ctxt = nullptr);
-    virtual PyObject* Execute(void* self, ptrdiff_t offset, TCallContext* ctxt = nullptr);
+    virtual bool      ConvertAndSetArgs(PyObject* args, CallContext* ctxt = nullptr);
+    virtual PyObject* Execute(void* self, ptrdiff_t offset, CallContext* ctxt = nullptr);
 
 protected:
     Cppyy::TCppMethod_t GetMethod()   { return fMethod; }
@@ -49,18 +49,18 @@ protected:
     std::string         GetSignatureString(bool show_formalargs = true);
     std::string         GetReturnTypeName();
 
-    virtual bool InitExecutor_(Executor*&, TCallContext* ctxt = nullptr);
+    virtual bool InitExecutor_(Executor*&, CallContext* ctxt = nullptr);
 
 private:
     void Copy_(const CPPMethod&);
     void Destroy_() const;
 
-    PyObject* CallFast(void*, ptrdiff_t, TCallContext*);
-    PyObject* CallSafe(void*, ptrdiff_t, TCallContext*);
+    PyObject* CallFast(void*, ptrdiff_t, CallContext*);
+    PyObject* CallSafe(void*, ptrdiff_t, CallContext*);
 
     bool InitConverters_();
 
-    void SetPyError_( PyObject* msg );
+    void SetPyError_(PyObject* msg);
 
 private:
 // representation

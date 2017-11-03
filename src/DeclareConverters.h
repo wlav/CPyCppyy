@@ -5,9 +5,7 @@
 #include "Converters.h"
 
 // Standard
-#include <limits.h>
 #include <string>
-#include <map>
 
 
 namespace CPyCppyy {
@@ -17,14 +15,14 @@ namespace {
 #define CPPYY_DECLARE_BASIC_CONVERTER(name)                                  \
 class name##Converter : public Converter {                                   \
 public:                                                                      \
-    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);    \
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);      \
     virtual PyObject* FromMemory(void*);                                     \
     virtual bool ToMemory(PyObject*, void*);                                 \
 };                                                                           \
                                                                              \
 class Const##name##RefConverter : public Converter {                         \
 public:                                                                      \
-    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);    \
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);      \
 }
 
 
@@ -37,20 +35,20 @@ public:                                                                      \
                                                                              \
 class Const##name##RefConverter : public Converter {                         \
 public:                                                                      \
-    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);    \
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);      \
 }
 
 #define CPPYY_DECLARE_REF_CONVERTER(name)                                    \
 class name##RefConverter : public Converter {                                \
 public:                                                                      \
-    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);    \
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);      \
 };
 
 #define CPPYY_DECLARE_ARRAY_CONVERTER(name)                                  \
 class name##Converter : public Converter {                                   \
 public:                                                                      \
     name##Converter(Py_ssize_t size = -1) { fSize = size; }                  \
-    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);    \
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);      \
     virtual PyObject* FromMemory(void*);                                     \
     virtual bool ToMemory(PyObject*, void*);                                 \
 private:                                                                     \
@@ -60,7 +58,7 @@ private:                                                                     \
 class name##RefConverter : public name##Converter {                          \
 public:                                                                      \
     using name##Converter::name##Converter;                                  \
-    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);    \
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);      \
 }
 
 // converters for built-ins
@@ -85,7 +83,7 @@ CPPYY_DECLARE_REF_CONVERTER(Double);
 
 class VoidConverter : public Converter {
 public:
-    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
 };
 
 class CStringConverter : public Converter {
@@ -93,7 +91,7 @@ public:
     CStringConverter(long maxSize = -1) : fMaxSize(maxSize) {}
 
 public:
-    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
     virtual PyObject* FromMemory(void* address);
     virtual bool ToMemory(PyObject* value, void* address);
 
@@ -107,7 +105,7 @@ public:
     NonConstCStringConverter(long maxSize = -1) : CStringConverter(maxSize) {}
 
 public:
-    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
     virtual PyObject* FromMemory(void* address);
 };
 
@@ -116,7 +114,7 @@ public:
     NonConstUCStringConverter(long maxSize = -1) : NonConstCStringConverter(maxSize) {}
 
 public:
-    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
 };
 
 // pointer/array conversions
@@ -132,14 +130,14 @@ CPPYY_DECLARE_ARRAY_CONVERTER(DoubleArray);
 
 class LongLongArrayConverter : public VoidArrayConverter {
 public:
-    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
 };
 
 // converters for special cases
 class ValueCppObjectConverter : public StrictCppObjectConverter {
 public:
     using StrictCppObjectConverter::StrictCppObjectConverter;
-    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
 };
 
 class RefCppObjectConverter : public Converter  {
@@ -147,7 +145,7 @@ public:
     RefCppObjectConverter(Cppyy::TCppType_t klass) : fClass(klass) {}
 
 public:
-    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
 
 protected:
     Cppyy::TCppType_t fClass;
@@ -156,7 +154,7 @@ protected:
 class MoveCppObjectConverter : public RefCppObjectConverter  {
 public:
     using RefCppObjectConverter::RefCppObjectConverter;
-    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
 };
 
 template <bool ISREFERENCE>
@@ -165,7 +163,7 @@ public:
     using CppObjectConverter::CppObjectConverter;
 
 public:
-    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
     virtual PyObject* FromMemory(void* address);
     virtual bool ToMemory(PyObject* value, void* address);
 };
@@ -179,7 +177,7 @@ public:
         CppObjectConverter(klass, keepControl), m_size(size) {}
 
 public:
-    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
     virtual PyObject* FromMemory(void* address);
     virtual bool ToMemory(PyObject* value, void* address);
 
@@ -191,18 +189,18 @@ protected:
 // they come in a bazillion different guises, so just do whatever
 class STLIteratorConverter : public Converter {
 public:
-    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
 };
 // -- END CLING WORKAROUND
 
 class VoidPtrRefConverter : public Converter {
 public:
-    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
 };
 
 class VoidPtrPtrConverter : public Converter {
 public:
-    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
     virtual PyObject* FromMemory(void* address);
 };
 
@@ -213,7 +211,7 @@ class name##Converter : public CppObjectConverter {                          \
 public:                                                                      \
     name##Converter(bool keepControl = true);                                \
 public:                                                                      \
-    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);    \
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);      \
     virtual PyObject* FromMemory(void* address);                             \
     virtual bool ToMemory(PyObject* value, void* address);                   \
 private:                                                                     \
@@ -227,7 +225,7 @@ CPPYY_DECLARE_STRING_CONVERTER(STLStringView, std::string_view);
 
 class NotImplementedConverter : public Converter {
 public:
-    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
 };
 
 // smart pointer converter
@@ -242,9 +240,9 @@ public:
           fKeepControl(keepControl), fHandlePtr(handlePtr) {}
 
 public:
-    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
     virtual PyObject* FromMemory(void* address);
-    //virtual bool ToMemory( PyObject* value, void* address );
+    //virtual bool ToMemory(PyObject* value, void* address);
 
 protected:
     virtual bool GetAddressSpecialCase(PyObject*, void*&) { return false; }

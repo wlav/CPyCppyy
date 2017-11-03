@@ -10,7 +10,7 @@
 #include "CPPScope.h"
 #include "CPPSetItem.h"
 #include "MemoryRegulator.h"
-#include "PropertyProxy.h"
+#include "CPPDataMember.h"
 #include "PyStrings.h"
 #include "Pythonize.h"
 #include "TemplateProxy.h"
@@ -104,7 +104,7 @@ static PyObject* CreateNewCppProxyClass(Cppyy::TCppScope_t klass, PyObject* pyba
 
 static inline
 void AddPropertyToClass1(
-    PyObject* pyclass, CPyCppyy::PropertyProxy* property, bool isStatic)
+    PyObject* pyclass, CPyCppyy::CPPDataMember* property, bool isStatic)
 {
 // allow access at the instance level
     PyObject_SetAttrString(pyclass,
@@ -121,7 +121,7 @@ static inline
 void AddPropertyToClass(PyObject* pyclass,
     Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t idata)
 {
-    CPyCppyy::PropertyProxy* property = CPyCppyy::PropertyProxy_New(scope, idata);
+    CPyCppyy::CPPDataMember* property = CPyCppyy::CPPDataMember_New(scope, idata);
     AddPropertyToClass1(pyclass, property, Cppyy::IsStaticData(scope, idata));
     Py_DECREF(property);
 }
@@ -130,8 +130,8 @@ static inline
 void AddPropertyToClass(PyObject* pyclass,
     Cppyy::TCppScope_t scope, const std::string& name, void* address)
 {
-    CPyCppyy::PropertyProxy* property =
-        CPyCppyy::PropertyProxy_NewConstant( scope, name, address);
+    CPyCppyy::CPPDataMember* property =
+        CPyCppyy::CPPDataMember_NewConstant(scope, name, address);
     AddPropertyToClass1(pyclass, property, true);
     Py_DECREF(property);
 }
@@ -200,7 +200,7 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass) {
         if (mtName == "__call__" || mtName == "__getitem__") {
             const std::string& qual_return = Cppyy::ResolveName(Cppyy::GetMethodResultType(method));
             if (qual_return.find("const", 0, 5) == std::string::npos) {
-                const std::string& cpd = Utility::Compound( qual_return);
+                const std::string& cpd = Utility::Compound(qual_return);
                 if (!cpd.empty() && cpd[cpd.size()- 1] == '&') {
                     setupSetItem = true;
                 }
@@ -217,8 +217,8 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass) {
             else {                           // mangle private methods
             // TODO: drop use of TClassEdit here ...
             //            const std::string& clName = TClassEdit::ShortType(
-            //               Cppyy::GetFinalName( scope ).c_str(), TClassEdit::kDropAlloc );
-                const std::string& clName = Cppyy::GetFinalName( scope );
+            //               Cppyy::GetFinalName(scope).c_str(), TClassEdit::kDropAlloc);
+                const std::string& clName = Cppyy::GetFinalName(scope);
                 mtName = "_" + clName + "__" + mtName;
            }
        }
@@ -303,11 +303,11 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass) {
     const Cppyy::TCppIndex_t nDataMembers = Cppyy::GetNumDatamembers(scope);
     for (Cppyy::TCppIndex_t idata = 0; idata < nDataMembers; ++idata) {
     // allow only public members
-        if (!Cppyy::IsPublicData( scope, idata ) )
+        if (!Cppyy::IsPublicData(scope, idata))
             continue;
 
     // enum datamembers (this in conjunction with previously collected enums above)
-        if (Cppyy::IsEnumData( scope, idata) && Cppyy::IsStaticData(scope, idata)) {
+        if (Cppyy::IsEnumData(scope, idata) && Cppyy::IsStaticData(scope, idata)) {
         // some implementation-specific data members have no address: ignore them
             if (!Cppyy::GetDatamemberOffset(scope, idata))
                 continue;
@@ -326,7 +326,7 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass) {
         // it could still be that this is an anonymous enum, which is not in the list
         // provided by the class
             if (strstr(Cppyy::GetDatamemberType(scope, idata).c_str(), "(anonymous)") != 0) {
-                AddPropertyToClass( pyclass, scope, idata );
+                AddPropertyToClass(pyclass, scope, idata);
                 continue;
             }
         }
@@ -685,7 +685,7 @@ PyObject* CPyCppyy::GetCppGlobal(const std::string& name)
 // try named global variable/enum
     Cppyy::TCppIndex_t idata = Cppyy::GetDatamemberIndex(Cppyy::gGlobalScope, name);
     if (0 <= idata)
-        return (PyObject*)PropertyProxy_New(Cppyy::gGlobalScope, idata);
+        return (PyObject*)CPPDataMember_New(Cppyy::gGlobalScope, idata);
 
 // still here ... try functions (sync has been fixed, so is okay)
     const std::vector<Cppyy::TCppIndex_t>& methods =
@@ -767,7 +767,7 @@ PyObject* CPyCppyy::BindCppObject(
 // downcast to real class for object returns
     if (clActual && klass != clActual) {
         ptrdiff_t offset = Cppyy::GetBaseOffset(
-            clActual, klass, address, -1 /* down-cast */, true /* report errors */ );
+            clActual, klass, address, -1 /* down-cast */, true /* report errors */);
         if (offset != -1) {   // may fail if clActual not fully defined
             address = (void*)((Long_t)address + offset);
             klass = clActual;

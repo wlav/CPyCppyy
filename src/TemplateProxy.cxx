@@ -171,7 +171,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
         return nullptr;
     }
 
-// case 2: non-instantiating obj->method< t0, t1, ... >( a0, a1, ... )
+// case 2: non-instantiating obj->method< t0, t1, ... >(a0, a1, ...)
 
 // build "< type, type, ... >" part of method name
     const std::string& name_v1 = Utility::ConstructTemplateArgs(pytmpl->fCppName, args, 0);
@@ -226,7 +226,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
         // array, build up a pointer type
             char tc = ((char*)CPyCppyy_PyUnicode_AsString(pytc))[0];
             const char* ptrname = 0;
-            switch ( tc ) {
+            switch (tc) {
                 case 'b': ptrname = "char*";           break;
                 case 'h': ptrname = "short*";          break;
                 case 'H': ptrname = "unsigned short*"; break;
@@ -238,7 +238,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
                 case 'd': ptrname = "double*";         break;
                 default:  ptrname = "void*";  // TODO: verify if this is right
             }
-            if ( ptrname ) {
+            if (ptrname) {
                 PyObject* pyptrname = PyBytes_FromString(ptrname);
                 PyTuple_SET_ITEM(tpArgs, i, pyptrname);
             // string added, but not counted towards nStrings
@@ -254,7 +254,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
     Cppyy::TCppScope_t scope = ((CPPClass*)pytmpl->fPyClass)->fCppType;
     const std::string& tmplname = CPyCppyy_PyUnicode_AsString(pytmpl->fCppName);
 
-// case 4a: instantiating obj->method< T0, T1, ... >( type(a0), type(a1), ... )( a0, a1, ... )
+// case 4a: instantiating obj->method< T0, T1, ... >(type(a0), type(a1), ...)(a0, a1, ...)
     if (!isType && nStrings != nArgs) {      // no types among args and not all strings
         const std::string& name_v2 = Utility::ConstructTemplateArgs(nullptr, tpArgs, 0);
         if (name_v2.size()) {
@@ -286,14 +286,14 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
 
   /*
 
-   // case 4b/5: instantiating obj->method< t0, t1, ... >( a0, a1, ... )
+   // case 4b/5: instantiating obj->method< t0, t1, ... >(a0, a1, ...)
       if (pyname_v1) {
           std::string mname = CPyCppyy_PyUnicode_AsString(pyname_v1);
        // the following causes instantiation as necessary
           TMethod* cppmeth = klass ? klass->GetMethodAny(mname.c_str()) : 0;
           if (cppmeth) {    // overload stops here
               pymeth = (PyObject*)CPPOverload_New(
-                  mname, new CPPMethod(Cppyy::GetScope( klass->GetName( ), (Cppyy::TCppMethod_t)cppmeth));
+                  mname, new CPPMethod(Cppyy::GetScope(klass->GetName(), (Cppyy::TCppMethod_t)cppmeth));
               PyObject_SetAttr(pytmpl->fPyClass, pyname_v1, (PyObject*)pymeth);
               if (mname != cppmeth->GetName()) // happens with typedefs and template default arguments
                   PyObject_SetAttrString(pytmpl->fPyClass, (char*)mname.c_str(), (PyObject*)pymeth);

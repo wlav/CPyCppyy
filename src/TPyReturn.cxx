@@ -18,11 +18,11 @@
 //
 // Examples:
 //
-//  root [0] TBrowser* b = (void*)TPython::Eval( "ROOT.TBrowser()" );
-//  root [1] int i = TPython::Eval( "1+1" );
+//  root [0] TBrowser* b = (void*)TPython::Eval("ROOT.TBrowser()");
+//  root [1] int i = TPython::Eval("1+1");
 //  root [2] i
 //  (int)2
-//  root [3] double d = TPython::Eval( "1+3.1415" );
+//  root [3] double d = TPython::Eval("1+3.1415");
 //  root [4] d
 //  (double)4.14150000000000063e+00
 
@@ -155,7 +155,7 @@ TPyReturn::operator void*() const
     if (fPyObject == Py_None)
         return nullptr;
 
-    if (CPyCppyy::CPPInstance_Check(fPyObject )) {
+    if (CPyCppyy::CPPInstance_Check(fPyObject)) {
         ((CPyCppyy::CPPInstance*)fPyObject)->CppOwns();
         return ((CPyCppyy::CPPInstance*)fPyObject)->GetObject();
     } else

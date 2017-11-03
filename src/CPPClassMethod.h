@@ -13,7 +13,7 @@ public:
 
     virtual PyCallable* Clone() { return new CPPClassMethod(*this); }
     virtual PyObject* Call(
-        CPPInstance*&, PyObject* args, PyObject* kwds, TCallContext* ctxt = nullptr);
+        CPPInstance*&, PyObject* args, PyObject* kwds, CallContext* ctxt = nullptr);
 };
 
 } // namespace CPyCppyy

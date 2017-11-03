@@ -1,7 +1,7 @@
 // Bindings
 #include "CPyCppyy.h"
 #include "PyStrings.h"
-#include "PropertyProxy.h"
+#include "CPPDataMember.h"
 #include "CPPInstance.h"
 #include "Utility.h"
 
@@ -21,8 +21,8 @@ namespace CPyCppyy {
 
 namespace {
 
-//= CPyCppyy property proxy property behaviour ===============================
-PyObject* pp_get(PropertyProxy* pyprop, CPPInstance* pyobj, PyObject*)
+//= CPyCppyy data member as Python property behavior =========================
+PyObject* pp_get(CPPDataMember* pyprop, CPPInstance* pyobj, PyObject*)
 {
 // normal getter access
     void* address = pyprop->GetAddress(pyobj);
@@ -62,7 +62,7 @@ PyObject* pp_get(PropertyProxy* pyprop, CPPInstance* pyobj, PyObject*)
 }
 
 //-----------------------------------------------------------------------------
-int pp_set(PropertyProxy* pyprop, CPPInstance* pyobj, PyObject* value)
+int pp_set(CPPDataMember* pyprop, CPPInstance* pyobj, PyObject* value)
 {
 /// Set the value of the C++ datum held.
     const int errret = -1;
@@ -88,17 +88,17 @@ int pp_set(PropertyProxy* pyprop, CPPInstance* pyobj, PyObject* value)
 
 // set a python error, if not already done
     if (!PyErr_Occurred())
-        PyErr_SetString( PyExc_RuntimeError, "property type mismatch or assignment not allowed" );
+        PyErr_SetString(PyExc_RuntimeError, "property type mismatch or assignment not allowed");
 
 // failure ...
     return errret;
 }
 
-//= CPyCppyy property proxy construction/destruction =========================
-PropertyProxy* pp_new(PyTypeObject* pytype, PyObject*, PyObject*)
+//= CPyCppyy data member construction/destruction ===========================
+CPPDataMember* pp_new(PyTypeObject* pytype, PyObject*, PyObject*)
 {
 // Create and initialize a new property descriptor.
-    PropertyProxy* pyprop = (PropertyProxy*)pytype->tp_alloc(pytype, 0);
+    CPPDataMember* pyprop = (CPPDataMember*)pytype->tp_alloc(pytype, 0);
 
     pyprop->fOffset         = 0;
     pyprop->fProperty       = 0;
@@ -109,8 +109,8 @@ PropertyProxy* pp_new(PyTypeObject* pytype, PyObject*, PyObject*)
     return pyprop;
 }
 
-//-----------------------------------------------------------------------------
-void pp_dealloc( PropertyProxy* pyprop )
+//----------------------------------------------------------------------------
+void pp_dealloc(CPPDataMember* pyprop)
 {
 // Deallocate memory held by this descriptor.
     using namespace std;
@@ -123,11 +123,11 @@ void pp_dealloc( PropertyProxy* pyprop )
 } // unnamed namespace
 
 
-//= CPyCppyy property proxy type =============================================
-PyTypeObject PropertyProxy_Type = {
+//= CPyCppyy data member type ================================================
+PyTypeObject CPPDataMember_Type = {
     PyVarObject_HEAD_INIT(&PyType_Type, 0)
-    (char*)"cppyy.PropertyProxy",  // tp_name
-    sizeof(PropertyProxy),         // tp_basicsize
+    (char*)"cppyy.CPPDataMember",  // tp_name
+    sizeof(CPPDataMember),         // tp_basicsize
     0,                             // tp_itemsize
     (destructor)pp_dealloc,        // tp_dealloc
     0,                             // tp_print
@@ -145,7 +145,7 @@ PyTypeObject PropertyProxy_Type = {
     0,                             // tp_setattro
     0,                             // tp_as_buffer
     Py_TPFLAGS_DEFAULT,            // tp_flags
-    (char*)"cppyy property proxy (internal)",     // tp_doc
+    (char*)"cppyy data member (internal)",       // tp_doc
     0,                             // tp_traverse
     0,                             // tp_clear
     0,                             // tp_richcompare
@@ -185,7 +185,7 @@ PyTypeObject PropertyProxy_Type = {
 
 
 //- public members -----------------------------------------------------------
-void CPyCppyy::PropertyProxy::Set(Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t idata)
+void CPyCppyy::CPPDataMember::Set(Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t idata)
 {
     fEnclosingScope = scope;
     fName           = Cppyy::GetDatamemberName(scope, idata);
@@ -212,7 +212,7 @@ void CPyCppyy::PropertyProxy::Set(Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t i
 }
 
 //-----------------------------------------------------------------------------
-void CPyCppyy::PropertyProxy::Set(Cppyy::TCppScope_t scope, const std::string& name, void* address)
+void CPyCppyy::CPPDataMember::Set(Cppyy::TCppScope_t scope, const std::string& name, void* address)
 {
     fEnclosingScope = scope;
     fName           = name;
@@ -222,7 +222,7 @@ void CPyCppyy::PropertyProxy::Set(Cppyy::TCppScope_t scope, const std::string& n
 }
 
 //-----------------------------------------------------------------------------
-void* CPyCppyy::PropertyProxy::GetAddress(CPPInstance* pyobj)
+void* CPyCppyy::CPPDataMember::GetAddress(CPPInstance* pyobj)
 {
 // class attributes, global properties
     if (fProperty & kIsStaticData)

@@ -7,13 +7,13 @@
 
 namespace CPyCppyy {
 
-class TCallContext;
+class CallContext;
 
 class Executor {
 public:
     virtual ~Executor() {}
     virtual PyObject* Execute(
-        Cppyy::TCppMethod_t, Cppyy::TCppObject_t, TCallContext*) = 0;
+        Cppyy::TCppMethod_t, Cppyy::TCppObject_t, CallContext*) = 0;
 };
 
 // special case needed for CPPSetItem

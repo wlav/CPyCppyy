@@ -1,5 +1,5 @@
-#ifndef CPYCPPYY_PROPERTYPROXY_H
-#define CPYCPPYY_PROPERTYPROXY_H
+#ifndef CPYCPPYY_CPPDATAMEMBER_H
+#define CPYCPPYY_CPPDATAMEMBER_H
 
 // Bindings
 #include "Converters.h"
@@ -12,7 +12,7 @@ namespace CPyCppyy {
 
 class CPPInstance;
 
-class PropertyProxy {
+class CPPDataMember {
 public:
     void Set(Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t idata);
     void Set(Cppyy::TCppScope_t scope, const std::string& name, void* address);
@@ -29,46 +29,46 @@ public:                 // public, as the python C-API works with C structs
     std::string        fName;
 
 private:                // private, as the python C-API will handle creation
-    PropertyProxy() = delete;
+    CPPDataMember() = delete;
 };
 
 
-//- property proxy type and type verification --------------------------------
-extern PyTypeObject PropertyProxy_Type;
+//- property proxy for C++ data members, type and type verification ----------
+extern PyTypeObject CPPDataMember_Type;
 
 template<typename T>
-inline bool PropertyProxy_Check(T* object)
+inline bool CPPDataMember_Check(T* object)
 {
-    return object && PyObject_TypeCheck(object, &PropertyProxy_Type);
+    return object && PyObject_TypeCheck(object, &CPPDataMember_Type);
 }
 
 template<typename T>
-inline bool PropertyProxy_CheckExact(T* object)
+inline bool CPPDataMember_CheckExact(T* object)
 {
-    return object && Py_TYPE(object) == &PropertyProxy_Type;
+    return object && Py_TYPE(object) == &CPPDataMember_Type;
 }
 
 //- creation -----------------------------------------------------------------
-inline PropertyProxy* PropertyProxy_New(
+inline CPPDataMember* CPPDataMember_New(
     Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t idata)
 {
 // Create an initialize a new property descriptor, given the C++ datum.
-    PropertyProxy* pyprop =
-        (PropertyProxy*)PropertyProxy_Type.tp_new(&PropertyProxy_Type, nullptr, nullptr);
-    pyprop->Set( scope, idata );
+    CPPDataMember* pyprop =
+        (CPPDataMember*)CPPDataMember_Type.tp_new(&CPPDataMember_Type, nullptr, nullptr);
+    pyprop->Set(scope, idata);
     return pyprop;
 }
 
-inline PropertyProxy* PropertyProxy_NewConstant(
+inline CPPDataMember* CPPDataMember_NewConstant(
     Cppyy::TCppScope_t scope, const std::string& name, void* address)
 {
 // Create an initialize a new property descriptor, given the C++ datum.
-    PropertyProxy* pyprop =
-        (PropertyProxy*)PropertyProxy_Type.tp_new(&PropertyProxy_Type, nullptr, nullptr);
-    pyprop->Set( scope, name, address );
+    CPPDataMember* pyprop =
+        (CPPDataMember*)CPPDataMember_Type.tp_new(&CPPDataMember_Type, nullptr, nullptr);
+    pyprop->Set(scope, name, address);
     return pyprop;
 }
 
 } // namespace CPyCppyy
 
-#endif // !CPYCPPYY_PROPERTYPROXY_H
+#endif // !CPYCPPYY_CPPDATAMEMBER_H

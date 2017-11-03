@@ -1,9 +1,9 @@
 // Bindings
 #include "CPyCppyy.h"
 #include "CPPScope.h"
+#include "CPPDataMember.h"
 #include "CPPFunction.h"
 #include "CPPOverload.h"
-#include "PropertyProxy.h"
 #include "ProxyWrappers.h"
 #include "PyStrings.h"
 #include "TemplateProxy.h"
@@ -104,7 +104,7 @@ static PyObject* pt_getattro(PyObject* pyclass, PyObject* pyname)
 
     // filter for python specials and lookup qualified class or function
         std::string name = CPyCppyy_PyUnicode_AsString(pyname);
-        if (name.size() <= 2 || name.substr( 0, 2 ) != "__") {
+        if (name.size() <= 2 || name.substr(0, 2) != "__") {
             attr = CreateScopeProxy(name, pyclass);
 
         // namespaces may have seen updates in their list of global functions, which
@@ -138,7 +138,7 @@ static PyObject* pt_getattro(PyObject* pyclass, PyObject* pyname)
                 // tickle lazy lookup of data members
                     if (!attr) {
                         Cppyy::TCppIndex_t dmi = Cppyy::GetDatamemberIndex(scope, name);
-                        if (0 <= dmi) attr = (PyObject*)PropertyProxy_New(scope, dmi);
+                        if (0 <= dmi) attr = (PyObject*)CPPDataMember_New(scope, dmi);
                     }
                 }
 
@@ -152,13 +152,13 @@ static PyObject* pt_getattro(PyObject* pyclass, PyObject* pyname)
                 if (!attr && Cppyy::IsEnum(Cppyy::GetScopedFinalName(scope)+"::"+name)) {
                 // special case; enum types; for now, pretend int
                 // TODO: although fine for C++98, this isn't correct in C++11
-                    Py_INCREF( &PyInt_Type );
+                    Py_INCREF(&PyInt_Type);
                     attr = (PyObject*)&PyInt_Type;
                 }
 
                 if (attr) {
                     PyObject_SetAttr(pyclass, pyname, attr);
-                    Py_DECREF( attr );
+                    Py_DECREF(attr);
                     attr = PyType_Type.tp_getattro(pyclass, pyname);
                 }
             }
@@ -167,7 +167,7 @@ static PyObject* pt_getattro(PyObject* pyclass, PyObject* pyname)
                 PyErr_Clear();
             // get the attribute as a global
                 attr = GetCppGlobal(name /*, tag */);
-                if (PropertyProxy_Check(attr)) {
+                if (CPPDataMember_Check(attr)) {
                     PyObject_SetAttr((PyObject*)Py_TYPE(pyclass), pyname, attr);
                     Py_DECREF(attr);
                     attr = PyType_Type.tp_getattro(pyclass, pyname);

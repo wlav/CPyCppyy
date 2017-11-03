@@ -59,7 +59,7 @@ bool CPyCppyy::CreatePyStrings() {
     CPPYY_INITIALIZE_STRING(gCppNe,          __cpp_ne__);
     CPPYY_INITIALIZE_STRING(gDeref,          __deref__);
     CPPYY_INITIALIZE_STRING(gDict,           __dict__);
-    if (!(PyStrings::gEmptyString = CPyCppyy_PyUnicode_FromString((char*)"" )))
+    if (!(PyStrings::gEmptyString = CPyCppyy_PyUnicode_FromString((char*)"")))
         return false;
     CPPYY_INITIALIZE_STRING(gEq,             __eq__);
     CPPYY_INITIALIZE_STRING(gFollow,         __follow__);

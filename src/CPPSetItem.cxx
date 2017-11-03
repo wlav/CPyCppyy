@@ -5,7 +5,7 @@
 
 
 //- protected members ---------------------------------------------------------
-bool CPyCppyy::CPPSetItem::InitExecutor_(Executor*& executor, TCallContext*)
+bool CPyCppyy::CPPSetItem::InitExecutor_(Executor*& executor, CallContext*)
 {
 // basic call will do
     if (!CPPMethod::InitExecutor_(executor))

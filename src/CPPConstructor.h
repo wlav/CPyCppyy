@@ -17,10 +17,10 @@ public:
 
 public:
     virtual PyObject* Call(
-        CPPInstance*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt = nullptr);
+        CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt = nullptr);
 
 protected:
-    virtual bool InitExecutor_(Executor*&, TCallContext* ctxt = nullptr);
+    virtual bool InitExecutor_(Executor*&, CallContext* ctxt = nullptr);
 };
 
 } // namespace CPyCppyy

@@ -12,7 +12,7 @@
 #endif
 #include "CPPOverload.h"
 #include "CPPInstance.h"
-#include "TCallContext.h"
+#include "CallContext.h"
 #include "TPyException.h"
 #include "PyStrings.h"
 
@@ -49,7 +49,7 @@ public:
         return CPyCppyy_PyUnicode_FromString("*args, **kwargs");
     }
     virtual PyObject* GetPrototype(bool show_formalargs = true) {
-        return CPyCppyy_PyUnicode_FromString( "<callback>" );
+        return CPyCppyy_PyUnicode_FromString("<callback>");
     }
     virtual PyObject* GetDocString() {
         if (PyObject_HasAttrString(fCallable, "__doc__")) {
@@ -73,10 +73,10 @@ public:
         Py_RETURN_NONE;
     }
 
-    virtual PyCallable* Clone() { return new TPythonCallback( *this ); }
+    virtual PyCallable* Clone() { return new TPythonCallback(*this); }
 
     virtual PyObject* Call(
-            CPPInstance*& self, PyObject* args, PyObject* kwds, TCallContext* /* ctxt = 0 */) {
+            CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* /* ctxt = 0 */) {
 
         PyObject* newArgs = nullptr;
         if (self) {
@@ -306,7 +306,7 @@ static PyObject* mp_func_code(CPPOverload* pymeth, void*)
     PyObject* co_varnames = methods.size() == 1 ? methods[0]->GetCoVarNames() : nullptr;
     if (!co_varnames) {
     // TODO: static methods need no 'self' (but is harmless otherwise)
-        co_varnames = PyTuple_New( 1 /* self */ + 1 /* fake */ );
+        co_varnames = PyTuple_New(1 /* self */ + 1 /* fake */);
         PyTuple_SET_ITEM(co_varnames, 0, CPyCppyy_PyUnicode_FromString("self"));
         PyTuple_SET_ITEM(co_varnames, 1, CPyCppyy_PyUnicode_FromString("*args"));
     }
@@ -348,7 +348,7 @@ static PyObject* mp_func_code(CPPOverload* pymeth, void*)
         co_filename,                             // filename
         co_name,                                 // name
         1,                                       // firstlineno
-        co_lnotab );                             // lnotab
+        co_lnotab);                              // lnotab
 
     Py_DECREF(co_lnotab);
     Py_DECREF(co_name);
@@ -414,7 +414,7 @@ static int mp_setcreates(CPPOverload* pymeth, PyObject* value, void*)
 {
 // Set '_creates' boolean, which determines ownership of return values.
     if (!value) {        // means that _creates is being deleted
-        pymeth->fMethodInfo->fFlags &= ~TCallContext::kIsCreator;
+        pymeth->fMethodInfo->fFlags &= ~CallContext::kIsCreator;
         return 0;
     }
 
@@ -425,9 +425,9 @@ static int mp_setcreates(CPPOverload* pymeth, PyObject* value, void*)
     }
 
     if (iscreator)
-        pymeth->fMethodInfo->fFlags |= TCallContext::kIsCreator;
+        pymeth->fMethodInfo->fFlags |= CallContext::kIsCreator;
     else
-        pymeth->fMethodInfo->fFlags &= ~TCallContext::kIsCreator;
+        pymeth->fMethodInfo->fFlags &= ~CallContext::kIsCreator;
 
     return 0;
 }
@@ -436,11 +436,11 @@ static int mp_setcreates(CPPOverload* pymeth, PyObject* value, void*)
 static PyObject* mp_getmempolicy(CPPOverload* pymeth, void*)
 {
 // Get '_mempolicy' enum, which determines ownership of call arguments.
-    if (pymeth->fMethodInfo->fFlags & TCallContext::kUseHeuristics)
-        return PyInt_FromLong(TCallContext::kUseHeuristics);
+    if (pymeth->fMethodInfo->fFlags & CallContext::kUseHeuristics)
+        return PyInt_FromLong(CallContext::kUseHeuristics);
 
-    if (pymeth->fMethodInfo->fFlags & TCallContext::kUseStrict)
-        return PyInt_FromLong(TCallContext::kUseStrict);
+    if (pymeth->fMethodInfo->fFlags & CallContext::kUseStrict)
+        return PyInt_FromLong(CallContext::kUseStrict);
 
     return PyInt_FromLong(-1);
 }
@@ -450,12 +450,12 @@ static int mp_setmempolicy(CPPOverload* pymeth, PyObject* value, void*)
 {
 // Set '_mempolicy' enum, which determines ownership of call arguments.
     long mempolicy = PyLong_AsLong(value);
-    if (mempolicy == TCallContext::kUseHeuristics) {
-        pymeth->fMethodInfo->fFlags |= TCallContext::kUseHeuristics;
-        pymeth->fMethodInfo->fFlags &= ~TCallContext::kUseStrict;
-    } else if (mempolicy == TCallContext::kUseStrict) {
-        pymeth->fMethodInfo->fFlags |= TCallContext::kUseStrict;
-        pymeth->fMethodInfo->fFlags &= ~TCallContext::kUseHeuristics;
+    if (mempolicy == CallContext::kUseHeuristics) {
+        pymeth->fMethodInfo->fFlags |= CallContext::kUseHeuristics;
+        pymeth->fMethodInfo->fFlags &= ~CallContext::kUseStrict;
+    } else if (mempolicy == CallContext::kUseStrict) {
+        pymeth->fMethodInfo->fFlags |= CallContext::kUseStrict;
+        pymeth->fMethodInfo->fFlags &= ~CallContext::kUseHeuristics;
     } else {
         PyErr_SetString(PyExc_ValueError,
             "expected kMemoryStrict or kMemoryHeuristics as value for _mempolicy");
@@ -471,7 +471,7 @@ static PyObject* mp_get_manage_smart_ptr(CPPOverload* pymeth, void*)
 // Get '_manage_smart_ptr' boolean, which determines whether or not to
 // manage returned smart pointers intelligently.
     return PyInt_FromLong(
-        (long)(pymeth->fMethodInfo->fFlags & TCallContext::kManageSmartPtr));
+        (long)(pymeth->fMethodInfo->fFlags & CallContext::kManageSmartPtr));
 }
 
 //-----------------------------------------------------------------------------
@@ -485,7 +485,7 @@ static int mp_set_manage_smart_ptr(CPPOverload* pymeth, PyObject* value, void*)
         return -1;
     }
 
-    pymeth->fMethodInfo->fFlags |= TCallContext::kManageSmartPtr;
+    pymeth->fMethodInfo->fFlags |= CallContext::kManageSmartPtr;
 
     return 0;
 }
@@ -495,7 +495,7 @@ static PyObject* mp_getthreaded(CPPOverload* pymeth, void*)
 {
 // Get '_threaded' boolean, which determines whether the GIL will be released.
     return PyInt_FromLong(
-        (long)(pymeth->fMethodInfo->fFlags & TCallContext::kReleaseGIL));
+        (long)(pymeth->fMethodInfo->fFlags & CallContext::kReleaseGIL));
 }
 
 //-----------------------------------------------------------------------------
@@ -509,9 +509,9 @@ static int mp_setthreaded(CPPOverload* pymeth, PyObject* value, void*)
     }
 
     if (isthreaded)
-        pymeth->fMethodInfo->fFlags |= TCallContext::kReleaseGIL;
+        pymeth->fMethodInfo->fFlags |= CallContext::kReleaseGIL;
     else
-        pymeth->fMethodInfo->fFlags &= ~TCallContext::kReleaseGIL;
+        pymeth->fMethodInfo->fFlags &= ~CallContext::kReleaseGIL;
 
     return 0;
 }
@@ -554,7 +554,7 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
 // Call the appropriate overload of this method.
 
 // if called through im_func pseudo-representation (this can be gamed if the
-// user really wants to ... )
+// user really wants to ...)
     if (IsPseudoFunc(pymeth))
         pymeth->fSelf = nullptr;
 
@@ -567,12 +567,12 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
 
     int nMethods = methods.size();
 
-    TCallContext ctxt = {0};
-    ctxt.fFlags |= (mflags & TCallContext::kUseHeuristics);
-    ctxt.fFlags |= (mflags & TCallContext::kUseStrict);
-    ctxt.fFlags |= (mflags & TCallContext::kManageSmartPtr);
-    if ( ! ctxt.fFlags ) ctxt.fFlags |= TCallContext::sMemoryPolicy;
-    ctxt.fFlags |= (mflags & TCallContext::kReleaseGIL);
+    CallContext ctxt = {0};
+    ctxt.fFlags |= (mflags & CallContext::kUseHeuristics);
+    ctxt.fFlags |= (mflags & CallContext::kUseStrict);
+    ctxt.fFlags |= (mflags & CallContext::kManageSmartPtr);
+    if (!ctxt.fFlags) ctxt.fFlags |= CallContext::sMemoryPolicy;
+    ctxt.fFlags |= (mflags & CallContext::kReleaseGIL);
 
 // simple case
     if (nMethods == 1) {
@@ -600,7 +600,7 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
 // ... otherwise loop over all methods and find the one that does not fail
     if (!IsSorted(mflags)) {
         std::stable_sort(methods.begin(), methods.end(), PriorityCmp);
-        mflags |= TCallContext::kIsSorted;
+        mflags |= CallContext::kIsSorted;
     }
 
     std::vector<PyError_t> errors;
@@ -873,17 +873,17 @@ void CPyCppyy::CPPOverload::Set(const std::string& name, std::vector<PyCallable*
 // Fill in the data of a freshly created method proxy.
     fMethodInfo->fName = name;
     fMethodInfo->fMethods.swap(methods);
-    fMethodInfo->fFlags &= ~TCallContext::kIsSorted;
-    fMethodInfo->fFlags |= TCallContext::kManageSmartPtr;
+    fMethodInfo->fFlags &= ~CallContext::kIsSorted;
+    fMethodInfo->fFlags |= CallContext::kManageSmartPtr;
 
 // special case: all constructors are considered creators by default
     if (name == "__init__")
-        fMethodInfo->fFlags |= (TCallContext::kIsCreator | TCallContext::kIsConstructor);
+        fMethodInfo->fFlags |= (CallContext::kIsCreator | CallContext::kIsConstructor);
 
 // special case, in heuristics mode also tag *Clone* methods as creators
-    if (TCallContext::sMemoryPolicy == TCallContext::kUseHeuristics && \
+    if (CallContext::sMemoryPolicy == CallContext::kUseHeuristics && \
             name.find("Clone") != std::string::npos)
-        fMethodInfo->fFlags |= TCallContext::kIsCreator;
+        fMethodInfo->fFlags |= CallContext::kIsCreator;
 }
 
 //-----------------------------------------------------------------------------
@@ -891,7 +891,7 @@ void CPyCppyy::CPPOverload::AddMethod(PyCallable* pc)
 {
 // Fill in the data of a freshly created method proxy.
     fMethodInfo->fMethods.push_back(pc);
-    fMethodInfo->fFlags &= ~TCallContext::kIsSorted;
+    fMethodInfo->fFlags &= ~CallContext::kIsSorted;
 }
 
 //-----------------------------------------------------------------------------
@@ -899,7 +899,7 @@ void CPyCppyy::CPPOverload::AddMethod(CPPOverload* meth)
 {
     fMethodInfo->fMethods.insert(fMethodInfo->fMethods.end(),
         meth->fMethodInfo->fMethods.begin(), meth->fMethodInfo->fMethods.end());
-    fMethodInfo->fFlags &= ~TCallContext::kIsSorted;
+    fMethodInfo->fFlags &= ~CallContext::kIsSorted;
 }
 
 //-----------------------------------------------------------------------------

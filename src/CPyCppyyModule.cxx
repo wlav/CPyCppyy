@@ -4,11 +4,11 @@
 #include "CPPOverload.h"
 #include "CPPScope.h"
 #include "MemoryRegulator.h"
-#include "PropertyProxy.h"
+#include "CPPDataMember.h"
 #include "ProxyWrappers.h"
 #include "PyStrings.h"
 #include "TemplateProxy.h"
-#include "TCallContext.h"
+#include "CallContext.h"
 #include "TCustomPyTypes.h"
 #include "TPyBufferFactory.h"
 #include "TupleOfInstances.h"
@@ -241,7 +241,7 @@ PyDictEntry* CPyCppyyLookDictString(PyDictObject* mp, PyObject* key, Long_t hash
 // globals (the round-about lookup is to prevent recursion)
     PyObject* gval = PyDict_GetItem(PyModule_GetDict(gThisModule), key);
     if (gval) {
-        Py_INCREF( gval );
+        Py_INCREF(gval);
         ep->me_value = gval;
         ep->me_key   = key;
         ep->me_hash  = hash;
@@ -258,7 +258,7 @@ PyDictEntry* CPyCppyyLookDictString(PyDictObject* mp, PyObject* key, Long_t hash
     if (val) {
     // success ...
 
-        if (PropertyProxy_CheckExact(val)) {
+        if (CPPDataMember_CheckExact(val)) {
         // don't want to add to dictionary (the proper place would be the
         // dictionary of the (meta)class), but modifying ep will be noticed no
         // matter what; just return the actual value and live with the copy in
@@ -270,7 +270,7 @@ PyDictEntry* CPyCppyyLookDictString(PyDictObject* mp, PyObject* key, Long_t hash
 
     // add reference to C++ entity in the given dictionary
         CPYCPPYY_GET_DICT_LOOKUP(mp) = gDictLookupOrg;      // prevent recursion
-        if (PyDict_SetItem( (PyObject*)mp, key, val) == 0) {
+        if (PyDict_SetItem((PyObject*)mp, key, val) == 0) {
             ep = CPYCPPYY_ORGDICT_LOOKUP(mp, key, hash, value_addr);
         } else {
             ep->me_key   = nullptr;
@@ -355,7 +355,7 @@ PyObject* MakeCppTemplateClass(PyObject*, PyObject* args)
 // build "< type, type, ... >" part of class name (modifies pyname)
     const std::string& tmpl_name =
         Utility::ConstructTemplateArgs(PyTuple_GET_ITEM(args, 0), args, 1);
-    if (!tmpl_name.size() )
+    if (!tmpl_name.size())
         return nullptr;
 
     return CreateScopeProxy(tmpl_name);
@@ -374,18 +374,18 @@ void* GetCPPInstanceAddress(PyObject*, PyObject* args)
 
         if (pyname != 0) {
         // locate property proxy for offset info
-            PropertyProxy* pyprop = nullptr;
+            CPPDataMember* pyprop = nullptr;
 
             PyObject* pyclass = PyObject_GetAttr((PyObject*)pyobj, PyStrings::gClass);
 
             if (pyclass) {
                 PyObject* dict = PyObject_GetAttr(pyclass, PyStrings::gDict);
-                pyprop = (PropertyProxy*)PyObject_GetItem(dict, pyname);
+                pyprop = (CPPDataMember*)PyObject_GetItem(dict, pyname);
                 Py_DECREF(dict);
             }
             Py_XDECREF(pyclass);
 
-            if (PropertyProxy_Check(pyprop)) {
+            if (CPPDataMember_Check(pyprop)) {
             // this is an address of a value (i.e. &myobj->prop)
                 void* addr = (void*)pyprop->GetAddress(pyobj);
                 Py_DECREF(pyprop);
@@ -559,7 +559,7 @@ PyObject* SetMemoryPolicy(PyObject*, PyObject* args)
         return nullptr;
 
     Long_t l = PyInt_AS_LONG(policy);
-    if (TCallContext::SetMemoryPolicy((TCallContext::ECallFlags)l)) {
+    if (CallContext::SetMemoryPolicy((CallContext::ECallFlags)l)) {
         Py_RETURN_NONE;
     }
 
@@ -577,7 +577,7 @@ PyObject* SetSignalPolicy(PyObject*, PyObject* args)
         return nullptr;
 
     Long_t l = PyInt_AS_LONG(policy);
-    if (TCallContext::SetSignalPolicy((TCallContext::ECallFlags)l)) {
+    if (CallContext::SetSignalPolicy((CallContext::ECallFlags)l)) {
         Py_RETURN_NONE;
     }
 
@@ -798,7 +798,7 @@ extern "C" void initlibcppyy()
         CPYCPPYY_INIT_ERROR;
 
 // inject property proxy type
-    if (!Utility::InitProxy(gThisModule, &PropertyProxy_Type, "PropertyProxy"))
+    if (!Utility::InitProxy(gThisModule, &CPPDataMember_Type, "CPPDataMember"))
         CPYCPPYY_INIT_ERROR;
 
 // inject custom data types
@@ -830,13 +830,13 @@ extern "C" void initlibcppyy()
 
 // policy labels
     PyModule_AddObject(gThisModule, (char*)"kMemoryHeuristics",
-        PyInt_FromLong((int)TCallContext::kUseHeuristics));
+        PyInt_FromLong((int)CallContext::kUseHeuristics));
     PyModule_AddObject(gThisModule, (char*)"kMemoryStrict",
-        PyInt_FromLong((int)TCallContext::kUseStrict));
+        PyInt_FromLong((int)CallContext::kUseStrict));
     PyModule_AddObject(gThisModule, (char*)"kSignalFast",
-        PyInt_FromLong((int)TCallContext::kFast));
+        PyInt_FromLong((int)CallContext::kFast));
     PyModule_AddObject(gThisModule, (char*)"kSignalSafe",
-        PyInt_FromLong((int)TCallContext::kSafe));
+        PyInt_FromLong((int)CallContext::kSafe));
 
 // gbl namespace is injected in cppyy.py
 

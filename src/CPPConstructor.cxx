@@ -10,7 +10,7 @@
 
 
 //- protected members --------------------------------------------------------
-bool CPyCppyy::CPPConstructor::InitExecutor_(Executor*& executor, TCallContext*)
+bool CPyCppyy::CPPConstructor::InitExecutor_(Executor*& executor, CallContext*)
 {
 // pick up special case new object executor
     executor = CreateExecutor("__init__");
@@ -28,7 +28,7 @@ PyObject* CPyCppyy::CPPConstructor::GetDocString()
 
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::CPPConstructor::Call(
-        CPPInstance*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt)
+        CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt)
 {
 // preliminary check in case keywords are accidently used (they are ignored otherwise)
     if (kwds && PyDict_Size(kwds)) {

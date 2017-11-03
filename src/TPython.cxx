@@ -27,36 +27,36 @@
 //  print 'creating class MyPyClass ... '
 //
 //  class MyPyClass:
-//     def __init__( self ):
+//     def __init__(self):
 //        print 'in MyPyClass.__init__'
 //
-//     def gime( self, what ):
+//     def gime(self, what):
 //        return what
 //
 //  $ root -l
 //  // Execute a string of python code.
-//  root [0] TPython::Exec( "print \'Hello World!\'" );
+//  root [0] TPython::Exec("print \'Hello World!\'");
 //  Hello World!
 //
 //  // Create a TBrowser on the python side, and transfer it back and forth.
 //  // Note the required explicit (void*) cast!
-//  root [1] TBrowser* b = (void*)TPython::Eval( "ROOT.TBrowser()" );
-//  root [2] TPython::Bind( b, "b" );
-//  root [3] b == (void*) TPython::Eval( "b" )
+//  root [1] TBrowser* b = (void*)TPython::Eval("ROOT.TBrowser()");
+//  root [2] TPython::Bind(b, "b");
+//  root [3] b == (void*) TPython::Eval("b")
 //  (int)1
 //
 //  // Builtin variables can cross-over by using implicit casts.
-//  root [4] int i = TPython::Eval( "1 + 1" );
+//  root [4] int i = TPython::Eval("1 + 1");
 //  root [5] i
 //  (int)2
 //
 //  // Load a python module with a class definition, and use it. Casts are
 //  // necessary as the type information can not be otherwise derived.
-//  root [6] TPython::LoadMacro( "MyPyClass.py" );
+//  root [6] TPython::LoadMacro("MyPyClass.py");
 //  creating class MyPyClass ...
 //  root [7] MyPyClass m;
 //  in MyPyClass.__init__
-//  root [8] std::string s = (char*)m.gime( "aap" );
+//  root [8] std::string s = (char*)m.gime("aap");
 //  root [9] s
 //  (class TString)"aap"
 //
@@ -150,7 +150,7 @@ bool TPython::Import(const char* mod_name)
 
 // force creation of the module as a namespace
 // TODO: the following is broken (and should live in Cppyy.cxx)
-//   TClass::GetClass( mod_name, true );
+//   TClass::GetClass(mod_name, true);
 
     PyObject* dct = PyModule_GetDict(mod);
 
@@ -174,7 +174,7 @@ bool TPython::Import(const char* mod_name)
 
       // force class creation (this will eventually call TPyClassGenerator)
       // TODO: the following is broken (and should live in Cppyy.cxx) to
-      //         TClass::GetClass( fullname.c_str(), true );
+      //         TClass::GetClass(fullname.c_str(), true);
 
             Py_XDECREF(pyClName);
         }
@@ -206,7 +206,7 @@ void TPython::LoadMacro(const char* name)
 #if PY_VERSION_HEX < 0x03000000
     Exec((std::string("execfile(\"") + name + "\")").c_str());
 #else
-    Exec((std::string("__cpycppyy_f = open(\"" ) + name + "\"); "
+    Exec((std::string("__cpycppyy_f = open(\"") + name + "\"); "
                       "exec(__cpycppyy_f.read()); "
                       "__cpycppyy_f.close(); del __cpycppyy_f").c_str());
 #endif
@@ -291,8 +291,8 @@ void TPython::ExecScript(const char* name, int argc, const char**
     if (!oldargv)                                 // e.g. apache
         PyErr_Clear();
     else {
-        PyObject* l = PyList_New( PyList_GET_SIZE(oldargv));
-        for (int i = 0; i < PyList_GET_SIZE(oldargv ); ++i) {
+        PyObject* l = PyList_New(PyList_GET_SIZE(oldargv));
+        for (int i = 0; i < PyList_GET_SIZE(oldargv); ++i) {
             PyObject* item = PyList_GET_ITEM(oldargv, i);
             Py_INCREF(item);
             PyList_SET_ITEM(l, i, item);          // steals ref
@@ -306,7 +306,7 @@ void TPython::ExecScript(const char* name, int argc, const char**
     const char** argv2 = new const char*[argc];
     for (int i = 1; i < argc; ++i) argv2[i] = argv[i-1];
     argv2[0] = Py_GetProgramName();
-    PySys_SetArgv( argc, const_cast<char**>(argv2));
+    PySys_SetArgv(argc, const_cast<char**>(argv2));
     delete [] argv2;
 #else
 // TODO: fix this to work like above ...
@@ -393,7 +393,7 @@ const TPyReturn TPython::Eval(const char* expr)
 
    // locate cppyy style class with this name
     // TODO: use Cppyy.cxx ...
-    //TClass* klass = TClass::GetClass( qname.c_str() );
+    //TClass* klass = TClass::GetClass(qname.c_str());
         void* klass = nullptr;
 
    // construct general cppyy python object that pretends to be of class 'klass'
@@ -439,7 +439,7 @@ bool TPython::CPPInstance_CheckExact(PyObject* pyobject)
         return false;
 
 // direct pointer comparison of type member
-    return CPyCppyy::CPPInstance_CheckExact( pyobject );
+    return CPyCppyy::CPPInstance_CheckExact(pyobject);
 }
 
 //-----------------------------------------------------------------------------

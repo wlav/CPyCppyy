@@ -33,7 +33,7 @@ void CPyCppyy::op_dealloc_nofree(CPPInstance* pyobj) {
         MemoryRegulator::UnregisterPyObject(pyobj, pyobj->ObjectIsA());
 
     if (pyobj->fFlags & CPPInstance::kIsValue) {
-        if (!(pyobj->fFlags & CPPInstance::kIsSmartPtr) ) {
+        if (!(pyobj->fFlags & CPPInstance::kIsSmartPtr)) {
             Cppyy::CallDestructor(pyobj->ObjectIsA(), pyobj->GetObject());
             Cppyy::Deallocate(pyobj->ObjectIsA(), pyobj->GetObject());
         } else {
@@ -139,7 +139,7 @@ static CPPInstance* op_new(PyTypeObject* subtype, PyObject*, PyObject*)
 }
 
 //----------------------------------------------------------------------------
-static void op_dealloc( CPPInstance* pyobj )
+static void op_dealloc(CPPInstance* pyobj)
 {
 // Remove (Python-side) memory held by the object proxy.
     op_dealloc_nofree(pyobj);
@@ -189,7 +189,7 @@ static PyObject* op_repr(CPPInstance* pyobj)
     if (pyobj->fFlags & CPPInstance::kIsSmartPtr) {
         Cppyy::TCppType_t smartPtrType = pyobj->fSmartPtrType;
         smartPtrName = smartPtrType ?
-            Cppyy::GetScopedFinalName( smartPtrType ) : "unknown smart pointer";
+            Cppyy::GetScopedFinalName(smartPtrType) : "unknown smart pointer";
         return CPyCppyy_PyUnicode_FromFormat(
             const_cast<char*>("<cppyy.gbl.%s object at %p held by %s at %p>"),
             clName.c_str(), pyobj->GetObject(), smartPtrName.c_str(), pyobj->fSmartPtr);

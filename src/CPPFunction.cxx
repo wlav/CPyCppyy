@@ -31,7 +31,7 @@ PyObject* CPyCppyy::CPPFunction::PreProcessArgs(
 
 //---------------------------------------------------------------------------
 PyObject* CPyCppyy::CPPFunction::Call(
-        CPPInstance*& self, PyObject* args, PyObject* kwds, TCallContext* ctxt)
+        CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt)
 {
 // preliminary check in case keywords are accidently used (they are ignored otherwise)
     if (kwds && PyDict_Size(kwds)) {

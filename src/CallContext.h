@@ -1,5 +1,5 @@
-#ifndef CPYCPPYY_TCALLCONTEXT_H
-#define CPYCPPYY_TCALLCONTEXT_H
+#ifndef CPYCPPYY_CALLCONTEXT_H
+#define CPYCPPYY_CALLCONTEXT_H
 
 // Standard
 #include <vector>
@@ -8,7 +8,7 @@
 namespace CPyCppyy {
 
 // general place holder for function parameters
-struct TParameter {
+struct Parameter {
     union Value {
         bool           fBool;
         short          fShort;
@@ -29,8 +29,8 @@ struct TParameter {
 };
 
 // extra call information
-struct TCallContext {
-    TCallContext(std::vector<TParameter>::size_type sz = 0) : fArgs(sz), fFlags(0) {}
+struct CallContext {
+    CallContext(std::vector<Parameter>::size_type sz = 0) : fArgs(sz), fFlags(0) {}
 
     enum ECallFlags {
         kNone           =    0,
@@ -54,43 +54,43 @@ struct TCallContext {
     static bool SetSignalPolicy(ECallFlags e);
 
 // payload
-    std::vector<TParameter> fArgs;
+    std::vector<Parameter> fArgs;
     uint64_t fFlags;
 };
 
 inline bool IsSorted(uint64_t flags) {
-    return flags & TCallContext::kIsSorted;
+    return flags & CallContext::kIsSorted;
 }
 
 inline bool IsCreator(uint64_t flags) {
-    return flags & TCallContext::kIsCreator;
+    return flags & CallContext::kIsCreator;
 }
 
 inline bool IsConstructor(uint64_t flags) {
-    return flags & TCallContext::kIsConstructor;
+    return flags & CallContext::kIsConstructor;
 }
 
-inline bool ManagesSmartPtr(TCallContext* ctxt) {
-    return ctxt->fFlags & TCallContext::kManageSmartPtr;
+inline bool ManagesSmartPtr(CallContext* ctxt) {
+    return ctxt->fFlags & CallContext::kManageSmartPtr;
 }
 
 inline bool ReleasesGIL(uint64_t flags) {
-    return flags & TCallContext::kReleaseGIL;
+    return flags & CallContext::kReleaseGIL;
 }
 
-inline bool ReleasesGIL(TCallContext* ctxt) {
-    return ctxt ? (ctxt->fFlags & TCallContext::kReleaseGIL) : false;
+inline bool ReleasesGIL(CallContext* ctxt) {
+    return ctxt ? (ctxt->fFlags & CallContext::kReleaseGIL) : false;
 }
 
-inline bool UseStrictOwnership(TCallContext* ctxt) {
-    if (ctxt && (ctxt->fFlags & TCallContext::kUseStrict))
+inline bool UseStrictOwnership(CallContext* ctxt) {
+    if (ctxt && (ctxt->fFlags & CallContext::kUseStrict))
         return true;
-    if (ctxt && (ctxt->fFlags & TCallContext::kUseHeuristics))
+    if (ctxt && (ctxt->fFlags & CallContext::kUseHeuristics))
         return false;
 
-    return TCallContext::sMemoryPolicy == TCallContext::kUseStrict;
+    return CallContext::sMemoryPolicy == CallContext::kUseStrict;
 }
 
 } // namespace CPyCppyy
 
-#endif // !CPYCPPYY_TCALLCONTEXT_H
+#endif // !CPYCPPYY_CALLCONTEXT_H

@@ -1,20 +1,20 @@
 // Bindings
 #include "CPyCppyy.h"
-#include "TCallContext.h"
+#include "CallContext.h"
 
 
 //- data _____________________________________________________________________
 namespace CPyCppyy {
 
-    TCallContext::ECallFlags TCallContext::sMemoryPolicy = TCallContext::kUseStrict;
+    CallContext::ECallFlags CallContext::sMemoryPolicy = CallContext::kUseStrict;
 // this is just a data holder for linking; actual value is set in CPyCppyyModule.cxx
-    TCallContext::ECallFlags TCallContext::sSignalPolicy = TCallContext::kSafe;
+    CallContext::ECallFlags CallContext::sSignalPolicy = CallContext::kSafe;
 
 } // namespace CPyCppyy
 
 
 //-----------------------------------------------------------------------------
-bool CPyCppyy::TCallContext::SetMemoryPolicy(ECallFlags e)
+bool CPyCppyy::CallContext::SetMemoryPolicy(ECallFlags e)
 {
 // Set the global memory policy, which affects object ownership when objects
 // are passed as function arguments.
@@ -26,7 +26,7 @@ bool CPyCppyy::TCallContext::SetMemoryPolicy(ECallFlags e)
 }
 
 //-----------------------------------------------------------------------------
-bool CPyCppyy::TCallContext::SetSignalPolicy(ECallFlags e)
+bool CPyCppyy::CallContext::SetSignalPolicy(ECallFlags e)
 {
 // Set the global signal policy, which determines whether a jmp address
 // should be saved to return to after a C++ segfault.

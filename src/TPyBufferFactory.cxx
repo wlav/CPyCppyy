@@ -259,7 +259,7 @@ CPyCppyy::TPyBufferFactory* CPyCppyy::TPyBufferFactory::Instance()
 
 
 //- constructor/destructor ---------------------------------------------------
-#define CPYCPPYY_INSTALL_PYBUFFER_METHODS( name, type )                      \
+#define CPYCPPYY_INSTALL_PYBUFFER_METHODS(name, type)                        \
     Py##name##Buffer_Type.tp_name            = (char*)"cppyy.Py"#name"Buffer";\
     Py##name##Buffer_Type.tp_base            = &PyBuffer_Type;               \
     Py##name##Buffer_Type.tp_as_buffer       = PyBuffer_Type.tp_as_buffer;   \

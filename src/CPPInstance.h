@@ -13,7 +13,7 @@
 // Bindings
 #include "CPPScope.h"
 #include "Cppyy.h"
-#include "TCallContext.h"
+#include "CallContext.h"     // for Parameter
 
 
 // TODO: have an CPPInstance derived or alternative type for smart pointers
@@ -55,7 +55,7 @@ public:
         // TODO: this is icky and slow
             std::vector<Cppyy::TCppIndex_t> methods =
                 Cppyy::GetMethodIndicesFromName(fSmartPtrType, "operator->");
-            std::vector<TParameter> args;
+            std::vector<Parameter> args;
             return Cppyy::CallR(Cppyy::GetMethod(fSmartPtrType, methods[0]), fSmartPtr, &args);
         }
 

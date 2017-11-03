@@ -106,10 +106,10 @@ namespace {
     /* TODO: move to Cppyy.cxx
        gROOT->ProcessLine(
            "namespace _pycppyy_internal { template<class C1, class C2>"
-           " bool is_equal(const C1& c1, const C2& c2){ return (bool)(c1 == c2); } }" );
+           " bool is_equal(const C1& c1, const C2& c2){ return (bool)(c1 == c2); } }");
        gROOT->ProcessLine(
            "namespace _cpycppyy_internal { template<class C1, class C2>"
-           " bool is_not_equal(const C1& c1, const C2& c2){ return (bool)(c1 != c2); } }" );
+           " bool is_not_equal(const C1& c1, const C2& c2){ return (bool)(c1 != c2); } }");
     */
     }
 
@@ -128,14 +128,14 @@ namespace {
 unsigned long CPyCppyy::PyLongOrInt_AsULong(PyObject* pyobject)
 {
 // Convert <pybject> to C++ unsigned long, with bounds checking, allow int -> ulong.
-    unsigned long ul = PyLong_AsUnsignedLong( pyobject );
+    unsigned long ul = PyLong_AsUnsignedLong(pyobject);
     if (PyErr_Occurred() && PyInt_Check(pyobject)) {
         PyErr_Clear();
         long i = PyInt_AS_LONG(pyobject);
         if (0 <= i) {
             ul = (unsigned long)i;
         } else {
-            PyErr_SetString( PyExc_ValueError,
+            PyErr_SetString(PyExc_ValueError,
                 "can\'t convert negative value to unsigned long");
         }
     }
@@ -148,13 +148,13 @@ ULong64_t CPyCppyy::PyLongOrInt_AsULong64(PyObject* pyobject)
 {
 // Convert <pyobject> to C++ unsigned long long, with bounds checking.
     ULong64_t ull = PyLong_AsUnsignedLongLong(pyobject);
-    if ( PyErr_Occurred() && PyInt_Check(pyobject)) {
+    if (PyErr_Occurred() && PyInt_Check(pyobject)) {
         PyErr_Clear();
         long i = PyInt_AS_LONG(pyobject);
         if (0 <= i) {
             ull = (ULong64_t)i;
         } else {
-            PyErr_SetString( PyExc_ValueError,
+            PyErr_SetString(PyExc_ValueError,
                 "can\'t convert negative value to unsigned long long");
         }
     }
@@ -305,7 +305,7 @@ bool CPyCppyy::Utility::AddBinaryOperator(
 
     bool result = AddBinaryOperator(pyclass, lcname, rcname, op, label, alt);
 
-    Py_DECREF( pyclass );
+    Py_DECREF(pyclass);
     return result;
 }
 
@@ -395,8 +395,8 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& 
 #if 0
    // TODO: figure out what this was for ...
     if (!pyfunc && _pr_int.GetClass() &&
-            lcname.find( "iterator" ) != std::string::npos &&
-            rcname.find( "iterator" ) != std::string::npos) {
+            lcname.find("iterator") != std::string::npos &&
+            rcname.find("iterator") != std::string::npos) {
    // TODO: gets called too often; make sure it's purely lazy calls only; also try to
    // find a better notion for which classes (other than iterators) this is supposed to
    // work; right now it fails for cases where None is passed
@@ -410,14 +410,14 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& 
     }
 
 // last chance: there could be a non-instantiated templated method
-    TClass* lc = TClass::GetClass( lcname.c_str() );
+    TClass* lc = TClass::GetClass(lcname.c_str());
     if (lc && strcmp(op, "==") != 0 && strcmp(op, "!=") != 0) {
         std::string opname = "operator"; opname += op;
         gInterpreter->LoadFunctionTemplates(lc);
         gInterpreter->GetFunctionTemplate(lc->GetClassInfo(), opname.c_str());
         TFunctionTemplate*f = lc->GetFunctionTemplate(opname.c_str());
         Cppyy::TCppMethod_t func =
-            (Cppyy::TCppMethod_t)lc->GetMethodWithPrototype( opname.c_str(), rcname.c_str() );
+            (Cppyy::TCppMethod_t)lc->GetMethodWithPrototype(opname.c_str(), rcname.c_str());
         if (func && f) pyfunc = new CPPMethod(Cppyy::GetScope(lcname), func);
     }
 #endif
@@ -543,7 +543,7 @@ int CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, void*& b
         // determine buffer compatibility (use "buf" as a status flag)
             PyObject* pytc = PyObject_GetAttr(pyobject, PyStrings::gTypeCode);
             if (pytc != 0) {      // for array objects
-                if (CPyCppyy_PyUnicode_AsString( pytc )[0] != tc)
+                if (CPyCppyy_PyUnicode_AsString(pytc)[0] != tc)
                     buf = 0;      // no match
                 Py_DECREF(pytc);
             } else if (seqmeths->sq_length &&
@@ -651,11 +651,11 @@ Py_ssize_t CPyCppyy::Utility::ArraySize(const std::string& name)
 // TODO: consolidate with other string manipulations in Helpers.cxx
 // Extract size from an array type, if available.
     std::string cleanName = name;
-    RemoveConst( cleanName );
+    RemoveConst(cleanName);
 
     if (cleanName[cleanName.size()-1] == ']') {
         std::string::size_type idx = cleanName.rfind('[');
-        if ( idx != std::string::npos ) {
+        if (idx != std::string::npos) {
             const std::string asize = cleanName.substr(idx+1, cleanName.size()-2);
             return strtoul(asize.c_str(), nullptr, 0);
         }

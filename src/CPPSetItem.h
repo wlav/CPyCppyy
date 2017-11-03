@@ -16,7 +16,7 @@ public:
     virtual PyObject* PreProcessArgs(CPPInstance*& self, PyObject* args, PyObject* kwds);
 
 protected:
-    virtual bool InitExecutor_(Executor*&, TCallContext* ctxt = nullptr);
+    virtual bool InitExecutor_(Executor*&, CallContext* ctxt = nullptr);
 };
 
 } // namespace CPyCppyy

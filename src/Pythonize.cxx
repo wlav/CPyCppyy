@@ -253,7 +253,7 @@ static void vectoriter_dealloc(vectoriterobject* vi) {
 }
 
 static int vectoriter_traverse(vectoriterobject* vi, visitproc visit, void* arg) {
-    Py_VISIT( vi->vi_vector );
+    Py_VISIT(vi->vi_vector);
     return 0;
 }
 
@@ -370,10 +370,10 @@ PyObject* VectorBoolSetItem(CPPInstance* self, PyObject* args)
 // std::vector<bool> is a special-case in C++, and its return type depends on
 // the compiler: treat it special here as well
     int bval = 0; PyObject* idx = nullptr;
-    if (!PyArg_ParseTuple( args, const_cast<char*>("Oi:__setitem__"), &idx, &bval))
+    if (!PyArg_ParseTuple(args, const_cast<char*>("Oi:__setitem__"), &idx, &bval))
         return nullptr;
 
-    if (!self->GetObject() ) {
+    if (!self->GetObject()) {
         PyErr_SetString(PyExc_TypeError, "unsubscriptable object");
         return nullptr;
     }
@@ -551,7 +551,7 @@ PyObject* name##StringIsEqual(PyObject* self, PyObject* obj)                 \
 PyObject* name##StringIsNotEqual(PyObject* self, PyObject* obj)              \
 {                                                                            \
     PyObject* data = name##GetData(self);                                    \
-    if ( data ) {                                                            \
+    if (data) {                                                              \
         PyObject* result = PyObject_RichCompare(data, obj, Py_NE);           \
         Py_DECREF(data);                                                     \
         return result;                                                       \
@@ -659,7 +659,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
    // some classes may not have dicts for their iterators, making begin/end useless
    /* TODO: remove use of TClass/TMethod
         PyObject* pyfullname = PyObject_GetAttr(pyclass, PyStrings::gCppName);
-        if (!pyfullname) pyfullname = PyObject_GetAttr( pyclass, PyStrings::gName);
+        if (!pyfullname) pyfullname = PyObject_GetAttr(pyclass, PyStrings::gName);
         TClass* klass = TClass::GetClass(CPyCppyy_PyUnicode_AsString(pyfullname));
         Py_DECREF(pyfullname);
 
@@ -675,7 +675,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         if (iklass && iklass->GetClassInfo()) {
             ((PyTypeObject*)pyclass)->tp_iter = (getiterfunc)StlSequenceIter;
             Utility::AddToClass(pyclass, "__iter__", (PyCFunction) StlSequenceIter, METH_NOARGS);
-        } else if (HasAttrDirect(pyclass, PyStrings::gGetItem ) && HasAttrDirect( pyclass, PyStrings::gLen)) {
+        } else if (HasAttrDirect(pyclass, PyStrings::gGetItem) && HasAttrDirect(pyclass, PyStrings::gLen)) {
             Utility::AddToClass(pyclass, "_getitem__unchecked", "__getitem__");
             Utility::AddToClass(pyclass, "__getitem__", (PyCFunction) CheckedGetItem, METH_O);
         }
@@ -736,7 +736,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
       */
 
     // provide a slice-able __getitem__, if possible
-        if (HasAttrDirect( pyclass, PyStrings::gVectorAt))
+        if (HasAttrDirect(pyclass, PyStrings::gVectorAt))
             Utility::AddToClass(pyclass, "__getitem__", (PyCFunction)VectorGetItem, METH_O);
 
     // std::vector<bool> is a special case in C++
@@ -750,7 +750,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         Utility::AddToClass(pyclass, "__contains__", (PyCFunction)MapContains, METH_O);
     }
 
-    else if ( IsTemplatedSTLClass(name, "pair")) {
+    else if (IsTemplatedSTLClass(name, "pair")) {
         Utility::AddToClass(pyclass, "__getitem__", (PyCFunction)PairUnpack, METH_O);
         Utility::AddToClass(pyclass, "__len__", (PyCFunction)ReturnTwo, METH_NOARGS);
     }
@@ -768,7 +768,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
 
     else if (name == "string" || name == "std::string") { // TODO: ask backend as well
         Utility::AddToClass(pyclass, "__repr__", (PyCFunction)StlStringRepr, METH_NOARGS);
-        Utility::AddToClass(pyclass, "__str__", "c_str" );
+        Utility::AddToClass(pyclass, "__str__", "c_str");
         Utility::AddToClass(pyclass, "__cmp__", (PyCFunction)StlStringCompare, METH_O);
         Utility::AddToClass(pyclass, "__eq__",  (PyCFunction)StlStringIsEqual, METH_O);
         Utility::AddToClass(pyclass, "__ne__",  (PyCFunction)StlStringIsNotEqual, METH_O);
@@ -798,7 +798,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         if (num_pythonizations)
             arglist = Py_BuildValue("O,s", pyclass, name.c_str());
         for (Py_ssize_t i = 0; i < num_pythonizations; ++i) {
-            PyObject* pythonizor = PyList_GetItem( tmp, i);
+            PyObject* pythonizor = PyList_GetItem(tmp, i);
         // TODO: detail error handling for the pythonizors
             PyObject* result = PyObject_CallObject(pythonizor, arglist);
             if (!result) {

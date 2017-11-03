@@ -2,22 +2,20 @@
 #define CPYCPPYY_CONVERTERS_H
 
 // Standard
-#include <limits.h>
 #include <string>
-#include <map>
 
 
 namespace CPyCppyy {
 
-struct TParameter;
-struct TCallContext;
+struct Parameter;
+struct CallContext;
 
 class Converter {
 public:
     virtual ~Converter() {}
 
 public:
-    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr) = 0;
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) = 0;
     virtual PyObject* FromMemory(void* address);
     virtual bool ToMemory(PyObject* value, void* address);
 };
@@ -28,7 +26,7 @@ public:
     VoidArrayConverter(bool keepControl = true) { fKeepControl = keepControl; }
 
 public:
-    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
     virtual PyObject* FromMemory(void* address);
     virtual bool ToMemory(PyObject* value, void* address);
 
@@ -46,7 +44,7 @@ public:
         VoidArrayConverter(keepControl), fClass(klass) {}
 
 public:
-    virtual bool SetArg(PyObject*, TParameter&, TCallContext* = nullptr);
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
     virtual PyObject* FromMemory(void* address);
     virtual bool ToMemory(PyObject* value, void* address);
         

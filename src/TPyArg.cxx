@@ -46,7 +46,7 @@ PyObject* TPyArg::CallMethod(PyObject* pymeth, const std::vector<TPyArg>& args)
 }
 
 //- destructor dispatcher ----------------------------------------------------
-void TPyArg::CallDestructor( PyObject*& pyself, PyObject*, const std::vector<TPyArg>& )
+void TPyArg::CallDestructor(PyObject*& pyself, PyObject*, const std::vector<TPyArg>&)
 {
     Py_XDECREF(pyself);       // calls actual dtor if ref-count down to 0
 }
