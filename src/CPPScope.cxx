@@ -119,6 +119,7 @@ static PyObject* meta_repr(CPPScope* metatype)
 
 
 //= CPyCppyy type metaclass behavior =========================================
+static bool gbl_done = false;
 static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
 {
 // Called when CPPScope acts as a metaclass; since type_new always resets
@@ -129,6 +130,22 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
 // cppyy caches python classes)
     subtype->tp_alloc   = (allocfunc)meta_alloc;
     subtype->tp_dealloc = (destructor)meta_dealloc;
+
+    if (!gbl_done &&
+            strncmp(CPyCppyy_PyUnicode_AsString(PyTuple_GET_ITEM(args, 0)), "gbl", 3) == 0) {
+    // happens on startup, since we need to have some name for gbl for the
+    // class declaration to be valid
+        gbl_done = true;
+        PyObject* newargs = PyTuple_New(PyTuple_GET_SIZE(args));
+        PyTuple_SET_ITEM(newargs, 0, CPyCppyy_PyUnicode_FromString(""));
+        for (int i = 1; i < PyTuple_GET_SIZE(args); ++i) {
+            PyObject* item = PyTuple_GET_ITEM(args, i);
+            Py_INCREF(item);
+            PyTuple_SET_ITEM(newargs, i, item);
+        }
+        Py_DECREF(args);
+        args = newargs;
+    }
 
 // creation of the python-side class
     CPPScope* result = (CPPScope*)PyType_Type.tp_new(subtype, args, kwds);
