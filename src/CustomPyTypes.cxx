@@ -1,6 +1,6 @@
 // Bindings
 #include "CPyCppyy.h"
-#include "TCustomPyTypes.h"
+#include "CustomPyTypes.h"
 
 #if PY_VERSION_HEX >= 0x03000000
 // TODO: this will break functionality
@@ -11,9 +11,9 @@
 namespace CPyCppyy {
 
 //= float type allowed for reference passing =================================
-PyTypeObject TCustomFloat_Type = { // python float is a C/C++ double
+PyTypeObject RefFloat_Type = {     // python float is a C/C++ double
     PyVarObject_HEAD_INIT(&PyType_Type, 0)
-    (char*)"cppyy.double",         // tp_name
+    (char*)"cppyy.Double",         // tp_name
     0,                             // tp_basicsize
     0,                             // tp_itemsize
     0,                             // tp_dealloc
@@ -70,9 +70,9 @@ PyTypeObject TCustomFloat_Type = { // python float is a C/C++ double
 };
 
 //= long type allowed for reference passing ==================================
-PyTypeObject TCustomInt_Type = {   // python int is a C/C++ long
+PyTypeObject RefInt_Type = {       // python int is a C/C++ long
     PyVarObject_HEAD_INIT(&PyType_Type, 0)
-    (char*)"cppyy.long",           // tp_name
+    (char*)"cppyy.Long",           // tp_name
     0,                             // tp_basicsize
     0,                             // tp_itemsize
     0,                             // tp_dealloc
@@ -136,7 +136,7 @@ static int numfree = 0;
 #endif
 
 //-----------------------------------------------------------------------------
-PyObject* TCustomInstanceMethod_New(PyObject* func, PyObject* self, PyObject*
+PyObject* CustomInstanceMethod_New(PyObject* func, PyObject* self, PyObject*
 #if PY_VERSION_HEX < 0x03000000
         pyclass
 #endif
@@ -154,10 +154,10 @@ PyObject* TCustomInstanceMethod_New(PyObject* func, PyObject* self, PyObject*
     im = free_list;
     if (im != nullptr) {
         free_list = (PyMethodObject*)(im->im_self);
-        (void)PyObject_INIT(im, &TCustomInstanceMethod_Type);
+        (void)PyObject_INIT(im, &CustomInstanceMethod_Type);
     }
     else {
-        im = PyObject_GC_New(PyMethodObject, &TCustomInstanceMethod_Type);
+        im = PyObject_GC_New(PyMethodObject, &CustomInstanceMethod_Type);
         if (im == nullptr)
             return nullptr;
     }
@@ -262,11 +262,11 @@ static PyObject* im_descr_get(PyObject* meth, PyObject* obj, PyObject* pyclass)
     if (obj == Py_None)
         obj = nullptr;
 
-    return TCustomInstanceMethod_New(PyMethod_GET_FUNCTION(meth), obj, pyclass);
+    return CustomInstanceMethod_New(PyMethod_GET_FUNCTION(meth), obj, pyclass);
 }
 
 //= CPyCppyy custom instance method type =====================================
-PyTypeObject TCustomInstanceMethod_Type = {
+PyTypeObject CustomInstanceMethod_Type = {
     PyVarObject_HEAD_INIT(&PyType_Type, 0)
     (char*)"cppyy.InstanceMethod", // tp_name
     0,                             // tp_basicsize

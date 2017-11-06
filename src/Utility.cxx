@@ -7,7 +7,7 @@
 #include "ProxyWrappers.h"
 #include "PyCallable.h"
 #include "PyStrings.h"
-#include "TCustomPyTypes.h"
+#include "CustomPyTypes.h"
 #include "TemplateProxy.h"
 
 
@@ -179,7 +179,7 @@ bool CPyCppyy::Utility::AddToClass(
     pdef->ml_doc   = nullptr;
 
     PyObject* func = PyCFunction_New(pdef, nullptr);
-    PyObject* method = TCustomInstanceMethod_New(func, nullptr, pyclass);
+    PyObject* method = CustomInstanceMethod_New(func, nullptr, pyclass);
     bool isOk = PyObject_SetAttrString(pyclass, pdef->ml_name, method) == 0;
     Py_DECREF(method);
     Py_DECREF(func);

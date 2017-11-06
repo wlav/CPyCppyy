@@ -9,7 +9,7 @@
 #include "PyStrings.h"
 #include "TemplateProxy.h"
 #include "CallContext.h"
-#include "TCustomPyTypes.h"
+#include "CustomPyTypes.h"
 #include "TPyBufferFactory.h"
 #include "TupleOfInstances.h"
 #include "Utility.h"
@@ -802,19 +802,13 @@ extern "C" void initlibcppyy()
         CPYCPPYY_INIT_ERROR;
 
 // inject custom data types
-    if (!Utility::InitProxy(gThisModule, &TCustomFloat_Type, "Double"))
+    if (!Utility::InitProxy(gThisModule, &RefFloat_Type, "Double"))
         CPYCPPYY_INIT_ERROR;
 
-    if (!Utility::InitProxy(gThisModule, &TCustomInt_Type, "Long"))
+    if (!Utility::InitProxy(gThisModule, &RefInt_Type, "Long"))
         CPYCPPYY_INIT_ERROR;
 
-    if (!Utility::InitProxy(gThisModule, &TCustomFloat_Type, "double"))
-        CPYCPPYY_INIT_ERROR;
-
-    if (!Utility::InitProxy(gThisModule, &TCustomInt_Type, "long"))
-        CPYCPPYY_INIT_ERROR;
-
-    if (!Utility::InitProxy(gThisModule, &TCustomInstanceMethod_Type, "InstanceMethod"))
+    if (!Utility::InitProxy(gThisModule, &CustomInstanceMethod_Type, "InstanceMethod"))
         CPYCPPYY_INIT_ERROR;
 
     if (!Utility::InitProxy(gThisModule, &TupleOfInstances_Type, "InstancesArray"))

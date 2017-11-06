@@ -6,7 +6,7 @@
 #include "PyStrings.h"
 #include "TPyBufferFactory.h"
 #include "CallContext.h"
-#include "TCustomPyTypes.h"
+#include "CustomPyTypes.h"
 #include "TPyBufferFactory.h"
 #include "TupleOfInstances.h"
 #include "TypeManip.h"
@@ -296,7 +296,7 @@ bool CPyCppyy::LongRefConverter::SetArg(
 {
 // convert <pyobject> to C++ long&, set arg for call
 #if PY_VERSION_HEX < 0x03000000
-    if (TCustomInt_CheckExact(pyobject)) {
+    if (RefInt_CheckExact(pyobject)) {
         para.fValue.fVoidp = (void*)&((PyIntObject*)pyobject)->ob_ival;
         para.fTypeCode = 'V';
         return true;
@@ -340,7 +340,7 @@ bool CPyCppyy::IntRefConverter::SetArg(
 {
 // convert <pyobject> to C++ (pseudo)int&, set arg for call
 #if PY_VERSION_HEX < 0x03000000
-    if (TCustomInt_CheckExact(pyobject)) {
+    if (RefInt_CheckExact(pyobject)) {
         para.fValue.fVoidp = (void*)&((PyIntObject*)pyobject)->ob_ival;
         para.fTypeCode = 'V';
         return true;
@@ -454,7 +454,7 @@ bool CPyCppyy::DoubleRefConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)
 {
 // convert <pyobject> to C++ double&, set arg for call
-    if (TCustomFloat_CheckExact(pyobject)) {
+    if (RefFloat_CheckExact(pyobject)) {
         para.fValue.fVoidp = (void*)&((PyFloatObject*)pyobject)->ob_fval;
         para.fTypeCode = 'V';
         return true;
