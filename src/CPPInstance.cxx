@@ -178,25 +178,31 @@ static PyObject* op_repr(CPPInstance* pyobj)
 {
 // Build a representation string of the object proxy that shows the address
 // of the C++ object that is held, as well as its type.
+    PyObject* pyclass = (PyObject*)Py_TYPE(pyobj);
+    PyObject* modname = PyObject_GetAttr(pyclass, PyStrings::gModule);
+    Py_DECREF(pyclass);
+
     Cppyy::TCppType_t klass = pyobj->ObjectIsA();
-    std::string clName = klass ? Cppyy::GetScopedFinalName(klass) : "<unknown>";
+    std::string clName = klass ? Cppyy::GetFinalName(klass) : "<unknown>";
     if (pyobj->fFlags & CPPInstance::kIsReference)
         clName.append("*");
 
-    TypeManip::cppscope_to_pyscope(clName);
-
-    std::string smartPtrName;
+    PyObject* repr = nullptr;
     if (pyobj->fFlags & CPPInstance::kIsSmartPtr) {
         Cppyy::TCppType_t smartPtrType = pyobj->fSmartPtrType;
-        smartPtrName = smartPtrType ?
-            Cppyy::GetScopedFinalName(smartPtrType) : "unknown smart pointer";
-        return CPyCppyy_PyUnicode_FromFormat(
-            const_cast<char*>("<cppyy.gbl.%s object at %p held by %s at %p>"),
-            clName.c_str(), pyobj->GetObject(), smartPtrName.c_str(), pyobj->fSmartPtr);
+        std::string smartPtrName = smartPtrType ?
+            Cppyy::GetFinalName(smartPtrType) : "unknown smart pointer";
+        repr = CPyCppyy_PyUnicode_FromFormat(
+            const_cast<char*>("<%s.%s object at %p held by %s at %p>"),
+            CPyCppyy_PyUnicode_AsString(modname), clName.c_str(),
+            pyobj->GetObject(), smartPtrName.c_str(), pyobj->fSmartPtr);
+    } else {
+        repr = CPyCppyy_PyUnicode_FromFormat(const_cast<char*>("<%s.%s object at %p>"),
+            CPyCppyy_PyUnicode_AsString(modname), clName.c_str(), pyobj->GetObject());
     }
 
-    return CPyCppyy_PyUnicode_FromFormat(
-        const_cast<char*>("<cppyy.gbl.%s object at %p>"), clName.c_str(), pyobj->GetObject());
+    Py_DECREF(modname);
+    return repr;
 }
 
 

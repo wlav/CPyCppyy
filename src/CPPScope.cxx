@@ -34,6 +34,69 @@ static void meta_dealloc(CPPScope* metatype)
     return PyType_Type.tp_dealloc((PyObject*)metatype);
 }
 
+//-----------------------------------------------------------------------------
+static PyObject* meta_getcppname(CPPScope* meta, void*)
+{
+    if ((void*)meta == (void*)&CPPInstance_Type)
+        return CPyCppyy_PyUnicode_FromString("CPPInstance_Type");
+    return CPyCppyy_PyUnicode_FromString(Cppyy::GetScopedFinalName(meta->fCppType).c_str());
+}
+
+//-----------------------------------------------------------------------------
+static PyObject* meta_getmodule(CPPScope* meta, void*)
+{
+    if ((void*)meta == (void*)&CPPInstance_Type)
+        return CPyCppyy_PyUnicode_FromString("cppyy.gbl");
+
+    if (meta->fModuleName)
+        return CPyCppyy_PyUnicode_FromString(meta->fModuleName);
+
+    std::string modname = Cppyy::GetScopedFinalName(meta->fCppType);
+    std::string::size_type pos1 = modname.rfind("::");
+    if (modname.empty() || pos1 == std::string::npos)
+        return CPyCppyy_PyUnicode_FromString(const_cast<char*>("cppyy.gbl"));
+
+    PyObject* pymodule = nullptr;
+    std::string::size_type pos2 = modname.rfind("::", pos1-1);
+    pos2 = (pos2 == std::string::npos) ? 0 : pos2 + 2;
+    PyObject* pyscope = CPyCppyy::GetScopeProxy(Cppyy::GetScope(modname.substr(0, pos1)));
+    if (pyscope) {
+        pymodule = PyObject_GetAttr(pyscope, PyStrings::gModule);
+        CPyCppyy_PyUnicode_AppendAndDel(&pymodule,
+            CPyCppyy_PyUnicode_FromString(('.'+modname.substr(pos2, pos1-pos2)).c_str()));
+
+        Py_DECREF(pyscope);
+    }
+
+    if (pymodule)
+        return pymodule;
+    PyErr_Clear();
+
+    TypeManip::cppscope_to_pyscope(modname);
+    return CPyCppyy_PyUnicode_FromString(("cppyy.gbl."+modname.substr(0, pos1)).c_str());
+}
+
+//-----------------------------------------------------------------------------
+static int meta_setmodule(CPPScope* meta, PyObject* value, void*)
+{
+    if ((void*)meta == (void*)&CPPInstance_Type) {
+        PyErr_SetString(PyExc_AttributeError,
+            "attribute \'__module__\' of 'cppyy.CPPScope\' objects is not writable");
+        return -1;
+    }
+
+    const char* newname = CPyCppyy_PyUnicode_AsStringChecked(value);
+    if (!value)
+        return -1;
+
+    free(meta->fModuleName);
+    Py_ssize_t sz = CPyCppyy_PyUnicode_GET_SIZE(value);
+    meta->fModuleName = (char*)malloc(sz+1);
+    memcpy(meta->fModuleName, newname, sz+1);
+
+    return 0;
+}
+
 //----------------------------------------------------------------------------
 static PyObject* meta_repr(CPPScope* metatype)
 {
@@ -43,11 +106,15 @@ static PyObject* meta_repr(CPPScope* metatype)
         return CPyCppyy_PyUnicode_FromFormat(
             const_cast<char*>("<class cppyy.CPPInstance at %p>"), metatype);
 
-    std::string clName = Cppyy::GetScopedFinalName(metatype->fCppType);
-    TypeManip::cppscope_to_pyscope(clName);
+    PyObject* modname = meta_getmodule(metatype, nullptr);
+    std::string clName = Cppyy::GetFinalName(metatype->fCppType);
+    const char* kind = Cppyy::IsNamespace(metatype->fCppType) ? "namespace" : "class";
 
-    return CPyCppyy_PyUnicode_FromFormat(
-        const_cast<char*>("<class cppyy.gbl.%s at %p>"), clName.c_str(), metatype);
+    PyObject* repr = CPyCppyy_PyUnicode_FromFormat("<%s %s.%s at %p>",
+        kind, CPyCppyy_PyUnicode_AsString(modname), clName.c_str(), metatype);
+
+    Py_DECREF(modname);
+    return repr;
 }
 
 
@@ -269,69 +336,6 @@ static PyMethodDef meta_methods[] = {
     {(char*)nullptr, nullptr, 0, nullptr}
 };
 
-
-//-----------------------------------------------------------------------------
-static PyObject* meta_getcppname(CPPScope* meta, void*)
-{
-    if ((void*)meta == (void*)&CPPInstance_Type)
-        return CPyCppyy_PyUnicode_FromString("CPPInstance_Type");
-    return CPyCppyy_PyUnicode_FromString(Cppyy::GetScopedFinalName(meta->fCppType).c_str());
-}
-
-//-----------------------------------------------------------------------------
-static PyObject* meta_getmodule(CPPScope* meta, void*)
-{
-    if ((void*)meta == (void*)&CPPInstance_Type)
-        return CPyCppyy_PyUnicode_FromString("cppyy.gbl");
-
-    if (meta->fModuleName)
-        return CPyCppyy_PyUnicode_FromString(meta->fModuleName);
-
-    std::string modname = Cppyy::GetScopedFinalName(meta->fCppType);
-    std::string::size_type pos1 = modname.rfind("::");
-    if (modname.empty() || pos1 == std::string::npos)
-        return CPyCppyy_PyUnicode_FromString(const_cast<char*>("cppyy.gbl"));
-
-    PyObject* pymodule = nullptr;
-    std::string::size_type pos2 = modname.rfind("::", pos1-1);
-    pos2 = (pos2 == std::string::npos) ? 0 : pos2 + 2;
-    PyObject* pyscope = CPyCppyy::GetScopeProxy(Cppyy::GetScope(modname.substr(0, pos1)));
-    if (pyscope) {
-        pymodule = PyObject_GetAttr(pyscope, PyStrings::gModule);
-        CPyCppyy_PyUnicode_AppendAndDel(&pymodule,
-            CPyCppyy_PyUnicode_FromString(('.'+modname.substr(pos2, pos1-pos2)).c_str()));
-
-        Py_DECREF(pyscope);
-    }
-
-    if (pymodule)
-        return pymodule;
-    PyErr_Clear();
-
-    TypeManip::cppscope_to_pyscope(modname);
-    return CPyCppyy_PyUnicode_FromString(("cppyy.gbl."+modname.substr(0, pos1)).c_str());
-}
-
-//-----------------------------------------------------------------------------
-static int meta_setmodule(CPPScope* meta, PyObject* value, void*)
-{
-    if ((void*)meta == (void*)&CPPInstance_Type) {
-        PyErr_SetString(PyExc_AttributeError,
-            "attribute \'__module__\' of 'cppyy.CPPScope\' objects is not writable");
-        return -1;
-    }
-
-    const char* newname = CPyCppyy_PyUnicode_AsStringChecked(value);
-    if (!value)
-        return -1;
-
-    free(meta->fModuleName);
-    Py_ssize_t sz = CPyCppyy_PyUnicode_GET_SIZE(value);
-    meta->fModuleName = (char*)malloc(sz+1);
-    memcpy(meta->fModuleName, newname, sz+1);
-
-    return 0;
-}
 
 //-----------------------------------------------------------------------------
 static PyGetSetDef meta_getset[] = {
