@@ -204,12 +204,10 @@ static PyObject* pt_getattro(PyObject* pyclass, PyObject* pyname)
                             Cppyy::GetMethodIndicesFromName(scope, name);
                         if (!methods.empty()) {
                         // function exists, now collect overloads
-                            std::vector< PyCallable* > overloads;
-                            const size_t nmeth = Cppyy::GetNumMethods(scope);
-                            for (size_t imeth = 0; imeth < nmeth; ++imeth) {
-                                Cppyy::TCppMethod_t method = Cppyy::GetMethod(scope, imeth);
-                                if (Cppyy::GetMethodName(method) == name)
-                                    overloads.push_back(new CPPFunction(scope, method));
+                            std::vector<PyCallable*> overloads;
+                            for (auto idx : methods) {
+                                overloads.push_back(
+                                    new CPPFunction(scope, Cppyy::GetMethod(scope, idx)));
                             }
 
                         // Note: can't re-use Utility::AddClass here, as there's the risk of

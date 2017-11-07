@@ -276,7 +276,7 @@ static PyObject* mp_meth_class(CPPOverload* pymeth, void*)
 {
 // Return scoping class; in case of pseudo-function role, pretend that there
 // is no encompassing class (i.e. global scope).
-    if (!IsPseudoFunc(pymeth)) {
+    if (!IsPseudoFunc(pymeth) && pymeth->fMethodInfo->fMethods.size()) {
         PyObject* pyclass = pymeth->fMethodInfo->fMethods[0]->GetScopeProxy();
         if (!pyclass)
             PyErr_Format(PyExc_AttributeError,
