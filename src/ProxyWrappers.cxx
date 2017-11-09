@@ -465,17 +465,7 @@ PyObject* CPyCppyy::CreateScopeProxy(PyObject*, PyObject* args)
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* parent)
 {
-// Build a python shadow class for the named C++ class.
-    if (scope_name.empty()) { // special case, as gbl lives only in cppyy.py
-        PyObject* mods = PyImport_GetModuleDict();
-        PyObject* gbl = PyDict_GetItemString(mods, "cppyy.gbl");
-        if (gbl) {
-            Py_INCREF(gbl);
-            return gbl;
-        }
-        PyErr_SetString(PyExc_SystemError, "could not locate global namespace");
-        return nullptr;
-    }
+// Build a python shadow class for the named C++ class or namespace.
 
 // force building of the class if a parent is specified (prevents loops)
     bool force = parent != 0;
@@ -507,14 +497,14 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
     }
 
 // retrieve C++ class (this verifies name, and is therefore done first)
-    const std::string& lookup = parent ? (scName+"::"+name) : name;
+    const std::string& lookup = scName.empty() ? name : (scName+"::"+name);
     Cppyy::TCppScope_t klass = Cppyy::GetScope(lookup);
 
     if (!(bool)klass && Cppyy::IsTemplate(lookup)) {
     // a "naked" templated class is requested: return callable proxy for instantiations
         PyObject* pytcl = PyObject_GetAttr(gThisModule, PyStrings::gTemplate);
         PyObject* pytemplate = PyObject_CallFunction(
-            pytcl, const_cast< char* >("s"), const_cast<char*>(lookup.c_str()));
+            pytcl, const_cast<char*>("s"), const_cast<char*>(lookup.c_str()));
         Py_DECREF(pytcl);
 
     // cache the result
@@ -541,6 +531,7 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
 // locate the parent, if necessary, for building the class if not specified
     std::string::size_type last = 0;
     if (!parent) {
+    // TODO: move this to TypeManip
     // need to deal with template paremeters that can have scopes themselves
         int tpl_open = 0;
         for (std::string::size_type pos = 0; pos < name.size(); ++pos) {
@@ -587,7 +578,7 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
         }
     }
 
-// use global scope if no inner scope found
+// use the module as a fake cope if no outer scope found
     if (!parent) {
         parent = gThisModule;
         Py_INCREF(parent);
@@ -600,7 +591,7 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
     PyObject* pyactual = CPyCppyy_PyUnicode_FromString(actual.c_str());
     PyObject* pyclass = force ? nullptr : PyObject_GetAttr(parent, pyactual);
 
-    bool bClassFound = pyclass ? true : false;
+    bool bClassFound = (bool)pyclass;
 
 // build if the class does not yet exist
     if (!pyclass) {
@@ -625,7 +616,6 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
                 PyObject_SetAttr(parent, pyactual, pyclass);
             }
         }
-
     }
 
 // give up, if not constructed
@@ -635,7 +625,7 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
     if (name != actual)       // exists, but typedef-ed: simply map reference
         PyObject_SetAttrString(parent, const_cast<char*>(name.c_str()), pyclass);
 
-// if this is a recycled class, we're done
+// if this was a recycled class, we're done
     if (bClassFound)
         return pyclass;
 

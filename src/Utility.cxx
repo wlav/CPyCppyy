@@ -415,7 +415,7 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& 
         std::string opname = "operator"; opname += op;
         gInterpreter->LoadFunctionTemplates(lc);
         gInterpreter->GetFunctionTemplate(lc->GetClassInfo(), opname.c_str());
-        TFunctionTemplate*f = lc->GetFunctionTemplate(opname.c_str());
+        TFunctionTemplate* f = lc->GetFunctionTemplate(opname.c_str());
         Cppyy::TCppMethod_t func =
             (Cppyy::TCppMethod_t)lc->GetMethodWithPrototype(opname.c_str(), rcname.c_str());
         if (func && f) pyfunc = new CPPMethod(Cppyy::GetScope(lcname), func);

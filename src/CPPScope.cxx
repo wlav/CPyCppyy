@@ -119,7 +119,6 @@ static PyObject* meta_repr(CPPScope* metatype)
 
 
 //= CPyCppyy type metaclass behavior =========================================
-static bool gbl_done = false;
 static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
 {
 // Called when CPPScope acts as a metaclass; since type_new always resets
@@ -130,22 +129,6 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
 // cppyy caches python classes)
     subtype->tp_alloc   = (allocfunc)meta_alloc;
     subtype->tp_dealloc = (destructor)meta_dealloc;
-
-    if (!gbl_done &&
-            strncmp(CPyCppyy_PyUnicode_AsString(PyTuple_GET_ITEM(args, 0)), "gbl", 3) == 0) {
-    // happens on startup, since we need to have some name for gbl for the
-    // class declaration to be valid
-        gbl_done = true;
-        PyObject* newargs = PyTuple_New(PyTuple_GET_SIZE(args));
-        PyTuple_SET_ITEM(newargs, 0, CPyCppyy_PyUnicode_FromString(""));
-        for (int i = 1; i < PyTuple_GET_SIZE(args); ++i) {
-            PyObject* item = PyTuple_GET_ITEM(args, i);
-            Py_INCREF(item);
-            PyTuple_SET_ITEM(newargs, i, item);
-        }
-        Py_DECREF(args);
-        args = newargs;
-    }
 
 // creation of the python-side class
     CPPScope* result = (CPPScope*)PyType_Type.tp_new(subtype, args, kwds);
@@ -174,102 +157,97 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
 }
 
 //----------------------------------------------------------------------------
-static PyObject* pt_getattro(PyObject* pyclass, PyObject* pyname)
+static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
 {
 // normal type-based lookup
     PyObject* attr = PyType_Type.tp_getattro(pyclass, pyname);
     if (attr || pyclass == (PyObject*)&CPPInstance_Type)
         return attr;
 
+    if (!CPyCppyy_PyUnicode_CheckExact(pyname) || !CPPScope_Check(pyclass))
+        return nullptr;
+
+// filter for python specials and lookup qualified class or function
+    std::string name = CPyCppyy_PyUnicode_AsString(pyname);
+    if (name.size() >= 2 && name.substr(0, 2) == "__")
+        return nullptr;
+
+
 // more elaborate search in case of failure (eg. for inner classes on demand)
-    if (CPyCppyy_PyUnicode_CheckExact(pyname)) {
-        PyObject *etype, *value, *trace;
-        PyErr_Fetch(&etype, &value, &trace);       // clears current exception
+    PyErr_Clear();
+    attr = CreateScopeProxy(name, pyclass);
 
-    // filter for python specials and lookup qualified class or function
-        std::string name = CPyCppyy_PyUnicode_AsString(pyname);
-        if (name.size() <= 2 || name.substr(0, 2) != "__") {
-            attr = CreateScopeProxy(name, pyclass);
+    if (!attr) {
+        PyErr_Clear();
+        Cppyy::TCppScope_t scope = ((CPPScope*)pyclass)->fCppType;
 
-        // namespaces may have seen updates in their list of global functions, which
-        // are available as "methods" even though they're not really that
-            if (!attr && CPPScope_Check(pyclass)) {
-                PyErr_Clear();
-                Cppyy::TCppScope_t scope = ((CPPScope*)pyclass)->fCppType;
-
-                if (Cppyy::IsNamespace(scope)) {
-                // tickle lazy lookup of functions
-                    if (!attr) {
-                        const std::vector<Cppyy::TCppIndex_t> methods =
-                            Cppyy::GetMethodIndicesFromName(scope, name);
-                        if (!methods.empty()) {
-                        // function exists, now collect overloads
-                            std::vector<PyCallable*> overloads;
-                            for (auto idx : methods) {
-                                overloads.push_back(
-                                    new CPPFunction(scope, Cppyy::GetMethod(scope, idx)));
-                            }
-
-                        // Note: can't re-use Utility::AddClass here, as there's the risk of
-                        // a recursive call. Simply add method directly, as we're guaranteed
-                        // that it doesn't exist yet.
-                            attr = (PyObject*)CPPOverload_New(name, overloads);
-                        }
-                    }
-
-                // tickle lazy lookup of data members
-                    if (!attr) {
-                        Cppyy::TCppIndex_t dmi = Cppyy::GetDatamemberIndex(scope, name);
-                        if (0 <= dmi) attr = (PyObject*)CPPDataMember_New(scope, dmi);
-                    }
+    // namespaces may have seen updates in their list of global functions, which
+    // are available as "methods" even though they're not really that
+        if (Cppyy::IsNamespace(scope)) {
+        // tickle lazy lookup of functions
+            const std::vector<Cppyy::TCppIndex_t> methods =
+                Cppyy::GetMethodIndicesFromName(scope, name);
+            if (!methods.empty()) {
+            // function exists, now collect overloads
+                std::vector<PyCallable*> overloads;
+                for (auto idx : methods) {
+                    overloads.push_back(
+                        new CPPFunction(scope, Cppyy::GetMethod(scope, idx)));
                 }
 
-            // function templates that have not been instantiated
-                if (!attr && Cppyy::ExistsMethodTemplate(scope, name)) {
-                    attr = (PyObject*)TemplateProxy_New(name, name, pyclass);
-                }
-
-            // enums types requested as type (rather than the constants)
-            // TODO: IsEnum should deal with the scope, using klass->GetListOfEnums()->FindObject()
-                if (!attr && Cppyy::IsEnum(Cppyy::GetScopedFinalName(scope)+"::"+name)) {
-                // special case; enum types; for now, pretend int
-                // TODO: although fine for C++98, this isn't correct in C++11
-                    Py_INCREF(&PyInt_Type);
-                    attr = (PyObject*)&PyInt_Type;
-                }
-
-                if (attr) {
-                    PyObject_SetAttr(pyclass, pyname, attr);
-                    Py_DECREF(attr);
-                    attr = PyType_Type.tp_getattro(pyclass, pyname);
-                }
+            // Note: can't re-use Utility::AddClass here, as there's the risk of
+            // a recursive call. Simply add method directly, as we're guaranteed
+            // that it doesn't exist yet.
+                attr = (PyObject*)CPPOverload_New(name, overloads);
             }
 
-            if (!attr && !CPPScope_Check(pyclass) /* at global or module-level only */) {
-                PyErr_Clear();
-            // get the attribute as a global
-                attr = GetCppGlobal(name /*, tag */);
-                if (CPPDataMember_Check(attr)) {
-                    PyObject_SetAttr((PyObject*)Py_TYPE(pyclass), pyname, attr);
-                    Py_DECREF(attr);
-                    attr = PyType_Type.tp_getattro(pyclass, pyname);
-                } else if (attr)
-                    PyObject_SetAttr(pyclass, pyname, attr);
+        // tickle lazy lookup of data members
+            if (!attr) {
+                Cppyy::TCppIndex_t dmi = Cppyy::GetDatamemberIndex(scope, name);
+                if (0 <= dmi) attr = (PyObject*)CPPDataMember_New(scope, dmi);
             }
-
         }
 
-    // if failed, then the original error is likely to be more instructive
-        if (!attr && etype)
-            PyErr_Restore(etype, value, trace);
-        else if (!attr) {
+    // function templates that have not been instantiated
+        if (!attr && Cppyy::ExistsMethodTemplate(scope, name)) {
+            attr = (PyObject*)TemplateProxy_New(name, name, pyclass);
+        }
+
+    // enums types requested as type (rather than the constants)
+    // TODO: IsEnum should deal with the scope, using klass->GetListOfEnums()->FindObject()
+        if (!attr && Cppyy::IsEnum(scope == Cppyy::gGlobalScope ? name : Cppyy::GetScopedFinalName(scope)+"::"+name)) {
+        // special case; enum types; for now, pretend int
+        // TODO: although fine for C++98, this isn't correct in C++11
+            Py_INCREF(&PyInt_Type);
+            attr = (PyObject*)&PyInt_Type;
+        }
+
+        if (!attr && scope == Cppyy::gGlobalScope /* at global level only */) {
+        // get the attribute as a global
+            attr = GetCppGlobal(name /*, tag */);
+        }
+
+        if (attr) {
+        // cache the result
+            if (CPPDataMember_Check(attr)) {
+                PyObject_SetAttr((PyObject*)Py_TYPE(pyclass), pyname, attr);
+                Py_DECREF(attr);
+                attr = PyType_Type.tp_getattro(pyclass, pyname);
+            } else
+                PyObject_SetAttr(pyclass, pyname, attr);
+
+        } else {
+        // not found: report error
             PyObject* sklass = PyObject_Str(pyclass);
-            PyErr_Format(PyExc_AttributeError, "%s has no attribute \'%s\'",
-                CPyCppyy_PyUnicode_AsString(sklass), CPyCppyy_PyUnicode_AsString(pyname));
-            Py_DECREF(sklass);
+            if (sklass) {
+                PyErr_Format(PyExc_AttributeError, "%s has no attribute \'%s\'",
+                    CPyCppyy_PyUnicode_AsString(sklass), CPyCppyy_PyUnicode_AsString(pyname));
+                Py_DECREF(sklass);
+            } else {
+                PyErr_Format(PyExc_AttributeError, "no such attribute \'%s\'",
+                    CPyCppyy_PyUnicode_AsString(pyname));
+            }
         }
-
-    // attribute is cached, if found
     }
 
     return attr;
@@ -378,7 +356,7 @@ PyTypeObject CPPScope_Type = {
     0,                             // tp_hash
     0,                             // tp_call
     0,                             // tp_str
-    (getattrofunc)pt_getattro,     // tp_getattro
+    (getattrofunc)meta_getattro,   // tp_getattro
     0,                             // tp_setattro
     0,                             // tp_as_buffer
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,     // tp_flags
