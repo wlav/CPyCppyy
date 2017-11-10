@@ -121,7 +121,7 @@ static PyMethodDef op_methods[] = {
     {(char*)"__destruct__", (PyCFunction)op_destruct, METH_NOARGS, nullptr},
     {(char*)"__dispatch__", (PyCFunction)op_dispatch, METH_VARARGS,
       (char*)"dispatch to selected overload"},
-    {(char*)"_get_smart_ptr", (PyCFunction)op_get_smart_ptr, METH_NOARGS,
+    {(char*)"__smartptr__", (PyCFunction)op_get_smart_ptr, METH_NOARGS,
       (char*)"get associated smart pointer, if any"},
     {(char*)nullptr, nullptr, 0, nullptr}
 };

@@ -636,7 +636,8 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
     Py_DECREF(parent);
 
     if (!Cppyy::IsNamespace(klass)) {
-        if (!Pythonize(pyclass, actual)) {     // add python-style features
+    // add python-style features to classes
+        if (!Pythonize(pyclass, Cppyy::GetScopedFinalName(klass))) {
             Py_XDECREF(pyclass);
             pyclass = nullptr;
         }

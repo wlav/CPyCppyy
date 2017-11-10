@@ -167,11 +167,11 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
     if (!CPyCppyy_PyUnicode_CheckExact(pyname) || !CPPScope_Check(pyclass))
         return nullptr;
 
-// filter for python specials and lookup qualified class or function
+// filter for python specials
     std::string name = CPyCppyy_PyUnicode_AsString(pyname);
-    if (name.size() >= 2 && name.substr(0, 2) == "__")
+    if (name.size() >= 2 && name.compare(0, 2, "__") == 0 &&
+            name.compare(name.size()-2, name.size(), "__") == 0)
         return nullptr;
-
 
 // more elaborate search in case of failure (eg. for inner classes on demand)
     PyErr_Clear();
