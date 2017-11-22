@@ -17,6 +17,8 @@
 #include <string>
 #include <vector>
 
+#include <iostream>
+
 
 namespace CPyCppyy {
 
@@ -292,11 +294,17 @@ static PyObject* meta_dir(CPPScope* klass)
     std::set<std::string> cppnames;
     Cppyy::GetAllCppNames(klass->fCppType, cppnames);
 
+// get rid of duplicates
+    for (Py_ssize_t i = 0; i < PyList_GET_SIZE(dirlist); ++i)
+        cppnames.insert(CPyCppyy_PyUnicode_AsString(PyList_GET_ITEM(dirlist, i)));
+
+    Py_DECREF(dirlist);
+    dirlist = PyList_New(cppnames.size());
+
 // copy total onto python list
+    Py_ssize_t i = 0;
     for (const auto& name : cppnames) {
-        PyObject* pyname = CPyCppyy_PyUnicode_FromString(name.c_str());
-        PyList_Append(dirlist, pyname);
-        Py_DECREF(pyname);
+        PyList_SET_ITEM(dirlist, i++, CPyCppyy_PyUnicode_FromString(name.c_str()));
     }
     return dirlist;
 }
