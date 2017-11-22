@@ -690,6 +690,7 @@ std::string CPyCppyy::Utility::ClassName(PyObject* pyobj)
     return clname;
 }
 
+
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::Utility::PyErr_Occurred_WithGIL()
 {
@@ -707,4 +708,46 @@ PyObject* CPyCppyy::Utility::PyErr_Occurred_WithGIL()
 #endif
 
     return e;
+}
+
+
+//----------------------------------------------------------------------------
+size_t CPyCppyy::Utility::FetchError(std::vector<PyError_t>& errors)
+{
+// Fetch the current python error, if any, and store it for future use.
+    if (PyErr_Occurred()) {
+        PyError_t e;
+        PyErr_Fetch(&e.fType, &e.fValue, &e.fTrace);
+        errors.push_back(e);
+    }
+    return errors.size();
+}
+
+//----------------------------------------------------------------------------
+void CPyCppyy::Utility::SetDetailedException(std::vector<PyError_t>& errors, PyObject* topmsg, PyObject* defexc)
+{
+// Use the collected exceptions to build up a detailed error log.
+    if (errors.empty()) {
+    // should not happen ...
+        Py_DECREF(topmsg);
+        return;
+    }
+
+// add the details to the topmsg
+    PyObject* separator = CPyCppyy_PyUnicode_FromString("\n  ");
+
+    PyObject* exc_type = nullptr;
+    for (auto& e : errors) {
+        if (!exc_type) exc_type = e.fType;
+        else if (exc_type != e.fType) exc_type = defexc;
+        CPyCppyy_PyUnicode_Append(&topmsg, separator);
+        CPyCppyy_PyUnicode_Append(&topmsg, e.fValue);
+    }
+
+    Py_DECREF(separator);
+    std::for_each(errors.begin(), errors.end(), PyError_t::Clear);
+
+// set the python exception
+    PyErr_SetObject(exc_type, topmsg);
+    Py_DECREF(topmsg);
 }

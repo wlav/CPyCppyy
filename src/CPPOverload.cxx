@@ -15,6 +15,7 @@
 #include "CallContext.h"
 #include "TPyException.h"
 #include "PyStrings.h"
+#include "Utility.h"
 
 // Standard
 #include <algorithm>
@@ -102,20 +103,6 @@ static inline bool IsPseudoFunc(CPPOverload* pymeth)
 {
     return (void*)pymeth == (void*)pymeth->fSelf;
 }
-
-// helper for collecting/maintaining exception data in overload selection
-struct PyError_t {
-    PyError_t() { fType = fValue = fTrace = 0; }
-
-    static void Clear(PyError_t& e)
-    {
-    // Remove exception information.
-        Py_XDECREF(e.fType); Py_XDECREF(e.fValue); Py_XDECREF(e.fTrace);
-        e.fType = e.fValue = e.fTrace = 0;
-    }
-
-    PyObject *fType, *fValue, *fTrace;
-};
 
 // helper to hash tuple (using tuple hash would cause self-tailing loops)
 static inline uint64_t HashSignature(PyObject* args)
@@ -603,14 +590,14 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
         mflags |= CallContext::kIsSorted;
     }
 
-    std::vector<PyError_t> errors;
+    std::vector<Utility::PyError_t> errors;
     for (int i = 0; i < nMethods; ++i) {
         PyObject* result = methods[i]->Call(pymeth->fSelf, args, kwds, &ctxt);
 
         if (result != 0) {
         // success: update the dispatch map for subsequent calls
             dispatchMap[sighash] = i;
-            std::for_each(errors.begin(), errors.end(), PyError_t::Clear);
+            std::for_each(errors.begin(), errors.end(), Utility::PyError_t::Clear);
             return HandleReturn(pymeth, oldSelf, result);
         }
 
@@ -622,34 +609,16 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
                 CPyCppyy_PyUnicode_AsString(sig), (char*)"nullptr result without error in mp_call");
             Py_DECREF(sig);
         }
-        PyError_t e;
-        PyErr_Fetch(&e.fType, &e.fValue, &e.fTrace);
-        errors.push_back(e);
+        Utility::FetchError(errors);
         ResetCallState(pymeth->fSelf, oldSelf, false);
     }
 
 // first summarize, then add details
-    PyObject* value = CPyCppyy_PyUnicode_FromFormat(
+    PyObject* topmsg = CPyCppyy_PyUnicode_FromFormat(
         "none of the %d overloaded methods succeeded. Full details:", nMethods);
-    PyObject* separator = CPyCppyy_PyUnicode_FromString("\n  ");
-
-// if this point is reached, none of the overloads succeeded: notify user
-    PyObject* exc_type = nullptr;
-    for (auto& e : errors) {
-        if (e.fType != PyExc_NotImplementedError) {
-            if (!exc_type) exc_type = e.fType;
-            else if (exc_type != e.fType) exc_type = PyExc_TypeError;
-        }
-        CPyCppyy_PyUnicode_Append(&value, separator);
-        CPyCppyy_PyUnicode_Append(&value, e.fValue);
-    }
-
-    Py_DECREF(separator);
-    std::for_each(errors.begin(), errors.end(), PyError_t::Clear);
+    SetDetailedException(errors, topmsg /* steals */, PyExc_TypeError /* default error */);
 
 // report failure
-    PyErr_SetObject(exc_type ? exc_type : PyExc_TypeError, value);
-    Py_DECREF(value);
     return nullptr;
 }
 

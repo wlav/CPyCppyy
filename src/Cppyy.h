@@ -2,6 +2,7 @@
 #define CPYCPPYY_CPPYY_H
 
 // Standard
+#include <set>
 #include <string>
 #include <vector>
 #include <stddef.h>
@@ -18,8 +19,6 @@ namespace Cppyy {
     typedef void*       TCppFuncAddr_t;
 
 // name to opaque C++ scope representation -----------------------------------
-    TCppIndex_t GetNumScopes(TCppScope_t parent);
-    std::string GetScopeName(TCppScope_t parent, TCppIndex_t iscope);
     std::string ResolveName(const std::string& cppitem_name);
     TCppScope_t GetScope(const std::string& scope_name);
     TCppType_t  GetActualClass(TCppType_t klass, TCppObject_t obj);
@@ -66,6 +65,8 @@ namespace Cppyy {
     bool IsTemplate(const std::string& template_name);
     bool IsAbstract(TCppType_t type);
     bool IsEnum(const std::string& type_name);
+
+    void GetAllCppNames(TCppScope_t scope, std::set<std::string>& cppnames);
 
 // class reflection information ----------------------------------------------
     std::string GetFinalName(TCppType_t type);

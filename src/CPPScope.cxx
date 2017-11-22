@@ -12,6 +12,8 @@
 
 // Standard
 #include <string.h>
+#include <algorithm>         // for for_each
+#include <set>
 #include <string>
 #include <vector>
 
@@ -174,11 +176,12 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
         return nullptr;
 
 // more elaborate search in case of failure (eg. for inner classes on demand)
-    PyErr_Clear();
+    std::vector<Utility::PyError_t> errors;
+    Utility::FetchError(errors);
     attr = CreateScopeProxy(name, pyclass);
 
     if (!attr) {
-        PyErr_Clear();
+        Utility::FetchError(errors);
         Cppyy::TCppScope_t scope = ((CPPScope*)pyclass)->fCppType;
 
     // namespaces may have seen updates in their list of global functions, which
@@ -237,17 +240,25 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
                 PyObject_SetAttr(pyclass, pyname, attr);
 
         } else {
-        // not found: report error
-            PyObject* sklass = PyObject_Str(pyclass);
-            if (sklass) {
-                PyErr_Format(PyExc_AttributeError, "%s has no attribute \'%s\'",
-                    CPyCppyy_PyUnicode_AsString(sklass), CPyCppyy_PyUnicode_AsString(pyname));
-                Py_DECREF(sklass);
-            } else {
-                PyErr_Format(PyExc_AttributeError, "no such attribute \'%s\'",
-                    CPyCppyy_PyUnicode_AsString(pyname));
-            }
+            Utility::FetchError(errors);
         }
+    }
+
+    if (attr)
+        std::for_each(errors.begin(), errors.end(), Utility::PyError_t::Clear);
+    else {
+    // not found: prepare a full error report
+        PyObject* topmsg = nullptr;
+        PyObject* sklass = PyObject_Str(pyclass);
+        if (sklass) {
+            topmsg = CPyCppyy_PyUnicode_FromFormat("%s has no attribute \'%s\'. Full details:",
+                CPyCppyy_PyUnicode_AsString(sklass), CPyCppyy_PyUnicode_AsString(pyname));
+            Py_DECREF(sklass);
+        } else {
+            topmsg = CPyCppyy_PyUnicode_FromFormat("no such attribute \'%s\'. Full details:",
+                CPyCppyy_PyUnicode_AsString(pyname));
+        }
+        SetDetailedException(errors, topmsg /* steals */, PyExc_AttributeError /* default error */);
     }
 
     return attr;
@@ -269,58 +280,25 @@ static PyObject* meta_dir(CPPScope* klass)
     if ((void*)klass == (void*)&CPPInstance_Type)
         return PyList_New(0);
 
-    PyObject* defdir = _generic_dir((PyObject*)klass);
+    if (!CPyCppyy::CPPScope_Check((PyObject*)klass)) {
+        PyErr_SetString(PyExc_TypeError, "C++ proxy scope expected");
+        return nullptr;
+    }
+
+    PyObject* dirlist = _generic_dir((PyObject*)klass);
     if (!IsNamespace(klass->fCppType))
-        return defdir;
+        return dirlist;
 
-    PyObject* alldir = PySet_New(defdir);
-    Py_DECREF(defdir);
+    std::set<std::string> cppnames;
+    Cppyy::GetAllCppNames(klass->fCppType, cppnames);
 
-// add (sub)scopes
-    for (TCppIndex_t i = 0; i < GetNumScopes(klass->fCppType); ++i) {
-        PyObject* entry = CPyCppyy_PyUnicode_FromString(
-                              GetScopeName(klass->fCppType, i).c_str());
-        PySet_Add(alldir, entry);
-        Py_DECREF(entry);
+// copy total onto python list
+    for (const auto& name : cppnames) {
+        PyObject* pyname = CPyCppyy_PyUnicode_FromString(name.c_str());
+        PyList_Append(dirlist, pyname);
+        Py_DECREF(pyname);
     }
-
-// add methods
-    for (TCppIndex_t i = 0; i < GetNumMethods(klass->fCppType); ++i) {
-        TCppMethod_t meth = GetMethod(klass->fCppType, i);
-        if (IsPublicMethod(meth)) {
-            const std::string& mname = GetMethodName(meth);
-            if (!mname.empty()) {
-                PyObject* entry = CPyCppyy_PyUnicode_FromString(
-                    CPyCppyy::Utility::MapOperatorName(mname, GetMethodNumArgs(meth)).c_str());
-                PySet_Add(alldir, entry);
-                Py_DECREF(entry);
-            }
-        }
-    }
-
-// add (global) data
-    for (TCppIndex_t i = 0; i < GetNumDatamembers(klass->fCppType); ++i) {
-        if (IsPublicData(klass->fCppType, i)) {
-            const std::string& dname = GetDatamemberName(klass->fCppType, i);
-            if (!dname.empty()) {
-                PyObject* entry = CPyCppyy_PyUnicode_FromString(dname.c_str());
-                PySet_Add(alldir, entry);
-                Py_DECREF(entry);
-            }
-        }
-    }
-
-#if PY_VERSION_HEX < 0x03000000
-// copy into python list
-    Py_ssize_t nentries = PySet_GET_SIZE(alldir);
-    PyObject* ll_alldir = PyList_New(nentries);
-    for (Py_ssize_t i = 0; i < nentries; ++i)
-        PyList_SET_ITEM(ll_alldir, i, PySet_Pop(alldir));
-    Py_DECREF(alldir);
-    return ll_alldir;
-#else
-    return alldir;
-#endif
+    return dirlist;
 }
 
 //-----------------------------------------------------------------------------

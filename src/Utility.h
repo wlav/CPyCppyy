@@ -58,6 +58,24 @@ std::string ClassName(PyObject* pyobj);
 // for threading: save call to PyErr_Occurred()
 PyObject* PyErr_Occurred_WithGIL();
 
+// helpers for collecting/maintaining python exception data
+struct PyError_t {
+    PyError_t() { fType = fValue = fTrace = 0; }
+
+    static void Clear(PyError_t& e)
+    {
+    // Remove exception information.
+        Py_XDECREF(e.fType); Py_XDECREF(e.fValue); Py_XDECREF(e.fTrace);
+        e.fType = e.fValue = e.fTrace = 0;
+    }
+
+    PyObject *fType, *fValue, *fTrace;
+};
+
+size_t FetchError(std::vector<PyError_t>&);
+void SetDetailedException(
+    std::vector<PyError_t>& errors /* clears */, PyObject* topmsg /* steals ref */, PyObject* defexc);
+
 } // namespace Utility
 
 } // namespace CPyCppyy
