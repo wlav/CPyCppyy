@@ -1,6 +1,6 @@
 // Bindings
 #include "CPyCppyy.h"
-#include "TPyBufferFactory.h"
+#include "LowLevelViews.h"
 
 // Standard
 #include <map>
@@ -159,8 +159,8 @@ CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(Int,    Int_t,    Long_t,   PyInt_FromLong, 
 CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(UInt,   UInt_t,   Long_t,   PyLong_FromLong, PyLong_AsLong)
 CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(Long,   Long_t,   Long_t,   PyInt_FromLong, PyInt_AsLong)
 CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(ULong,  ULong_t,  ULong_t,  PyLong_FromUnsignedLong, PyLong_AsUnsignedLong)
-CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(Float,  float,  double, PyFloat_FromDouble, PyFloat_AsDouble)
-CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(Double, double, double, PyFloat_FromDouble, PyFloat_AsDouble)
+CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(Float,  float,    double,   PyFloat_FromDouble, PyFloat_AsDouble)
+CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(Double, double,   double,   PyFloat_FromDouble, PyFloat_AsDouble)
 
 int cpycppyy_buffer_ass_subscript(PyObject* self, PyObject* idx, PyObject* val) {
 // Assign the given value 'val' to the item at index 'idx.'
@@ -249,16 +249,7 @@ PyMethodDef buffer_methods[] = {
 } // unnamed namespace
 
 
-//- instance handler ------------------------------------------------------------
-CPyCppyy::TPyBufferFactory* CPyCppyy::TPyBufferFactory::Instance()
-{
-// singleton factory
-    static TPyBufferFactory* fac = new TPyBufferFactory;
-    return fac;
-}
-
-
-//- constructor/destructor ---------------------------------------------------
+//- buffer object clobbering -------------------------------------------------
 #define CPYCPPYY_INSTALL_PYBUFFER_METHODS(name, type)                        \
     Py##name##Buffer_Type.tp_name            = (char*)"cppyy.Py"#name"Buffer";\
     Py##name##Buffer_Type.tp_base            = &PyBuffer_Type;               \
@@ -278,27 +269,28 @@ CPyCppyy::TPyBufferFactory* CPyCppyy::TPyBufferFactory::Instance()
     Py##name##Buffer_Type.tp_getset          = buffer_getset;                \
     PyType_Ready(&Py##name##Buffer_Type);
 
-CPyCppyy::TPyBufferFactory::TPyBufferFactory()
-{
-// construct python buffer types
-    CPYCPPYY_INSTALL_PYBUFFER_METHODS(Bool,   bool)
-    CPYCPPYY_INSTALL_PYBUFFER_METHODS(Short,  short)
-    CPYCPPYY_INSTALL_PYBUFFER_METHODS(UShort, unsigned short)
-    CPYCPPYY_INSTALL_PYBUFFER_METHODS(Int,    Int_t)
-    CPYCPPYY_INSTALL_PYBUFFER_METHODS(UInt,   UInt_t)
-    CPYCPPYY_INSTALL_PYBUFFER_METHODS(Long,   Long_t)
-    CPYCPPYY_INSTALL_PYBUFFER_METHODS(ULong,  ULong_t)
-    CPYCPPYY_INSTALL_PYBUFFER_METHODS(Float,  float)
-    CPYCPPYY_INSTALL_PYBUFFER_METHODS(Double, double)
-}
+namespace {
+
+class SetupBufferTypes {
+public:
+    SetupBufferTypes() {
+    // construct python buffer types
+        CPYCPPYY_INSTALL_PYBUFFER_METHODS(Bool,   bool)
+        CPYCPPYY_INSTALL_PYBUFFER_METHODS(Short,  short)
+        CPYCPPYY_INSTALL_PYBUFFER_METHODS(UShort, unsigned short)
+        CPYCPPYY_INSTALL_PYBUFFER_METHODS(Int,    Int_t)
+        CPYCPPYY_INSTALL_PYBUFFER_METHODS(UInt,   UInt_t)
+        CPYCPPYY_INSTALL_PYBUFFER_METHODS(Long,   Long_t)
+        CPYCPPYY_INSTALL_PYBUFFER_METHODS(ULong,  ULong_t)
+        CPYCPPYY_INSTALL_PYBUFFER_METHODS(Float,  float)
+        CPYCPPYY_INSTALL_PYBUFFER_METHODS(Double, double)
+    }
+} setupBufferTypes;
+
+} // unnamed namespace
 
 
 //---------------------------------------------------------------------------
-CPyCppyy::TPyBufferFactory::~TPyBufferFactory()
-{
-
-}
-
 constexpr inline const char* getBoolFormat()   { return "b"; }
 constexpr inline const char* getShortFormat()  { return "h"; }
 constexpr inline const char* getUShortFormat() { return "H"; }
@@ -319,25 +311,15 @@ constexpr inline const char* getDoubleFormat() { return "d"; }
 
 //- public members -----------------------------------------------------------
 #define CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY(name, type)                  \
-PyObject* CPyCppyy::TPyBufferFactory::PyBuffer_FromMemory(type* address, Py_ssize_t size)\
+PyObject* CPyCppyy::LowLevel_MemoryView(type* address, Py_ssize_t size)      \
 {                                                                            \
     size = size < 0 ? (address ? INT_MAX : 0) : size;                        \
     PyObject* buf = PyBuffer_FromReadWriteMemory((void*)address, size);      \
     if (buf) {                                                               \
         Py_INCREF((PyObject*)(void*)&Py##name##Buffer_Type);                 \
         buf->ob_type = &Py##name##Buffer_Type;                               \
-        PYBUFFER_SETITEMSIZE(buf,type);                                      \
+        PYBUFFER_SETITEMSIZE(buf, type);                                     \
         PYBUFFER_SETFORMAT(buf, name);                                       \
-    }                                                                        \
-    return buf;                                                              \
-}                                                                            \
-                                                                             \
-PyObject* CPyCppyy::TPyBufferFactory::PyBuffer_FromMemory(type* address, PyObject* scb)\
-{                                                                            \
-    PyObject* buf = PyBuffer_FromMemory(address, Py_ssize_t(0));             \
-    if (buf && PyCallable_Check(scb)) {                                      \
-        Py_INCREF(scb);                                                      \
-        gSizeCallbacks[buf] = scb;                                           \
     }                                                                        \
     return buf;                                                              \
 }

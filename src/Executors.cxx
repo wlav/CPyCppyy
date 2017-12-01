@@ -2,9 +2,9 @@
 #include "CPyCppyy.h"
 #include "DeclareExecutors.h"
 #include "CPPInstance.h"
+#include "LowLevelViews.h"
 #include "ProxyWrappers.h"
 #include "PyStrings.h"
-#include "TPyBufferFactory.h"
 #include "TypeManip.h"
 #include "Utility.h"
 
@@ -337,7 +337,7 @@ PyObject* CPyCppyy::VoidArrayExecutor::Execute(
         Py_INCREF(gNullPtrObject);
         return gNullPtrObject;
     }
-    return BufFac_t::Instance()->PyBuffer_FromMemory(result, sizeof(void*));
+    return LowLevel_MemoryView(result, sizeof(void*));
 }
 
 //----------------------------------------------------------------------------
@@ -345,7 +345,7 @@ PyObject* CPyCppyy::VoidArrayExecutor::Execute(
 PyObject* CPyCppyy::name##ArrayExecutor::Execute(                            \
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt) \
 {                                                                            \
-    return BufFac_t::Instance()->PyBuffer_FromMemory((type*)GILCallR(method, self, ctxt));\
+    return LowLevel_MemoryView((type*)GILCallR(method, self, ctxt));         \
 }
 
 CPPYY_IMPL_ARRAY_EXEC(Bool,   bool)

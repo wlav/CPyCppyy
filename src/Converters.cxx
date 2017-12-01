@@ -1,13 +1,12 @@
 // Bindings
 #include "CPyCppyy.h"
 #include "DeclareConverters.h"
+#include "CallContext.h"
 #include "CPPInstance.h"
+#include "CustomPyTypes.h"
+#include "LowLevelViews.h"
 #include "ProxyWrappers.h"
 #include "PyStrings.h"
-#include "TPyBufferFactory.h"
-#include "CallContext.h"
-#include "CustomPyTypes.h"
-#include "TPyBufferFactory.h"
 #include "TupleOfInstances.h"
 #include "TypeManip.h"
 #include "Utility.h"
@@ -737,7 +736,7 @@ PyObject* CPyCppyy::VoidArrayConverter::FromMemory(void* address)
         Py_INCREF(gNullPtrObject);
         return gNullPtrObject;
     }
-    return BufFac_t::Instance()->PyBuffer_FromMemory((long*)*(ptrdiff_t**)address, sizeof(void*));
+    return LowLevel_MemoryView((long*)*(ptrdiff_t**)address, sizeof(void*));
 }
 
 //----------------------------------------------------------------------------
@@ -789,7 +788,7 @@ bool CPyCppyy::name##ArrayRefConverter::SetArg(                              \
                                                                              \
 PyObject* CPyCppyy::name##ArrayConverter::FromMemory(void* address)          \
 {                                                                            \
-    return BufFac_t::Instance()->PyBuffer_FromMemory(*(type**)address, fSize * sizeof(type));\
+    return LowLevel_MemoryView(*(type**)address, fSize * sizeof(type));      \
 }                                                                            \
                                                                              \
 bool CPyCppyy::name##ArrayConverter::ToMemory(PyObject* value, void* address)\
@@ -1229,7 +1228,7 @@ PyObject* CPyCppyy::VoidPtrPtrConverter::FromMemory(void* address)
         Py_INCREF(gNullPtrObject);
         return gNullPtrObject;
     }
-    return BufFac_t::Instance()->PyBuffer_FromMemory((long*)*(ptrdiff_t**)address, sizeof(void*));
+    return LowLevel_MemoryView((long*)*(ptrdiff_t**)address, sizeof(void*));
 }
 
 //----------------------------------------------------------------------------
