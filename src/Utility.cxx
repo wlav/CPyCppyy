@@ -511,7 +511,29 @@ int CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, void*& b
     if (PyBytes_Check(pyobject))
         return 0;
 
-// attempt to retrieve pointer to buffer interface
+// new-style buffer interface
+    if (PyObject_CheckBuffer(pyobject)) {
+        Py_buffer bufinfo;
+        memset(&bufinfo, 0, sizeof(Py_buffer));
+        if (PyObject_GetBuffer(pyobject, &bufinfo, PyBUF_FORMAT) == 0) {
+            if (bufinfo.format[0] == tc ||
+                   (bufinfo.format[0] == '@' && bufinfo.format[1] == tc)) {
+                if (bufinfo.buf && bufinfo.ndim == 1 && bufinfo.shape) {
+                    buf = bufinfo.buf;
+                    int size = (int)bufinfo.shape[0];
+                    PyBuffer_Release(&bufinfo);
+                    return size;
+                }
+            } else {
+            // have buf, but format mismatch: bail out now, otherwise the old
+            // code will return based on itemsize match
+                return 0;                
+            }
+        }
+        PyErr_Clear();
+    }
+
+// attempt to retrieve pointer through old-style buffer interface
     PyBufferProcs* bufprocs = Py_TYPE(pyobject)->tp_as_buffer;
 
     PySequenceMethods* seqmeths = Py_TYPE(pyobject)->tp_as_sequence;

@@ -8,8 +8,6 @@
 #include <assert.h>
 #include <limits.h>
 
-#include <iostream>
-
 
 //= memoryview-like object ===================================================
 // This is largely setup just like Python builtin memory view objects, with
@@ -88,8 +86,12 @@ static PyObject* ll_reshape(CPyCppyy::LowLevelView* self, PyObject* shape)
         return nullptr;
 
     self->fBufInfo.len = nlen * self->fBufInfo.itemsize;
-    if (self->fBufInfo.ndim == 1)
+    if (self->fBufInfo.ndim == 1 && self->fBufInfo.shape)
         self->fBufInfo.shape[0] = nlen;
+    else {
+        PyErr_SetString(PyExc_TypeError, "unsupported buffer dimensions");
+        return nullptr;
+    }
 
     Py_RETURN_NONE;
 }
@@ -361,6 +363,11 @@ static Py_ssize_t is_multiindex(PyObject* key)
 static PyObject* ll_item(CPyCppyy::LowLevelView* self, Py_ssize_t index)
 {
     Py_buffer& view = self->fBufInfo;
+
+    if (!view.buf) {
+        PyErr_SetString(PyExc_ReferenceError, "attempt to access a null-pointer");
+        return nullptr;
+    }
 
     if (view.ndim == 0) {
         PyErr_SetString(PyExc_TypeError, "invalid indexing of 0-dim memory");
