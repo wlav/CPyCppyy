@@ -126,10 +126,14 @@ static PyTypeObject PyNullPtr_t_Type = {
 #endif
 };
 
+namespace {
+
 PyObject _CPyCppyy_NullPtrStruct = {
     _PyObject_EXTRA_INIT
     1, &PyNullPtr_t_Type
 };
+
+} // unnamed namespace
 
 namespace CPyCppyy {
     PyObject* gThisModule = nullptr;

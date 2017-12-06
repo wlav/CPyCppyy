@@ -50,13 +50,13 @@ static void ll_dealloc(CPyCppyy::LowLevelView* pyobj)
 
 
 //---------------------------------------------------------------------------
-PyObject* ll_typecode(CPyCppyy::LowLevelView* self, void*)
+static PyObject* ll_typecode(CPyCppyy::LowLevelView* self, void*)
 {
     return CPyCppyy_PyUnicode_FromString((char*)self->fBufInfo.format);
 }
 
 //---------------------------------------------------------------------------
-PyGetSetDef ll_getset[] = {
+static PyGetSetDef ll_getset[] = {
     {(char*)"format",   (getter)ll_typecode, nullptr, nullptr, nullptr},
     {(char*)"typecode", (getter)ll_typecode, nullptr, nullptr, nullptr},
     {(char*)nullptr, nullptr, nullptr, nullptr, nullptr }
@@ -97,7 +97,7 @@ static PyObject* ll_reshape(CPyCppyy::LowLevelView* self, PyObject* shape)
 }
 
 //---------------------------------------------------------------------------
-PyMethodDef ll_methods[] = {
+static PyMethodDef ll_methods[] = {
     {(char*)"reshape",     (PyCFunction)ll_reshape, METH_O,      nullptr},
     {(char*)nullptr, nullptr, 0, nullptr}
 };

@@ -265,7 +265,7 @@ CPYCPPYY_STUB(mul, *, PyStrings::gMul)
 CPYCPPYY_STUB(div, /, PyStrings::gDiv)
 
 //-----------------------------------------------------------------------------
-PyNumberMethods op_as_number = {
+static PyNumberMethods op_as_number = {
     (binaryfunc)op_add_stub,       // nb_add
     (binaryfunc)op_sub_stub,       // nb_subtract
     (binaryfunc)op_mul_stub,       // nb_multiply

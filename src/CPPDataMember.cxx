@@ -11,18 +11,16 @@
 
 namespace CPyCppyy {
 
-   enum ETypeDetails {
-      kNone           =    0,
-      kIsStaticData   =    1,
-      kIsEnumData     =    2,
-      kIsConstData    =    4,
-      kIsArrayType    =    8
-   };
-
-namespace {
+enum ETypeDetails {
+    kNone           =    0,
+    kIsStaticData   =    1,
+    kIsEnumData     =    2,
+    kIsConstData    =    4,
+    kIsArrayType    =    8
+};
 
 //= CPyCppyy data member as Python property behavior =========================
-PyObject* pp_get(CPPDataMember* pyprop, CPPInstance* pyobj, PyObject*)
+static PyObject* pp_get(CPPDataMember* pyprop, CPPInstance* pyobj, PyObject*)
 {
 // normal getter access
     void* address = pyprop->GetAddress(pyobj);
@@ -62,7 +60,7 @@ PyObject* pp_get(CPPDataMember* pyprop, CPPInstance* pyobj, PyObject*)
 }
 
 //-----------------------------------------------------------------------------
-int pp_set(CPPDataMember* pyprop, CPPInstance* pyobj, PyObject* value)
+static int pp_set(CPPDataMember* pyprop, CPPInstance* pyobj, PyObject* value)
 {
 /// Set the value of the C++ datum held.
     const int errret = -1;
@@ -95,7 +93,7 @@ int pp_set(CPPDataMember* pyprop, CPPInstance* pyobj, PyObject* value)
 }
 
 //= CPyCppyy data member construction/destruction ===========================
-CPPDataMember* pp_new(PyTypeObject* pytype, PyObject*, PyObject*)
+static CPPDataMember* pp_new(PyTypeObject* pytype, PyObject*, PyObject*)
 {
 // Create and initialize a new property descriptor.
     CPPDataMember* pyprop = (CPPDataMember*)pytype->tp_alloc(pytype, 0);
@@ -110,7 +108,7 @@ CPPDataMember* pp_new(PyTypeObject* pytype, PyObject*, PyObject*)
 }
 
 //----------------------------------------------------------------------------
-void pp_dealloc(CPPDataMember* pyprop)
+static void pp_dealloc(CPPDataMember* pyprop)
 {
 // Deallocate memory held by this descriptor.
     using namespace std;
@@ -119,8 +117,6 @@ void pp_dealloc(CPPDataMember* pyprop)
 
     Py_TYPE(pyprop)->tp_free((PyObject*)pyprop);
 }
-
-} // unnamed namespace
 
 
 //= CPyCppyy data member type ================================================

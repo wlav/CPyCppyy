@@ -30,7 +30,7 @@ static Py_ssize_t AlwaysNullLength(PyObject*)
 }
 
 //-----------------------------------------------------------------------------
-PyMappingMethods CPyCppyy_NoneType_mapping = {
+static PyMappingMethods CPyCppyy_NoneType_mapping = {
     AlwaysNullLength,
     (binaryfunc)              0,
     (objobjargproc)           0
@@ -43,6 +43,8 @@ PyMappingMethods CPyCppyy_NoneType_mapping = {
 
 
 //-----------------------------------------------------------------------------
+namespace {
+
 struct InitCPyCppyy_NoneType_t {
     InitCPyCppyy_NoneType_t() {
     // create a CPyCppyy NoneType (for references that went dodo) from NoneType
@@ -87,6 +89,8 @@ struct InitCPyCppyy_NoneType_t {
 #endif
     }
 };
+
+} // unnamed namespace
 
 
 //- ctor/dtor ----------------------------------------------------------------
