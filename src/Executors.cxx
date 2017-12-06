@@ -337,7 +337,7 @@ PyObject* CPyCppyy::VoidArrayExecutor::Execute(
         Py_INCREF(gNullPtrObject);
         return gNullPtrObject;
     }
-    return LowLevel_MemoryView(result, sizeof(void*));
+    return CreatePointerView(result);
 }
 
 //----------------------------------------------------------------------------
@@ -345,7 +345,7 @@ PyObject* CPyCppyy::VoidArrayExecutor::Execute(
 PyObject* CPyCppyy::name##ArrayExecutor::Execute(                            \
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt) \
 {                                                                            \
-    return LowLevel_MemoryView((type*)GILCallR(method, self, ctxt));         \
+    return CreateLowLevelView((type*)GILCallR(method, self, ctxt));          \
 }
 
 CPPYY_IMPL_ARRAY_EXEC(Bool,   bool)

@@ -736,7 +736,7 @@ PyObject* CPyCppyy::VoidArrayConverter::FromMemory(void* address)
         Py_INCREF(gNullPtrObject);
         return gNullPtrObject;
     }
-    return LowLevel_MemoryView((long*)*(ptrdiff_t**)address, sizeof(void*));
+    return CreatePointerView(*(ptrdiff_t**)address);
 }
 
 //----------------------------------------------------------------------------
@@ -788,7 +788,8 @@ bool CPyCppyy::name##ArrayRefConverter::SetArg(                              \
                                                                              \
 PyObject* CPyCppyy::name##ArrayConverter::FromMemory(void* address)          \
 {                                                                            \
-    return LowLevel_MemoryView(*(type**)address, fSize * sizeof(type));      \
+    Py_ssize_t shape[] = {1, fSize};                                         \
+    return CreateLowLevelView(*(type**)address, shape);                      \
 }                                                                            \
                                                                              \
 bool CPyCppyy::name##ArrayConverter::ToMemory(PyObject* value, void* address)\
@@ -1228,7 +1229,7 @@ PyObject* CPyCppyy::VoidPtrPtrConverter::FromMemory(void* address)
         Py_INCREF(gNullPtrObject);
         return gNullPtrObject;
     }
-    return LowLevel_MemoryView((long*)*(ptrdiff_t**)address, sizeof(void*));
+    return CreatePointerView(*(ptrdiff_t**)address);
 }
 
 //----------------------------------------------------------------------------
@@ -1581,7 +1582,7 @@ namespace {
         NFp_t("const int&",                &CreateConstIntRefConverter       ),
         NFp_t("unsigned int",              &CreateUIntConverter              ),
         NFp_t("const unsigned int&",       &CreateConstUIntRefConverter      ),
-        NFp_t("internal_enum_type_t",      &CreateIntConverter /* yes: Int */),
+        NFp_t("internal_enum_type_t",      &CreateIntConverter /* yes: int */),
         NFp_t("long",                      &CreateLongConverter              ),
         NFp_t("long&",                     &CreateLongRefConverter           ),
         NFp_t("const long&",               &CreateConstLongRefConverter      ),

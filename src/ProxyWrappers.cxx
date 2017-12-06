@@ -740,7 +740,7 @@ PyObject* CPyCppyy::BindCppObjectNoCast(
 
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::BindCppObject(
-        Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, bool isRef)
+    Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, bool isRef)
 {
 // if the object is a null pointer, return a typed one (as needed for overloading)
     if (!address)

@@ -1,182 +1,72 @@
 // Bindings
 #include "CPyCppyy.h"
 #include "LowLevelViews.h"
+#include "Converters.h"
 
 // Standard
 #include <map>
+#include <assert.h>
+#include <limits.h>
 
-#if PY_VERSION_HEX >= 0x03000000
-static PyObject* PyBuffer_FromReadWriteMemory(void* ptr, int size) {
-#if PY_VERSION_HEX > 0x03000000
-    if (!ptr) {         // p3 will set an exception if nullptr, just rely on size == 0
-        static long dummy[1];
-        ptr = dummy;
-        size = 0;
-    }
-#endif
-
-    Py_buffer bufinfo = {ptr, nullptr, size, 1, 0, 1, nullptr, nullptr, nullptr, nullptr,
-#if PY_VERSION_HEX < 0x03030000
-        {0, 0},
-#endif
-        nullptr};
-    return PyMemoryView_FromBuffer(&bufinfo);
-}
-#endif
+#include <iostream>
 
 
-//- data ---------------------------------------------------------------------
-namespace {
+//= memoryview-like object ===================================================
+// This is largely setup just like Python builtin memory view objects, with
+// the exceptions that there is no need of a "base" object (it views on C++
+// memory, not a Python object with a buffer interface), it uses the CPyCppyy
+// converters, and typed results and assignments are supported. Code reused
+// under PSF License Version 2.
 
-// top of buffer (rest of buffer object has changed across python versions)
-struct PyBufferTop_t {
+namespace CPyCppyy {
+
+class LowLevelView {
+public:
     PyObject_HEAD
-    PyObject*  fBase;            // b_base in python
-    void*      fPtr;             // b_ptr in python
-    Py_ssize_t fSize;            // b_size in python
-    Py_ssize_t fItemSize;        // b_itemsize in python
+    Py_buffer   fBufInfo;
+    Converter*  fConverter;
 };
 
-// callable cache
-std::map< PyObject*, PyObject* > gSizeCallbacks;
+} // namespace CPyCppyy
 
-// create buffer types and copy methods to be adjusted
-#define CPYCPPYY_PREPARE_PYBUFFER_TYPE(name)                                 \
-    PyTypeObject      Py##name##Buffer_Type;                                 \
-    PySequenceMethods Py##name##Buffer_SeqMethods = *(PyBuffer_Type.tp_as_sequence);\
-    PyMappingMethods  Py##name##Buffer_MapMethods;
-
-CPYCPPYY_PREPARE_PYBUFFER_TYPE(Bool)
-CPYCPPYY_PREPARE_PYBUFFER_TYPE(Short)
-CPYCPPYY_PREPARE_PYBUFFER_TYPE(UShort)
-CPYCPPYY_PREPARE_PYBUFFER_TYPE(Int)
-CPYCPPYY_PREPARE_PYBUFFER_TYPE(UInt)
-CPYCPPYY_PREPARE_PYBUFFER_TYPE(Long)
-CPYCPPYY_PREPARE_PYBUFFER_TYPE(ULong)
-CPYCPPYY_PREPARE_PYBUFFER_TYPE(Float)
-CPYCPPYY_PREPARE_PYBUFFER_TYPE(Double)
-
-// implement get, str, and length functions
-Py_ssize_t buffer_length(PyObject* self)
+//= CPyCppyy low level view construction/destruction =========================
+static CPyCppyy::LowLevelView* ll_new(PyTypeObject* subtype, PyObject*, PyObject*)
 {
-// Retrieve the (type-strided) size of the the buffer; may be a guess.
-#if PY_VERSION_HEX < 0x03000000
-    Py_ssize_t nlen = ((PyBufferTop_t*)self)->fSize;
-    Py_ssize_t item = ((PyBufferTop_t*)self)->fItemSize;
-#else
-    Py_buffer* bufinfo = PyMemoryView_GET_BUFFER(self);
-    Py_ssize_t nlen = bufinfo->len;
-    Py_ssize_t item = bufinfo->itemsize;
-#endif
-    if (nlen != INT_MAX)     // INT_MAX is the default, i.e. unknown actual length
-        return nlen/item;
+// Create a new low level ptr type
+    CPyCppyy::LowLevelView* pyobj = (CPyCppyy::LowLevelView*)subtype->tp_alloc(subtype, 0);
+    if (!pyobj) PyErr_Print();
+    memset(&pyobj->fBufInfo, 0, sizeof(Py_buffer));
+    pyobj->fConverter = nullptr;
 
-    std::map<PyObject*, PyObject*>::iterator iscbp = gSizeCallbacks.find(self);
-    if (iscbp != gSizeCallbacks.end()) {
-        PyObject* pylen = PyObject_CallObject(iscbp->second, nullptr);
-        Py_ssize_t nlen2 = PyInt_AsSsize_t(pylen);
-        Py_DECREF(pylen);
-
-        if (nlen2 == (Py_ssize_t)-1 && PyErr_Occurred())
-            PyErr_Clear();
-        else
-            return nlen2;
-    }
-
-    return nlen;            // return nlen after all, since have nothing better
-}
-
-//---------------------------------------------------------------------------
-const char* buffer_get(PyObject* self, int idx)
-{
-// Retrieve the buffer as a linear char array.
-    if (idx < 0 || idx >= buffer_length(self)) {
-        PyErr_SetString(PyExc_IndexError, "buffer index out of range");
-        return nullptr;
-    }
-
-#if PY_VERSION_HEX < 0x02050000
-    const char* buf = 0;
-#else
-    char* buf = 0;      // interface change in 2.5, no other way to handle it
-#endif
-#if PY_VERSION_HEX < 0x03000000
-    (*(PyBuffer_Type.tp_as_buffer->bf_getcharbuffer))(self, 0, &buf);
-#else
-    Py_buffer bufinfo;
-    (*(PyBuffer_Type.tp_as_buffer->bf_getbuffer))(self, &bufinfo, PyBUF_SIMPLE);
-    buf = (char*)bufinfo.buf;
-#endif
-
-    if (!buf)
-        PyErr_SetString(PyExc_IndexError, "attempt to index a null-buffer");
-
-    return buf;
+    return pyobj;
 }
 
 //----------------------------------------------------------------------------
-#define CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(name, type, stype, F1, F2)       \
-PyObject* name##_buffer_str(PyObject* self)                                  \
-{                                                                            \
-    Py_ssize_t l = buffer_length(self);                                      \
-    return CPyCppyy_PyUnicode_FromFormat("<"#type" buffer, size " PY_SSIZE_T_FORMAT ">", l);\
-}                                                                            \
-                                                                             \
-PyObject* name##_buffer_item(PyObject* self, Py_ssize_t idx) {               \
-    const char* buf = buffer_get(self, idx);                                 \
-    if (buf)                                                                 \
-        return F1((stype)*((type*)buf + idx));                               \
-    return nullptr;                                                          \
-}                                                                            \
-                                                                             \
-int name##_buffer_ass_item(PyObject* self, Py_ssize_t idx, PyObject* val) {  \
-    const char* buf = buffer_get(self, idx);                                 \
-    if (!buf)                                                                \
-        return -1;                                                           \
-                                                                             \
-    type value = F2(val);                                                    \
-    if (value == (type)-1 && PyErr_Occurred())                               \
-        return -1;                                                           \
-                                                                             \
-    *((type*)buf+idx) = (type)value;                                         \
-    return 0;                                                                \
-}                                                                            \
-                                                                             \
-PyObject* name##_buffer_subscript(PyObject* self, PyObject* item) {          \
-    if (PyIndex_Check(item)) {                                               \
-        Py_ssize_t idx = PyNumber_AsSsize_t(item, PyExc_IndexError);         \
-        if (idx == -1 && PyErr_Occurred())                                   \
-            return nullptr;                                                  \
-        return name##_buffer_item(self, idx);                                \
-    }                                                                        \
-    return nullptr;                                                          \
+static void ll_dealloc(CPyCppyy::LowLevelView* pyobj)
+{
+// Destruction requires the deletion of the converter (if any)
+    PyMem_Free(pyobj->fBufInfo.strides);
+    delete pyobj->fConverter;
+    Py_TYPE(pyobj)->tp_free((PyObject*)pyobj);
 }
 
-CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(Bool,   bool,     Long_t,   PyBool_FromLong, PyInt_AsLong)
-CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(Short,  short,    Long_t,   PyInt_FromLong, PyInt_AsLong)
-CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(UShort, unsigned short, Long_t,   PyInt_FromLong, PyInt_AsLong)
-CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(Int,    Int_t,    Long_t,   PyInt_FromLong, PyInt_AsLong)
-CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(UInt,   UInt_t,   Long_t,   PyLong_FromLong, PyLong_AsLong)
-CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(Long,   Long_t,   Long_t,   PyInt_FromLong, PyInt_AsLong)
-CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(ULong,  ULong_t,  ULong_t,  PyLong_FromUnsignedLong, PyLong_AsUnsignedLong)
-CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(Float,  float,    double,   PyFloat_FromDouble, PyFloat_AsDouble)
-CPYCPPYY_IMPLEMENT_PYBUFFER_METHODS(Double, double,   double,   PyFloat_FromDouble, PyFloat_AsDouble)
 
-int cpycppyy_buffer_ass_subscript(PyObject* self, PyObject* idx, PyObject* val) {
-// Assign the given value 'val' to the item at index 'idx.'
-    if (PyIndex_Check(idx)) {
-        Py_ssize_t i = PyNumber_AsSsize_t(idx, PyExc_IndexError);
-        if (i == -1 && PyErr_Occurred())
-            return -1;
-        return Py_TYPE(self)->tp_as_sequence->sq_ass_item(self, i, val);
-    } else {
-        PyErr_SetString(PyExc_TypeError, "buffer indices must be integers");
-        return -1;
-    }
+//---------------------------------------------------------------------------
+PyObject* ll_typecode(CPyCppyy::LowLevelView* self, void*)
+{
+    return CPyCppyy_PyUnicode_FromString((char*)self->fBufInfo.format);
 }
 
 //---------------------------------------------------------------------------
-PyObject* buffer_reshape(PyObject* self, PyObject* shape)
+PyGetSetDef ll_getset[] = {
+    {(char*)"format",   (getter)ll_typecode, nullptr, nullptr, nullptr},
+    {(char*)"typecode", (getter)ll_typecode, nullptr, nullptr, nullptr},
+    {(char*)nullptr, nullptr, nullptr, nullptr, nullptr }
+};
+
+
+//---------------------------------------------------------------------------
+static PyObject* ll_reshape(CPyCppyy::LowLevelView* self, PyObject* shape)
 {
 // Allow the user to fix up the actual (type-strided) size of the buffer.
     if (!PyTuple_Check(shape) || PyTuple_GET_SIZE(shape) != 1) {
@@ -197,139 +87,730 @@ PyObject* buffer_reshape(PyObject* self, PyObject* shape)
     if (nlen == -1 && PyErr_Occurred())
         return nullptr;
 
-#if PY_VERSION_HEX < 0x03000000
-    ((PyBufferTop_t*)self)->fSize = nlen * ((PyBufferTop_t*)self)->fItemSize;
-#else
-    PyMemoryView_GET_BUFFER(self)->len = nlen * PyMemoryView_GET_BUFFER(self)->itemsize;
-#endif 
+    self->fBufInfo.len = nlen * self->fBufInfo.itemsize;
+    if (self->fBufInfo.ndim == 1)
+        self->fBufInfo.shape[0] = nlen;
 
     Py_RETURN_NONE;
 }
 
 //---------------------------------------------------------------------------
-PyObject* buf_typecode(PyObject* pyobject, void*)
-{
-// return a typecode in the style of module array
-    if (PyObject_TypeCheck(pyobject, &PyBoolBuffer_Type))
-        return CPyCppyy_PyUnicode_FromString((char*)"b");
-    else if (PyObject_TypeCheck(pyobject, &PyShortBuffer_Type))
-        return CPyCppyy_PyUnicode_FromString((char*)"h");
-    else if (PyObject_TypeCheck(pyobject, &PyUShortBuffer_Type))
-        return CPyCppyy_PyUnicode_FromString((char*)"H");
-    else if (PyObject_TypeCheck(pyobject, &PyIntBuffer_Type))
-        return CPyCppyy_PyUnicode_FromString((char*)"i");
-    else if (PyObject_TypeCheck(pyobject, &PyUIntBuffer_Type))
-        return CPyCppyy_PyUnicode_FromString((char*)"I");
-    else if (PyObject_TypeCheck(pyobject, &PyLongBuffer_Type))
-        return CPyCppyy_PyUnicode_FromString((char*)"l");
-    else if (PyObject_TypeCheck(pyobject, &PyULongBuffer_Type))
-        return CPyCppyy_PyUnicode_FromString((char*)"L");
-    else if (PyObject_TypeCheck(pyobject, &PyFloatBuffer_Type))
-        return CPyCppyy_PyUnicode_FromString((char*)"f");
-    else if (PyObject_TypeCheck(pyobject, &PyDoubleBuffer_Type))
-        return CPyCppyy_PyUnicode_FromString((char*)"d");
-
-    PyErr_SetString(PyExc_TypeError, "received unknown buffer object");
-    return nullptr;
-}
-
-
-//---------------------------------------------------------------------------
-PyGetSetDef buffer_getset[] = {
-    {(char*)"typecode", (getter)buf_typecode, nullptr, nullptr, nullptr},
-    {(char*)nullptr, nullptr, nullptr, nullptr, nullptr }
-};
-
-//---------------------------------------------------------------------------
-PyMethodDef buffer_methods[] = {
-    {(char*)"reshape", (PyCFunction)buffer_reshape, METH_O, nullptr},
+PyMethodDef ll_methods[] = {
+    {(char*)"reshape",     (PyCFunction)ll_reshape, METH_O,      nullptr},
     {(char*)nullptr, nullptr, 0, nullptr}
 };
 
-} // unnamed namespace
+
+//- Copy memoryview buffers =================================================
+
+// The functions in this section take a source and a destination buffer
+// with the same logical structure: format, itemsize, ndim and shape
+// are identical, with ndim > 0.
+
+// Check for the presence of suboffsets in the first dimension.
+#define HAVE_PTR(suboffsets, dim) (suboffsets && suboffsets[dim] >= 0)
+// Adjust ptr if suboffsets are present.
+#define ADJUST_PTR(ptr, suboffsets, dim) \
+    (HAVE_PTR(suboffsets, dim) ? *((char**)ptr) + suboffsets[dim] : ptr)
+
+// Assumptions: ndim >= 1. The macro tests for a corner case that should
+// perhaps be explicitly forbidden in the PEP.
+#define HAVE_SUBOFFSETS_IN_LAST_DIM(view) \
+    (view->suboffsets && view->suboffsets[dest->ndim-1] >= 0)
+
+//---------------------------------------------------------------------------
+static inline int last_dim_is_contiguous(const Py_buffer *dest, const Py_buffer *src)
+{
+    assert(dest->ndim > 0 && src->ndim > 0);
+    return (!HAVE_SUBOFFSETS_IN_LAST_DIM(dest) &&
+            !HAVE_SUBOFFSETS_IN_LAST_DIM(src) &&
+            dest->strides[dest->ndim-1] == dest->itemsize &&
+            src->strides[src->ndim-1] == src->itemsize);
+}
+
+//---------------------------------------------------------------------------
+static inline bool equiv_shape(const Py_buffer* dest, const Py_buffer* src)
+{
+// Two shapes are equivalent if they are either equal or identical up
+// to a zero element at the same position. For example, in NumPy arrays
+// the shapes [1, 0, 5] and [1, 0, 7] are equivalent.
+    if (dest->ndim != src->ndim)
+        return false;
+
+    for (int i = 0; i < dest->ndim; i++) {
+        if (dest->shape[i] != src->shape[i])
+            return 0;
+        if (dest->shape[i] == 0)
+            break;
+    }
+
+    return true;
+}
+
+//---------------------------------------------------------------------------
+static bool equiv_structure(const Py_buffer* dest, const Py_buffer* src)
+{
+// Check that the logical structure of the destination and source buffers
+// is identical.
+    if (strcmp(dest->format, src->format) != 0 || dest->itemsize != src->itemsize ||
+        !equiv_shape(dest, src)) {
+        PyErr_SetString(PyExc_ValueError,
+            "low level pointer assignment: lvalue and rvalue have different structures");
+        return false;
+    }
+
+    return true;
+}
+
+//---------------------------------------------------------------------------
+static void copy_base(const Py_ssize_t* shape, Py_ssize_t itemsize,
+    char* dptr, const Py_ssize_t* dstrides, const Py_ssize_t* dsuboffsets,
+    char* sptr, const Py_ssize_t* sstrides, const Py_ssize_t* ssuboffsets,
+    char* mem)
+{
+// Base case for recursive multi-dimensional copying. Contiguous arrays are
+// copied with very little overhead. Assumptions: ndim == 1, mem == nullptr or
+// sizeof(mem) == shape[0] * itemsize.
+    if (!mem) { // contiguous
+        Py_ssize_t size = shape[0] * itemsize;
+        if (dptr + size < sptr || sptr + size < dptr)
+            memcpy(dptr, sptr, size); // no overlapping
+        else
+            memmove(dptr, sptr, size);
+    }
+    else {
+        char *p;
+        Py_ssize_t i;
+        for (i=0, p=mem; i < shape[0]; p+=itemsize, sptr+=sstrides[0], i++) {
+            char *xsptr = ADJUST_PTR(sptr, ssuboffsets, 0);
+            memcpy(p, xsptr, itemsize);
+        }
+        for (i=0, p=mem; i < shape[0]; p+=itemsize, dptr+=dstrides[0], i++) {
+            char *xdptr = ADJUST_PTR(dptr, dsuboffsets, 0);
+            memcpy(xdptr, p, itemsize);
+        }
+    }
+
+}
+
+//---------------------------------------------------------------------------
+static int copy_single(Py_buffer* dest, Py_buffer* src)
+{
+// Faster copying of one-dimensional arrays.
+    char* mem = nullptr;
+
+    assert(dest->ndim == 1);
+
+    if (!equiv_structure(dest, src))
+        return -1;
+
+    if (!last_dim_is_contiguous(dest, src)) {
+        mem = (char*)PyMem_Malloc(dest->shape[0] * dest->itemsize);
+        if (!mem) {
+            PyErr_NoMemory();
+            return -1;
+        }
+    }
+
+    copy_base(dest->shape, dest->itemsize,
+              (char*)dest->buf, dest->strides, dest->suboffsets,
+              (char*)src->buf, src->strides, src->suboffsets,
+              mem);
+
+    if (mem)
+        PyMem_Free(mem);
+
+    return 0;
+}
 
 
-//- buffer object clobbering -------------------------------------------------
-#define CPYCPPYY_INSTALL_PYBUFFER_METHODS(name, type)                        \
-    Py##name##Buffer_Type.tp_name            = (char*)"cppyy.Py"#name"Buffer";\
-    Py##name##Buffer_Type.tp_base            = &PyBuffer_Type;               \
-    Py##name##Buffer_Type.tp_as_buffer       = PyBuffer_Type.tp_as_buffer;   \
-    Py##name##Buffer_SeqMethods.sq_item      = (ssizeargfunc)name##_buffer_item;\
-    Py##name##Buffer_SeqMethods.sq_ass_item  = (ssizeobjargproc)name##_buffer_ass_item;\
-    Py##name##Buffer_SeqMethods.sq_length    = (lenfunc)buffer_length;       \
-    Py##name##Buffer_Type.tp_as_sequence     = &Py##name##Buffer_SeqMethods; \
-    if (PyBuffer_Type.tp_as_mapping) { /* p2.6 and later */                  \
-        Py##name##Buffer_MapMethods.mp_length    = (lenfunc)buffer_length;   \
-        Py##name##Buffer_MapMethods.mp_subscript = (binaryfunc)name##_buffer_subscript;\
-        Py##name##Buffer_MapMethods.mp_ass_subscript = (objobjargproc)cpycppyy_buffer_ass_subscript;\
-        Py##name##Buffer_Type.tp_as_mapping      = &Py##name##Buffer_MapMethods;\
-    }                                                                        \
-    Py##name##Buffer_Type.tp_str             = (reprfunc)name##_buffer_str;  \
-    Py##name##Buffer_Type.tp_methods         = buffer_methods;               \
-    Py##name##Buffer_Type.tp_getset          = buffer_getset;                \
-    PyType_Ready(&Py##name##Buffer_Type);
+//- Indexing and slicing ----------------------------------------------------
+static char* lookup_dimension(Py_buffer& view, char* ptr, int dim, Py_ssize_t index)
+{
+    Py_ssize_t nitems; // items in the given dimension
+
+    assert(view.shape);
+    assert(view.strides);
+
+    nitems = view.shape[dim];
+    if (index < 0)
+        index += nitems;
+
+    if (index < 0 || index >= nitems) {
+        PyErr_Format(PyExc_IndexError,
+            "index out of bounds on dimension %d", dim + 1);
+        return nullptr;
+    }
+
+    ptr += view.strides[dim] * index;
+    ptr = ADJUST_PTR(ptr, view.suboffsets, dim);
+
+    return ptr;
+}
+
+// Get the pointer to the item at index.
+//---------------------------------------------------------------------------
+static inline void* ptr_from_index(Py_buffer& view, Py_ssize_t index)
+{
+    return lookup_dimension(view, (char*)view.buf, 0, index);
+}
+
+// Get the pointer to the item at tuple.
+//---------------------------------------------------------------------------
+static void* ptr_from_tuple(Py_buffer& view, PyObject* tup)
+{
+    Py_ssize_t nindices = PyTuple_GET_SIZE(tup);
+    if (nindices > view.ndim) {
+        PyErr_Format(PyExc_TypeError,
+            "cannot index %d-dimension view with %zd-element tuple", view.ndim, nindices);
+        return nullptr;
+    }
+
+    char* ptr = (char*)view.buf;
+    for (Py_ssize_t dim = 0; dim < nindices; dim++) {
+        Py_ssize_t index;
+        index = PyNumber_AsSsize_t(PyTuple_GET_ITEM(tup, dim),
+                                   PyExc_IndexError);
+        if (index == -1 && PyErr_Occurred())
+            return nullptr;
+        ptr = lookup_dimension(view, ptr, (int)dim, index);
+        if (!ptr)
+            return nullptr;
+    }
+    return ptr;
+}
+
+
+//= mapping methods =========================================================
+static Py_ssize_t ll_length(CPyCppyy::LowLevelView* self)
+{
+    if (!self->fBufInfo.buf)
+        return 0;
+    return self->fBufInfo.ndim == 0 ? 1 : self->fBufInfo.shape[0];
+}
+
+//---------------------------------------------------------------------------
+static inline int init_slice(Py_buffer* base, PyObject* key, int dim)
+{
+    Py_ssize_t start, stop, step, slicelength;
+
+    if (PySlice_GetIndicesEx(
+#if PY_VERSION_HEX < 0x03000000
+        (PySliceObject*)
+#endif
+            key, base->shape[dim], &start, &stop, &step, &slicelength) < 0) {
+        return -1;
+    }
+
+    if (!base->suboffsets || dim == 0) {
+    adjust_buf:
+        base->buf = (char *)base->buf + base->strides[dim] * start;
+    }
+    else {
+        Py_ssize_t n = dim-1;
+        while (n >= 0 && base->suboffsets[n] < 0)
+            n--;
+        if (n < 0)
+            goto adjust_buf; // all suboffsets are negative
+        base->suboffsets[n] = base->suboffsets[n] + base->strides[dim] * start;
+    }
+    base->shape[dim] = slicelength;
+    base->strides[dim] = base->strides[dim] * step;
+
+    return 0;
+}
+
+//---------------------------------------------------------------------------
+static bool is_multislice(PyObject* key)
+{
+    if (!PyTuple_Check(key))
+        return false;
+
+    Py_ssize_t size = PyTuple_GET_SIZE(key);
+    if (size == 0)
+        return false;
+
+    for (Py_ssize_t i = 0; i < size; i++) {
+        PyObject *x = PyTuple_GET_ITEM(key, i);
+        if (!PySlice_Check(x))
+            return false;
+    }
+    return true;
+}
+
+//---------------------------------------------------------------------------
+static Py_ssize_t is_multiindex(PyObject* key)
+{
+    if (!PyTuple_Check(key))
+        return 0;
+
+    Py_ssize_t size = PyTuple_GET_SIZE(key);
+    for (Py_ssize_t i = 0; i < size; i++) {
+        PyObject *x = PyTuple_GET_ITEM(key, i);
+        if (!PyIndex_Check(x))
+            return 0;
+    }
+    return 1;
+}
+
+
+// Return the item at index. In a one-dimensional view, this is an object
+// with the type specified by view->format. Otherwise, the item is a sub-view.
+// The function is used in ll_subscript() and ll_as_sequence.
+//---------------------------------------------------------------------------
+static PyObject* ll_item(CPyCppyy::LowLevelView* self, Py_ssize_t index)
+{
+    Py_buffer& view = self->fBufInfo;
+
+    if (view.ndim == 0) {
+        PyErr_SetString(PyExc_TypeError, "invalid indexing of 0-dim memory");
+        return nullptr;
+    }
+
+    if (view.ndim == 1) {
+        void* ptr = ptr_from_index(view, index);
+        if (!ptr)
+            return nullptr;
+        return self->fConverter->FromMemory(ptr);
+    }
+
+// TODO: implement sub-views
+    PyErr_SetString(PyExc_NotImplementedError,
+        "multi-dimensional sub-views are not implemented");
+    return nullptr;
+}
+
+// Return the item at position *key* (a tuple of indices).
+//---------------------------------------------------------------------------
+static PyObject* ll_item_multi(CPyCppyy::LowLevelView* self, PyObject *tup)
+{
+    Py_buffer& view = self->fBufInfo;
+    Py_ssize_t nindices = PyTuple_GET_SIZE(tup);
+
+    if (nindices < view.ndim) {
+    // TODO: implement
+        PyErr_SetString(PyExc_NotImplementedError,
+                        "sub-views are not implemented");
+        return nullptr;
+    }
+
+    void* ptr = ptr_from_tuple(view, tup);
+    if (!ptr)
+        return nullptr;
+    return self->fConverter->FromMemory(ptr);
+}
+
+
+// llp[obj] returns an object holding the data for one element if obj
+// fully indexes the lowlevelptr or another lowlevelptr object if it
+// does not.
+//
+// 0-d lowlevelptr objects can be referenced using llp[...] or llp[()]
+// but not with anything else.
+//---------------------------------------------------------------------------
+static PyObject* ll_subscript(CPyCppyy::LowLevelView* self, PyObject *key)
+{
+    Py_buffer& view = self->fBufInfo;
+
+    if (view.ndim == 0) {
+        if (PyTuple_Check(key) && PyTuple_GET_SIZE(key) == 0) {
+            return self->fConverter->FromMemory(view.buf);
+        }
+        else if (key == Py_Ellipsis) {
+            Py_INCREF(self);
+            return (PyObject*)self;
+        }
+        else {
+            PyErr_SetString(PyExc_TypeError,
+                "invalid indexing of 0-dim memory");
+            return nullptr;
+        }
+    }
+
+    if (PyIndex_Check(key)) {
+        Py_ssize_t index = PyNumber_AsSsize_t(key, PyExc_IndexError);
+        if (index == -1 && PyErr_Occurred())
+            return nullptr;
+        return ll_item(self, index);
+    }
+    else if (PySlice_Check(key)) {
+    // TODO: handle slicing. This should be simpler than the memoryview
+    // case as there is no Python object holding the buffer.
+        PyErr_SetString(PyExc_NotImplementedError,
+            "multi-dimensional slicing is not implemented");
+        return nullptr;
+    }
+    else if (is_multiindex(key)) {
+        return ll_item_multi(self, key);
+    }
+    else if (is_multislice(key)) {
+        PyErr_SetString(PyExc_NotImplementedError,
+            "multi-dimensional slicing is not implemented");
+        return nullptr;
+    }
+
+    PyErr_SetString(PyExc_TypeError, "invalid slice key");
+    return nullptr;
+}
+
+//---------------------------------------------------------------------------
+static int ll_ass_sub(CPyCppyy::LowLevelView* self, PyObject* key, PyObject* value)
+{
+    Py_buffer& view = self->fBufInfo;
+    Py_buffer src;
+
+    if (view.readonly) {
+        PyErr_SetString(PyExc_TypeError, "cannot modify read-only memory");
+        return -1;
+    }
+
+    if (value == nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot delete memory");
+        return -1;
+    }
+
+    if (view.ndim == 0) {
+        if (key == Py_Ellipsis ||
+            (PyTuple_Check(key) && PyTuple_GET_SIZE(key) == 0)) {
+            return self->fConverter->ToMemory(value, view.buf) ? 0 : -1;
+        }
+        else {
+            PyErr_SetString(PyExc_TypeError,
+                "invalid indexing of 0-dim memory");
+            return -1;
+        }
+    }
+
+    if (PyIndex_Check(key)) {
+        Py_ssize_t index;
+        if (1 < view.ndim) {
+            PyErr_SetString(PyExc_NotImplementedError,
+                            "sub-views are not implemented");
+            return -1;
+        }
+        index = PyNumber_AsSsize_t(key, PyExc_IndexError);
+        if (index == -1 && PyErr_Occurred())
+            return -1;
+        void* ptr = ptr_from_index(view, index);
+        if (ptr == nullptr)
+            return -1;
+        return self->fConverter->ToMemory(value, ptr) ? 0 : -1;
+    }
+
+    // one-dimensional: fast path
+    if (PySlice_Check(key) && view.ndim == 1) {
+        Py_buffer dest; // sliced view
+        Py_ssize_t arrays[3];
+        int ret = -1;
+
+        // rvalue must be an exporter
+        if (PyObject_GetBuffer(value, &src, PyBUF_FULL_RO) < 0)
+            return ret;
+
+        dest = view;
+        dest.shape = &arrays[0]; dest.shape[0] = view.shape[0];
+        dest.strides = &arrays[1]; dest.strides[0] = view.strides[0];
+        if (view.suboffsets) {
+            dest.suboffsets = &arrays[2]; dest.suboffsets[0] = view.suboffsets[0];
+        }
+
+        if (init_slice(&dest, key, 0) < 0)
+            return -1;
+        dest.len = dest.shape[0] * dest.itemsize;
+
+        return copy_single(&dest, &src);
+    }
+
+    if (is_multiindex(key)) {
+    // TODO: implement
+        if (PyTuple_GET_SIZE(key) < view.ndim) {
+            PyErr_SetString(PyExc_NotImplementedError,
+                            "sub-views are not implemented");
+            return -1;
+        }
+        void* ptr = ptr_from_tuple(view, key);
+        if (ptr == nullptr)
+            return -1;
+        return self->fConverter->ToMemory(value, ptr) ? 0 : -1;
+    }
+
+    if (PySlice_Check(key) || is_multislice(key)) {
+        // TODO: implement
+        PyErr_SetString(PyExc_NotImplementedError,
+            "LowLevelView slice assignments are currently restricted "
+            "to ndim = 1");
+        return -1;
+    }
+
+    PyErr_SetString(PyExc_TypeError, "invalid slice key");
+    return -1;
+}
+
+#if PY_VERSION_HEX < 0x03000000
+//---------------------------------------------------------------------------
+static Py_ssize_t ll_oldgetbuf(CPyCppyy::LowLevelView* self, Py_ssize_t seg, void** pptr)
+{
+    if (seg != 0) {
+        PyErr_SetString(PyExc_TypeError, "accessing non-existent segment");
+        return -1;
+    }
+
+    *pptr = self->fBufInfo.buf;
+    return self->fBufInfo.len;
+}
+
+//---------------------------------------------------------------------------
+static Py_ssize_t ll_getsegcount(PyObject*, Py_ssize_t* lenp)
+{
+    if (lenp) *lenp = 1;
+    return 1;
+}
+#endif
+
+//---------------------------------------------------------------------------
+static int ll_getbuf(CPyCppyy::LowLevelView* self, Py_buffer* view, int flags)
+{
+// Simplified from memoryobject, as we're always dealing with C arrays.
+
+// start with full copy
+    *view = self->fBufInfo;
+
+    if (!(flags & PyBUF_FORMAT)) {
+        /* NULL indicates that the buffer's data type has been cast to 'B'.
+           view->itemsize is the _previous_ itemsize. If shape is present,
+           the equality product(shape) * itemsize = len still holds at this
+           point. The equality calcsize(format) = itemsize does _not_ hold
+           from here on! */
+        view->format = NULL;
+    }
+
+    if ((flags & PyBUF_F_CONTIGUOUS) == PyBUF_F_CONTIGUOUS) {
+        PyErr_SetString(PyExc_BufferError,
+            "underlying buffer is not Fortran contiguous");
+        return -1;
+    }
+
+    if (!(flags & PyBUF_FORMAT)) {
+        /* PyBUF_SIMPLE or PyBUF_WRITABLE: at this point buf is C-contiguous,
+           so base->buf = ndbuf->data. */
+        if (view->format != NULL) {
+            /* PyBUF_SIMPLE|PyBUF_FORMAT and PyBUF_WRITABLE|PyBUF_FORMAT do
+               not make sense. */
+            PyErr_Format(PyExc_BufferError,
+                "cannot cast to unsigned bytes if the format flag is present");
+            return -1;
+        }
+        /* product(shape) * itemsize = len and calcsize(format) = itemsize
+           do _not_ hold from here on! */
+        view->ndim = 1;
+        view->shape = NULL;
+    }
+
+    view->obj = (PyObject*)self;
+    Py_INCREF(view->obj);
+
+    return 0;
+}
+
+
+//- mapping methods ---------------------------------------------------------
+static PyMappingMethods ll_as_mapping = {
+    (lenfunc)      ll_length,      // mp_length
+    (binaryfunc)   ll_subscript,   // mp_subscript
+    (objobjargproc)ll_ass_sub,     // mp_ass_subscript
+};
+
+//- sequence methods --------------------------------------------------------
+static PySequenceMethods ll_as_sequence = {
+    (lenfunc)ll_length,            // sq_length
+    0,                             // sq_concat
+    0,                             // sq_repeat
+    (ssizeargfunc)ll_item,         // sq_item
+};
+
+//- buffer methods ----------------------------------------------------------
+static PyBufferProcs ll_as_buffer = {
+#if PY_VERSION_HEX < 0x03000000
+    (readbufferproc)ll_oldgetbuf,   // bf_getreadbuffer
+    (writebufferproc)ll_oldgetbuf,  // bf_getwritebuffer
+    (segcountproc)ll_getsegcount,   // bf_getsegcount
+    0,                              // bf_getcharbuffer
+#endif
+    (getbufferproc)ll_getbuf,       // bf_getbuffer
+    0,                              // bf_releasebuffer
+};
+
+
+namespace CPyCppyy {
+
+//= CPyCppyy low level view type ============================================
+PyTypeObject LowLevelView_Type = {
+    PyVarObject_HEAD_INIT(&PyType_Type, 0)
+    (char*)"cppyy.LowLevelView",   // tp_name
+    sizeof(CPyCppyy::LowLevelView),// tp_basicsize
+    0,                             // tp_itemsize
+    (destructor)ll_dealloc,        // tp_dealloc
+    0,                             // tp_print
+    0,                             // tp_getattr
+    0,                             // tp_setattr
+    0,                             // tp_compare
+    0,                             // tp_repr
+    0,                             // tp_as_number
+    &ll_as_sequence,               // tp_as_sequence
+    &ll_as_mapping,                // tp_as_mapping
+    0,                             // tp_hash
+    0,                             // tp_call
+    0,                             // tp_str
+    0,                             // tp_getattro
+    0,                             // tp_setattro
+    &ll_as_buffer,                 // tp_as_buffer
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_CHECKTYPES |
+        Py_TPFLAGS_BASETYPE,       // tp_flags
+    (char*)"memory view on C++ pointer",     // tp_doc
+    0,                             // tp_traverse
+    0,                             // tp_clear
+    0,                             // tp_richcompare
+    0,                             // tp_weaklistoffset
+    0,                             // tp_iter
+    0,                             // tp_iternext
+    ll_methods,                    // tp_methods
+    0,                             // tp_members
+    ll_getset,                     // tp_getset
+    0,                             // tp_base
+    0,                             // tp_dict
+    0,                             // tp_descr_get
+    0,                             // tp_descr_set
+    0,                             // tp_dictoffset
+    0,                             // tp_init
+    0,                             // tp_alloc
+    (newfunc)ll_new,               // tp_new
+    0,                             // tp_free
+    0,                             // tp_is_gc
+    0,                             // tp_bases
+    0,                             // tp_mro
+    0,                             // tp_cache
+    0,                             // tp_subclasses
+    0                              // tp_weaklist
+#if PY_VERSION_HEX >= 0x02030000
+    , 0                            // tp_del
+#endif
+#if PY_VERSION_HEX >= 0x02060000
+    , 0                            // tp_version_tag
+#endif
+#if PY_VERSION_HEX >= 0x03040000
+    , 0                            // tp_finalize
+#endif
+};
+
+} // namespace CPyCppyy
 
 namespace {
 
-class SetupBufferTypes {
-public:
-    SetupBufferTypes() {
-    // construct python buffer types
-        CPYCPPYY_INSTALL_PYBUFFER_METHODS(Bool,   bool)
-        CPYCPPYY_INSTALL_PYBUFFER_METHODS(Short,  short)
-        CPYCPPYY_INSTALL_PYBUFFER_METHODS(UShort, unsigned short)
-        CPYCPPYY_INSTALL_PYBUFFER_METHODS(Int,    Int_t)
-        CPYCPPYY_INSTALL_PYBUFFER_METHODS(UInt,   UInt_t)
-        CPYCPPYY_INSTALL_PYBUFFER_METHODS(Long,   Long_t)
-        CPYCPPYY_INSTALL_PYBUFFER_METHODS(ULong,  ULong_t)
-        CPYCPPYY_INSTALL_PYBUFFER_METHODS(Float,  float)
-        CPYCPPYY_INSTALL_PYBUFFER_METHODS(Double, double)
-    }
-} setupBufferTypes;
+template<typename T> struct typecode_traits {};
+template<> struct typecode_traits<bool> {
+    static constexpr const char* format = "?"; static constexpr const char* name = "bool"; };
+template<> struct typecode_traits<short> {
+    static constexpr const char* format = "h"; static constexpr const char* name = "short"; };
+template<> struct typecode_traits<unsigned short> {
+    static constexpr const char* format = "H"; static constexpr const char* name = "unsigned short"; };
+template<> struct typecode_traits<int> {
+    static constexpr const char* format = "i"; static constexpr const char* name = "int"; };
+template<> struct typecode_traits<unsigned int> {
+    static constexpr const char* format = "I"; static constexpr const char* name = "unsigned int"; };
+template<> struct typecode_traits<long> {
+    static constexpr const char* format = "l"; static constexpr const char*
+#if PY_VERSION_HEX < 0x03000000
+        name = "int";
+#else
+        name = "long";
+#endif
+};
+template<> struct typecode_traits<unsigned long> {
+    static constexpr const char* format = "L"; static constexpr const char* name = "unsigned long"; };
+template<> struct typecode_traits<long long> {
+    static constexpr const char* format = "q"; static constexpr const char* name = "long long"; };
+template<> struct typecode_traits<unsigned long long> {
+    static constexpr const char* format = "Q"; static constexpr const char* name = "unsigned long long"; };
+template<> struct typecode_traits<float> {
+    static constexpr const char* format = "f"; static constexpr const char* name = "float"; };
+template<> struct typecode_traits<double> {
+    static constexpr const char* format = "d"; static constexpr const char* name = "double"; };
 
 } // unnamed namespace
 
 
 //---------------------------------------------------------------------------
-constexpr inline const char* getBoolFormat()   { return "b"; }
-constexpr inline const char* getShortFormat()  { return "h"; }
-constexpr inline const char* getUShortFormat() { return "H"; }
-constexpr inline const char* getIntFormat()    { return "i"; }
-constexpr inline const char* getUIntFormat()   { return "I"; }
-constexpr inline const char* getLongFormat()   { return "l"; }
-constexpr inline const char* getULongFormat()  { return "L"; }
-constexpr inline const char* getFloatFormat()  { return "f"; }
-constexpr inline const char* getDoubleFormat() { return "d"; }
+template<typename T>
+static inline PyObject* CreateLowLevelViewT(T* address, Py_ssize_t* shape)
+{
+    using namespace CPyCppyy;
+    Py_ssize_t nx = (shape && 0 <= shape[1]) ? shape[1] : INT_MAX/sizeof(T);
+    PyObject* args = PyTuple_New(0);
+    LowLevelView* llp =
+        (LowLevelView*)LowLevelView_Type.tp_new(&LowLevelView_Type, args, nullptr);
+    Py_DECREF(args);
 
-#if PY_VERSION_HEX < 0x03000000
-    #define PYBUFFER_SETITEMSIZE(buf,type) ((PyBufferTop_t*)buf)->fItemSize = Py_ssize_t(sizeof(type))
-    #define PYBUFFER_SETFORMAT(buf,name) 
-#else
-    #define PYBUFFER_SETITEMSIZE(buf,type) PyMemoryView_GET_BUFFER(buf)->itemsize = Py_ssize_t(sizeof(type))
-    #define PYBUFFER_SETFORMAT(buf,name) PyMemoryView_GET_BUFFER(buf)->format = (char*)get##name##Format() 
-#endif
+    Py_buffer& view = llp->fBufInfo;
+    view.buf            = address;
+    view.obj            = nullptr;
+    view.len            = nx * sizeof(T);
+    view.readonly       = 0;
+    view.itemsize       = sizeof(T);
+    view.format         = (char*)typecode_traits<T>::format;
+    view.ndim           = shape ? shape[0] : 1;
+    view.shape          = (Py_ssize_t*)PyMem_Malloc(view.ndim * sizeof(Py_ssize_t));
+    view.shape[0]       = nx; // view.len / view.itemsize
+    view.strides        = (Py_ssize_t*)PyMem_Malloc(view.ndim * sizeof(Py_ssize_t));
+    view.strides[0]     = view.itemsize;
+    view.suboffsets     = nullptr;
+    view.internal       = nullptr;
 
-//- public members -----------------------------------------------------------
-#define CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY(name, type)                  \
-PyObject* CPyCppyy::LowLevel_MemoryView(type* address, Py_ssize_t size)      \
-{                                                                            \
-    size = size < 0 ? (address ? INT_MAX : 0) : size;                        \
-    PyObject* buf = PyBuffer_FromReadWriteMemory((void*)address, size);      \
-    if (buf) {                                                               \
-        Py_INCREF((PyObject*)(void*)&Py##name##Buffer_Type);                 \
-        buf->ob_type = &Py##name##Buffer_Type;                               \
-        PYBUFFER_SETITEMSIZE(buf, type);                                     \
-        PYBUFFER_SETFORMAT(buf, name);                                       \
-    }                                                                        \
-    return buf;                                                              \
+    llp->fConverter = CreateConverter(typecode_traits<T>::name);
+
+    return (PyObject*)llp;
 }
 
-CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY(Bool,   bool)
-CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY(Short,  short)
-CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY(UShort, unsigned short)
-CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY(Int,    Int_t)
-CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY(UInt,   UInt_t)
-CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY(Long,   Long_t)
-CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY(ULong,  ULong_t)
-CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY(Float,  float)
-CPYCPPYY_IMPLEMENT_PYBUFFER_FROM_MEMORY(Double, double)
+//---------------------------------------------------------------------------
+PyObject* CPyCppyy::CreateLowLevelView(bool* address, Py_ssize_t* shape) {
+    return CreateLowLevelViewT<bool>(address, shape);
+}
+
+PyObject* CPyCppyy::CreateLowLevelView(short* address, Py_ssize_t* shape) {
+    return CreateLowLevelViewT<short>(address, shape);
+}
+
+PyObject* CPyCppyy::CreateLowLevelView(unsigned short* address, Py_ssize_t* shape) {
+    return CreateLowLevelViewT<unsigned short>(address, shape);
+}
+
+PyObject* CPyCppyy::CreateLowLevelView(int* address, Py_ssize_t* shape) {
+    return CreateLowLevelViewT<int>(address, shape);
+}
+
+PyObject* CPyCppyy::CreateLowLevelView(unsigned int* address, Py_ssize_t* shape) {
+    return CreateLowLevelViewT<unsigned int>(address, shape);
+}
+
+PyObject* CPyCppyy::CreateLowLevelView(long* address, Py_ssize_t* shape) {
+    return CreateLowLevelViewT<long>(address, shape);
+}
+
+PyObject* CPyCppyy::CreateLowLevelView(unsigned long* address, Py_ssize_t* shape) {
+    return CreateLowLevelViewT<unsigned long>(address, shape);
+}
+
+PyObject* CPyCppyy::CreateLowLevelView(long long* address, Py_ssize_t* shape) {
+    return CreateLowLevelViewT<long long>(address, shape);
+}
+
+PyObject* CPyCppyy::CreateLowLevelView(unsigned long long* address, Py_ssize_t* shape) {
+    return CreateLowLevelViewT<unsigned long long>(address, shape);
+}
+
+PyObject* CPyCppyy::CreateLowLevelView(float* address, Py_ssize_t* shape) {
+    return CreateLowLevelViewT<float>(address, shape);
+}
+
+PyObject* CPyCppyy::CreateLowLevelView(double* address, Py_ssize_t* shape) {
+    return CreateLowLevelViewT<double>(address, shape);
+}

@@ -6,6 +6,7 @@
 #include "CPPOverload.h"
 #include "CPPScope.h"
 #include "CustomPyTypes.h"
+#include "LowLevelViews.h"
 #include "MemoryRegulator.h"
 #include "ProxyWrappers.h"
 #include "PyStrings.h"
@@ -814,6 +815,10 @@ extern "C" void initlibcppyy()
        CPYCPPYY_INIT_ERROR;
 
     if (!Utility::InitProxy(gThisModule, &PyNullPtr_t_Type, "nullptr_t"))
+        CPYCPPYY_INIT_ERROR;
+
+// initialize low level ptr type, but do not inject in gThisModule
+    if (PyType_Ready(&LowLevelView_Type) < 0)
         CPYCPPYY_INIT_ERROR;
 
 // inject identifiable nullptr
