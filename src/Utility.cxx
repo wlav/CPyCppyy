@@ -516,8 +516,8 @@ int CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, void*& b
         Py_buffer bufinfo;
         memset(&bufinfo, 0, sizeof(Py_buffer));
         if (PyObject_GetBuffer(pyobject, &bufinfo, PyBUF_FORMAT) == 0) {
-            if (bufinfo.format[0] == tc ||
-                   (bufinfo.format[0] == '@' && bufinfo.format[1] == tc)) {
+            if (tc == '*' || (bufinfo.format[0] == tc ||
+                   (bufinfo.format[0] == '@' && bufinfo.format[1] == tc))) {
                 if (bufinfo.buf && bufinfo.ndim == 1 && bufinfo.shape) {
                     buf = bufinfo.buf;
                     int size = (int)bufinfo.shape[0];
