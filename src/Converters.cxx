@@ -5,6 +5,7 @@
 #include "CPPInstance.h"
 #include "CustomPyTypes.h"
 #include "LowLevelViews.h"
+#include "MemoryRegulator.h"
 #include "ProxyWrappers.h"
 #include "PyStrings.h"
 #include "TupleOfInstances.h"
@@ -20,6 +21,7 @@
 #if __cplusplus > 201402L
 #include <string_view>
 #endif
+
 
 // FIXME: Should refer to CPyCppyy::Parameter in the code.
 #ifdef R__CXXMODULES
@@ -1079,6 +1081,9 @@ bool CPyCppyy::CppObjectPtrConverter<ISREFERENCE>::ToMemory(PyObject* value, voi
         if (!KeepControl() && CallContext::sMemoryPolicy != CallContext::kUseStrict)
             ((CPPInstance*)value)->CppOwns();
 
+    // register the value for potential recycling
+        MemoryRegulator::RegisterPyObject((CPPInstance*)value, ((CPPInstance*)value)->GetObject());
+
     // set pointer (may be null) and declare success
         *(void**)address = ((CPPInstance*)value)->GetObject();
         return true;
@@ -1299,7 +1304,7 @@ PyObject* CPyCppyy::SmartPtrCppObjectConverter::FromMemory(void* address)
 
 // obtain raw pointer
     std::vector<Parameter> args;
-    CPPInstance* pyobj = (CPPInstance*) BindCppObject(
+    CPPInstance* pyobj = (CPPInstance*)BindCppObject(
         Cppyy::CallR((Cppyy::TCppMethod_t)fDereferencer, address, &args), fRawPtrType);
     if (pyobj)
         pyobj->SetSmartPtr((void*)address, fClass);

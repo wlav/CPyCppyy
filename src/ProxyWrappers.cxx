@@ -712,7 +712,7 @@ PyObject* CPyCppyy::BindCppObjectNoCast(
 // TODO: add convenience function to MemoryRegulator to use pyclass directly
 // TODO: make sure that a consistent address is used (may have to be done in BindCppObject)
     if (!isValue /* always fresh */) {
-        PyObject* oldPyObject = MemoryRegulator::RetrievePyObject(address, klass);
+        PyObject* oldPyObject = MemoryRegulator::RetrievePyObject(isRef ? *(void**)address : address, klass);
         if (oldPyObject)
             return oldPyObject;
     }
