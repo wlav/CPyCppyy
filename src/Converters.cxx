@@ -31,8 +31,8 @@
 namespace CPyCppyy {
 
 // factories
-    typedef Converter* (*ConverterFactory_t) (long size);
-    typedef std::map<std::string, ConverterFactory_t> ConvFactories_t;
+    typedef Converter* (*cf_t)(long size);
+    typedef std::map<std::string, cf_t> ConvFactories_t;
     static ConvFactories_t gConvFactories;
     extern PyObject* gNullPtrObject;
 
@@ -1458,190 +1458,106 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long
 }
 
 //----------------------------------------------------------------------------
-#define CPPYY_BASIC_CONVERTER_FACTORY(name)                                  \
-Converter* Create##name##Converter(long)                                     \
-{                                                                            \
-    return new name##Converter();                                            \
-}
-
-#define CPPYY_ARRAY_CONVERTER_FACTORY(name)                                  \
-Converter* Create##name##Converter(long size)                                \
-{                                                                            \
-    return new name##Converter(size);                                        \
-}
-
-//----------------------------------------------------------------------------
 namespace {
-    using namespace CPyCppyy;
 
-// use macro rather than template for portability ...
-    CPPYY_BASIC_CONVERTER_FACTORY(Bool)
-    CPPYY_BASIC_CONVERTER_FACTORY(ConstBoolRef)
-    CPPYY_BASIC_CONVERTER_FACTORY(Char)
-    CPPYY_BASIC_CONVERTER_FACTORY(ConstCharRef)
-    CPPYY_BASIC_CONVERTER_FACTORY(UChar)
-    CPPYY_BASIC_CONVERTER_FACTORY(ConstUCharRef)
-    CPPYY_BASIC_CONVERTER_FACTORY(Short)
-    CPPYY_BASIC_CONVERTER_FACTORY(ConstShortRef)
-    CPPYY_BASIC_CONVERTER_FACTORY(UShort)
-    CPPYY_BASIC_CONVERTER_FACTORY(ConstUShortRef)
-    CPPYY_BASIC_CONVERTER_FACTORY(Int)
-    CPPYY_BASIC_CONVERTER_FACTORY(IntRef)
-    CPPYY_BASIC_CONVERTER_FACTORY(ConstIntRef)
-    CPPYY_BASIC_CONVERTER_FACTORY(UInt)
-    CPPYY_BASIC_CONVERTER_FACTORY(ConstUIntRef)
-    CPPYY_BASIC_CONVERTER_FACTORY(Long)
-    CPPYY_BASIC_CONVERTER_FACTORY(LongRef)
-    CPPYY_BASIC_CONVERTER_FACTORY(ConstLongRef)
-    CPPYY_BASIC_CONVERTER_FACTORY(ULong)
-    CPPYY_BASIC_CONVERTER_FACTORY(ConstULongRef)
-    CPPYY_BASIC_CONVERTER_FACTORY(Float)
-    CPPYY_BASIC_CONVERTER_FACTORY(ConstFloatRef)
-    CPPYY_BASIC_CONVERTER_FACTORY(Double)
-    CPPYY_BASIC_CONVERTER_FACTORY(DoubleRef)
-    CPPYY_BASIC_CONVERTER_FACTORY(ConstDoubleRef)
-    CPPYY_BASIC_CONVERTER_FACTORY(LongDouble)
-    CPPYY_BASIC_CONVERTER_FACTORY(ConstLongDoubleRef)
-    CPPYY_BASIC_CONVERTER_FACTORY(Void)
-    CPPYY_BASIC_CONVERTER_FACTORY(LongLong)
-    CPPYY_BASIC_CONVERTER_FACTORY(ConstLongLongRef)
-    CPPYY_BASIC_CONVERTER_FACTORY(ULongLong)
-    CPPYY_BASIC_CONVERTER_FACTORY(ConstULongLongRef)
-    CPPYY_ARRAY_CONVERTER_FACTORY(CString)
-    CPPYY_ARRAY_CONVERTER_FACTORY(NonConstCString)
-    CPPYY_ARRAY_CONVERTER_FACTORY(BoolArray)
-    CPPYY_BASIC_CONVERTER_FACTORY(BoolArrayRef)
-    CPPYY_ARRAY_CONVERTER_FACTORY(UCharArray)
-    CPPYY_ARRAY_CONVERTER_FACTORY(ShortArray)
-    CPPYY_ARRAY_CONVERTER_FACTORY(ShortArrayRef)
-    CPPYY_ARRAY_CONVERTER_FACTORY(UShortArray)
-    CPPYY_ARRAY_CONVERTER_FACTORY(UShortArrayRef)
-    CPPYY_ARRAY_CONVERTER_FACTORY(IntArray)
-    CPPYY_ARRAY_CONVERTER_FACTORY(UIntArray)
-    CPPYY_ARRAY_CONVERTER_FACTORY(UIntArrayRef)
-    CPPYY_ARRAY_CONVERTER_FACTORY(LongArray)
-    CPPYY_ARRAY_CONVERTER_FACTORY(ULongArray)
-    CPPYY_ARRAY_CONVERTER_FACTORY(ULongArrayRef)
-    CPPYY_ARRAY_CONVERTER_FACTORY(LLongArray)
-    CPPYY_ARRAY_CONVERTER_FACTORY(ULLongArray)
-    CPPYY_ARRAY_CONVERTER_FACTORY(FloatArray)
-    CPPYY_ARRAY_CONVERTER_FACTORY(FloatArrayRef)
-    CPPYY_ARRAY_CONVERTER_FACTORY(DoubleArray)
-    CPPYY_BASIC_CONVERTER_FACTORY(VoidArray)
-    CPPYY_BASIC_CONVERTER_FACTORY(STLString)
-#if __cplusplus > 201402L
-    CPPYY_BASIC_CONVERTER_FACTORY(STLStringView)
-#endif
-    CPPYY_BASIC_CONVERTER_FACTORY(VoidPtrRef)
-    CPPYY_BASIC_CONVERTER_FACTORY(VoidPtrPtr)
-    CPPYY_BASIC_CONVERTER_FACTORY(PyObject)
+using namespace CPyCppyy;
 
-// converter factories for C++ types
-    typedef std::pair<const char*, ConverterFactory_t> NFp_t;
+static struct InitConvFactories_t {
+public:
+    InitConvFactories_t() {
+    // load all converter factories in the global map 'gConvFactories'
+        CPyCppyy::ConvFactories_t& gf = gConvFactories;
 
-// clang-format off
-    NFp_t factories_[] = {
     // factories for built-ins
-        NFp_t("bool",                      &CreateBoolConverter              ),
-        NFp_t("const bool&",               &CreateConstBoolRefConverter      ),
-        NFp_t("char",                      &CreateCharConverter              ),
-        NFp_t("const char&",               &CreateConstCharRefConverter      ),
-        NFp_t("signed char",               &CreateCharConverter              ),
-        NFp_t("const signed char&",        &CreateConstCharRefConverter      ),
-        NFp_t("unsigned char",             &CreateUCharConverter             ),
-        NFp_t("const unsigned char&",      &CreateConstUCharRefConverter     ),
-        NFp_t("short",                     &CreateShortConverter             ),
-        NFp_t("const short&",              &CreateConstShortRefConverter     ),
-        NFp_t("unsigned short",            &CreateUShortConverter            ),
-        NFp_t("const unsigned short&",     &CreateConstUShortRefConverter    ),
-        NFp_t("int",                       &CreateIntConverter               ),
-        NFp_t("int&",                      &CreateIntRefConverter            ),
-        NFp_t("const int&",                &CreateConstIntRefConverter       ),
-        NFp_t("unsigned int",              &CreateUIntConverter              ),
-        NFp_t("const unsigned int&",       &CreateConstUIntRefConverter      ),
-        NFp_t("internal_enum_type_t",      &CreateIntConverter /* yes: int */),
-        NFp_t("long",                      &CreateLongConverter              ),
-        NFp_t("long&",                     &CreateLongRefConverter           ),
-        NFp_t("const long&",               &CreateConstLongRefConverter      ),
-        NFp_t("unsigned long",             &CreateULongConverter             ),
-        NFp_t("const unsigned long&",      &CreateConstULongRefConverter     ),
-        NFp_t("long long",                 &CreateLongLongConverter          ),
-        NFp_t("const long long&",          &CreateConstLongLongRefConverter  ),
-        NFp_t("Long64_t",                  &CreateLongLongConverter          ),
-        NFp_t("const Long64_t&",           &CreateConstLongLongRefConverter  ),
-        NFp_t("unsigned long long",        &CreateULongLongConverter         ),
-        NFp_t("const unsigned long long&", &CreateConstULongLongRefConverter ),
-        NFp_t("ULong64_t",                 &CreateULongLongConverter         ),
-        NFp_t("const ULong64_t&",          &CreateConstULongLongRefConverter ),
+        gf["bool"] =                        (cf_t)+[](long) { return new BoolConverter{}; };
+        gf["const bool&"] =                 (cf_t)+[](long) { return new ConstBoolRefConverter{}; };
+        gf["char"] =                        (cf_t)+[](long) { return new CharConverter{}; };
+        gf["const char&"] =                 (cf_t)+[](long) { return new ConstCharRefConverter{}; };
+        gf["signed char"] =                 (cf_t)+[](long) { return new CharConverter{}; };
+        gf["const signed char&"] =          (cf_t)+[](long) { return new ConstCharRefConverter{}; };
+        gf["unsigned char"] =               (cf_t)+[](long) { return new UCharConverter{}; };
+        gf["const unsigned char&"] =        (cf_t)+[](long) { return new ConstUCharRefConverter{}; };
+        gf["short"] =                       (cf_t)+[](long) { return new ShortConverter{}; };
+        gf["const short&"] =                (cf_t)+[](long) { return new ConstShortRefConverter{}; };
+        gf["unsigned short"] =              (cf_t)+[](long) { return new UShortConverter{}; };
+        gf["const unsigned short&"] =       (cf_t)+[](long) { return new ConstUShortRefConverter{}; };
+        gf["int"] =                         (cf_t)+[](long) { return new IntConverter{}; };
+        gf["int&"] =                        (cf_t)+[](long) { return new IntRefConverter{}; };
+        gf["const int&"] =                  (cf_t)+[](long) { return new ConstIntRefConverter{}; };
+        gf["unsigned int"] =                (cf_t)+[](long) { return new UIntConverter{}; };
+        gf["const unsigned int&"] =         (cf_t)+[](long) { return new ConstUIntRefConverter{}; };
+        gf["internal_enum_type_t"] =        (cf_t)+[](long) { return new IntConverter{}; };   // yes: int
+        gf["long"] =                        (cf_t)+[](long) { return new LongConverter{}; };
+        gf["long&"] =                       (cf_t)+[](long) { return new LongRefConverter{}; };
+        gf["const long&"] =                 (cf_t)+[](long) { return new ConstLongRefConverter{}; };
+        gf["unsigned long"] =               (cf_t)+[](long) { return new ULongConverter{}; };
+        gf["const unsigned long&"] =        (cf_t)+[](long) { return new ConstULongRefConverter{}; };
+        gf["long long"] =                   (cf_t)+[](long) { return new LongLongConverter{}; };
+        gf["const long long&"] =            (cf_t)+[](long) { return new ConstLongLongRefConverter{}; };
+        gf["Long64_t"] =                    (cf_t)+[](long) { return new LongLongConverter{}; };
+        gf["const Long64_t&"] =             (cf_t)+[](long) { return new ConstLongLongRefConverter{}; };
+        gf["unsigned long long"] =          (cf_t)+[](long) { return new ULongLongConverter{}; };
+        gf["const unsigned long long&"] =   (cf_t)+[](long) { return new ConstULongLongRefConverter{}; };
+        gf["ULong64_t"] =                   (cf_t)+[](long) { return new ULongLongConverter{}; };
+        gf["const ULong64_t&"] =            (cf_t)+[](long) { return new ConstULongLongRefConverter{}; };
 
-        NFp_t("float",                     &CreateFloatConverter             ),
-        NFp_t("const float&",              &CreateConstFloatRefConverter     ),
-        NFp_t("double",                    &CreateDoubleConverter            ),
-        NFp_t("double&",                   &CreateDoubleRefConverter         ),
-        NFp_t("const double&",             &CreateConstDoubleRefConverter    ),
-        NFp_t("long double",               &CreateLongDoubleConverter        ),
-        NFp_t("const long double&",        &CreateConstLongDoubleRefConverter),
-        NFp_t("void",                      &CreateVoidConverter              ),
+        gf["float"] =                       (cf_t)+[](long) { return new FloatConverter{}; };
+        gf["const float&"] =                (cf_t)+[](long) { return new ConstFloatRefConverter{}; };
+        gf["double"] =                      (cf_t)+[](long) { return new DoubleConverter{}; };
+        gf["double&"] =                     (cf_t)+[](long) { return new DoubleRefConverter{}; };
+        gf["const double&"] =               (cf_t)+[](long) { return new ConstDoubleRefConverter{}; };
+        gf["long double"] =                 (cf_t)+[](long) { return new LongDoubleConverter{}; };
+        gf["const long double&"] =          (cf_t)+[](long) { return new ConstLongDoubleRefConverter{}; };
+        gf["void"] =                        (cf_t)+[](long) { return new VoidConverter{}; };
 
     // pointer/array factories
-        NFp_t("bool*",                     &CreateBoolArrayConverter         ),
-        NFp_t("bool&",                     &CreateBoolArrayRefConverter      ),
-        NFp_t("const unsigned char*",      &CreateUCharArrayConverter        ),
-        NFp_t("unsigned char*",            &CreateUCharArrayConverter        ),
-        NFp_t("short*",                    &CreateShortArrayConverter        ),
-        NFp_t("short&",                    &CreateShortArrayRefConverter     ),
-        NFp_t("unsigned short*",           &CreateUShortArrayConverter       ),
-        NFp_t("unsigned short&",           &CreateUShortArrayRefConverter    ),
-        NFp_t("int*",                      &CreateIntArrayConverter          ),
-        NFp_t("unsigned int*",             &CreateUIntArrayConverter         ),
-        NFp_t("unsigned int&",             &CreateUIntArrayRefConverter      ),
-        NFp_t("long*",                     &CreateLongArrayConverter         ),
-        NFp_t("unsigned long*",            &CreateULongArrayConverter        ),
-        NFp_t("unsigned long&",            &CreateULongArrayRefConverter     ),
-        NFp_t("float*",                    &CreateFloatArrayConverter        ),
-        NFp_t("float&",                    &CreateFloatArrayRefConverter     ),
-        NFp_t("double*",                   &CreateDoubleArrayConverter       ),
-        NFp_t("long long*",                &CreateLLongArrayConverter        ),
-        NFp_t("Long64_t*",                 &CreateULLongArrayConverter       ),
-        NFp_t("unsigned long long*",       &CreateLLongArrayConverter        ),
-        NFp_t("ULong64_t*",                &CreateULLongArrayConverter       ),
-        NFp_t("void*",                     &CreateVoidArrayConverter         ),
+        gf["bool*"] =                       (cf_t)+[](long sz) { return new BoolArrayConverter{sz}; };
+        gf["bool&"] =                       (cf_t)+[](long sz) { return new BoolArrayRefConverter{sz}; };
+        gf["const unsigned char*"] =        (cf_t)+[](long sz) { return new UCharArrayConverter{sz}; };
+        gf["unsigned char*"] =              (cf_t)+[](long sz) { return new UCharArrayConverter{sz}; };
+        gf["short*"] =                      (cf_t)+[](long sz) { return new ShortArrayConverter{sz}; };
+        gf["short&"] =                      (cf_t)+[](long sz) { return new ShortArrayRefConverter{sz}; };
+        gf["unsigned short*"] =             (cf_t)+[](long sz) { return new UShortArrayConverter{sz}; };
+        gf["unsigned short&"] =             (cf_t)+[](long sz) { return new UShortArrayRefConverter{sz}; };
+        gf["int*"] =                        (cf_t)+[](long sz) { return new IntArrayConverter{sz}; };
+        gf["unsigned int*"] =               (cf_t)+[](long sz) { return new UIntArrayConverter{sz}; };
+        gf["unsigned int&"] =               (cf_t)+[](long sz) { return new UIntArrayRefConverter{sz}; };
+        gf["long*"] =                       (cf_t)+[](long sz) { return new LongArrayConverter{sz}; };
+        gf["unsigned long*"] =              (cf_t)+[](long sz) { return new ULongArrayConverter{sz}; };
+        gf["unsigned long&"] =              (cf_t)+[](long sz) { return new ULongArrayRefConverter{sz}; };
+        gf["float*"] =                      (cf_t)+[](long sz) { return new FloatArrayConverter{sz}; };
+        gf["float&"] =                      (cf_t)+[](long sz) { return new FloatArrayRefConverter{sz}; };
+        gf["double*"] =                     (cf_t)+[](long sz) { return new DoubleArrayConverter{sz}; };
+        gf["long long*"] =                  (cf_t)+[](long sz) { return new LLongArrayConverter{sz}; };
+        gf["Long64_t*"] =                   (cf_t)+[](long sz) { return new ULLongArrayConverter{sz}; };
+        gf["unsigned long long*"] =         (cf_t)+[](long sz) { return new LLongArrayConverter{sz}; };
+        gf["ULong64_t*"] =                  (cf_t)+[](long sz) { return new ULLongArrayConverter{sz}; };
+        gf["void*"] =                       (cf_t)+[](long sz) { return new VoidArrayConverter{sz}; };
 
     // factories for special cases
-        NFp_t("const char*",               &CreateCStringConverter           ),
-        NFp_t("const char[]",              &CreateCStringConverter           ),
-        NFp_t("char*",                     &CreateNonConstCStringConverter   ),
-        NFp_t("std::string",               &CreateSTLStringConverter         ),
-        NFp_t("string",                    &CreateSTLStringConverter         ),
-        NFp_t("const std::string&",        &CreateSTLStringConverter         ),
-        NFp_t("const string&",             &CreateSTLStringConverter         ),
+        gf["const char*"] =                 (cf_t)+[](long) { return new CStringConverter{}; };
+        gf["const char[]"] =                (cf_t)+[](long) { return new CStringConverter{}; };
+        gf["char*"] =                       (cf_t)+[](long) { return new NonConstCStringConverter{}; };
+        gf["std::string"] =                 (cf_t)+[](long) { return new STLStringConverter{}; };
+        gf["string"] =                      (cf_t)+[](long) { return new STLStringConverter{}; };
+        gf["const std::string&"] =          (cf_t)+[](long) { return new STLStringConverter{}; };
+        gf["const string&"] =               (cf_t)+[](long) { return new STLStringConverter{}; };
 #if __cplusplus > 201402L
-        NFp_t("std::string_view",          &CreateSTLStringViewConverter     ),
-        NFp_t("string_view",               &CreateSTLStringViewConverter     ),
-        NFp_t("experimental::basic_string_view<char,char_traits<char> >",&CreateSTLStringViewConverter),
+        gf["std::string_view"] =            (cf_t)+[](long) { return new STLStringViewConverter{}; };
+        gf["string_view"] =                 (cf_t)+[](long) { return new STLStringViewConverter{}; };
+        gf["experimental::basic_string_view<char,char_traits<char> >"] = (cf_t)+[](long) { return new STLStringViewConverter{}; };
 #endif
-        NFp_t("void*&",                    &CreateVoidPtrRefConverter        ),
-        NFp_t("void**",                    &CreateVoidPtrPtrConverter        ),
-        NFp_t("PyObject*",                 &CreatePyObjectConverter          ),
-        NFp_t("_object*",                  &CreatePyObjectConverter          ),
-        NFp_t("FILE*",                     &CreateVoidArrayConverter         ),
-        NFp_t("Float16_t",                 &CreateFloatConverter             ),
-        NFp_t("const Float16_t&",          &CreateConstFloatRefConverter     ),
-        NFp_t("Double32_t",                &CreateDoubleConverter            ),
-        NFp_t("Double32_t&",               &CreateDoubleRefConverter         ),
-        NFp_t("const Double32_t&",         &CreateConstDoubleRefConverter    )
-    };
-// clang-format on
-
-    static struct InitConvFactories_t {
-    public:
-        InitConvFactories_t() {
-        // load all converter factories in the global map 'gConvFactories'
-            int nf = sizeof(factories_)/sizeof(factories_[0]);
-            for (int i = 0; i < nf; ++i) {
-                gConvFactories[factories_[i].first] = factories_[i].second;
-            }
-        }
-    } initConvFactories_;
+        gf["void*&"] =                      (cf_t)+[](long) { return new VoidPtrRefConverter{}; };
+        gf["void**"] =                      (cf_t)+[](long) { return new VoidPtrPtrConverter{}; };
+        gf["PyObject*"] =                   (cf_t)+[](long) { return new PyObjectConverter{}; };
+        gf["_object*"] =                    (cf_t)+[](long) { return new PyObjectConverter{}; };
+        gf["FILE*"] =                       (cf_t)+[](long) { return new VoidArrayConverter{}; };
+        gf["Float16_t"] =                   (cf_t)+[](long) { return new FloatConverter{}; };
+        gf["const Float16_t&"] =            (cf_t)+[](long) { return new ConstFloatRefConverter{}; };
+        gf["Double32_t"] =                  (cf_t)+[](long) { return new DoubleConverter{}; };
+        gf["Double32_t&"] =                 (cf_t)+[](long) { return new DoubleRefConverter{}; };
+        gf["const Double32_t&"] =           (cf_t)+[](long) { return new ConstDoubleRefConverter{}; };
+    }
+} initConvFactories_;
 
 } // unnamed namespace

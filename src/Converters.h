@@ -20,7 +20,11 @@ public:
     virtual bool ToMemory(PyObject* value, void* address);
 };
 
-// converters for special cases
+// create converter from fully qualified type
+Converter* CreateConverter(const std::string& fullType, Long_t size = -1);
+
+
+// converters for special cases (only here b/c of external use of StrictCppObjectConverter)
 class VoidArrayConverter : public Converter {
 public:
     VoidArrayConverter(bool keepControl = true) { fKeepControl = keepControl; }
@@ -59,9 +63,6 @@ public:
 protected:
     virtual bool GetAddressSpecialCase(PyObject*, void*&) { return false; }
 };
-
-// create converter from fully qualified type
-Converter* CreateConverter(const std::string& fullType, Long_t size = -1);
 
 } // namespace CPyCppyy
 
