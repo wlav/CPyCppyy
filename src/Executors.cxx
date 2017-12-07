@@ -18,8 +18,8 @@
 //- data _____________________________________________________________________
 namespace CPyCppyy {
 
-    typedef Executor* (*ExecutorFactory_t) ();
-    typedef std::map<std::string, ExecutorFactory_t> ExecFactories_t;
+    typedef Executor* (*ef_t) ();
+    typedef std::map<std::string, ef_t> ExecFactories_t;
     static ExecFactories_t gExecFactories;
 
     extern PyObject* gNullPtrObject;
@@ -718,161 +718,97 @@ CPyCppyy::Executor* CPyCppyy::CreateExecutor(
 
 
 //----------------------------------------------------------------------------
-#define CPPYY_EXECUTOR_FACTORY(name)                                         \
-Executor* Create##name##Executor()                                           \
-{                                                                            \
-    return new name##Executor;                                               \
-}
-
 namespace {
 
-    using namespace CPyCppyy;
+using namespace CPyCppyy;
 
-// use macro rather than template for portability ...
-    CPPYY_EXECUTOR_FACTORY(Bool)
-    CPPYY_EXECUTOR_FACTORY(BoolRef)
-    CPPYY_EXECUTOR_FACTORY(BoolConstRef)
-    CPPYY_EXECUTOR_FACTORY(Char)
-    CPPYY_EXECUTOR_FACTORY(CharRef)
-    CPPYY_EXECUTOR_FACTORY(CharConstRef)
-    CPPYY_EXECUTOR_FACTORY(UChar)
-    CPPYY_EXECUTOR_FACTORY(UCharRef)
-    CPPYY_EXECUTOR_FACTORY(UCharConstRef)
-    CPPYY_EXECUTOR_FACTORY(Short)
-    CPPYY_EXECUTOR_FACTORY(ShortRef)
-    CPPYY_EXECUTOR_FACTORY(UShortRef)
-    CPPYY_EXECUTOR_FACTORY(Int)
-    CPPYY_EXECUTOR_FACTORY(IntRef)
-    CPPYY_EXECUTOR_FACTORY(UIntRef)
-    CPPYY_EXECUTOR_FACTORY(ULong)
-    CPPYY_EXECUTOR_FACTORY(ULongRef)
-    CPPYY_EXECUTOR_FACTORY(Long)
-    CPPYY_EXECUTOR_FACTORY(LongRef)
-    CPPYY_EXECUTOR_FACTORY(Float)
-    CPPYY_EXECUTOR_FACTORY(FloatRef)
-    CPPYY_EXECUTOR_FACTORY(Double)
-    CPPYY_EXECUTOR_FACTORY(DoubleRef)
-    CPPYY_EXECUTOR_FACTORY(LongDouble)
-    CPPYY_EXECUTOR_FACTORY(LongDoubleRef)
-    CPPYY_EXECUTOR_FACTORY(Void)
-    CPPYY_EXECUTOR_FACTORY(LongLong)
-    CPPYY_EXECUTOR_FACTORY(LongLongRef)
-    CPPYY_EXECUTOR_FACTORY(ULongLong)
-    CPPYY_EXECUTOR_FACTORY(ULongLongRef)
-    CPPYY_EXECUTOR_FACTORY(CString)
-    CPPYY_EXECUTOR_FACTORY(VoidArray)
-    CPPYY_EXECUTOR_FACTORY(BoolArray)
-    CPPYY_EXECUTOR_FACTORY(UCharArray)
-    CPPYY_EXECUTOR_FACTORY(ShortArray)
-    CPPYY_EXECUTOR_FACTORY(UShortArray)
-    CPPYY_EXECUTOR_FACTORY(IntArray)
-    CPPYY_EXECUTOR_FACTORY(UIntArray)
-    CPPYY_EXECUTOR_FACTORY(LongArray)
-    CPPYY_EXECUTOR_FACTORY(ULongArray)
-    CPPYY_EXECUTOR_FACTORY(LLongArray)
-    CPPYY_EXECUTOR_FACTORY(ULLongArray)
-    CPPYY_EXECUTOR_FACTORY(FloatArray)
-    CPPYY_EXECUTOR_FACTORY(DoubleArray)
-    CPPYY_EXECUTOR_FACTORY(STLString)
-    CPPYY_EXECUTOR_FACTORY(STLStringRef)
-    CPPYY_EXECUTOR_FACTORY(Constructor)
-    CPPYY_EXECUTOR_FACTORY(PyObject)
+struct InitExecFactories_t {
+public:
+    InitExecFactories_t() {
+    // load all executor factories in the global map 'gExecFactories'
+        CPyCppyy::ExecFactories_t& gf = gExecFactories;
 
-// executor factories for C++ types
-    typedef std::pair< const char*, ExecutorFactory_t > NFp_t;
-
-    NFp_t factories_[] = {
     // factories for built-ins
-        NFp_t("bool",                  &CreateBoolExecutor            ),
-        NFp_t("bool&",                 &CreateBoolRefExecutor         ),
-        NFp_t("const bool&",           &CreateBoolConstRefExecutor    ),
-        NFp_t("char",                  &CreateCharExecutor            ),
-        NFp_t("signed char",           &CreateCharExecutor            ),
-        NFp_t("unsigned char",         &CreateUCharExecutor           ),
-        NFp_t("char&",                 &CreateCharRefExecutor         ),
-        NFp_t("signed char&",          &CreateCharRefExecutor         ),
-        NFp_t("unsigned char&",        &CreateUCharRefExecutor        ),
-        NFp_t("const char&",           &CreateCharConstRefExecutor    ),
-        NFp_t("const signed char&",    &CreateCharConstRefExecutor    ),
-        NFp_t("const unsigned char&",  &CreateUCharConstRefExecutor   ),
-        NFp_t("short",                 &CreateShortExecutor           ),
-        NFp_t("short&",                &CreateShortRefExecutor        ),
-        NFp_t("unsigned short",        &CreateIntExecutor             ),
-        NFp_t("unsigned short&",       &CreateUShortRefExecutor       ),
-        NFp_t("int",                   &CreateIntExecutor             ),
-        NFp_t("int&",                  &CreateIntRefExecutor          ),
-        NFp_t("unsigned int",          &CreateULongExecutor           ),
-        NFp_t("unsigned int&",         &CreateUIntRefExecutor         ),
-        NFp_t("internal_enum_type_t",  &CreateULongExecutor           ),
-        NFp_t("internal_enum_type_t&", &CreateUIntRefExecutor         ),
-        NFp_t("long",                  &CreateLongExecutor            ),
-        NFp_t("long&",                 &CreateLongRefExecutor         ),
-        NFp_t("unsigned long",         &CreateULongExecutor           ),
-        NFp_t("unsigned long&",        &CreateULongRefExecutor        ),
-        NFp_t("long long",             &CreateLongLongExecutor        ),
-        NFp_t("Long64_t",              &CreateLongLongExecutor        ),
-        NFp_t("long long&",            &CreateLongLongRefExecutor     ),
-        NFp_t("Long64_t&",             &CreateLongLongRefExecutor     ),
-        NFp_t("unsigned long long",    &CreateULongLongExecutor       ),
-        NFp_t("ULong64_t",             &CreateULongLongExecutor       ),
-        NFp_t("unsigned long long&",   &CreateULongLongRefExecutor    ),
-        NFp_t("ULong64_t&",            &CreateULongLongRefExecutor    ),
+        gf["bool"] =                        (ef_t)+[]() { return new BoolExecutor{}; };
+        gf["bool&"] =                       (ef_t)+[]() { return new BoolRefExecutor{}; };
+        gf["const bool&"] =                 (ef_t)+[]() { return new BoolConstRefExecutor{}; };
+        gf["char"] =                        (ef_t)+[]() { return new CharExecutor{}; };
+        gf["signed char"] =                 (ef_t)+[]() { return new CharExecutor{}; };
+        gf["unsigned char"] =               (ef_t)+[]() { return new UCharExecutor{}; };
+        gf["char&"] =                       (ef_t)+[]() { return new CharRefExecutor{}; };
+        gf["signed char&"] =                (ef_t)+[]() { return new CharRefExecutor{}; };
+        gf["unsigned char&"] =              (ef_t)+[]() { return new UCharRefExecutor{}; };
+        gf["const char&"] =                 (ef_t)+[]() { return new CharConstRefExecutor{}; };
+        gf["const signed char&"] =          (ef_t)+[]() { return new CharConstRefExecutor{}; };
+        gf["const unsigned char&"] =        (ef_t)+[]() { return new UCharConstRefExecutor{}; };
+        gf["short"] =                       (ef_t)+[]() { return new ShortExecutor{}; };
+        gf["short&"] =                      (ef_t)+[]() { return new ShortRefExecutor{}; };
+        gf["unsigned short"] =              (ef_t)+[]() { return new IntExecutor{}; };
+        gf["unsigned short&"] =             (ef_t)+[]() { return new UShortRefExecutor{}; };
+        gf["int"] =                         (ef_t)+[]() { return new IntExecutor{}; };
+        gf["int&"] =                        (ef_t)+[]() { return new IntRefExecutor{}; };
+        gf["unsigned int"] =                (ef_t)+[]() { return new ULongExecutor{}; };
+        gf["unsigned int&"] =               (ef_t)+[]() { return new UIntRefExecutor{}; };
+        gf["internal_enum_type_t"] =        (ef_t)+[]() { return new ULongExecutor{}; };
+        gf["internal_enum_type_t&"] =       (ef_t)+[]() { return new UIntRefExecutor{}; };
+        gf["long"] =                        (ef_t)+[]() { return new LongExecutor{}; };
+        gf["long&"] =                       (ef_t)+[]() { return new LongRefExecutor{}; };
+        gf["unsigned long"] =               (ef_t)+[]() { return new ULongExecutor{}; };
+        gf["unsigned long&"] =              (ef_t)+[]() { return new ULongRefExecutor{}; };
+        gf["long long"] =                   (ef_t)+[]() { return new LongLongExecutor{}; };
+        gf["Long64_t"] =                    (ef_t)+[]() { return new LongLongExecutor{}; };
+        gf["long long&"] =                  (ef_t)+[]() { return new LongLongRefExecutor{}; };
+        gf["Long64_t&"] =                   (ef_t)+[]() { return new LongLongRefExecutor{}; };
+        gf["unsigned long long"] =          (ef_t)+[]() { return new ULongLongExecutor{}; };
+        gf["ULong64_t"] =                   (ef_t)+[]() { return new ULongLongExecutor{}; };
+        gf["unsigned long long&"] =         (ef_t)+[]() { return new ULongLongRefExecutor{}; };
+        gf["ULong64_t&"] =                  (ef_t)+[]() { return new ULongLongRefExecutor{}; };
 
-        NFp_t("float",                 &CreateFloatExecutor           ),
-        NFp_t("float&",                &CreateFloatRefExecutor        ),
-        NFp_t("Float16_t",             &CreateFloatExecutor           ),
-        NFp_t("Float16_t&",            &CreateFloatRefExecutor        ),
-        NFp_t("double",                &CreateDoubleExecutor          ),
-        NFp_t("double&",               &CreateDoubleRefExecutor       ),
-        NFp_t("Double32_t",            &CreateDoubleExecutor          ),
-        NFp_t("Double32_t&",           &CreateDoubleRefExecutor       ),
-        NFp_t("long double",           &CreateLongDoubleExecutor      ),   // TODO: lost precision
-        NFp_t("long double&",          &CreateLongDoubleRefExecutor   ),
-        NFp_t("void",                  &CreateVoidExecutor            ),
+        gf["float"] =                       (ef_t)+[]() { return new FloatExecutor{}; };
+        gf["float&"] =                      (ef_t)+[]() { return new FloatRefExecutor{}; };
+        gf["Float16_t"] =                   (ef_t)+[]() { return new FloatExecutor{}; };
+        gf["Float16_t&"] =                  (ef_t)+[]() { return new FloatRefExecutor{}; };
+        gf["double"] =                      (ef_t)+[]() { return new DoubleExecutor{}; };
+        gf["double&"] =                     (ef_t)+[]() { return new DoubleRefExecutor{}; };
+        gf["Double32_t"] =                  (ef_t)+[]() { return new DoubleExecutor{}; };
+        gf["Double32_t&"] =                 (ef_t)+[]() { return new DoubleRefExecutor{}; };
+        gf["long double"] =                 (ef_t)+[]() { return new LongDoubleExecutor{}; }; // TODO: lost precision
+        gf["long double&"] =                (ef_t)+[]() { return new LongDoubleRefExecutor{}; };
+        gf["void"] =                        (ef_t)+[]() { return new VoidExecutor{}; };
 
-   // pointer/array factories
-        NFp_t("void*",                 &CreateVoidArrayExecutor       ),
-        NFp_t("bool*",                 &CreateBoolArrayExecutor       ),
-        NFp_t("const unsigned char*",  &CreateUCharArrayExecutor      ),
-        NFp_t("unsigned char*",        &CreateUCharArrayExecutor      ),
-        NFp_t("short*",                &CreateShortArrayExecutor      ),
-        NFp_t("unsigned short*",       &CreateUShortArrayExecutor     ),
-        NFp_t("int*",                  &CreateIntArrayExecutor        ),
-        NFp_t("unsigned int*",         &CreateUIntArrayExecutor       ),
-        NFp_t("internal_enum_type_t*", &CreateUIntArrayExecutor       ),
-        NFp_t("long*",                 &CreateLongArrayExecutor       ),
-        NFp_t("unsigned long*",        &CreateULongArrayExecutor      ),
-        NFp_t("long long*",            &CreateLLongArrayExecutor      ),
-        NFp_t("Long64_t*",             &CreateLLongArrayExecutor      ),
-        NFp_t("unsigned long long*",   &CreateULLongArrayExecutor     ),
-        NFp_t("ULong64_t*",            &CreateULLongArrayExecutor     ),
-        NFp_t("float*",                &CreateFloatArrayExecutor      ),
-        NFp_t("double*",               &CreateDoubleArrayExecutor     ),
+    // pointer/array factories
+        gf["void*"] =                       (ef_t)+[]() { return new VoidArrayExecutor{}; };
+        gf["bool*"] =                       (ef_t)+[]() { return new BoolArrayExecutor{}; };
+        gf["const unsigned char*"] =        (ef_t)+[]() { return new UCharArrayExecutor{}; };
+        gf["unsigned char*"] =              (ef_t)+[]() { return new UCharArrayExecutor{}; };
+        gf["short*"] =                      (ef_t)+[]() { return new ShortArrayExecutor{}; };
+        gf["unsigned short*"] =             (ef_t)+[]() { return new UShortArrayExecutor{}; };
+        gf["int*"] =                        (ef_t)+[]() { return new IntArrayExecutor{}; };
+        gf["unsigned int*"] =               (ef_t)+[]() { return new UIntArrayExecutor{}; };
+        gf["internal_enum_type_t*"] =       (ef_t)+[]() { return new UIntArrayExecutor{}; };
+        gf["long*"] =                       (ef_t)+[]() { return new LongArrayExecutor{}; };
+        gf["unsigned long*"] =              (ef_t)+[]() { return new ULongArrayExecutor{}; };
+        gf["long long*"] =                  (ef_t)+[]() { return new LLongArrayExecutor{}; };
+        gf["Long64_t*"] =                   (ef_t)+[]() { return new LLongArrayExecutor{}; };
+        gf["unsigned long long*"] =         (ef_t)+[]() { return new ULLongArrayExecutor{}; };
+        gf["ULong64_t*"] =                  (ef_t)+[]() { return new ULLongArrayExecutor{}; };
+        gf["float*"] =                      (ef_t)+[]() { return new FloatArrayExecutor{}; };
+        gf["double*"] =                     (ef_t)+[]() { return new DoubleArrayExecutor{}; };
 
-   // factories for special cases
-        NFp_t("const char*",           &CreateCStringExecutor         ),
-        NFp_t("char*",                 &CreateCStringExecutor         ),
-        NFp_t("const signed char*",    &CreateCStringExecutor         ),
-        NFp_t("signed char*",          &CreateCStringExecutor         ),
-        NFp_t("std::string",           &CreateSTLStringExecutor       ),
-        NFp_t("string",                &CreateSTLStringExecutor       ),
-        NFp_t("std::string&",          &CreateSTLStringRefExecutor    ),
-        NFp_t("string&",               &CreateSTLStringRefExecutor    ),
-        NFp_t("__init__",              &CreateConstructorExecutor     ),
-        NFp_t("PyObject*",             &CreatePyObjectExecutor        ),
-        NFp_t("_object*",              &CreatePyObjectExecutor        ),
-        NFp_t("FILE*",                 &CreateVoidArrayExecutor       )
-    };
-
-    struct InitExecFactories_t {
-    public:
-        InitExecFactories_t() {
-        // load all executor factories in the global map 'gExecFactories'
-            int nf = sizeof(factories_)/sizeof(factories_[0]);
-            for (int i = 0; i < nf; ++i) {
-                gExecFactories[factories_[i].first] = factories_[i].second;
-            }
-        }
-    } initExecvFactories_;
+    // factories for special cases
+        gf["const char*"] =                 (ef_t)+[]() { return new CStringExecutor{}; };
+        gf["char*"] =                       (ef_t)+[]() { return new CStringExecutor{}; };
+        gf["const signed char*"] =          (ef_t)+[]() { return new CStringExecutor{}; };
+        gf["signed char*"] =                (ef_t)+[]() { return new CStringExecutor{}; };
+        gf["std::string"] =                 (ef_t)+[]() { return new STLStringExecutor{}; };
+        gf["string"] =                      (ef_t)+[]() { return new STLStringExecutor{}; };
+        gf["std::string&"] =                (ef_t)+[]() { return new STLStringRefExecutor{}; };
+        gf["string&"] =                     (ef_t)+[]() { return new STLStringRefExecutor{}; };
+        gf["__init__"] =                    (ef_t)+[]() { return new ConstructorExecutor{}; };
+        gf["PyObject*"] =                   (ef_t)+[]() { return new PyObjectExecutor{}; };
+        gf["_object*"] =                    (ef_t)+[]() { return new PyObjectExecutor{}; };
+        gf["FILE*"] =                       (ef_t)+[]() { return new VoidArrayExecutor{}; };
+    }
+} initExecvFactories_;
 
 } // unnamed namespace
