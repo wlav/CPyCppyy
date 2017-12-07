@@ -349,12 +349,15 @@ PyObject* CPyCppyy::name##ArrayExecutor::Execute(                            \
 }
 
 CPPYY_IMPL_ARRAY_EXEC(Bool,   bool)
+CPPYY_IMPL_ARRAY_EXEC(UChar,  unsigned char)
 CPPYY_IMPL_ARRAY_EXEC(Short,  short)
 CPPYY_IMPL_ARRAY_EXEC(UShort, unsigned short)
-CPPYY_IMPL_ARRAY_EXEC(Int,    Int_t)
-CPPYY_IMPL_ARRAY_EXEC(UInt,   UInt_t)
-CPPYY_IMPL_ARRAY_EXEC(Long,   Long_t)
-CPPYY_IMPL_ARRAY_EXEC(ULong,  ULong_t)
+CPPYY_IMPL_ARRAY_EXEC(Int,    int)
+CPPYY_IMPL_ARRAY_EXEC(UInt,   unsigned int)
+CPPYY_IMPL_ARRAY_EXEC(Long,   long)
+CPPYY_IMPL_ARRAY_EXEC(ULong,  unsigned long)
+CPPYY_IMPL_ARRAY_EXEC(LLong,  long long)
+CPPYY_IMPL_ARRAY_EXEC(ULLong, unsigned long long)
 CPPYY_IMPL_ARRAY_EXEC(Float,  float)
 CPPYY_IMPL_ARRAY_EXEC(Double, double)
 
@@ -759,12 +762,15 @@ namespace {
     CPPYY_EXECUTOR_FACTORY(CString)
     CPPYY_EXECUTOR_FACTORY(VoidArray)
     CPPYY_EXECUTOR_FACTORY(BoolArray)
+    CPPYY_EXECUTOR_FACTORY(UCharArray)
     CPPYY_EXECUTOR_FACTORY(ShortArray)
     CPPYY_EXECUTOR_FACTORY(UShortArray)
     CPPYY_EXECUTOR_FACTORY(IntArray)
     CPPYY_EXECUTOR_FACTORY(UIntArray)
     CPPYY_EXECUTOR_FACTORY(LongArray)
     CPPYY_EXECUTOR_FACTORY(ULongArray)
+    CPPYY_EXECUTOR_FACTORY(LLongArray)
+    CPPYY_EXECUTOR_FACTORY(ULLongArray)
     CPPYY_EXECUTOR_FACTORY(FloatArray)
     CPPYY_EXECUTOR_FACTORY(DoubleArray)
     CPPYY_EXECUTOR_FACTORY(STLString)
@@ -777,77 +783,85 @@ namespace {
 
     NFp_t factories_[] = {
     // factories for built-ins
-        NFp_t("bool",               &CreateBoolExecutor               ),
-        NFp_t("bool&",              &CreateBoolRefExecutor            ),
-        NFp_t("const bool&",        &CreateBoolConstRefExecutor       ),
-        NFp_t("char",               &CreateCharExecutor               ),
-        NFp_t("signed char",        &CreateCharExecutor               ),
-        NFp_t("unsigned char",      &CreateUCharExecutor              ),
-        NFp_t("char&",              &CreateCharRefExecutor            ),
-        NFp_t("signed char&",       &CreateCharRefExecutor            ),
-        NFp_t("unsigned char&",     &CreateUCharRefExecutor           ),
-        NFp_t("const char&",        &CreateCharConstRefExecutor       ),
-        NFp_t("const signed char&", &CreateCharConstRefExecutor       ),
-        NFp_t("const unsigned char&", &CreateUCharConstRefExecutor    ),
-        NFp_t("short",              &CreateShortExecutor              ),
-        NFp_t("short&",             &CreateShortRefExecutor           ),
-        NFp_t("unsigned short",     &CreateIntExecutor                ),
-        NFp_t("unsigned short&",    &CreateUShortRefExecutor          ),
-        NFp_t("int",                &CreateIntExecutor                ),
-        NFp_t("int&",               &CreateIntRefExecutor             ),
-        NFp_t("unsigned int",       &CreateULongExecutor              ),
-        NFp_t("unsigned int&",      &CreateUIntRefExecutor            ),
+        NFp_t("bool",                  &CreateBoolExecutor            ),
+        NFp_t("bool&",                 &CreateBoolRefExecutor         ),
+        NFp_t("const bool&",           &CreateBoolConstRefExecutor    ),
+        NFp_t("char",                  &CreateCharExecutor            ),
+        NFp_t("signed char",           &CreateCharExecutor            ),
+        NFp_t("unsigned char",         &CreateUCharExecutor           ),
+        NFp_t("char&",                 &CreateCharRefExecutor         ),
+        NFp_t("signed char&",          &CreateCharRefExecutor         ),
+        NFp_t("unsigned char&",        &CreateUCharRefExecutor        ),
+        NFp_t("const char&",           &CreateCharConstRefExecutor    ),
+        NFp_t("const signed char&",    &CreateCharConstRefExecutor    ),
+        NFp_t("const unsigned char&",  &CreateUCharConstRefExecutor   ),
+        NFp_t("short",                 &CreateShortExecutor           ),
+        NFp_t("short&",                &CreateShortRefExecutor        ),
+        NFp_t("unsigned short",        &CreateIntExecutor             ),
+        NFp_t("unsigned short&",       &CreateUShortRefExecutor       ),
+        NFp_t("int",                   &CreateIntExecutor             ),
+        NFp_t("int&",                  &CreateIntRefExecutor          ),
+        NFp_t("unsigned int",          &CreateULongExecutor           ),
+        NFp_t("unsigned int&",         &CreateUIntRefExecutor         ),
         NFp_t("internal_enum_type_t",  &CreateULongExecutor           ),
         NFp_t("internal_enum_type_t&", &CreateUIntRefExecutor         ),
-        NFp_t("long",               &CreateLongExecutor               ),
-        NFp_t("long&",              &CreateLongRefExecutor            ),
-        NFp_t("unsigned long",      &CreateULongExecutor              ),
-        NFp_t("unsigned long&",     &CreateULongRefExecutor           ),
-        NFp_t("long long",          &CreateLongLongExecutor           ),
-        NFp_t("Long64_t",           &CreateLongLongExecutor           ),
-        NFp_t("long long&",         &CreateLongLongRefExecutor        ),
-        NFp_t("Long64_t&",          &CreateLongLongRefExecutor        ),
-        NFp_t("unsigned long long", &CreateULongLongExecutor          ),
-        NFp_t("ULong64_t",          &CreateULongLongExecutor          ),
-        NFp_t("unsigned long long&", &CreateULongLongRefExecutor      ),
-        NFp_t("ULong64_t&",         &CreateULongLongRefExecutor       ),
+        NFp_t("long",                  &CreateLongExecutor            ),
+        NFp_t("long&",                 &CreateLongRefExecutor         ),
+        NFp_t("unsigned long",         &CreateULongExecutor           ),
+        NFp_t("unsigned long&",        &CreateULongRefExecutor        ),
+        NFp_t("long long",             &CreateLongLongExecutor        ),
+        NFp_t("Long64_t",              &CreateLongLongExecutor        ),
+        NFp_t("long long&",            &CreateLongLongRefExecutor     ),
+        NFp_t("Long64_t&",             &CreateLongLongRefExecutor     ),
+        NFp_t("unsigned long long",    &CreateULongLongExecutor       ),
+        NFp_t("ULong64_t",             &CreateULongLongExecutor       ),
+        NFp_t("unsigned long long&",   &CreateULongLongRefExecutor    ),
+        NFp_t("ULong64_t&",            &CreateULongLongRefExecutor    ),
 
-        NFp_t("float",              &CreateFloatExecutor              ),
-        NFp_t("float&",             &CreateFloatRefExecutor           ),
-        NFp_t("Float16_t",          &CreateFloatExecutor              ),
-        NFp_t("Float16_t&",         &CreateFloatRefExecutor           ),
-        NFp_t("double",             &CreateDoubleExecutor             ),
-        NFp_t("double&",            &CreateDoubleRefExecutor          ),
-        NFp_t("Double32_t",         &CreateDoubleExecutor             ),
-        NFp_t("Double32_t&",        &CreateDoubleRefExecutor          ),
-        NFp_t("long double",        &CreateLongDoubleExecutor         ),   // TODO: lost precision
-        NFp_t("long double&",       &CreateLongDoubleRefExecutor      ),
-        NFp_t("void",               &CreateVoidExecutor               ),
+        NFp_t("float",                 &CreateFloatExecutor           ),
+        NFp_t("float&",                &CreateFloatRefExecutor        ),
+        NFp_t("Float16_t",             &CreateFloatExecutor           ),
+        NFp_t("Float16_t&",            &CreateFloatRefExecutor        ),
+        NFp_t("double",                &CreateDoubleExecutor          ),
+        NFp_t("double&",               &CreateDoubleRefExecutor       ),
+        NFp_t("Double32_t",            &CreateDoubleExecutor          ),
+        NFp_t("Double32_t&",           &CreateDoubleRefExecutor       ),
+        NFp_t("long double",           &CreateLongDoubleExecutor      ),   // TODO: lost precision
+        NFp_t("long double&",          &CreateLongDoubleRefExecutor   ),
+        NFp_t("void",                  &CreateVoidExecutor            ),
 
    // pointer/array factories
-        NFp_t("void*",              &CreateVoidArrayExecutor          ),
-        NFp_t("bool*",              &CreateBoolArrayExecutor          ),
-        NFp_t("short*",             &CreateShortArrayExecutor         ),
-        NFp_t("unsigned short*",    &CreateUShortArrayExecutor        ),
-        NFp_t("int*",               &CreateIntArrayExecutor           ),
-        NFp_t("unsigned int*",      &CreateUIntArrayExecutor          ),
+        NFp_t("void*",                 &CreateVoidArrayExecutor       ),
+        NFp_t("bool*",                 &CreateBoolArrayExecutor       ),
+        NFp_t("const unsigned char*",  &CreateUCharArrayExecutor      ),
+        NFp_t("unsigned char*",        &CreateUCharArrayExecutor      ),
+        NFp_t("short*",                &CreateShortArrayExecutor      ),
+        NFp_t("unsigned short*",       &CreateUShortArrayExecutor     ),
+        NFp_t("int*",                  &CreateIntArrayExecutor        ),
+        NFp_t("unsigned int*",         &CreateUIntArrayExecutor       ),
         NFp_t("internal_enum_type_t*", &CreateUIntArrayExecutor       ),
-        NFp_t("long*",              &CreateLongArrayExecutor          ),
-        NFp_t("unsigned long*",     &CreateULongArrayExecutor         ),
-        NFp_t("float*",             &CreateFloatArrayExecutor         ),
-        NFp_t("double*",            &CreateDoubleArrayExecutor        ),
+        NFp_t("long*",                 &CreateLongArrayExecutor       ),
+        NFp_t("unsigned long*",        &CreateULongArrayExecutor      ),
+        NFp_t("long long*",            &CreateLLongArrayExecutor      ),
+        NFp_t("Long64_t*",             &CreateLLongArrayExecutor      ),
+        NFp_t("unsigned long long*",   &CreateULLongArrayExecutor     ),
+        NFp_t("ULong64_t*",            &CreateULLongArrayExecutor     ),
+        NFp_t("float*",                &CreateFloatArrayExecutor      ),
+        NFp_t("double*",               &CreateDoubleArrayExecutor     ),
 
    // factories for special cases
-        NFp_t("const char*",        &CreateCStringExecutor            ),
-        NFp_t("char*",              &CreateCStringExecutor            ),
-        NFp_t("std::string",        &CreateSTLStringExecutor          ),
-        NFp_t("string",             &CreateSTLStringExecutor          ),
-        NFp_t("std::string&",       &CreateSTLStringRefExecutor       ),
-        NFp_t("string&",            &CreateSTLStringRefExecutor       ),
-        NFp_t("__init__",           &CreateConstructorExecutor        ),
-        NFp_t("PyObject*",          &CreatePyObjectExecutor           ),
-        NFp_t("_object*",           &CreatePyObjectExecutor           ),
-        NFp_t("FILE*",              &CreateVoidArrayExecutor          )
+        NFp_t("const char*",           &CreateCStringExecutor         ),
+        NFp_t("char*",                 &CreateCStringExecutor         ),
+        NFp_t("const signed char*",    &CreateCStringExecutor         ),
+        NFp_t("signed char*",          &CreateCStringExecutor         ),
+        NFp_t("std::string",           &CreateSTLStringExecutor       ),
+        NFp_t("string",                &CreateSTLStringExecutor       ),
+        NFp_t("std::string&",          &CreateSTLStringRefExecutor    ),
+        NFp_t("string&",               &CreateSTLStringRefExecutor    ),
+        NFp_t("__init__",              &CreateConstructorExecutor     ),
+        NFp_t("PyObject*",             &CreatePyObjectExecutor        ),
+        NFp_t("_object*",              &CreatePyObjectExecutor        ),
+        NFp_t("FILE*",                 &CreateVoidArrayExecutor       )
     };
 
     struct InitExecFactories_t {

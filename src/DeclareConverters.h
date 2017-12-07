@@ -109,22 +109,17 @@ public:
     virtual PyObject* FromMemory(void* address);
 };
 
-class NonConstUCStringConverter : public NonConstCStringConverter {
-public:
-    NonConstUCStringConverter(long maxSize = -1) : NonConstCStringConverter(maxSize) {}
-
-public:
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
-};
-
 // pointer/array conversions
 CPPYY_DECLARE_ARRAY_CONVERTER(BoolArray);
+CPPYY_DECLARE_ARRAY_CONVERTER(UCharArray);
 CPPYY_DECLARE_ARRAY_CONVERTER(ShortArray);
 CPPYY_DECLARE_ARRAY_CONVERTER(UShortArray);
 CPPYY_DECLARE_ARRAY_CONVERTER(IntArray);
 CPPYY_DECLARE_ARRAY_CONVERTER(UIntArray);
 CPPYY_DECLARE_ARRAY_CONVERTER(LongArray);
 CPPYY_DECLARE_ARRAY_CONVERTER(ULongArray);
+CPPYY_DECLARE_ARRAY_CONVERTER(LLongArray);
+CPPYY_DECLARE_ARRAY_CONVERTER(ULLongArray);
 CPPYY_DECLARE_ARRAY_CONVERTER(FloatArray);
 CPPYY_DECLARE_ARRAY_CONVERTER(DoubleArray);
 

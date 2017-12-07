@@ -652,19 +652,6 @@ PyObject* CPyCppyy::NonConstCStringConverter::FromMemory(void* address)
 }
 
 //----------------------------------------------------------------------------
-bool CPyCppyy::NonConstUCStringConverter::SetArg(
-    PyObject* pyobject, Parameter& para, CallContext* ctxt)
-{
-// attempt base class first (i.e. passing a string), but if that fails, try a buffer
-    if (this->CStringConverter::SetArg(pyobject, para, ctxt))
-        return true;
-
-// apparently failed, try char buffer
-    PyErr_Clear();
-    return CArraySetArg(pyobject, para, 'B', sizeof(unsigned char));
-}
-
-//----------------------------------------------------------------------------
 bool CPyCppyy::VoidArrayConverter::GetAddressSpecialCase(PyObject* pyobject, void*& address)
 {
 // (1): C++11 style "null pointer"
@@ -810,29 +797,18 @@ bool CPyCppyy::name##ArrayConverter::ToMemory(PyObject* value, void* address)\
 }
 
 //----------------------------------------------------------------------------
-CPPYY_IMPL_ARRAY_CONVERTER(Bool,   bool,           'b')  // signed char
-CPPYY_IMPL_ARRAY_CONVERTER(Short,  short,          'h')
-CPPYY_IMPL_ARRAY_CONVERTER(UShort, unsigned short, 'H')
-CPPYY_IMPL_ARRAY_CONVERTER(Int,    Int_t,          'i')
-CPPYY_IMPL_ARRAY_CONVERTER(UInt,   UInt_t,         'I')
-CPPYY_IMPL_ARRAY_CONVERTER(Long,   Long_t,         'l')
-CPPYY_IMPL_ARRAY_CONVERTER(ULong,  ULong_t,        'L')
-CPPYY_IMPL_ARRAY_CONVERTER(Float,  float,          'f')
-CPPYY_IMPL_ARRAY_CONVERTER(Double, double,         'd')
-
-//----------------------------------------------------------------------------
-bool CPyCppyy::LongLongArrayConverter::SetArg(
-    PyObject* pyobject, Parameter& para, CallContext* ctxt)
-{
-// convert <pyobject> to C++ long long*, set arg for call
-    PyObject* pytc = PyObject_GetAttr(pyobject, PyStrings::gTypeCode);
-    if (pytc) {                    // iow, this array has a known type, but there's no
-        Py_DECREF(pytc);           // such thing for long long in module array
-        return false;
-    }
-
-    return VoidArrayConverter::SetArg(pyobject, para, ctxt);
-}
+CPPYY_IMPL_ARRAY_CONVERTER(Bool,   bool,                   'b')  // signed char
+CPPYY_IMPL_ARRAY_CONVERTER(UChar,  unsigned char,          'B')
+CPPYY_IMPL_ARRAY_CONVERTER(Short,  short,                  'h')
+CPPYY_IMPL_ARRAY_CONVERTER(UShort, unsigned short,         'H')
+CPPYY_IMPL_ARRAY_CONVERTER(Int,    int,                    'i')
+CPPYY_IMPL_ARRAY_CONVERTER(UInt,   unsigned int,           'I')
+CPPYY_IMPL_ARRAY_CONVERTER(Long,   long,                   'l')
+CPPYY_IMPL_ARRAY_CONVERTER(ULong,  unsigned long,          'L')
+CPPYY_IMPL_ARRAY_CONVERTER(LLong,  long long,              'q')
+CPPYY_IMPL_ARRAY_CONVERTER(ULLong, unsigned long long,     'Q')
+CPPYY_IMPL_ARRAY_CONVERTER(Float,  float,                  'f')
+CPPYY_IMPL_ARRAY_CONVERTER(Double, double,                 'd')
 
 
 //- converters for special cases ---------------------------------------------
@@ -1533,9 +1509,9 @@ namespace {
     CPPYY_BASIC_CONVERTER_FACTORY(ConstULongLongRef)
     CPPYY_ARRAY_CONVERTER_FACTORY(CString)
     CPPYY_ARRAY_CONVERTER_FACTORY(NonConstCString)
-    CPPYY_ARRAY_CONVERTER_FACTORY(NonConstUCString)
     CPPYY_ARRAY_CONVERTER_FACTORY(BoolArray)
     CPPYY_BASIC_CONVERTER_FACTORY(BoolArrayRef)
+    CPPYY_ARRAY_CONVERTER_FACTORY(UCharArray)
     CPPYY_ARRAY_CONVERTER_FACTORY(ShortArray)
     CPPYY_ARRAY_CONVERTER_FACTORY(ShortArrayRef)
     CPPYY_ARRAY_CONVERTER_FACTORY(UShortArray)
@@ -1546,11 +1522,12 @@ namespace {
     CPPYY_ARRAY_CONVERTER_FACTORY(LongArray)
     CPPYY_ARRAY_CONVERTER_FACTORY(ULongArray)
     CPPYY_ARRAY_CONVERTER_FACTORY(ULongArrayRef)
+    CPPYY_ARRAY_CONVERTER_FACTORY(LLongArray)
+    CPPYY_ARRAY_CONVERTER_FACTORY(ULLongArray)
     CPPYY_ARRAY_CONVERTER_FACTORY(FloatArray)
     CPPYY_ARRAY_CONVERTER_FACTORY(FloatArrayRef)
     CPPYY_ARRAY_CONVERTER_FACTORY(DoubleArray)
     CPPYY_BASIC_CONVERTER_FACTORY(VoidArray)
-    CPPYY_BASIC_CONVERTER_FACTORY(LongLongArray)
     CPPYY_BASIC_CONVERTER_FACTORY(STLString)
 #if __cplusplus > 201402L
     CPPYY_BASIC_CONVERTER_FACTORY(STLStringView)
@@ -1609,8 +1586,8 @@ namespace {
     // pointer/array factories
         NFp_t("bool*",                     &CreateBoolArrayConverter         ),
         NFp_t("bool&",                     &CreateBoolArrayRefConverter      ),
-        NFp_t("const unsigned char*",      &CreateCStringConverter           ),
-        NFp_t("unsigned char*",            &CreateNonConstUCStringConverter  ),
+        NFp_t("const unsigned char*",      &CreateUCharArrayConverter        ),
+        NFp_t("unsigned char*",            &CreateUCharArrayConverter        ),
         NFp_t("short*",                    &CreateShortArrayConverter        ),
         NFp_t("short&",                    &CreateShortArrayRefConverter     ),
         NFp_t("unsigned short*",           &CreateUShortArrayConverter       ),
@@ -1624,10 +1601,10 @@ namespace {
         NFp_t("float*",                    &CreateFloatArrayConverter        ),
         NFp_t("float&",                    &CreateFloatArrayRefConverter     ),
         NFp_t("double*",                   &CreateDoubleArrayConverter       ),
-        NFp_t("long long*",                &CreateLongLongArrayConverter     ),
-        NFp_t("Long64_t*",                 &CreateLongLongArrayConverter     ),
-        NFp_t("unsigned long long*",       &CreateLongLongArrayConverter     ),  // TODO: ULongLong
-        NFp_t("ULong64_t*",                &CreateLongLongArrayConverter     ),  // TODO: ULongLong
+        NFp_t("long long*",                &CreateLLongArrayConverter        ),
+        NFp_t("Long64_t*",                 &CreateULLongArrayConverter       ),
+        NFp_t("unsigned long long*",       &CreateLLongArrayConverter        ),
+        NFp_t("ULong64_t*",                &CreateULLongArrayConverter       ),
         NFp_t("void*",                     &CreateVoidArrayConverter         ),
 
     // factories for special cases

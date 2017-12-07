@@ -6,6 +6,7 @@
 namespace CPyCppyy {
 
 PyObject* CreateLowLevelView(bool*,                   Py_ssize_t* shape = nullptr);
+PyObject* CreateLowLevelView(unsigned char*,          Py_ssize_t* shape = nullptr);
 PyObject* CreateLowLevelView(short*,                  Py_ssize_t* shape = nullptr);
 PyObject* CreateLowLevelView(unsigned short*,         Py_ssize_t* shape = nullptr);
 PyObject* CreateLowLevelView(int*,                    Py_ssize_t* shape = nullptr);

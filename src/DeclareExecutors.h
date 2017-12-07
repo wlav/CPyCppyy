@@ -39,12 +39,15 @@ CPPYY_DECL_EXEC(CString);
 // pointer/array executors
 CPPYY_DECL_EXEC(VoidArray);
 CPPYY_DECL_EXEC(BoolArray);
+CPPYY_DECL_EXEC(UCharArray);
 CPPYY_DECL_EXEC(ShortArray);
 CPPYY_DECL_EXEC(UShortArray);
 CPPYY_DECL_EXEC(IntArray);
 CPPYY_DECL_EXEC(UIntArray);
 CPPYY_DECL_EXEC(LongArray);
 CPPYY_DECL_EXEC(ULongArray);
+CPPYY_DECL_EXEC(LLongArray);
+CPPYY_DECL_EXEC(ULLongArray);
 CPPYY_DECL_EXEC(FloatArray);
 CPPYY_DECL_EXEC(DoubleArray);
 

@@ -716,6 +716,8 @@ namespace {
 template<typename T> struct typecode_traits {};
 template<> struct typecode_traits<bool> {
     static constexpr const char* format = "?"; static constexpr const char* name = "bool"; };
+template<> struct typecode_traits<unsigned char> {
+    static constexpr const char* format = "B"; static constexpr const char* name = "unsigned char"; };
 template<> struct typecode_traits<short> {
     static constexpr const char* format = "h"; static constexpr const char* name = "short"; };
 template<> struct typecode_traits<unsigned short> {
@@ -780,6 +782,10 @@ static inline PyObject* CreateLowLevelViewT(T* address, Py_ssize_t* shape)
 //---------------------------------------------------------------------------
 PyObject* CPyCppyy::CreateLowLevelView(bool* address, Py_ssize_t* shape) {
     return CreateLowLevelViewT<bool>(address, shape);
+}
+
+PyObject* CPyCppyy::CreateLowLevelView(unsigned char* address, Py_ssize_t* shape) {
+    return CreateLowLevelViewT<unsigned char>(address, shape);
 }
 
 PyObject* CPyCppyy::CreateLowLevelView(short* address, Py_ssize_t* shape) {
