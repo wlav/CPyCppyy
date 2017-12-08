@@ -22,7 +22,6 @@
 #include <string_view>
 #endif
 
-
 // FIXME: Should refer to CPyCppyy::Parameter in the code.
 #ifdef R__CXXMODULES
   #define Parameter CPyCppyy::Parameter
@@ -1433,10 +1432,6 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long
             else if (cpd == "")             // by value
                 result = new ValueCppObjectConverter(klass, true);
         }
-    } else if (realType == "internal_enum_type_t") {
-    // special case (Cling): represent enums as unsigned integers
-        if (cpd == "&")
-            h = isConst ? gConvFactories.find("const long&") : gConvFactories.find("long&");
     } else if (realType.find("(*)") != std::string::npos ||
                (realType.find("::*)") != std::string::npos)) {
     // this is a function function pointer
@@ -1491,7 +1486,8 @@ public:
         gf["const int&"] =                  (cf_t)+[](long) { return new ConstIntRefConverter{}; };
         gf["unsigned int"] =                (cf_t)+[](long) { return new UIntConverter{}; };
         gf["const unsigned int&"] =         (cf_t)+[](long) { return new ConstUIntRefConverter{}; };
-        gf["internal_enum_type_t"] =        (cf_t)+[](long) { return new IntConverter{}; };   // yes: int
+        gf["internal_enum_type_t"] =        (cf_t)+[](long) { return new IntConverter{}; };
+        gf["internal_enum_type_t&"] =       (cf_t)+[](long) { return new IntRefConverter{}; };
         gf["long"] =                        (cf_t)+[](long) { return new LongConverter{}; };
         gf["long&"] =                       (cf_t)+[](long) { return new LongRefConverter{}; };
         gf["const long&"] =                 (cf_t)+[](long) { return new ConstLongRefConverter{}; };

@@ -197,7 +197,7 @@ void CPyCppyy::CPPDataMember::Set(Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t i
 
     std::string fullType = Cppyy::GetDatamemberType(scope, idata);
     if (Cppyy::IsEnumData(scope, idata)) {
-        fullType = "UInt_t";  // TODO: use special enum_t type across the board
+        fullType = Cppyy::ResolveEnum(fullType);  // enum might be any type of int
         fProperty |= kIsEnumData;
     }
 

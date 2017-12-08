@@ -749,8 +749,8 @@ public:
         gf["int&"] =                        (ef_t)+[]() { return new IntRefExecutor{}; };
         gf["unsigned int"] =                (ef_t)+[]() { return new ULongExecutor{}; };
         gf["unsigned int&"] =               (ef_t)+[]() { return new UIntRefExecutor{}; };
-        gf["internal_enum_type_t"] =        (ef_t)+[]() { return new ULongExecutor{}; };
-        gf["internal_enum_type_t&"] =       (ef_t)+[]() { return new UIntRefExecutor{}; };
+        gf["internal_enum_type_t"] =        (ef_t)+[]() { return new IntExecutor{}; };
+        gf["internal_enum_type_t&"] =       (ef_t)+[]() { return new IntRefExecutor{}; };
         gf["long"] =                        (ef_t)+[]() { return new LongExecutor{}; };
         gf["long&"] =                       (ef_t)+[]() { return new LongRefExecutor{}; };
         gf["unsigned long"] =               (ef_t)+[]() { return new ULongExecutor{}; };

@@ -20,6 +20,7 @@ namespace Cppyy {
 
 // name to opaque C++ scope representation -----------------------------------
     std::string ResolveName(const std::string& cppitem_name);
+    std::string ResolveEnum(const std::string& enum_type);
     TCppScope_t GetScope(const std::string& scope_name);
     TCppType_t  GetActualClass(TCppType_t klass, TCppObject_t obj);
     size_t      SizeOf(TCppType_t klass);
