@@ -1048,7 +1048,7 @@ bool CPyCppyy::CppObjectPtrConverter<ISREFERENCE>::SetArg(
 
     // set pointer (may be null) and declare success
         if (((CPPInstance*)pyobject)->fFlags & CPPInstance::kIsReference)
-        // If given object is already a reference (aka pointer) then we should not take the address of it
+        // already a reference (== pointer)
             para.fValue.fVoidp = ((CPPInstance*)pyobject)->fObject;
         else
             para.fValue.fVoidp = &((CPPInstance*)pyobject)->fObject;
