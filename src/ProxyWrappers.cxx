@@ -292,7 +292,7 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass) {
         // normal case, add a new method
             CPPOverload* method = CPPOverload_New(imd->first, imd->second);
             PyObject_SetAttrString(
-                pyclass, const_cast<char* >(method->GetName().c_str()), (PyObject*)method);
+                pyclass, const_cast<char*>(method->GetName().c_str()), (PyObject*)method);
             Py_DECREF(method);
         }
 
@@ -516,7 +516,7 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
     }
 
     if (!(bool)klass) {   // if so, all options have been exhausted: it doesn't exist as such
-        PyErr_Format(PyExc_TypeError, "\'%s\' is not a C++ class", lookup.c_str());
+        PyErr_Format(PyExc_TypeError, "\'%s\' is not a known C++ class", lookup.c_str());
         Py_XDECREF(parent);
         return nullptr;
     }
@@ -690,7 +690,7 @@ PyObject* CPyCppyy::GetCppGlobal(const std::string& name)
     }
 
 // nothing found
-    PyErr_Format(PyExc_LookupError, "\'%s\' is not a C++ global", name.c_str());
+    PyErr_Format(PyExc_LookupError, "\'%s\' is not a known C++ global", name.c_str());
     return nullptr;
 }
 
