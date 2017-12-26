@@ -202,6 +202,14 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
             // a recursive call. Simply add method directly, as we're guaranteed
             // that it doesn't exist yet.
                 attr = (PyObject*)CPPOverload_New(name, overloads);
+
+            // If both templated and not, the templated one needs to be user-facing
+            // in order to expose the instantiation mechanims.
+                if (Cppyy::ExistsMethodTemplate(scope, name)) {
+                    TemplateProxy* pytmpl = TemplateProxy_New(name, name, pyclass);
+                    pytmpl->AddOverload((CPPOverload*)attr);
+                    attr = (PyObject*)pytmpl;
+                }
             }
 
         // tickle lazy lookup of data members
@@ -214,6 +222,10 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
     // function templates that have not been instantiated
         if (!attr && Cppyy::ExistsMethodTemplate(scope, name)) {
             attr = (PyObject*)TemplateProxy_New(name, name, pyclass);
+        } else {
+        // for completeness in error reporting
+            PyErr_Format(PyExc_TypeError, "\'%s\' is not a known C++ template", name.c_str());
+            Utility::FetchError(errors);
         }
 
     // enums types requested as type (rather than the constants)
@@ -223,6 +235,10 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
         // TODO: although fine for C++98, this isn't correct in C++11
             Py_INCREF(&PyInt_Type);
             attr = (PyObject*)&PyInt_Type;
+        } else {
+        // for completeness in error reporting
+            PyErr_Format(PyExc_TypeError, "\'%s\' is not a known C++ enum", name.c_str());
+            Utility::FetchError(errors);
         }
 
         if (!attr && scope == Cppyy::gGlobalScope /* at global level only */) {
