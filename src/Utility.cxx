@@ -434,7 +434,7 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& 
 //----------------------------------------------------------------------------
 std::string CPyCppyy::Utility::ConstructTemplateArgs(PyObject* pyname, PyObject* args, int argoff)
 {
-// Helper to construct the "< type, type, ... >" part of a templated name (either
+// Helper to construct the "<type, type, ...>" part of a templated name (either
 // for a class or method lookup
     std::stringstream tmpl_name;
     if (pyname)
