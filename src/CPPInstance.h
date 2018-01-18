@@ -36,13 +36,15 @@ public:
     // Initialize the proxy with the pointer value 'address.'
         fObject = address;
         fFlags  = flags;
+        fSmartPtrType = (Cppyy::TCppType_t)0;
+        fDereferencer = (Cppyy::TCppMethod_t)0;
     }
 
-    void SetSmartPtr(void* address, Cppyy::TCppType_t ptrType)
+    void SetSmartPtr(Cppyy::TCppType_t ptrtype, Cppyy::TCppMethod_t deref)
     {
         fFlags |= kIsSmartPtr;
-        fSmartPtr = address;
-        fSmartPtrType = ptrType;
+        fSmartPtrType = ptrtype;
+        fDereferencer = deref;
     }
 
     void* GetObject() const
@@ -52,11 +54,8 @@ public:
     // We get the raw pointer from the smart pointer each time, in case
     // it has changed or has been freed.
         if (fFlags & kIsSmartPtr) {
-        // TODO: this is icky and slow
-            std::vector<Cppyy::TCppIndex_t> methods =
-                Cppyy::GetMethodIndicesFromName(fSmartPtrType, "operator->");
             std::vector<Parameter> args;
-            return Cppyy::CallR(Cppyy::GetMethod(fSmartPtrType, methods[0]), fSmartPtr, &args);
+            return Cppyy::CallR(fDereferencer, fObject, &args);
         }
 
         if (fObject && (fFlags & kIsReference))
@@ -78,8 +77,11 @@ public:                 // public, as the python C-API works with C structs
     PyObject_HEAD
     void*     fObject;
     int       fFlags;
-    void*     fSmartPtr;
-    Cppyy::TCppType_t fSmartPtrType;
+
+// TODO: should be its own version of CPPInstance so as not to clutter the
+// normal instances
+    Cppyy::TCppType_t   fSmartPtrType;
+    Cppyy::TCppMethod_t fDereferencer;
 
 private:
     CPPInstance() = delete;

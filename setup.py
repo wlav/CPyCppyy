@@ -44,7 +44,7 @@ setup(
         'Natural Language :: English'
     ],
 
-    install_requires=['cppyy-backend'],
+    install_requires=['cppyy-backend>=0.5'],
 
     keywords='C++ bindings',
 

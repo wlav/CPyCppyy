@@ -226,13 +226,13 @@ public:
 // smart pointer converter
 class SmartPtrCppObjectConverter : public Converter  {
 public:
-    SmartPtrCppObjectConverter(Cppyy::TCppType_t klass,
-                               Cppyy::TCppType_t rawPtrType,
+    SmartPtrCppObjectConverter(Cppyy::TCppType_t smart,
+                               Cppyy::TCppType_t raw,
                                Cppyy::TCppMethod_t deref,
                                bool keepControl = false,
-                               bool handlePtr = false)
-        : fClass(klass), fRawPtrType(rawPtrType), fDereferencer(deref),
-          fKeepControl(keepControl), fHandlePtr(handlePtr) {}
+                               bool isRef = false)
+        : fSmartPtrType(smart), fRawPtrType(raw), fDereferencer(deref),
+          fKeepControl(keepControl), fIsRef(isRef) {}
 
 public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
@@ -242,11 +242,11 @@ public:
 protected:
     virtual bool GetAddressSpecialCase(PyObject*, void*&) { return false; }
 
-    Cppyy::TCppType_t   fClass;
+    Cppyy::TCppType_t   fSmartPtrType;
     Cppyy::TCppType_t   fRawPtrType;
     Cppyy::TCppMethod_t fDereferencer;
     bool                fKeepControl;
-    bool                fHandlePtr;
+    bool                fIsRef;
 };
 
 } // unnamed namespace

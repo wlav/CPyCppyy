@@ -766,14 +766,6 @@ bool CPyCppyy::name##ArrayConverter::SetArg(                                 \
     return CArraySetArg(pyobject, para, code, sizeof(type));                 \
 }                                                                            \
                                                                              \
-bool CPyCppyy::name##ArrayRefConverter::SetArg(                              \
-    PyObject* pyobject, Parameter& para, CallContext* ctxt)                  \
-{                                                                            \
-    bool result = name##ArrayConverter::SetArg(pyobject, para, ctxt);        \
-    para.fTypeCode = 'V';                                                    \
-    return result;                                                           \
-}                                                                            \
-                                                                             \
 PyObject* CPyCppyy::name##ArrayConverter::FromMemory(void* address)          \
 {                                                                            \
     Py_ssize_t shape[] = {1, fSize};                                         \
@@ -797,19 +789,31 @@ bool CPyCppyy::name##ArrayConverter::ToMemory(PyObject* value, void* address)\
     return true;                                                             \
 }
 
+#define CPPYY_IMPL_ARRAY_CONVERTER2(name, type, code)                        \
+CPPYY_IMPL_ARRAY_CONVERTER(name, type, code)                                 \
+                                                                             \
+bool CPyCppyy::name##ArrayRefConverter::SetArg(                              \
+    PyObject* pyobject, Parameter& para, CallContext* ctxt)                  \
+{                                                                            \
+    bool result = name##ArrayConverter::SetArg(pyobject, para, ctxt);        \
+    para.fTypeCode = 'V';                                                    \
+    return result;                                                           \
+}
+
+
 //----------------------------------------------------------------------------
-CPPYY_IMPL_ARRAY_CONVERTER(Bool,   bool,                   'b')  // signed char
-CPPYY_IMPL_ARRAY_CONVERTER(UChar,  unsigned char,          'B')
-CPPYY_IMPL_ARRAY_CONVERTER(Short,  short,                  'h')
-CPPYY_IMPL_ARRAY_CONVERTER(UShort, unsigned short,         'H')
-CPPYY_IMPL_ARRAY_CONVERTER(Int,    int,                    'i')
-CPPYY_IMPL_ARRAY_CONVERTER(UInt,   unsigned int,           'I')
-CPPYY_IMPL_ARRAY_CONVERTER(Long,   long,                   'l')
-CPPYY_IMPL_ARRAY_CONVERTER(ULong,  unsigned long,          'L')
-CPPYY_IMPL_ARRAY_CONVERTER(LLong,  long long,              'q')
-CPPYY_IMPL_ARRAY_CONVERTER(ULLong, unsigned long long,     'Q')
-CPPYY_IMPL_ARRAY_CONVERTER(Float,  float,                  'f')
-CPPYY_IMPL_ARRAY_CONVERTER(Double, double,                 'd')
+CPPYY_IMPL_ARRAY_CONVERTER2(Bool,   bool,                  'b')  // signed char
+CPPYY_IMPL_ARRAY_CONVERTER (UChar,  unsigned char,         'B')
+CPPYY_IMPL_ARRAY_CONVERTER2(Short,  short,                 'h')
+CPPYY_IMPL_ARRAY_CONVERTER2(UShort, unsigned short,        'H')
+CPPYY_IMPL_ARRAY_CONVERTER (Int,    int,                   'i')
+CPPYY_IMPL_ARRAY_CONVERTER2(UInt,   unsigned int,          'I')
+CPPYY_IMPL_ARRAY_CONVERTER (Long,   long,                  'l')
+CPPYY_IMPL_ARRAY_CONVERTER2(ULong,  unsigned long,         'L')
+CPPYY_IMPL_ARRAY_CONVERTER2(LLong,  long long,             'q')
+CPPYY_IMPL_ARRAY_CONVERTER2(ULLong, unsigned long long,    'Q')
+CPPYY_IMPL_ARRAY_CONVERTER2(Float,  float,                 'f')
+CPPYY_IMPL_ARRAY_CONVERTER (Double, double,                'd')
 
 
 //- converters for special cases ---------------------------------------------
@@ -1248,10 +1252,10 @@ bool CPyCppyy::PyObjectConverter::ToMemory(PyObject* value, void* address)
 bool CPyCppyy::SmartPtrCppObjectConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* ctxt)
 {
-    char typeCode = fHandlePtr ? 'p' : 'V';
+    char typeCode = fIsRef ? 'p' : 'V';
 
     if (!CPPInstance_Check(pyobject)) {
-        if (fHandlePtr && GetAddressSpecialCase(pyobject, para.fValue.fVoidp)) {
+        if (fIsRef && GetAddressSpecialCase(pyobject, para.fValue.fVoidp)) {
             para.fTypeCode = typeCode;      // allow special cases such as nullptr
             return true;
         }
@@ -1262,16 +1266,17 @@ bool CPyCppyy::SmartPtrCppObjectConverter::SetArg(
     CPPInstance* pyobj = (CPPInstance*)pyobject;
 
 // for the case where we have a 'hidden' smart pointer:
-    if (pyobj->fFlags & CPPInstance::kIsSmartPtr && Cppyy::IsSubtype(pyobj->fSmartPtrType, fClass)) {
+    if ((pyobj->fFlags & CPPInstance::kIsSmartPtr) &&
+            Cppyy::IsSubtype(pyobj->fSmartPtrType, fSmartPtrType)) {
     // depending on memory policy, some objects need releasing when passed into functions
         if (fKeepControl && !UseStrictOwnership(ctxt))
             ((CPPInstance*)pyobject)->CppOwns();
 
     // calculate offset between formal and actual arguments
-        para.fValue.fVoidp = pyobj->fSmartPtr;
-        if (pyobj->fSmartPtrType != fClass) {
+        para.fValue.fVoidp = pyobj->fObject;
+        if (pyobj->fSmartPtrType != fSmartPtrType) {
             para.fValue.fLong += Cppyy::GetBaseOffset(
-                pyobj->fSmartPtrType, fClass, para.fValue.fVoidp, 1 /* up-cast */);
+                pyobj->fSmartPtrType, fSmartPtrType, para.fValue.fVoidp, 1 /* up-cast */);
         }
 
     // set pointer (may be null) and declare success
@@ -1280,12 +1285,12 @@ bool CPyCppyy::SmartPtrCppObjectConverter::SetArg(
     }
 
 // for the case where we have an 'exposed' smart pointer:
-    if (pyobj->ObjectIsA() && Cppyy::IsSubtype(pyobj->ObjectIsA(), fClass)) {
+    if (pyobj->ObjectIsA() && Cppyy::IsSubtype(pyobj->ObjectIsA(), fSmartPtrType)) {
     // calculate offset between formal and actual arguments
         para.fValue.fVoidp = pyobj->GetObject();
-        if (pyobj->ObjectIsA() != fClass) {
+        if (pyobj->ObjectIsA() != fSmartPtrType) {
             para.fValue.fLong += Cppyy::GetBaseOffset(
-                pyobj->ObjectIsA(), fClass, para.fValue.fVoidp, 1 /* up-cast */);
+                pyobj->ObjectIsA(), fSmartPtrType, para.fValue.fVoidp, 1 /* up-cast */);
         }
 
     // set pointer (may be null) and declare success
@@ -1298,15 +1303,14 @@ bool CPyCppyy::SmartPtrCppObjectConverter::SetArg(
 
 PyObject* CPyCppyy::SmartPtrCppObjectConverter::FromMemory(void* address)
 {
-    if (!address || !fClass)
+    if (!address || !fSmartPtrType)
         return nullptr;
 
-// obtain raw pointer
-    std::vector<Parameter> args;
-    CPPInstance* pyobj = (CPPInstance*)BindCppObject(
-        Cppyy::CallR((Cppyy::TCppMethod_t)fDereferencer, address, &args), fRawPtrType);
+// TODO: note the mismatch between address, which is the smart pointer, and the
+// declared type, which is the raw pointer
+    CPPInstance* pyobj = (CPPInstance*)BindCppObjectNoCast(address, fRawPtrType);
     if (pyobj)
-        pyobj->SetSmartPtr((void*)address, fClass);
+        pyobj->SetSmartPtr(fSmartPtrType, fDereferencer);
 
     return (PyObject*)pyobj;
 }
@@ -1389,25 +1393,14 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long
 // converters for known C++ classes and default (void*)
     Converter* result = nullptr;
     if (Cppyy::TCppScope_t klass = Cppyy::GetScope(realType)) {
-        if (Cppyy::IsSmartPtr(realType)) {
-            const std::vector<Cppyy::TCppIndex_t> methods =
-                Cppyy::GetMethodIndicesFromName(klass, "operator->");
-            if (!methods.empty()) {
-                Cppyy::TCppMethod_t method = Cppyy::GetMethod(klass, methods[0]);
-                Cppyy::TCppType_t rawPtrType = Cppyy::GetScope(
-                    TypeManip::clean_type(Cppyy::GetMethodResultType(method)));
-                if (rawPtrType) {
-                    if (cpd == "") {
-                        result = new SmartPtrCppObjectConverter(klass, rawPtrType, method, control);
-                    } else if (cpd == "&") {
-                        result = new SmartPtrCppObjectConverter(klass, rawPtrType, method);
-                    } else if (cpd == "*" && size <= 0) {
-                        result = new SmartPtrCppObjectConverter(klass, rawPtrType, method, control, true);
-                //  } else if (cpd == "**" || cpd == "*&" || cpd == "&*") {
-                //  } else if (cpd == "[]" || size > 0) {
-                //  } else {
-                    }
-                }
+        Cppyy::TCppType_t raw; Cppyy::TCppMethod_t deref;
+        if (Cppyy::GetSmartPtrInfo(realType, raw, deref)) {
+            if (cpd == "") {
+                result = new SmartPtrCppObjectConverter(klass, raw, deref, control);
+            } else if (cpd == "&") {
+                result = new SmartPtrCppObjectConverter(klass, raw, deref);
+            } else if (cpd == "*" && size <= 0) {
+                result = new SmartPtrCppObjectConverter(klass, raw, deref, control, true);
             }
         }
 
@@ -1495,12 +1488,8 @@ public:
         gf["const unsigned long&"] =        (cf_t)+[](long) { return new ConstULongRefConverter{}; };
         gf["long long"] =                   (cf_t)+[](long) { return new LongLongConverter{}; };
         gf["const long long&"] =            (cf_t)+[](long) { return new ConstLongLongRefConverter{}; };
-        gf["Long64_t"] =                    (cf_t)+[](long) { return new LongLongConverter{}; };
-        gf["const Long64_t&"] =             (cf_t)+[](long) { return new ConstLongLongRefConverter{}; };
         gf["unsigned long long"] =          (cf_t)+[](long) { return new ULongLongConverter{}; };
         gf["const unsigned long long&"] =   (cf_t)+[](long) { return new ConstULongLongRefConverter{}; };
-        gf["ULong64_t"] =                   (cf_t)+[](long) { return new ULongLongConverter{}; };
-        gf["const ULong64_t&"] =            (cf_t)+[](long) { return new ConstULongLongRefConverter{}; };
 
         gf["float"] =                       (cf_t)+[](long) { return new FloatConverter{}; };
         gf["const float&"] =                (cf_t)+[](long) { return new ConstFloatRefConverter{}; };
@@ -1530,10 +1519,20 @@ public:
         gf["float&"] =                      (cf_t)+[](long sz) { return new FloatArrayRefConverter{sz}; };
         gf["double*"] =                     (cf_t)+[](long sz) { return new DoubleArrayConverter{sz}; };
         gf["long long*"] =                  (cf_t)+[](long sz) { return new LLongArrayConverter{sz}; };
-        gf["Long64_t*"] =                   (cf_t)+[](long sz) { return new ULLongArrayConverter{sz}; };
-        gf["unsigned long long*"] =         (cf_t)+[](long sz) { return new LLongArrayConverter{sz}; };
-        gf["ULong64_t*"] =                  (cf_t)+[](long sz) { return new ULLongArrayConverter{sz}; };
+        gf["long long&"] =                  (cf_t)+[](long sz) { return new LLongArrayRefConverter{sz}; };
+        gf["unsigned long long*"] =         (cf_t)+[](long sz) { return new ULLongArrayConverter{sz}; };
+        gf["unsigned long long&"] =         (cf_t)+[](long sz) { return new ULLongArrayRefConverter{sz}; };
         gf["void*"] =                       (cf_t)+[](long sz) { return new VoidArrayConverter{sz}; };
+
+    // aliases
+        gf["Long64_t"] =                    gf["long long"];
+        gf["Long64_t*"] =                   gf["long long*"];
+        gf["Long64_t&"] =                   gf["long long&"];
+        gf["const Long64_t&"] =             gf["const long long&"];
+        gf["ULong64_t"] =                   gf["unsigned long long"];
+        gf["ULong64_t*"] =                  gf["unsigned long long*"];
+        gf["ULong64_t&"] =                  gf["unsigned long long&"];
+        gf["const ULong64_t&"] =            gf["const unsigned long long&"];
 
     // factories for special cases
         gf["const char*"] =                 (cf_t)+[](long) { return new CStringConverter{}; };

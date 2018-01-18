@@ -29,24 +29,19 @@
 //----------------------------------------------------------------------------
 void CPyCppyy::op_dealloc_nofree(CPPInstance* pyobj) {
 // Destroy the held C++ object, if owned; does not deallocate the proxy.
+    bool isSmartPtr = pyobj->fFlags & CPPInstance::kIsSmartPtr;
+    Cppyy::TCppType_t klass = isSmartPtr ? pyobj->fSmartPtrType : pyobj->ObjectIsA();
+
     if (!(pyobj->fFlags & CPPInstance::kIsReference))
-        MemoryRegulator::UnregisterPyObject(pyobj, pyobj->ObjectIsA());
+        MemoryRegulator::UnregisterPyObject(pyobj, klass);
 
     if (pyobj->fFlags & CPPInstance::kIsValue) {
-        if (!(pyobj->fFlags & CPPInstance::kIsSmartPtr)) {
-            Cppyy::CallDestructor(pyobj->ObjectIsA(), pyobj->GetObject());
-            Cppyy::Deallocate(pyobj->ObjectIsA(), pyobj->GetObject());
-        } else {
-            Cppyy::CallDestructor(pyobj->fSmartPtrType, pyobj->fSmartPtr);
-            Cppyy::Deallocate(pyobj->fSmartPtrType, pyobj->fSmartPtr);
-        }
-    }
-    else if (pyobj->fObject && (pyobj->fFlags & CPPInstance::kIsOwner)) {
-        if (!(pyobj->fFlags & CPPInstance::kIsSmartPtr)) {
-            Cppyy::Destruct(pyobj->ObjectIsA(), pyobj->GetObject());
-        } else {
-            Cppyy::Destruct(pyobj->fSmartPtrType, pyobj->fSmartPtr);
-        }
+        void* addr = isSmartPtr ? pyobj->fObject : pyobj->GetObject();
+        Cppyy::CallDestructor(klass, addr);
+        Cppyy::Deallocate(klass, addr);
+    } else if (pyobj->fObject && (pyobj->fFlags & CPPInstance::kIsOwner)) {
+        void* addr = isSmartPtr ? pyobj->fObject : pyobj->GetObject();
+        Cppyy::Destruct(klass, addr);
     }
     pyobj->fObject = nullptr;
 }
@@ -107,10 +102,11 @@ static PyObject* op_dispatch(PyObject* self, PyObject* args, PyObject* /* kdws *
 static PyObject* op_get_smart_ptr(CPPInstance* self)
 {
     if (!(self->fFlags & CPPInstance::kIsSmartPtr)) {
+    // TODO: more likely should raise
         Py_RETURN_NONE;
     }
 
-    return (PyObject*)CPyCppyy::BindCppObject(self->fSmartPtr, self->fSmartPtrType);
+    return (PyObject*)CPyCppyy::BindCppObject(self->fObject, self->fSmartPtrType);
 }
 
 
@@ -134,6 +130,8 @@ static CPPInstance* op_new(PyTypeObject* subtype, PyObject*, PyObject*)
     CPPInstance* pyobj = (CPPInstance*)subtype->tp_alloc(subtype, 0);
     pyobj->fObject = nullptr;
     pyobj->fFlags  = 0;
+    pyobj->fSmartPtrType = (Cppyy::TCppType_t)0;
+    pyobj->fDereferencer = (Cppyy::TCppMethod_t)0;
 
     return pyobj;
 }
@@ -158,7 +156,7 @@ static PyObject* op_richcompare(CPPInstance* self, CPPInstance* other, int op)
     bool bIsEq = false;
 
 // special case for None to compare True to a null-pointer
-    if ((PyObject*)other == Py_None && ! self->fObject)
+    if ((PyObject*)other == Py_None && !self->fObject)
         bIsEq = true;
 
 // type + held pointer value defines identity (will cover if other is not
@@ -195,7 +193,7 @@ static PyObject* op_repr(CPPInstance* pyobj)
         repr = CPyCppyy_PyUnicode_FromFormat(
             const_cast<char*>("<%s.%s object at %p held by %s at %p>"),
             CPyCppyy_PyUnicode_AsString(modname), clName.c_str(),
-            pyobj->GetObject(), smartPtrName.c_str(), pyobj->fSmartPtr);
+            pyobj->GetObject(), smartPtrName.c_str(), pyobj->fObject);
     } else {
         repr = CPyCppyy_PyUnicode_FromFormat(const_cast<char*>("<%s.%s object at %p>"),
             CPyCppyy_PyUnicode_AsString(modname), clName.c_str(), pyobj->GetObject());

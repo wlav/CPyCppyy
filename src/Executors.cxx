@@ -479,7 +479,7 @@ PyObject* CPyCppyy::CppObjectBySmartPtrExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
 // smart pointer executor
-    Cppyy::TCppObject_t value = GILCallO(method, self, ctxt, fClass);
+    Cppyy::TCppObject_t value = GILCallO(method, self, ctxt, fSmartPtrType);
 
     if (!value) {
         if (!PyErr_Occurred())          // callee may have set a python error itself
@@ -488,11 +488,10 @@ PyObject* CPyCppyy::CppObjectBySmartPtrExecutor::Execute(
     }
 
 // fixme? - why doesn't this do the same as `self._get_smart_ptr().get()'
-    CPPInstance* pyobj = (CPPInstance*)BindCppObject(
-        (void*)GILCallR((Cppyy::TCppMethod_t)fDereferencer, value, ctxt), fRawPtrType);
+    CPPInstance* pyobj = (CPPInstance*)BindCppObjectNoCast(value, fRawPtrType);
 
     if (pyobj) {
-        pyobj->SetSmartPtr((void*)value, fClass);
+        pyobj->SetSmartPtr(fSmartPtrType, fDereferencer);
         pyobj->PythonOwns();  // life-time control by python ref-counting
     }
 
@@ -506,12 +505,11 @@ PyObject* CPyCppyy::CppObjectBySmartPtrPtrExecutor::Execute(
     if (!value)
         return nullptr;
 
-// todo: why doesn't this do the same as `self._get_smart_ptr().get()'
-    CPPInstance* pyobj = (CPPInstance*) BindCppObject(
-        (void*)GILCallR((Cppyy::TCppMethod_t)fDereferencer, value, ctxt), fRawPtrType);
+// todo: why doesn't this do the same as `self.__smartptr__().get()'
+    CPPInstance* pyobj = (CPPInstance*)BindCppObjectNoCast(value, fRawPtrType);
 
     if (pyobj)
-        pyobj->SetSmartPtr((void*)value, fClass);
+        pyobj->SetSmartPtr(fSmartPtrType, fDereferencer);
 
     return (PyObject*)pyobj;
 }
@@ -525,12 +523,11 @@ PyObject* CPyCppyy::CppObjectBySmartPtrRefExecutor::Execute(
 
     //if (!fAssignable) {
 
-// fixme? - why doesn't this do the same as `self._get_smart_ptr().get()'
-    CPPInstance* pyobj = (CPPInstance*)BindCppObject(
-        (void*)GILCallR((Cppyy::TCppMethod_t)fDereferencer, value, ctxt), fRawPtrType);
+// fixme? - why doesn't this do the same as `self.__smartptr__().get()'
+    CPPInstance* pyobj = (CPPInstance*)BindCppObjectNoCast(value, fRawPtrType);
 
     if (pyobj)
-         pyobj->SetSmartPtr((void*)value, fClass);
+        pyobj->SetSmartPtr(fSmartPtrType, fDereferencer);
 
     return (PyObject*)pyobj;
 
@@ -664,25 +661,14 @@ CPyCppyy::Executor* CPyCppyy::CreateExecutor(
 // C++ classes and special cases (enum)
     Executor* result = 0;
     if (Cppyy::TCppType_t klass = Cppyy::GetScope(realType)) {
-        if (manage_smart_ptr && Cppyy::IsSmartPtr(realType)) {
-            const std::vector<Cppyy::TCppIndex_t> methods =
-                Cppyy::GetMethodIndicesFromName(klass, "operator->");
-            if (!methods.empty()) {
-                Cppyy::TCppMethod_t method = Cppyy::GetMethod(klass, methods[0]);
-                Cppyy::TCppType_t rawPtrType = Cppyy::GetScope(
-                    TypeManip::clean_type(Cppyy::GetMethodResultType(method)));
-                if (rawPtrType) {
-                    if (cpd == "") {
-                        result = new CppObjectBySmartPtrExecutor(klass, rawPtrType, method);
-                    } else if (cpd == "*") {
-                        result = new CppObjectBySmartPtrPtrExecutor(klass, rawPtrType, method);
-                    } else if (cpd == "&") {
-                        result = new CppObjectBySmartPtrRefExecutor(klass, rawPtrType, method);
-                    } // else if (cpd == "**") {
-                //  } else if (cpd == "*&" || cpd == "&*") {
-                //  } else if (cpd == "[]") {
-                //  } else {
-                }
+        Cppyy::TCppType_t raw; Cppyy::TCppMethod_t deref;
+        if (manage_smart_ptr && Cppyy::GetSmartPtrInfo(realType, raw, deref)) {
+            if (cpd == "") {
+                result = new CppObjectBySmartPtrExecutor(klass, raw, deref);
+            } else if (cpd == "*") {
+                result = new CppObjectBySmartPtrPtrExecutor(klass, raw, deref);
+            } else if (cpd == "&") {
+                result = new CppObjectBySmartPtrRefExecutor(klass, raw, deref);
             }
         }
 

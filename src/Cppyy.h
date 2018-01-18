@@ -76,8 +76,8 @@ namespace Cppyy {
     TCppIndex_t GetNumBases(TCppType_t type);
     std::string GetBaseName(TCppType_t type, TCppIndex_t ibase);
     bool        IsSubtype(TCppType_t derived, TCppType_t base);
+    bool        GetSmartPtrInfo(const std::string&, TCppType_t& raw, TCppMethod_t& deref);
     void        AddSmartPtrType(const std::string&);
-    bool        IsSmartPtr(const std::string&);
 
 // calculate offsets between declared and actual type, up-cast: direction > 0; down-cast: direction < 0
     ptrdiff_t GetBaseOffset(
@@ -85,7 +85,7 @@ namespace Cppyy {
 
 // method/function reflection information ------------------------------------
     TCppIndex_t GetNumMethods(TCppScope_t scope);
-    std::vector<Cppyy::TCppIndex_t> GetMethodIndicesFromName(
+    std::vector<TCppIndex_t> GetMethodIndicesFromName(
         TCppScope_t scope, const std::string& name);
 
     TCppMethod_t GetMethod(TCppScope_t scope, TCppIndex_t imeth);
