@@ -74,6 +74,10 @@ public:
         Py_RETURN_NONE;
     }
 
+    virtual Cppyy::TCppFuncAddr_t GetFunctionAddress() {
+        return (Cppyy::TCppFuncAddr_t)nullptr;
+    }
+
     virtual PyCallable* Clone() { return new TPythonCallback(*this); }
 
     virtual PyObject* Call(

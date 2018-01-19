@@ -177,10 +177,10 @@ std::string CPyCppyy::CPPMethod::GetSignatureString(bool fa)
 {
 // built a signature representation (used for doc strings)
     std::stringstream sig; sig << "(";
-    int ifirst = 0;
+    int count = 0;
     const size_t nArgs = Cppyy::GetMethodNumArgs(fMethod);
     for (size_t iarg = 0; iarg < nArgs; ++iarg) {
-        if (ifirst) sig << ", ";
+        if (count) sig << (fa ? ", " : ",");
 
         sig << Cppyy::GetMethodArgType(fMethod, iarg);
 
@@ -192,8 +192,8 @@ std::string CPyCppyy::CPPMethod::GetSignatureString(bool fa)
             const std::string& defvalue = Cppyy::GetMethodArgDefault(fMethod, iarg);
             if (!defvalue.empty())
                 sig << " = " << defvalue;
-            ifirst++;
         }
+        count++;
     }
     sig << ")";
     return sig.str();
@@ -400,6 +400,15 @@ PyObject* CPyCppyy::CPPMethod::GetScopeProxy()
 // Get or build the scope of this method.
     return CreateScopeProxy(fScope);
 }
+
+
+//----------------------------------------------------------------------------
+Cppyy::TCppFuncAddr_t CPyCppyy::CPPMethod::GetFunctionAddress()
+{
+// Return the C++ pointer of this function
+    return Cppyy::GetFunctionAddress(fMethod);
+}
+
 
 //----------------------------------------------------------------------------
 bool CPyCppyy::CPPMethod::Initialize(CallContext* ctxt)

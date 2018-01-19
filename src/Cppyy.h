@@ -55,6 +55,7 @@ namespace Cppyy {
     TCppObject_t  CallO(TCppMethod_t method, TCppObject_t self, void* args, TCppType_t result_type);
 
     TCppFuncAddr_t GetFunctionAddress(TCppScope_t scope, TCppIndex_t imeth);
+    TCppFuncAddr_t GetFunctionAddress(TCppMethod_t method);
 
 // handling of function argument buffer --------------------------------------
     void*  AllocateFunctionArgs(size_t nargs);

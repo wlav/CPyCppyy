@@ -22,9 +22,10 @@ public:
 
     virtual int GetMaxArgs() = 0;
     virtual PyObject* GetCoVarNames() = 0;
-    virtual PyObject* GetArgDefault(int /* iarg */)  = 0;
+    virtual PyObject* GetArgDefault(int /* iarg */) = 0;
 
-    virtual PyObject* GetScopeProxy()  = 0;
+    virtual PyObject* GetScopeProxy() = 0;
+    virtual Cppyy::TCppFuncAddr_t GetFunctionAddress() = 0;
 
     virtual PyCallable* Clone() = 0;
 

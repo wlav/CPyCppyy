@@ -3,6 +3,7 @@
 #include "DeclareConverters.h"
 #include "CallContext.h"
 #include "CPPInstance.h"
+#include "CPPOverload.h"
 #include "CustomPyTypes.h"
 #include "LowLevelViews.h"
 #include "MemoryRegulator.h"
@@ -26,6 +27,8 @@
 #ifdef R__CXXMODULES
   #define Parameter CPyCppyy::Parameter
 #endif
+
+#include <iostream>
 
 
 //- data _____________________________________________________________________
@@ -1248,6 +1251,35 @@ bool CPyCppyy::PyObjectConverter::ToMemory(PyObject* value, void* address)
 }
 
 
+//- function pointer converter -----------------------------------------------
+bool CPyCppyy::FunctionPointerConverter::SetArg(
+    PyObject* pyobject, Parameter& para, CallContext* ctxt)
+{
+    if (!CPPOverload_Check(pyobject))
+        return false;
+
+    CPPOverload* ol = (CPPOverload*)pyobject;
+    if (!ol->fMethodInfo || ol->fMethodInfo->fMethods.empty())
+        return false;
+
+// find the overload with matching signature
+    for (auto& m : ol->fMethodInfo->fMethods) {
+        PyObject* sig = m->GetSignature(false);
+        bool found = fSignature == CPyCppyy_PyUnicode_AsString(sig);
+        Py_DECREF(sig);
+        if (found) {
+            para.fValue.fVoidp = (void*)m->GetFunctionAddress();
+            if (!para.fValue.fVoidp)
+                return false;
+            para.fTypeCode = 'p';
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
 //- smart pointer converters -------------------------------------------------
 bool CPyCppyy::SmartPtrCppObjectConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* ctxt)
@@ -1487,12 +1519,13 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long
             else if (cpd == "")             // by value
                 result = new ValueCppObjectConverter(klass, true);
         }
-    } else if (realType.find("(*)") != std::string::npos ||
-               (realType.find("::*)") != std::string::npos)) {
+    } else if (resolvedType.find("(*)") != std::string::npos ||
+               (resolvedType.find("::*)") != std::string::npos)) {
     // this is a function function pointer
     // TODO: find better way of finding the type
     // TODO: a converter that generates wrappers as appropriate
-        h = gConvFactories.find("void*");
+        auto pos = resolvedType.find("*)");
+        result = new FunctionPointerConverter(resolvedType.substr(pos+2));
     }
 
     if (!result && cpd == "&&")                       // unhandled moves

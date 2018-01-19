@@ -218,6 +218,18 @@ CPPYY_DECLARE_STRING_CONVERTER(STLString, std::string);
 CPPYY_DECLARE_STRING_CONVERTER(STLStringView, std::string_view);
 #endif
 
+// function pointers
+class FunctionPointerConverter : public Converter {
+public:
+    FunctionPointerConverter(const std::string& sig) : fSignature(sig) {}
+
+public:
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
+
+protected:
+    std::string fSignature;
+};
+
 // smart pointer converter
 class SmartPtrCppObjectConverter : public Converter {
 public:

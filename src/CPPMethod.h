@@ -30,6 +30,7 @@ public:
     virtual PyObject* GetCoVarNames();
     virtual PyObject* GetArgDefault(int iarg);
     virtual PyObject* GetScopeProxy();
+    virtual Cppyy::TCppFuncAddr_t GetFunctionAddress();
 
     virtual PyCallable* Clone() { return new CPPMethod(*this); }
 
