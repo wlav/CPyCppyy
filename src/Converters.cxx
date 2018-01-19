@@ -1317,6 +1317,57 @@ PyObject* CPyCppyy::SmartPtrCppObjectConverter::FromMemory(void* address)
 
 
 //----------------------------------------------------------------------------
+namespace {
+
+// clang libcpp and gcc use the same structure (ptr, size)
+#if defined (_LIBCPP_INITIALIZER_LIST) || defined(__GNUC__)
+struct faux_initlist
+{
+    typedef size_t size_type;
+    typedef void*  iterator;
+    iterator  _M_array;
+    size_type _M_len;
+};
+#else
+#define NO_KNOWN_INITIALIZER_LIST 1
+#endif
+
+} // unnamed namespace
+
+bool CPyCppyy::InitializerListConverter::SetArg(
+    PyObject* pyobject, Parameter& para, CallContext* ctxt)
+{
+#ifdef NO_KNOWN_INITIALIZER_LIST
+    return false;
+#else
+// convert the given argument to an initializer list temporary
+    if (!PySequence_Check(pyobject))
+        return false;
+
+// can only construct emptu lists, so use a fake initializer list
+    size_t len = (size_t)PySequence_Size(pyobject);
+    faux_initlist* fake = (faux_initlist*)malloc(sizeof(faux_initlist)+fValueSize*len);
+    fake->_M_len = (faux_initlist::size_type)len;
+    fake->_M_array = (faux_initlist::iterator)((char*)fake+sizeof(faux_initlist));
+
+    for (faux_initlist::size_type i = 0; i < fake->_M_len; ++i) {
+        PyObject* item = PySequence_GetItem(pyobject, i);
+        if (!fConverter->ToMemory(item, (char*)fake->_M_array + i*fValueSize)) {
+            Py_DECREF(item);
+            free((void*)fake);
+            return false;
+        }
+        Py_DECREF(item);
+    }
+
+// TODO: this passes, but how to clean up?
+    para.fValue.fVoidp = (void*)fake;
+    para.fTypeCode = 'X';
+    return true;
+#endif
+}
+
+//----------------------------------------------------------------------------
 bool CPyCppyy::NotImplementedConverter::SetArg(PyObject*, Parameter&, CallContext*)
 {
 // raise a NotImplemented exception to take a method out of overload resolution
@@ -1385,6 +1436,17 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long
         h = gConvFactories.find(realType + "*");
         if (h != gConvFactories.end())
             return (h->second)(size);
+    }
+
+//-- special case: initializer list
+    auto pos = realType.find("initializer_list");
+    if (pos == 0 /* no std:: */ || pos == 5 /* with std:: */) {
+    // get the type of the list and create a converter (TODO: get hold of value_type?)
+        auto pos = realType.find('<');
+        std::string value_type = realType.substr(pos+1, realType.size()-pos-2);
+        Converter* cnv = CreateConverter(value_type);
+        if (cnv)
+            return new InitializerListConverter(cnv, Cppyy::SizeOf(value_type));
     }
 
 //-- still nothing? use a generalized converter

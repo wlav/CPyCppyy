@@ -218,13 +218,8 @@ CPPYY_DECLARE_STRING_CONVERTER(STLString, std::string);
 CPPYY_DECLARE_STRING_CONVERTER(STLStringView, std::string_view);
 #endif
 
-class NotImplementedConverter : public Converter {
-public:
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
-};
-
 // smart pointer converter
-class SmartPtrCppObjectConverter : public Converter  {
+class SmartPtrCppObjectConverter : public Converter {
 public:
     SmartPtrCppObjectConverter(Cppyy::TCppType_t smart,
                                Cppyy::TCppType_t raw,
@@ -247,6 +242,29 @@ protected:
     Cppyy::TCppMethod_t fDereferencer;
     bool                fKeepControl;
     bool                fIsRef;
+};
+
+// initializer lists
+class InitializerListConverter : public Converter {
+public:
+    InitializerListConverter(Converter* cnv, size_t sz) :
+        fConverter(cnv), fValueSize(sz) {}
+    ~InitializerListConverter() {
+        delete fConverter;
+    }
+
+public:
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
+
+protected:
+    Converter* fConverter;
+    size_t     fValueSize;
+};
+
+// raising converter to take out overloads
+class NotImplementedConverter : public Converter {
+public:
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
 };
 
 } // unnamed namespace

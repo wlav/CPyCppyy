@@ -24,6 +24,7 @@ namespace Cppyy {
     TCppScope_t GetScope(const std::string& scope_name);
     TCppType_t  GetActualClass(TCppType_t klass, TCppObject_t obj);
     size_t      SizeOf(TCppType_t klass);
+    size_t      SizeOf(const std::string& type_name);
 
     bool        IsBuiltin(const std::string& type_name);
     bool        IsComplete(const std::string& type_name);
