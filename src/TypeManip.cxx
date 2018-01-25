@@ -14,7 +14,7 @@ std::string::size_type find_qualifier_index(const std::string& name)
     std::string::size_type i = name.size();
     for ( ; 0 < i; --i) {
         std::string::value_type c = name[i];
-        if (isalnum((int)c) || c == '>' or c == ']')
+        if (isalnum((int)c) || c == '>' or c == ']' or c == ')')
             break;
     }
 

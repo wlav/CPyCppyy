@@ -655,7 +655,7 @@ const std::string CPyCppyy::Utility::Compound(const std::string& name)
     for (int ipos = (int)cleanName.size()-1; 0 <= ipos; --ipos) {
         char c = cleanName[ipos];
         if (isspace(c)) continue;
-        if (isalnum(c) || c == '_' || c == '>') break;
+        if (isalnum(c) || c == '_' || c == '>' || c == ')') break;
 
         compound = c + compound;
     }
