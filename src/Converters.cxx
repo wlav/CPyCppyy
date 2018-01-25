@@ -28,8 +28,6 @@
   #define Parameter CPyCppyy::Parameter
 #endif
 
-#include <iostream>
-
 
 //- data _____________________________________________________________________
 namespace CPyCppyy {
