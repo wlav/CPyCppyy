@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os, glob
+import os, glob, subprocess
 from setuptools import setup, find_packages, Extension
 from codecs import open
 
@@ -9,6 +9,17 @@ here = os.path.abspath(os.path.dirname(__file__))
 with open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
+try:
+    root_install = os.environ["ROOTSYS"]
+except KeyError:
+    root_install = None
+
+def get_cflags():
+    config_exec = 'cling-config'
+    if root_install:
+        config_exec = 'root-config'
+    cli_arg = subprocess.check_output([config_exec, '--auxcflags'])
+    return cli_arg.decode("utf-8").strip()
 
 setup(
     name='CPyCppyy',
@@ -50,7 +61,7 @@ setup(
 
     ext_modules=[Extension('libcppyy',
         sources=glob.glob('src/*.cxx'),
-        extra_compile_args=['-std=c++11', '-O2'],
+        extra_compile_args=['-O2']+get_cflags().split(),
         include_dirs=['include'])],
 
 )
