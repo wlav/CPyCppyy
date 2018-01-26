@@ -10,7 +10,6 @@
 #include "CustomPyTypes.h"
 #include "TemplateProxy.h"
 
-
 // Standard
 #include <string.h>
 #include <algorithm>
@@ -363,7 +362,7 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& 
 // operators are declared as friends only in classes, so then they're not found in the
 // global namespace. That's why there's this little helper.
     std::call_once(sOperatorTemplateFlag, InitOperatorTemplate);
-    static Cppyy::TCppScope_t _pr_int = Cppyy::GetScope("_cpycppyy_internal");
+//    static Cppyy::TCppScope_t _pr_int = Cppyy::GetScope("_cpycppyy_internal");
 
     PyCallable* pyfunc = 0;
     if (gnucxx) {
@@ -516,10 +515,11 @@ int CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, void*& b
         Py_buffer bufinfo;
         memset(&bufinfo, 0, sizeof(Py_buffer));
         if (PyObject_GetBuffer(pyobject, &bufinfo, PyBUF_FORMAT) == 0) {
-            if (tc == '*' || (bufinfo.format[0] == tc ||
-                   (bufinfo.format[0] == '@' && bufinfo.format[1] == tc))) {
-                if (bufinfo.buf && bufinfo.ndim == 1 && bufinfo.shape) {
-                    buf = bufinfo.buf;
+            if (tc == '*' || strchr(bufinfo.format, tc)) {
+                buf = bufinfo.buf;
+                if (buf && bufinfo.ndim == 0) {
+                    return 1;
+                } else if (buf && bufinfo.ndim == 1 && bufinfo.shape) {
                     int size = (int)bufinfo.shape[0];
                     PyBuffer_Release(&bufinfo);
                     return size;
