@@ -35,7 +35,19 @@
         Py_ssize_t dk_size;
         dict_lookup_func dk_lookup;
         Py_ssize_t dk_usable;
+#if PY_VERSION_HEX >= 0x03060000
+        Py_ssize_t dk_nentries;
+        union {
+            int8_t as_1[8];
+            int16_t as_2[4];
+            int32_t as_4[2];
+#if SIZEOF_VOID_P > 4
+            int64_t as_8[1];
+#endif
+        } dk_indices;
+#else
         PyDictKeyEntry dk_entries[1];
+#endif
     } PyDictKeysObject;
 
 #define CPYCPPYY_GET_DICT_LOOKUP(mp)                                          \
@@ -149,115 +161,90 @@ namespace {
 using namespace CPyCppyy;
 
 //----------------------------------------------------------------------------
-PyObject* LookupCppEntity(PyObject* pyname, PyObject* args)
+namespace {
+
+class GblGetter {
+public:
+    GblGetter() {
+        PyObject* cppyy = PyImport_AddModule((char*)"cppyy");
+        fGbl = PyObject_GetAttrString(cppyy, (char*)"gbl");
+    }
+    ~GblGetter() { Py_DECREF(fGbl); }
+
+    PyObject* operator*() { return fGbl; }
+
+private:
+    PyObject* fGbl;
+};
+
+} // unnamed namespace
+
+#if PY_VERSION_HEX >= 0x03060000
+inline Py_ssize_t OrgDictLookup(PyDictObject* mp, PyObject* key,
+    Py_hash_t hash, PyObject*** value_addr, Py_ssize_t* hashpos)
 {
-// Find a match within this module for something with name 'pyname'.
-// TODO: created global objects are now stored twice: on thismodule and in
-// the normal way in the global namespace -> resolve to one.
-    const char* cname = 0; long macro_ok = 0;
-    if (pyname && CPyCppyy_PyUnicode_CheckExact(pyname))
-        cname = CPyCppyy_PyUnicode_AsString(pyname);
-    else if (!(args && PyArg_ParseTuple(args, const_cast<char*>("s|l"), &cname, &macro_ok)))
-        return nullptr;
-
-// we may have been destroyed if this code is called during shutdown
-    if (!gThisModule) {
-        PyErr_Format(PyExc_AttributeError, "%s", cname);
-        return nullptr;
-    }
-
-    std::string name = cname;
-
-// block search for privates
-    if (name.size() <= 2 || name.substr(0, 2) != "__") {
-    // 1st attempt: look in myself
-        PyObject* attr = PyObject_GetAttrString(gThisModule, const_cast<char*>(cname));
-        if (attr != 0)
-            return attr;
-
-    // 2nd attempt: construct name as a class
-        PyErr_Clear();
-        attr = CreateScopeProxy(name, nullptr /* parent */);
-        if (attr != 0)
-            return attr;
-
-    // 3rd attempt: lookup name as global variable
-        PyErr_Clear();
-        attr = GetCppGlobal(name);
-        if (attr != 0)
-            return attr;
-
-    // 4th attempt: global enum (pretend int, TODO: is fine for C++98, not in C++11)
-        PyErr_Clear();
-        if (Cppyy::IsEnum(name)) {
-        // TODO: how does this make sense? This only works if this is a class name.
-            Py_INCREF(&PyInt_Type);
-            return (PyObject*)&PyInt_Type;
-        }
-    }
-
-// still here? raise attribute error
-    PyErr_Format(PyExc_AttributeError, "%s", name.c_str());
-    return nullptr;
+    return (*gDictLookupOrg)(mp, key, hash, value_addr, hashpos);
 }
+#define CPYCPPYY_ORGDICT_LOOKUP(mp, key, hash, value_addr, hashpos)           \
+    OrgDictLookup(mp, key, hash, value_addr, hashpos)
 
+Py_ssize_t CPyCppyyLookDictString(PyDictObject* mp, PyObject* key,
+    Py_hash_t hash, PyObject*** value_addr, Py_ssize_t* hashpos)
 
-//----------------------------------------------------------------------------
-#if PY_VERSION_HEX >= 0x03030000
+#elif PY_VERSION_HEX >= 0x03030000
 inline PyDictKeyEntry* OrgDictLookup(
     PyDictObject* mp, PyObject* key, Py_hash_t hash, PyObject*** value_addr)
 {
     return (*gDictLookupOrg)(mp, key, hash, value_addr);
 }
 
-#define CPYCPPYY_ORGDICT_LOOKUP(mp, key, hash, value_addr)                    \
+#define CPYCPPYY_ORGDICT_LOOKUP(mp, key, hash, value_addr, hashpos)           \
     OrgDictLookup(mp, key, hash, value_addr)
 
 PyDictKeyEntry* CPyCppyyLookDictString(
     PyDictObject* mp, PyObject* key, Py_hash_t hash, PyObject*** value_addr)
 
-#else
+#else /* < 3.3 */
 
 inline PyDictEntry* OrgDictLookup(PyDictObject* mp, PyObject* key, Long_t hash)
 {
     return (*gDictLookupOrg)(mp, key, hash);
 }
 
-#define CPYCPPYY_ORGDICT_LOOKUP(mp, key, hash, value_addr)                    \
+#define CPYCPPYY_ORGDICT_LOOKUP(mp, key, hash, value_addr, hashpos)           \
     OrgDictLookup(mp, key, hash)
 
 PyDictEntry* CPyCppyyLookDictString(PyDictObject* mp, PyObject* key, Long_t hash)
 #endif
 {
+    static GblGetter gbl;
+#if PY_VERSION_HEX >= 0x03060000
+    Py_ssize_t ep;
+#else
+    PyDictEntry* ep;
+#endif
+
 // first search dictionary itself
-    PyDictEntry* ep = CPYCPPYY_ORGDICT_LOOKUP(mp, key, hash, value_addr);
-    if (!ep || (ep->me_key && ep->me_value) || gDictLookupActive)
+    ep = CPYCPPYY_ORGDICT_LOOKUP(mp, key, hash, value_addr, hashpos);
+    if (gDictLookupActive)
+        return ep;
+
+#if PY_VERSION_HEX >= 0x03060000
+    if (ep >= 0)
+#else
+    if (!ep || (ep->me_key && ep->me_value))
+#endif
         return ep;
 
 // filter for builtins
-    if (PyDict_GetItem(PyEval_GetBuiltins(), key) != 0) {
+    if (PyDict_GetItem(PyEval_GetBuiltins(), key) != 0)
         return ep;
-    }
 
-// all failed, start entering reflection system
+// normal lookup failed, attempt to get C++ enum/global/class from top-level
     gDictLookupActive = true;
 
-// globals (the round-about lookup is to prevent recursion)
-    PyObject* gval = PyDict_GetItem(PyModule_GetDict(gThisModule), key);
-    if (gval) {
-        Py_INCREF(gval);
-        ep->me_value = gval;
-        ep->me_key   = key;
-        ep->me_hash  = hash;
-#if PY_VERSION_HEX >= 0x03030000
-        *value_addr  = &gval;
-#endif
-        gDictLookupActive = false;
-        return ep;
-    }
-
-// attempt to get C++ enum/global/class
-    PyObject* val = LookupCppEntity(key, nullptr /* args */);
+// attempt to get C++ enum/global/class from top-level
+    PyObject* val = PyObject_GetAttr(*gbl, key);
 
     if (val) {
     // success ...
@@ -275,10 +262,14 @@ PyDictEntry* CPyCppyyLookDictString(PyDictObject* mp, PyObject* key, Long_t hash
     // add reference to C++ entity in the given dictionary
         CPYCPPYY_GET_DICT_LOOKUP(mp) = gDictLookupOrg;      // prevent recursion
         if (PyDict_SetItem((PyObject*)mp, key, val) == 0) {
-            ep = CPYCPPYY_ORGDICT_LOOKUP(mp, key, hash, value_addr);
+            ep = CPYCPPYY_ORGDICT_LOOKUP(mp, key, hash, value_addr, hashpos);
         } else {
+#if PY_VERSION_HEX >= 0x03060000
+            ep = -1;
+#else
             ep->me_key   = nullptr;
             ep->me_value = nullptr;
+#endif
         }
         CPYCPPYY_GET_DICT_LOOKUP(mp) = CPyCppyyLookDictString;   // restore
 
@@ -309,7 +300,7 @@ PyDictEntry* CPyCppyyLookDictString(PyDictObject* mp, PyObject* key, Long_t hash
         }
 
     // make sure the entry pointer is still valid by re-doing the lookup
-        ep = CPYCPPYY_ORGDICT_LOOKUP(mp, key, hash, value_addr);
+        ep = CPYCPPYY_ORGDICT_LOOKUP(mp, key, hash, value_addr, hashpos);
 
     // full reset of all lookup functions
         gDictLookupOrg = CPYCPPYY_GET_DICT_LOOKUP(mp);
@@ -319,7 +310,6 @@ PyDictEntry* CPyCppyyLookDictString(PyDictObject* mp, PyObject* key, Long_t hash
 
 // stopped calling into the reflection system
     gDictLookupActive = false;
-
     return ep;
 }
 
@@ -328,17 +318,13 @@ PyObject* SetCppLazyLookup(PyObject*, PyObject* args)
 {
 // Modify the given dictionary to install the lookup function that also
 // tries the global C++ namespace before failing. Called on a module's dictionary,
-// this allows for lazy lookups.
+// this allows for lazy lookups. This works fine for p3.2 and earlier, but should
+// not be used beyond interactive code for p3.3 and later b/c resizing causes the
+// lookup function to revert to the default (lookdict_unicode_nodummy).
     PyDictObject* dict = nullptr;
     if (!PyArg_ParseTuple(args, const_cast<char*>("O!"), &PyDict_Type, &dict))
         return nullptr;
 
-// Notwithstanding the code changes, the following does not work for p3.3 and
-// later: once the dictionary is resized for anything other than an insert (see
-// hack in CPyCppyyLookDictString), its lookup function on its keys will revert
-// to the default (lookdict_unicode_nodummy) and only if the resizing dictionary
-// has the generic lookdict function as dk_lookup for its keys, will this be
-// set on the new keys.
     CPYCPPYY_GET_DICT_LOOKUP(dict) = CPyCppyyLookDictString;
 
     Py_RETURN_NONE;
@@ -667,13 +653,9 @@ PyObject* Cast(PyObject*, PyObject* args)
 static PyMethodDef gCPyCppyyMethods[] = {
     {(char*) "CreateScopeProxy", (PyCFunction)CPyCppyy::CreateScopeProxy,
       METH_VARARGS, (char*)"cppyy internal function"},
-    {(char*) "GetCppGlobal", (PyCFunction)CPyCppyy::GetCppGlobal,
-      METH_VARARGS, (char*)"cppyy internal function"},
-    {(char*) "LookupCppEntity", (PyCFunction)LookupCppEntity,
-      METH_VARARGS, (char*)"cppyy internal function"},
-    {(char*) "SetCppLazyLookup", (PyCFunction)SetCppLazyLookup,
-      METH_VARARGS, (char*)"cppyy internal function"},
     {(char*) "MakeCppTemplateClass", (PyCFunction)MakeCppTemplateClass,
+      METH_VARARGS, (char*)"cppyy internal function"},
+    {(char*) "_set_cpp_lazy_lookup", (PyCFunction)SetCppLazyLookup,
       METH_VARARGS, (char*)"cppyy internal function"},
     {(char*) "_DestroyPyStrings", (PyCFunction)CPyCppyy::DestroyPyStrings,
       METH_NOARGS, (char*)"cppyy internal function"},

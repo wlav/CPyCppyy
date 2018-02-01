@@ -66,9 +66,14 @@ typedef unsigned long long ULong64_t;//Portable unsigned long integer 8 bytes
 #if PY_VERSION_HEX < 0x03030000
    typedef PyDictEntry* (*dict_lookup_func)(PyDictObject*, PyObject*, long);
 #else
+#if PY_VERSION_HEX >= 0x03060000
+   typedef Py_ssize_t (*dict_lookup_func)(
+       PyDictObject*, PyObject*, Py_hash_t, PyObject***, Py_ssize_t*);
+#else
    struct PyDictKeyEntry;
    typedef PyDictKeyEntry* (*dict_lookup_func)(PyDictObject*, PyObject*, Py_hash_t, PyObject***);
 #define PyDictEntry PyDictKeyEntry
+#endif
 #endif
 
 // for 3.0 support (backwards compatibility, really)
