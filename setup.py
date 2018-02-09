@@ -2,6 +2,7 @@
 
 import os, glob, subprocess
 from setuptools import setup, find_packages, Extension
+from distutils.command.build_ext import build_ext as _build_ext
 from codecs import open
 
 
@@ -21,9 +22,14 @@ def get_cflags():
     cli_arg = subprocess.check_output([config_exec, '--auxcflags'])
     return cli_arg.decode("utf-8").strip()
 
+class my_build_extension(_build_ext):
+    def build_extension(self, ext):
+        ext.extra_compile_args = ['-O2']+get_cflags().split()
+        return _build_ext.build_extension(self, ext)
+
 setup(
     name='CPyCppyy',
-    version='0.9.0',
+    version='0.9.1',
     description='Cling-based Python-C++ bindings for CPython',
     long_description=long_description,
 
@@ -59,9 +65,11 @@ setup(
 
     keywords='C++ bindings',
 
+    cmdclass = {
+        'build_ext': my_build_extension,
+    },
+
     ext_modules=[Extension('libcppyy',
         sources=glob.glob('src/*.cxx'),
-        extra_compile_args=['-O2']+get_cflags().split(),
         include_dirs=['include'])],
-
 )
