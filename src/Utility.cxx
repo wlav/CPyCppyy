@@ -520,9 +520,9 @@ int CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, void*& b
                 if (buf && bufinfo.ndim == 0) {
                     return 1;
                 } else if (buf && bufinfo.ndim == 1 && bufinfo.shape) {
-                    int size = (int)bufinfo.shape[0];
+                    int size1d = (int)bufinfo.shape[0];
                     PyBuffer_Release(&bufinfo);
-                    return size;
+                    return size1d;
                 }
             } else {
             // have buf, but format mismatch: bail out now, otherwise the old
