@@ -275,9 +275,9 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
                     pytmpl->fSelf ? pytmpl->fSelf : pytmpl->fPyClass, (char*)tmplname.c_str());
 
             // now call the method directly
-                PyObject* result = CPPOverload_Type.tp_call(pymeth, args, kwds);
+                PyObject* resultInst = CPPOverload_Type.tp_call(pymeth, args, kwds);
                 Py_DECREF(pymeth);
-                return result;
+                return resultInst;
             }
         }
     }
@@ -355,12 +355,12 @@ static PyObject* tpp_subscript(TemplateProxy* pytmpl, PyObject* args)
                     meth = new CPPConstructor(scope, cppmeth);
                 else
                     meth = new CPPMethod(scope, cppmeth);
-                PyObject* pymeth = (PyObject*)CPPOverload_New(meth_name, meth);
-                PyObject_SetAttr(pytmpl->fPyClass, pytmpl_name, (PyObject*)pymeth);
-                pytmpl->fTemplated->AddMethod((CPPOverload*)pymeth); // steals ref
-                pymeth = PyObject_GetAttr(pytmpl->fSelf ? pytmpl->fSelf : pytmpl->fPyClass, pytmpl_name);
+                PyObject* pymethInst = (PyObject*)CPPOverload_New(meth_name, meth);
+                PyObject_SetAttr(pytmpl->fPyClass, pytmpl_name, (PyObject*)pymethInst);
+                pytmpl->fTemplated->AddMethod((CPPOverload*)pymethInst); // steals ref
+                pymethInst = PyObject_GetAttr(pytmpl->fSelf ? pytmpl->fSelf : pytmpl->fPyClass, pytmpl_name);
                 Py_DECREF(pytmpl_name);
-                return pymeth;          // callable method, next step is by user
+                return pymethInst;          // callable method, next step is by user
             }
         }
         Py_DECREF(pytmpl_name);
