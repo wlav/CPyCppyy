@@ -46,10 +46,10 @@ public:
         fCallable = nullptr;
     }
 
-    virtual PyObject* GetSignature(bool show_formalargs = true) {
+    virtual PyObject* GetSignature(bool /*show_formalargs*/ = true) {
         return CPyCppyy_PyUnicode_FromString("*args, **kwargs");
     }
-    virtual PyObject* GetPrototype(bool show_formalargs = true) {
+    virtual PyObject* GetPrototype(bool /*show_formalargs*/ = true) {
         return CPyCppyy_PyUnicode_FromString("<callback>");
     }
     virtual PyObject* GetDocString() {
