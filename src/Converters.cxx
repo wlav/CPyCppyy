@@ -1251,7 +1251,7 @@ bool CPyCppyy::PyObjectConverter::ToMemory(PyObject* value, void* address)
 
 //- function pointer converter -----------------------------------------------
 bool CPyCppyy::FunctionPointerConverter::SetArg(
-    PyObject* pyobject, Parameter& para, CallContext* ctxt)
+    PyObject* pyobject, Parameter& para, CallContext* /*ctxt*/)
 {
     if (!CPPOverload_Check(pyobject))
         return false;
@@ -1365,7 +1365,7 @@ struct faux_initlist
 } // unnamed namespace
 
 bool CPyCppyy::InitializerListConverter::SetArg(
-    PyObject* pyobject, Parameter& para, CallContext* ctxt)
+    PyObject* pyobject, Parameter& para, CallContext* /*ctxt*/)
 {
 #ifdef NO_KNOWN_INITIALIZER_LIST
     return false;
