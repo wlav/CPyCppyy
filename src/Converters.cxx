@@ -1472,8 +1472,8 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long
     auto pos = realType.find("initializer_list");
     if (pos == 0 /* no std:: */ || pos == 5 /* with std:: */) {
     // get the type of the list and create a converter (TODO: get hold of value_type?)
-        auto pos = realType.find('<');
-        std::string value_type = realType.substr(pos+1, realType.size()-pos-2);
+        auto pos2 = realType.find('<');
+        std::string value_type = realType.substr(pos2+1, realType.size()-pos2-2);
         Converter* cnv = CreateConverter(value_type);
         if (cnv)
             return new InitializerListConverter(cnv, Cppyy::SizeOf(value_type));
@@ -1522,8 +1522,8 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long
     // this is a function function pointer
     // TODO: find better way of finding the type
     // TODO: a converter that generates wrappers as appropriate
-        auto pos = resolvedType.find("*)");
-        result = new FunctionPointerConverter(resolvedType.substr(pos+2));
+        auto pos2 = resolvedType.find("*)");
+        result = new FunctionPointerConverter(resolvedType.substr(pos2+2));
     }
 
     if (!result && cpd == "&&")                       // unhandled moves
