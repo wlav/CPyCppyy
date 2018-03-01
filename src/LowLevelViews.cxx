@@ -633,6 +633,12 @@ static PySequenceMethods ll_as_sequence = {
     0,                             // sq_concat
     0,                             // sq_repeat
     (ssizeargfunc)ll_item,         // sq_item
+    0,                             // sq_slice
+    0,                             // sq_ass_item
+    0,                             // sq_ass_slice
+    0,                             // sq_contains
+    0,                             // sq_inplace_concat
+    0,                             // sq_inplace_repeat
 };
 
 //- buffer methods ----------------------------------------------------------
