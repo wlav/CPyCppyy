@@ -216,7 +216,7 @@ static int op_setownership(CPPInstance* pyobj, PyObject* value, void*)
 // Set the ownership (True is python-owns) for the given object.
     long shouldown = PyLong_AsLong(value);
     if (shouldown == -1 && PyErr_Occurred()) {
-        PyErr_SetString(PyExc_ValueError, "__python_owns should be either True or False");
+        PyErr_SetString(PyExc_ValueError, "__python_owns__ should be either True or False");
         return -1;
     }
 
