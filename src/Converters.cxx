@@ -1099,8 +1099,8 @@ bool CPyCppyy::CppObjectPtrConverter<ISREFERENCE>::ToMemory(PyObject* value, voi
 
 namespace CPyCppyy {
 // Instantiate the templates
-    template class CppObjectPtrConverter<true>;
-    template class CppObjectPtrConverter<false>;
+    template class CPyCppyy::CppObjectPtrConverter<true>;
+    template class CPyCppyy::CppObjectPtrConverter<false>;
 }
 
 //----------------------------------------------------------------------------
@@ -1615,7 +1615,7 @@ public:
         gf["long long&"] =                  (cf_t)+[](long sz) { return new LLongArrayRefConverter{sz}; };
         gf["unsigned long long*"] =         (cf_t)+[](long sz) { return new ULLongArrayConverter{sz}; };
         gf["unsigned long long&"] =         (cf_t)+[](long sz) { return new ULLongArrayRefConverter{sz}; };
-        gf["void*"] =                       (cf_t)+[](long sz) { return new VoidArrayConverter{sz}; };
+        gf["void*"] =                       (cf_t)+[](long sz) { return new VoidArrayConverter{static_cast<bool>(sz)}; };
 
     // aliases
         gf["Long64_t"] =                    gf["long long"];
