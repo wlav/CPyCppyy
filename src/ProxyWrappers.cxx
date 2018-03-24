@@ -103,48 +103,23 @@ static PyObject* CreateNewCppProxyClass(Cppyy::TCppScope_t klass, PyObject* pyba
 }
 
 static inline
-void AddPropertyToClass1(
-    PyObject* pyclass, CPyCppyy::CPPDataMember* property, bool isStatic)
+void AddPropertyToClass(PyObject* pyclass,
+    Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t idata)
 {
+    CPyCppyy::CPPDataMember* property = CPyCppyy::CPPDataMember_New(scope, idata);
+
 // allow access at the instance level
     PyObject_SetAttrString(pyclass,
         const_cast<char*>(property->GetName().c_str()), (PyObject*)property);
 
 // allow access at the class level (always add after setting instance level)
-    if (isStatic) {
+    if (Cppyy::IsStaticData(scope, idata)) {
         PyObject_SetAttrString((PyObject*)Py_TYPE(pyclass),
             const_cast<char*>(property->GetName().c_str()), (PyObject*)property);
     }
-}
 
-static inline
-void AddPropertyToClass(PyObject* pyclass,
-    Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t idata)
-{
-    CPyCppyy::CPPDataMember* property = CPyCppyy::CPPDataMember_New(scope, idata);
-    AddPropertyToClass1(pyclass, property, Cppyy::IsStaticData(scope, idata));
+// done
     Py_DECREF(property);
-}
-
-static inline
-void AddPropertyToClass(PyObject* pyclass,
-    Cppyy::TCppScope_t scope, const std::string& name, void* address)
-{
-    CPyCppyy::CPPDataMember* property =
-        CPyCppyy::CPPDataMember_NewConstant(scope, name, address);
-    AddPropertyToClass1(pyclass, property, true);
-    Py_DECREF(property);
-}
-
-
-static inline
-void AddToGlobalScope(
-    const char* label, const char* /* hdr */, void* obj, Cppyy::TCppType_t klass)
-{
-// Bind the given object with the given class in the global scope with the
-// given label for its reference.
-    PyModule_AddObject(CPyCppyy::gThisModule, const_cast<char*>(label),
-        CPyCppyy::BindCppObjectNoCast(obj, klass));
 }
 
 } // namespace CPyCppyy

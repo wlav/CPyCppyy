@@ -69,6 +69,7 @@ CPPYY_IMPL_GILCALL(double,        D)
 CPPYY_IMPL_GILCALL(LongDouble_t,  LD)
 CPPYY_IMPL_GILCALL(void*,         R)
 
+/*
 // TODO: CallS may not have a use here; CallO is used instead for std::string
 static inline char* GILCallS(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CPyCppyy::CallContext* ctxt)
@@ -78,6 +79,7 @@ static inline char* GILCallS(
     size_t len;
     return Cppyy::CallS(method, self, &ctxt->fArgs, &len);
 }
+*/
 
 static inline Cppyy::TCppObject_t GILCallO(Cppyy::TCppMethod_t method,
     Cppyy::TCppObject_t self, CPyCppyy::CallContext* ctxt, Cppyy::TCppType_t klass)

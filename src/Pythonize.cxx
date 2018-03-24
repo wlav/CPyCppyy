@@ -71,29 +71,6 @@ inline PyObject* CallPyObjMethod(PyObject* obj, const char* meth, PyObject* arg1
     return result;
 }
 
-//-----------------------------------------------------------------------------
-inline PyObject* CallPyObjMethod(
-    PyObject* obj, const char* meth, PyObject* arg1, PyObject* arg2)
-{
-// Helper; call method with signature: obj->meth(arg1, arg2).
-    Py_INCREF(obj);
-    PyObject* result = PyObject_CallMethod(
-        obj, const_cast<char*>(meth), const_cast<char*>("OO"), arg1, arg2);
-    Py_DECREF(obj);
-    return result;
-}
-
-//-----------------------------------------------------------------------------
-inline PyObject* CallPyObjMethod(PyObject* obj, const char* meth, PyObject* arg1, int arg2)
-{
-// Helper; call method with signature: obj->meth(arg1, int).
-    Py_INCREF(obj);
-    PyObject* result = PyObject_CallMethod(
-        obj, const_cast<char*>(meth), const_cast<char*>("Oi"), arg1, arg2);
-    Py_DECREF(obj);
-    return result;
-}
-
 
 //- helpers --------------------------------------------------------------------
 PyObject* PyStyleIndex(PyObject* self, PyObject* index)
@@ -134,19 +111,6 @@ inline PyObject* CallSelfIndex(CPPInstance* self, PyObject* idx, const char* met
     Py_DECREF(pyindex);
     Py_DECREF((PyObject*)self);
     return result;
-}
-
-//-----------------------------------------------------------------------------
-inline PyObject* BoolNot(PyObject* value)
-{
-// Helper; convert generic python object into a boolean value.
-    if (PyObject_IsTrue(value) == 1) {
-        Py_DECREF(value);
-        Py_RETURN_FALSE;
-    } else {
-        Py_XDECREF(value);
-        Py_RETURN_TRUE;
-    }
 }
 
 //- "smart pointer" behavior ---------------------------------------------------
@@ -430,6 +394,7 @@ PyObject* MapContains(PyObject* self, PyObject* obj)
 }
 
 //- STL container iterator support --------------------------------------------
+/* TODO: compare commented code below; is for performance only
 PyObject* StlSequenceIter(PyObject* self)
 {
 // Implement python's __iter__ for std::iterator<>s.
@@ -445,8 +410,10 @@ PyObject* StlSequenceIter(PyObject* self)
     }
     return iter;
 }
+*/
 
 //- safe indexing for STL-like vector w/o iterator dictionaries ---------------
+/* TODO: compare commented code below; is for convenience only
 PyObject* CheckedGetItem(PyObject* self, PyObject* obj)
 {
 // Implement a generic python __getitem__ for std::vector<>s that are missing
@@ -470,6 +437,7 @@ PyObject* CheckedGetItem(PyObject* self, PyObject* obj)
 
     return nullptr;
 }
+*/
 
 //- pair as sequence to allow tuple unpacking --------------------------------
 PyObject* PairUnpack(PyObject* self, PyObject* pyindex)

@@ -7,7 +7,7 @@
 
 namespace CPyCppyy {
 
-class CallContext;
+struct CallContext;
 
 class Executor {
 public:
