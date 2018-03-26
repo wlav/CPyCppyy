@@ -29,7 +29,7 @@ class my_build_extension(_build_ext):
 
 setup(
     name='CPyCppyy',
-    version='0.9.1',
+    version='0.9.2',
     description='Cling-based Python-C++ bindings for CPython',
     long_description=long_description,
 
