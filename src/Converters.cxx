@@ -1046,17 +1046,17 @@ bool CPyCppyy::CppObjectPtrConverter<ISREFERENCE>::SetArg(
     if (!CPPInstance_Check(pyobject))
         return false;              // not a cppyy object (TODO: handle SWIG etc.)
 
-    if (Cppyy::IsSubtype(((CPPInstance*)pyobject)->ObjectIsA(), fClass)) {
+    CPPInstance* pyobj = (CPPInstance*)pyobject;
+    if (Cppyy::IsSubtype(pyobj->ObjectIsA(), fClass)) {
     // depending on memory policy, some objects need releasing when passed into functions
         if (!KeepControl() && !UseStrictOwnership(ctxt))
-            ((CPPInstance*)pyobject)->CppOwns();
+            pyobj->CppOwns();
 
     // set pointer (may be null) and declare success
-        if (((CPPInstance*)pyobject)->fFlags & CPPInstance::kIsReference)
-        // already a reference (== pointer)
-            para.fValue.fVoidp = ((CPPInstance*)pyobject)->fObject;
+        if (pyobj->fFlags & CPPInstance::kIsReference)
+            para.fValue.fVoidp = pyobj->fObject; // already a ptr to object
         else
-            para.fValue.fVoidp = &((CPPInstance*)pyobject)->fObject;
+            para.fValue.fVoidp = &pyobj->fObject;
         para.fTypeCode = ISREFERENCE ? 'V' : 'p';
         return true;
     }

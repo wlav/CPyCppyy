@@ -359,8 +359,6 @@ void* GetCPPInstanceAddress(PyObject*, PyObject* args)
     PyObject* pyname = 0;
     if (PyArg_ParseTuple(args, const_cast<char*>("O|O!"), &pyobj,
                          &CPyCppyy_PyUnicode_Type, &pyname) && CPPInstance_Check(pyobj)) {
-        if (!pyobj->fObject)
-            return nullptr;  // note: no error set
 
         if (pyname != 0) {
         // locate property proxy for offset info
@@ -390,6 +388,7 @@ void* GetCPPInstanceAddress(PyObject*, PyObject* args)
         }
 
     // this is an address of an address (i.e. &myobj, with myobj of type MyObj*)
+    // note that pyobject->fObject may be null
         return (void*)&pyobj->fObject;
     }
 
@@ -403,7 +402,7 @@ PyObject* addressof(PyObject* pyobj, PyObject* args)
 // Return object proxy address as a value (cppyy-style), or the same for an array.
     void* addr = GetCPPInstanceAddress(pyobj, args);
     if (addr)
-        return PyLong_FromLong(*(Long_t*)addr);
+        return PyLong_FromLong(*(ptrdiff_t*)addr);
     else if (!PyErr_Occurred()) {
         return PyLong_FromLong(0);
     } else if (PyTuple_Size(args)) {
@@ -437,10 +436,42 @@ PyObject* AsCObject(PyObject* dummy, PyObject* args)
 }
 
 //----------------------------------------------------------------------------
-static PyObject* BindObject_(void* addr, PyObject* pyname, bool do_cast=false)
+PyObject* BindObject(PyObject*, PyObject* args, PyObject* kwds)
 {
-// Helper to factorize the common code between MakeNullPointer and BindObject.
+// From a long representing an address or a PyCapsule/CObject, bind to a class.
+    Py_ssize_t argc = PyTuple_GET_SIZE(args);
+    if (argc != 2) {
+        PyErr_Format(PyExc_TypeError,
+            "BindObject takes exactly 2 argumenst (" PY_SSIZE_T_FORMAT " given)", argc);
+        return nullptr;
+    }
+
+// try to convert first argument: either PyCapsule/CObject or long integer
+    PyObject* pyaddr = PyTuple_GET_ITEM(args, 0);
+
+    void* addr = nullptr;
+    if (pyaddr != &_CPyCppyy_NullPtrStruct) {
+        addr = CPyCppyy_PyCapsule_GetPointer(pyaddr, nullptr);
+        if (PyErr_Occurred()) {
+            PyErr_Clear();
+
+            addr = PyLong_AsVoidPtr(pyaddr);
+            if (PyErr_Occurred()) {
+                PyErr_Clear();
+
+            // last chance, perhaps it's a buffer/array (return from void*)
+                int buflen = Utility::GetBuffer(PyTuple_GetItem(args, 0), '*', 1, addr, false);
+                if (!addr || !buflen) {
+                    PyErr_SetString(PyExc_TypeError,
+                        "BindObject requires a CObject or long integer as first argument");
+                    return nullptr;
+                }
+            }
+        }
+    }
+
     Cppyy::TCppType_t klass = 0;
+    PyObject* pyname = PyTuple_GET_ITEM(args, 1);
     if (!CPyCppyy_PyUnicode_Check(pyname)) {      // not string, then class
         if (CPPScope_Check(pyname))
             klass = ((CPPClass*)pyname)->fCppType;
@@ -460,49 +491,16 @@ static PyObject* BindObject_(void* addr, PyObject* pyname, bool do_cast=false)
         return nullptr;
     }
 
-    if (do_cast)
-        return BindCppObject(addr, klass, false);
-    return BindCppObjectNoCast(addr, klass, false);
-}
-
-//----------------------------------------------------------------------------
-PyObject* BindObject(PyObject*, PyObject* args, PyObject* kwds)
-{
-// From a long representing an address or a PyCapsule/CObject, bind to a class.
-    Py_ssize_t argc = PyTuple_GET_SIZE(args);
-    if (argc != 2) {
-        PyErr_Format(PyExc_TypeError,
-            "BindObject takes exactly 2 argumenst (" PY_SSIZE_T_FORMAT " given)", argc);
-        return nullptr;
-    }
-
     bool do_cast = false;
     if (kwds) {
         PyObject* cast = PyDict_GetItemString(kwds, "cast");
         do_cast = cast && PyObject_IsTrue(cast);
     }
 
-// try to convert first argument: either PyCapsule/CObject or long integer
-    PyObject* pyaddr = PyTuple_GET_ITEM(args, 0);
-    void* addr = CPyCppyy_PyCapsule_GetPointer(pyaddr, nullptr);
-    if (PyErr_Occurred()) {
-        PyErr_Clear();
+    if (do_cast)
+        return BindCppObject(addr, klass);
 
-        addr = PyLong_AsVoidPtr(pyaddr);
-        if (PyErr_Occurred()) {
-            PyErr_Clear();
-
-        // last chance, perhaps it's a buffer/array (return from void*)
-            int buflen = Utility::GetBuffer(PyTuple_GetItem(args, 0), '*', 1, addr, false);
-            if (!addr || !buflen) {
-                PyErr_SetString(PyExc_TypeError,
-                    "BindObject requires a CObject or long integer as first argument");
-                return nullptr;
-            }
-        }
-    }
-
-    return BindObject_(addr, PyTuple_GET_ITEM(args, 1), do_cast);
+    return BindCppObjectNoCast(addr, klass);
 }
 
 //----------------------------------------------------------------------------
@@ -517,26 +515,6 @@ static PyObject* Move(PyObject*, PyObject* pyobject)
     ((CPPInstance*)pyobject)->fFlags |= CPPInstance::kIsRValue;
     Py_INCREF(pyobject);
     return pyobject;
-}
-
-//----------------------------------------------------------------------------
-PyObject* MakeNullPointer(PyObject*, PyObject* args)
-{
-// Create an object of the given type point to NULL (historic note: this
-// function is older than BindObject(), which can be used instead).
-    Py_ssize_t argc = PyTuple_GET_SIZE(args);
-    if (argc != 0 && argc != 1) {
-        PyErr_Format(PyExc_TypeError,
-            "MakeNullPointer takes at most 1 argument (" PY_SSIZE_T_FORMAT " given)", argc);
-        return nullptr;
-    }
-
-// no class given, use None as generic
-    if (argc == 0) {
-        Py_RETURN_NONE;
-    }
-
-    return BindObject_(0, PyTuple_GET_ITEM(args, 0));
 }
 
 //----------------------------------------------------------------------------
@@ -667,8 +645,6 @@ static PyMethodDef gCPyCppyyMethods[] = {
       METH_VARARGS | METH_KEYWORDS, (char*) "Create an object of given type, from given address"},
     {(char*) "move", (PyCFunction)Move,
       METH_O, (char*)"Cast the C++ object to become movable"},
-    {(char*) "MakeNullPointer", (PyCFunction)MakeNullPointer,
-      METH_VARARGS, (char*)"Create a NULL pointer of the given type"},
     {(char*) "SetMemoryPolicy", (PyCFunction)SetMemoryPolicy,
       METH_VARARGS, (char*)"Determines object ownership model"},
     {(char*) "SetSignalPolicy", (PyCFunction)SetSignalPolicy,

@@ -686,7 +686,7 @@ PyObject* CPyCppyy::BindCppObjectNoCast(
 
 // TODO: add convenience function to MemoryRegulator to use pyclass directly
 // TODO: make sure that a consistent address is used (may have to be done in BindCppObject)
-    if (!isValue /* always fresh */) {
+    if (address && !isValue /* always fresh */) {
         PyObject* oldPyObject = MemoryRegulator::RetrievePyObject(isRef ? *(void**)address : address, klass);
         if (oldPyObject)
             return oldPyObject;
@@ -719,7 +719,7 @@ PyObject* CPyCppyy::BindCppObject(
 {
 // if the object is a null pointer, return a typed one (as needed for overloading)
     if (!address)
-        return BindCppObjectNoCast(address, klass, false);
+        return BindCppObjectNoCast(address, klass, isRef);
 
 // only known or knowable objects will be bound
     if (!klass) {
