@@ -18,6 +18,7 @@
 //- data and local helpers ---------------------------------------------------
 namespace CPyCppyy {
     extern PyObject* gThisModule;
+    extern std::map<std::string, std::vector<PyObject*>> gPythonizations;
 }
 
 namespace {
@@ -741,44 +742,28 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         Utility::AddToClass(pyclass, "__ne__",  (PyCFunction)StlStringIsNotEqual, METH_O);
     }
 
-// TODO: store these on the pythonizations module, not on gThisModule
-// TODO: externalize this code and use update handlers on the python side
-    PyObject* userPythonizations = PyObject_GetAttrString(gThisModule, "UserPythonizations");
-    PyObject* pythonizationScope = PyObject_GetAttrString(gThisModule, "PythonizationScope");
-
-    std::vector<std::string> pythonization_scopes;
-    pythonization_scopes.push_back("__global__");
-
-    std::string user_scope = CPyCppyy_PyUnicode_AsString(pythonizationScope);
-    if (user_scope != "__global__") {
-        if (PyDict_Contains(userPythonizations, pythonizationScope)) {
-            pythonization_scopes.push_back(user_scope);
-        }
-    }
-
+    PyObject* args = PyTuple_New(2);
+    Py_INCREF(pyclass);
+    PyTuple_SET_ITEM(args, 0, pyclass);
+    PyTuple_SET_ITEM(args, 1, CPyCppyy_PyUnicode_FromString(name.c_str()));
     bool pstatus = true;
-
-    for (auto key = pythonization_scopes.cbegin(); key != pythonization_scopes.cend(); ++key) {
-        PyObject* tmp = PyDict_GetItemString(userPythonizations, key->c_str());
-        Py_ssize_t num_pythonizations = PyList_Size(tmp);
-        PyObject* arglist = nullptr;
-        if (num_pythonizations)
-            arglist = Py_BuildValue("O,s", pyclass, name.c_str());
-        for (Py_ssize_t i = 0; i < num_pythonizations; ++i) {
-            PyObject* pythonizor = PyList_GetItem(tmp, i);
-        // TODO: detail error handling for the pythonizors
-            PyObject* result = PyObject_CallObject(pythonizor, arglist);
-            if (!result) {
-                pstatus = false;
-                break;
-            } else
+// TODO: add namespace of the class as scope to loop over
+    for (const auto& scope : {""}) {
+        auto p = gPythonizations.find(scope);
+        if (p != gPythonizations.end()) {
+            for (auto pythonizor : p->second) {
+                PyObject* result = PyObject_CallObject(pythonizor, args);
+                if (!result) {
+                // TODO: detail error handling for the pythonizors
+                    pstatus = false;
+                    break;
+                }
                 Py_DECREF(result);
+            }
         }
-        Py_XDECREF(arglist);
     }
 
-    Py_DECREF(userPythonizations);
-    Py_DECREF(pythonizationScope);
+    Py_DECREF(args);
 
 // phew! all done ...
     return pstatus;

@@ -15,6 +15,8 @@
 #include "Utility.h"
 
 // Standard
+#include <algorithm>
+#include <map>
 #include <string>
 #include <sstream>
 #include <utility>
@@ -150,6 +152,7 @@ PyObject _CPyCppyy_NullPtrStruct = {
 namespace CPyCppyy {
     PyObject* gThisModule = nullptr;
     PyObject* gNullPtrObject = nullptr;
+    std::map<std::string, std::vector<PyObject*>> gPythonizations;
     std::vector<std::pair<Cppyy::TCppType_t, Cppyy::TCppType_t>> gPinnedTypes;
     std::vector<Cppyy::TCppType_t> gIgnorePinnings;
 }
@@ -517,6 +520,50 @@ static PyObject* Move(PyObject*, PyObject* pyobject)
     return pyobject;
 }
 
+
+//----------------------------------------------------------------------------
+static PyObject* AddPythonization(PyObject*, PyObject* args)
+{
+// Remove a previously registered pythonizor from the given scope.
+    PyObject* pythonizor = nullptr; const char* scope;
+    if (!PyArg_ParseTuple(args, const_cast<char*>("Os"), &pythonizor, &scope))
+        return nullptr;
+
+    if (!PyCallable_Check(pythonizor)) {
+        PyObject* pystr = PyObject_Str(pythonizor);
+        PyErr_Format(PyExc_TypeError,
+            "given \'%s\' object is not callable", CPyCppyy_PyUnicode_AsString(pystr));
+        Py_DECREF(pystr);
+        return nullptr;
+    }
+
+    Py_INCREF(pythonizor);
+    gPythonizations[scope].push_back(pythonizor);
+
+    Py_RETURN_NONE;
+}
+
+
+//----------------------------------------------------------------------------
+static PyObject* RemovePythonization(PyObject*, PyObject* args)
+{
+// Remove a previously registered pythonizor from the given scope.
+    PyObject* pythonizor = nullptr; const char* scope;
+    if (!PyArg_ParseTuple(args, const_cast<char*>("Os"), &pythonizor, &scope))
+        return nullptr;
+
+    auto p1 = gPythonizations.find(scope);
+    if (p1 != gPythonizations.end()) {
+        auto p2 = std::find(p1->second.begin(), p1->second.end(), pythonizor);
+        if (p2 != p1->second.end()) {
+            p1->second.erase(p2);
+            Py_RETURN_TRUE;
+        }
+    }
+
+    Py_RETURN_FALSE;
+}
+
 //----------------------------------------------------------------------------
 PyObject* SetMemoryPolicy(PyObject*, PyObject* args)
 {
@@ -645,6 +692,10 @@ static PyMethodDef gCPyCppyyMethods[] = {
       METH_VARARGS | METH_KEYWORDS, (char*) "Create an object of given type, from given address"},
     {(char*) "move", (PyCFunction)Move,
       METH_O, (char*)"Cast the C++ object to become movable"},
+    {(char*) "add_pythonization", (PyCFunction)AddPythonization,
+      METH_VARARGS, (char*)"Add a pythonizor"},
+    {(char*) "remove_pythonization", (PyCFunction)RemovePythonization,
+      METH_VARARGS, (char*)"Remove a pythonizor"},
     {(char*) "SetMemoryPolicy", (PyCFunction)SetMemoryPolicy,
       METH_VARARGS, (char*)"Determines object ownership model"},
     {(char*) "SetSignalPolicy", (PyCFunction)SetSignalPolicy,
@@ -735,13 +786,7 @@ extern "C" void initlibcppyy()
 // or a self-referencing cycle would be created
 
 // Pythonizations ...
-    PyObject* userPythonizations = PyDict_New();
-    PyObject* gblList = PyList_New(0);
-    PyDict_SetItemString(userPythonizations, "__global__", gblList);
-    Py_DECREF(gblList);
-    PyModule_AddObject(gThisModule, "UserPythonizations", userPythonizations);
     PyModule_AddObject(gThisModule, "UserExceptions",     PyDict_New());
-    PyModule_AddObject(gThisModule, "PythonizationScope", CPyCppyy_PyUnicode_FromString("__global__"));
 
 // inject meta type
     if (!Utility::InitProxy(gThisModule, &CPPScope_Type, "CPPScope"))
