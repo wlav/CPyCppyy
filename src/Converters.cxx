@@ -1374,7 +1374,7 @@ bool CPyCppyy::InitializerListConverter::SetArg(
     if (!PySequence_Check(pyobject))
         return false;
 
-// can only construct emptu lists, so use a fake initializer list
+// can only construct empty lists, so use a fake initializer list
     size_t len = (size_t)PySequence_Size(pyobject);
     faux_initlist* fake = (faux_initlist*)malloc(sizeof(faux_initlist)+fValueSize*len);
     fake->_M_len = (faux_initlist::size_type)len;
