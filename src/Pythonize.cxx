@@ -745,22 +745,27 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
     PyObject* args = PyTuple_New(2);
     Py_INCREF(pyclass);
     PyTuple_SET_ITEM(args, 0, pyclass);
-    PyTuple_SET_ITEM(args, 1, CPyCppyy_PyUnicode_FromString(name.c_str()));
+
+    std::string::size_type pos = name.rfind("::");
+    std::string outer_scope = (pos != std::string::npos) ? name.substr(0, pos) : "";
+
     bool pstatus = true;
-// TODO: add namespace of the class as scope to loop over
-    for (const auto& scope : {""}) {
-        auto p = gPythonizations.find(scope);
-        if (p != gPythonizations.end()) {
-            for (auto pythonizor : p->second) {
-                PyObject* result = PyObject_CallObject(pythonizor, args);
-                if (!result) {
-                // TODO: detail error handling for the pythonizors
-                    pstatus = false;
-                    break;
-                }
-                Py_DECREF(result);
-            }
+    auto p = gPythonizations.find(outer_scope);
+    if (p == gPythonizations.end()) {
+        p = gPythonizations.find("");
+        PyTuple_SET_ITEM(args, 1, CPyCppyy_PyUnicode_FromString(name.c_str()));
+    } else {
+        PyTuple_SET_ITEM(args, 1, CPyCppyy_PyUnicode_FromString(name.substr(pos+2, std::string::npos).c_str()));
+    }
+
+    for (auto pythonizor : p->second) {
+        PyObject* result = PyObject_CallObject(pythonizor, args);
+        if (!result) {
+        // TODO: detail error handling for the pythonizors
+            pstatus = false;
+            break;
         }
+        Py_DECREF(result);
     }
 
     Py_DECREF(args);
