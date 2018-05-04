@@ -29,8 +29,9 @@ public:                 // public, as the python C-API works with C structs
     PyObject_HEAD
     PyObject* fSelf;              // must be first (same layout as CPPOverload)
     PyObject* fCppName;
-    PyObject* fPyClass;
     PyObject* fPyName;
+    PyObject* fTemplateArgs;
+    PyObject* fPyClass;
     CPPOverload* fNonTemplated;   // holder for non-template overloads
     CPPOverload* fTemplated;      // holder for templated overloads
 
@@ -38,6 +39,7 @@ public:
     void AddOverload(CPPOverload* mp);
     void AddOverload(PyCallable* pc);
     void AddTemplate(PyCallable* pc);
+    PyCallable* Instantiate(const std::string& fullname, PyObject* tmplArgs);
 
 private:                // private, as the python C-API will handle creation
     TemplateProxy() = delete;
