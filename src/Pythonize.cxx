@@ -750,7 +750,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
     std::string outer_scope = (pos != std::string::npos) ? name.substr(0, pos) : "";
 
     bool pstatus = true;
-    auto p = gPythonizations.find(outer_scope);
+    auto p = outer_scope.empty() ? gPythonizations.end() : gPythonizations.find(outer_scope);
     if (p == gPythonizations.end()) {
         p = gPythonizations.find("");
         PyTuple_SET_ITEM(args, 1, CPyCppyy_PyUnicode_FromString(name.c_str()));
