@@ -74,6 +74,31 @@ inline PyObject* CallPyObjMethod(PyObject* obj, const char* meth, PyObject* arg1
 
 
 //- helpers --------------------------------------------------------------------
+static std::string ExtractNamespace(const std::string& name)
+{
+// Find the namespace the named class lives in, take care of templates
+    int tpl_open = 0;
+    for (std::string::size_type pos = name.size()-1; 0 < pos; --pos) {
+        std::string::value_type c = name[pos];
+
+    // count '<' and '>' to be able to skip template contents
+        if (c == '>')
+            ++tpl_open;
+        else if (c == '<')
+            --tpl_open;
+
+    // collect name up to "::"
+        else if (tpl_open == 0 && c == ':' && name[pos-1] == ':') {
+        // found the extend of the scope ... done
+            return name.substr(0, pos-1);
+        }
+    }
+
+// whole name is apparently a single scope
+    return name;
+}
+
+//-----------------------------------------------------------------------------
 PyObject* PyStyleIndex(PyObject* self, PyObject* index)
 {
 // Helper; converts python index into straight C index.
@@ -746,8 +771,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
     Py_INCREF(pyclass);
     PyTuple_SET_ITEM(args, 0, pyclass);
 
-    std::string::size_type pos = name.rfind("::");
-    std::string outer_scope = (pos != std::string::npos) ? name.substr(0, pos) : "";
+    std::string outer_scope = ExtractNamespace(name);
 
     bool pstatus = true;
     auto p = outer_scope.empty() ? gPythonizations.end() : gPythonizations.find(outer_scope);
@@ -755,7 +779,8 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         p = gPythonizations.find("");
         PyTuple_SET_ITEM(args, 1, CPyCppyy_PyUnicode_FromString(name.c_str()));
     } else {
-        PyTuple_SET_ITEM(args, 1, CPyCppyy_PyUnicode_FromString(name.substr(pos+2, std::string::npos).c_str()));
+        PyTuple_SET_ITEM(args, 1, CPyCppyy_PyUnicode_FromString(
+                             name.substr(outer_scope.size()+2, std::string::npos).c_str()));
     }
 
     if (p != gPythonizations.end()) {
