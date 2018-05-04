@@ -758,14 +758,16 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         PyTuple_SET_ITEM(args, 1, CPyCppyy_PyUnicode_FromString(name.substr(pos+2, std::string::npos).c_str()));
     }
 
-    for (auto pythonizor : p->second) {
-        PyObject* result = PyObject_CallObject(pythonizor, args);
-        if (!result) {
-        // TODO: detail error handling for the pythonizors
-            pstatus = false;
-            break;
+    if (p != gPythonizations.end()) {
+        for (auto pythonizor : p->second) {
+            PyObject* result = PyObject_CallObject(pythonizor, args);
+            if (!result) {
+            // TODO: detail error handling for the pythonizors
+                pstatus = false;
+                break;
+            }
+            Py_DECREF(result);
         }
-        Py_DECREF(result);
     }
 
     Py_DECREF(args);
