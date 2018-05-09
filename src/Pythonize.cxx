@@ -354,6 +354,44 @@ PyObject* VectorGetItem(CPPInstance* self, PySliceObject* index)
     return CallSelfIndex(self, (PyObject*)index, "_vector__at");
 }
 
+
+PyObject* VectorBoolGetItem(CPPInstance* self, PyObject* args)
+{
+// std::vector<bool> is a special-case in C++, and its return type depends on
+// the compiler: treat it special here as well
+    PyObject* idx = nullptr;
+    if (!PyArg_ParseTuple(args, const_cast<char*>("O:__getitem__"), &idx))
+        return nullptr;
+
+    if (!self->GetObject()) {
+        PyErr_SetString(PyExc_TypeError, "unsubscriptable object");
+        return nullptr;
+    }
+
+    PyObject* pyindex = PyStyleIndex((PyObject*)self, idx);
+    if (!pyindex)
+        return nullptr;
+    int index = (int)PyLong_AsLong(pyindex);
+    Py_DECREF(pyindex);
+
+    std::string clName = Cppyy::GetFinalName(self->ObjectIsA());
+    std::string::size_type pos = clName.find("vector<bool");
+    if (pos != 0 && pos != 5 /* following std:: */) {
+        PyErr_Format(PyExc_TypeError,
+            "require object of type std::vector<bool>, but %s given",
+            Cppyy::GetScopedFinalName(self->ObjectIsA()).c_str());
+        return nullptr;
+    }
+
+// get hold of the actual std::vector<bool> (no cast, as vector is never a base)
+    std::vector<bool>* vb = (std::vector<bool>*)self->GetObject();
+
+// finally, return the value
+    if (bool((*vb)[index]))
+        Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
 PyObject* VectorBoolSetItem(CPPInstance* self, PyObject* args)
 {
 // std::vector<bool> is a special-case in C++, and its return type depends on
@@ -701,41 +739,43 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
 
     if (IsTemplatedSTLClass(name, "vector")) {
 
-        if (HasAttrDirect(pyclass, PyStrings::gLen) && HasAttrDirect(pyclass, PyStrings::gAt)) {
-            Utility::AddToClass(pyclass, "_vector__at", "at");
-        // remove iterator that was set earlier (checked __getitem__ will do the trick)
-            if (HasAttrDirect(pyclass, PyStrings::gIter))
-                PyObject_DelAttr(pyclass, PyStrings::gIter);
-        } else if (HasAttrDirect(pyclass, PyStrings::gGetItem)) {
-            Utility::AddToClass(pyclass, "_vector__at", "__getitem__");   // unchecked!
-        }
-
-   // vector-optimized iterator protocol
-        ((PyTypeObject*)pyclass)->tp_iter     = (getiterfunc)vector_iter;
-
-   // helpers for iteration
-   /*TODO: remove this use of gInterpreter
-        TypedefInfo_t* ti = gInterpreter->TypedefInfo_Factory((name+"::value_type").c_str());
-        if (gInterpreter->TypedefInfo_IsValid(ti)) {
-            PyObject* pyvalue_size = PyLong_FromLong(gInterpreter->TypedefInfo_Size(ti));
-            PyObject_SetAttrString(pyclass, "value_size", pyvalue_size);
-            Py_DECREF(pyvalue_size);
-
-            PyObject* pyvalue_type = CPyCppyy_PyUnicode_FromString(gInterpreter->TypedefInfo_TrueName(ti));
-            PyObject_SetAttrString(pyclass, "value_type", pyvalue_type);
-            Py_DECREF(pyvalue_type);
-        }
-        gInterpreter->TypedefInfo_Delete(ti);
-      */
-
-    // provide a slice-able __getitem__, if possible
-        if (HasAttrDirect(pyclass, PyStrings::gVectorAt))
-            Utility::AddToClass(pyclass, "__getitem__", (PyCFunction)VectorGetItem, METH_O);
-
     // std::vector<bool> is a special case in C++
         std::string::size_type pos = name.find("vector<bool"); // to cover all variations
         if (pos == 0 /* at beginning */ || pos == 5 /* after std:: */) {
+            Utility::AddToClass(pyclass, "__getitem__", (PyCFunction)VectorBoolGetItem);
             Utility::AddToClass(pyclass, "__setitem__", (PyCFunction)VectorBoolSetItem);
+        } else {
+
+            if (HasAttrDirect(pyclass, PyStrings::gLen) && HasAttrDirect(pyclass, PyStrings::gAt)) {
+                Utility::AddToClass(pyclass, "_vector__at", "at");
+            // remove iterator that was set earlier (checked __getitem__ will do the trick)
+                if (HasAttrDirect(pyclass, PyStrings::gIter))
+                    PyObject_DelAttr(pyclass, PyStrings::gIter);
+            } else if (HasAttrDirect(pyclass, PyStrings::gGetItem)) {
+                Utility::AddToClass(pyclass, "_vector__at", "__getitem__");   // unchecked!
+            }
+
+       // vector-optimized iterator protocol
+            ((PyTypeObject*)pyclass)->tp_iter     = (getiterfunc)vector_iter;
+
+       // helpers for iteration
+       /*TODO: remove this use of gInterpreter
+            TypedefInfo_t* ti = gInterpreter->TypedefInfo_Factory((name+"::value_type").c_str());
+            if (gInterpreter->TypedefInfo_IsValid(ti)) {
+                PyObject* pyvalue_size = PyLong_FromLong(gInterpreter->TypedefInfo_Size(ti));
+                PyObject_SetAttrString(pyclass, "value_size", pyvalue_size);
+                Py_DECREF(pyvalue_size);
+
+                PyObject* pyvalue_type = CPyCppyy_PyUnicode_FromString(gInterpreter->TypedefInfo_TrueName(ti));
+                PyObject_SetAttrString(pyclass, "value_type", pyvalue_type);
+                Py_DECREF(pyvalue_type);
+            }
+            gInterpreter->TypedefInfo_Delete(ti);
+          */
+
+       // provide a slice-able __getitem__, if possible
+            if (HasAttrDirect(pyclass, PyStrings::gVectorAt))
+                Utility::AddToClass(pyclass, "__getitem__", (PyCFunction)VectorGetItem, METH_O);
         }
     }
 
