@@ -94,8 +94,8 @@ static std::string ExtractNamespace(const std::string& name)
         }
     }
 
-// whole name is apparently a single scope
-    return name;
+// no namespace; assume outer scope
+    return "";
 }
 
 //-----------------------------------------------------------------------------
