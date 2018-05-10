@@ -355,33 +355,46 @@ PyObject* VectorGetItem(CPPInstance* self, PySliceObject* index)
 }
 
 
-PyObject* VectorBoolGetItem(CPPInstance* self, PyObject* args)
+static Cppyy::TCppType_t sVectorBoolTypeID = (Cppyy::TCppType_t)0;
+
+PyObject* VectorBoolGetItem(CPPInstance* self, PyObject* idx)
 {
 // std::vector<bool> is a special-case in C++, and its return type depends on
 // the compiler: treat it special here as well
-    PyObject* idx = nullptr;
-    if (!PyArg_ParseTuple(args, const_cast<char*>("O:__getitem__"), &idx))
+    if (!CPPInstance_Check(self) || self->ObjectIsA() != sVectorBoolTypeID) {
+        PyErr_Format(PyExc_TypeError,
+            "require object of type std::vector<bool>, but %s given",
+            Cppyy::GetScopedFinalName(self->ObjectIsA()).c_str());
         return nullptr;
+    }
 
     if (!self->GetObject()) {
         PyErr_SetString(PyExc_TypeError, "unsubscriptable object");
         return nullptr;
     }
 
+    if (PySlice_Check(idx)) {
+        PyObject* pyclass = PyObject_GetAttr((PyObject*)self, PyStrings::gClass);
+        PyObject* nseq = PyObject_CallObject(pyclass, nullptr);
+        Py_DECREF(pyclass);
+
+        Py_ssize_t start, stop, step;
+        PySlice_GetIndices((CPyCppyy_PySliceCast)idx, PyObject_Length((PyObject*)self), &start, &stop, &step);
+        for (Py_ssize_t i = start; i < stop; i += step) {
+            PyObject* pyidx = PyInt_FromSsize_t(i);
+            CallPyObjMethod(nseq, "push_back", CallPyObjMethod((PyObject*)self, "__getitem__", pyidx));
+            Py_DECREF(pyidx);
+        }
+
+        return nseq;
+    }
+
     PyObject* pyindex = PyStyleIndex((PyObject*)self, idx);
     if (!pyindex)
         return nullptr;
+
     int index = (int)PyLong_AsLong(pyindex);
     Py_DECREF(pyindex);
-
-    std::string clName = Cppyy::GetFinalName(self->ObjectIsA());
-    std::string::size_type pos = clName.find("vector<bool");
-    if (pos != 0 && pos != 5 /* following std:: */) {
-        PyErr_Format(PyExc_TypeError,
-            "require object of type std::vector<bool>, but %s given",
-            Cppyy::GetScopedFinalName(self->ObjectIsA()).c_str());
-        return nullptr;
-    }
 
 // get hold of the actual std::vector<bool> (no cast, as vector is never a base)
     std::vector<bool>* vb = (std::vector<bool>*)self->GetObject();
@@ -396,29 +409,28 @@ PyObject* VectorBoolSetItem(CPPInstance* self, PyObject* args)
 {
 // std::vector<bool> is a special-case in C++, and its return type depends on
 // the compiler: treat it special here as well
-    int bval = 0; PyObject* idx = nullptr;
-    if (!PyArg_ParseTuple(args, const_cast<char*>("Oi:__setitem__"), &idx, &bval))
+    if (!CPPInstance_Check(self) || self->ObjectIsA() != sVectorBoolTypeID) {
+        PyErr_Format(PyExc_TypeError,
+            "require object of type std::vector<bool>, but %s given",
+            Cppyy::GetScopedFinalName(self->ObjectIsA()).c_str());
         return nullptr;
+    }
 
     if (!self->GetObject()) {
         PyErr_SetString(PyExc_TypeError, "unsubscriptable object");
         return nullptr;
     }
 
+    int bval = 0; PyObject* idx = nullptr;
+    if (!PyArg_ParseTuple(args, const_cast<char*>("Oi:__setitem__"), &idx, &bval))
+        return nullptr;
+
     PyObject* pyindex = PyStyleIndex((PyObject*)self, idx);
     if (!pyindex)
         return nullptr;
+
     int index = (int)PyLong_AsLong(pyindex);
     Py_DECREF(pyindex);
-
-    std::string clName = Cppyy::GetFinalName(self->ObjectIsA());
-    std::string::size_type pos = clName.find("vector<bool");
-    if (pos != 0 && pos != 5 /* following std:: */) {
-        PyErr_Format(PyExc_TypeError,
-            "require object of type std::vector<bool>, but %s given",
-            Cppyy::GetScopedFinalName(self->ObjectIsA()).c_str());
-        return nullptr;
-    }
 
 // get hold of the actual std::vector<bool> (no cast, as vector is never a base)
     std::vector<bool>* vb = (std::vector<bool>*)self->GetObject();
@@ -740,9 +752,9 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
     if (IsTemplatedSTLClass(name, "vector")) {
 
     // std::vector<bool> is a special case in C++
-        std::string::size_type pos = name.find("vector<bool"); // to cover all variations
-        if (pos == 0 /* at beginning */ || pos == 5 /* after std:: */) {
-            Utility::AddToClass(pyclass, "__getitem__", (PyCFunction)VectorBoolGetItem);
+        if (!sVectorBoolTypeID) sVectorBoolTypeID = (Cppyy::TCppType_t)Cppyy::GetScope("std::vector<bool>");
+        if (CPPScope_Check(pyclass) && ((CPPClass*)pyclass)->fCppType == sVectorBoolTypeID) {
+            Utility::AddToClass(pyclass, "__getitem__", (PyCFunction)VectorBoolGetItem, METH_O);
             Utility::AddToClass(pyclass, "__setitem__", (PyCFunction)VectorBoolSetItem);
         } else {
 
