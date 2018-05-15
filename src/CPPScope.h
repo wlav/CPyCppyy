@@ -35,8 +35,14 @@ typedef std::map<Cppyy::TCppObject_t, PyObject*> CppToPyMap_t;
 
 class CPPScope {
 public:
+    enum EFlags {
+        kNone        = 0x0,
+        kIsPinned    = 0x0001 };
+
+public:
     PyHeapTypeObject  fType;
     Cppyy::TCppType_t fCppType;
+    int               fFlags;
     CppToPyMap_t*     fCppObjects;
     char*             fModuleName;
 

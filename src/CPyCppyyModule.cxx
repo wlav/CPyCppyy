@@ -153,8 +153,6 @@ namespace CPyCppyy {
     PyObject* gThisModule = nullptr;
     PyObject* gNullPtrObject = nullptr;
     std::map<std::string, std::vector<PyObject*>> gPythonizations;
-    std::vector<std::pair<Cppyy::TCppType_t, Cppyy::TCppType_t>> gPinnedTypes;
-    std::vector<Cppyy::TCppType_t> gIgnorePinnings;
 }
 
 
@@ -628,29 +626,17 @@ PyObject* AddSmartPtrType(PyObject*, PyObject* args)
 }
 
 //----------------------------------------------------------------------------
-PyObject* SetTypePinning(PyObject*, PyObject* args)
+PyObject* PinType(PyObject*, PyObject* pyclass)
 {
 // Add a pinning so that objects of type `derived' are interpreted as
 // objects of type `base'.
-    CPPClass* derived = nullptr, *base = nullptr;
-    if (!PyArg_ParseTuple(args, const_cast<char*>("O!O!"),
-                          &CPPScope_Type, &derived,
-                          &CPPScope_Type, &base))
+    PyObject_Print(pyclass, stderr, Py_PRINT_RAW);
+    if (!CPPScope_Check(pyclass)) {
+        PyErr_SetString(PyExc_TypeError, "C++ class expected");
         return nullptr;
-    gPinnedTypes.push_back(std::make_pair(derived->fCppType, base->fCppType));
+    }
 
-    Py_RETURN_NONE;
-}
-
-//----------------------------------------------------------------------------
-PyObject* IgnoreTypePinning(PyObject*, PyObject* args)
-{
-// Add an exception to the type pinning for objects of type `derived'.
-    CPPClass* derived = nullptr;
-    if (!PyArg_ParseTuple(args, const_cast<char*>("O!"),
-                          &CPPScope_Type, &derived))
-        return nullptr;
-    gIgnorePinnings.push_back(derived->fCppType);
+    ((CPPClass*)pyclass)->fFlags |= CPPClass::kIsPinned;
 
     Py_RETURN_NONE;
 }
@@ -704,10 +690,8 @@ static PyMethodDef gCPyCppyyMethods[] = {
       METH_VARARGS, (char*)"Modify held C++ object ownership"},
     {(char*) "AddSmartPtrType", (PyCFunction)AddSmartPtrType,
       METH_VARARGS, (char*) "Add a smart pointer to the list of known smart pointer types"},
-    {(char*) "SetTypePinning", (PyCFunction)SetTypePinning,
-      METH_VARARGS, (char*)"Install a type pinning"},
-    {(char*) "IgnoreTypePinning", (PyCFunction)IgnoreTypePinning,
-      METH_VARARGS, (char*)"Don't pin the given type"},
+    {(char*) "_pin_type", (PyCFunction)PinType,
+      METH_O, (char*)"Install a type pinning"},
     {(char*) "Cast", (PyCFunction)Cast,
       METH_VARARGS, (char*)"Cast the given object to the given type"},
     {nullptr, nullptr, 0, nullptr}

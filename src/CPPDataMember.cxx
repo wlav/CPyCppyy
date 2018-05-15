@@ -185,7 +185,7 @@ void CPyCppyy::CPPDataMember::Set(Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t i
 {
     fEnclosingScope = scope;
     fName           = Cppyy::GetDatamemberName(scope, idata);
-    fOffset         = Cppyy::GetDatamemberOffset(scope, idata);
+    fOffset         = Cppyy::GetDatamemberOffset(scope, idata); // TODO: make lazy
     fProperty       = Cppyy::IsStaticData(scope, idata) ? kIsStaticData : 0;
 
     int size = Cppyy::GetDimensionSize(scope, idata, 0);

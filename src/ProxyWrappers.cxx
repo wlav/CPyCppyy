@@ -29,10 +29,6 @@
 //- data _______________________________________________________________________
 namespace CPyCppyy {
     extern PyObject* gThisModule;
-
-// TODO: move this to Cppyy.cxx (if possible) (and gPinnedTypes should be a hashmap)
-    extern std::vector<std::pair<Cppyy::TCppType_t, Cppyy::TCppType_t>> gPinnedTypes;
-    extern std::vector<Cppyy::TCppType_t> gIgnorePinnings;
 }
 
 // to prevent having to walk scopes, track python classes by C++ class
@@ -730,24 +726,16 @@ PyObject* CPyCppyy::BindCppObject(
 // get actual class for recycling checking and/or downcasting
     Cppyy::TCppType_t clActual = isRef ? 0 : Cppyy::GetActualClass(klass, address);
 
-// downcast to real class for object returns
+// downcast to real class for object returns, unless pinned
     if (clActual && klass != clActual) {
-        ptrdiff_t offset = Cppyy::GetBaseOffset(
-            clActual, klass, address, -1 /* down-cast */, true /* report errors */);
-        if (offset != -1) {   // may fail if clActual not fully defined
-            address = (void*)((Long_t)address + offset);
-            klass = clActual;
-        }
-    }
-
-// check if type is pinned
-    bool ignore_pin = std::find(
-        gIgnorePinnings.begin(), gIgnorePinnings.end(), klass) != gIgnorePinnings.end();
-
-    if (!ignore_pin) {
-        for (auto it = gPinnedTypes.cbegin(); it != gPinnedTypes.cend(); ++it) {
-            if (klass == std::get<0>(*it) || Cppyy::IsSubtype(klass, std::get<0>(*it)))
-                klass = std::get<1>(*it);
+        PyClassMap_t::iterator pci = gPyClasses.find(klass);
+        if (pci == gPyClasses.end() || !(((CPPClass*)pci->second)->fFlags & CPPClass::kIsPinned)) {
+            ptrdiff_t offset = Cppyy::GetBaseOffset(
+                clActual, klass, address, -1 /* down-cast */, true /* report errors */);
+            if (offset != -1) {   // may fail if clActual not fully defined
+                address = (void*)((Long_t)address + offset);
+                klass = clActual;
+            }
         }
     }
 
