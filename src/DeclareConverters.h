@@ -112,6 +112,11 @@ public:
 // pointer/array conversions
 CPPYY_DECLARE_ARRAY_CONVERTER(BoolArray);
 CPPYY_DECLARE_ARRAY_CONVERTER(UCharArray);
+class UCharArrayAsIntConverter : public UCharArrayConverter {
+public:
+    using UCharArrayConverter::UCharArrayConverter;
+    virtual PyObject* FromMemory(void*);
+};
 CPPYY_DECLARE_ARRAY_CONVERTER(ShortArray);
 CPPYY_DECLARE_ARRAY_CONVERTER(UShortArray);
 CPPYY_DECLARE_ARRAY_CONVERTER(IntArray);

@@ -382,6 +382,14 @@ CPPYY_IMPL_BASIC_CONVERTER(
 CPPYY_IMPL_BASIC_CHAR_CONVERTER(Char,  char,          CHAR_MIN,  CHAR_MAX)
 CPPYY_IMPL_BASIC_CHAR_CONVERTER(UChar, unsigned char,        0, UCHAR_MAX)
 
+PyObject* CPyCppyy::UCharArrayAsIntConverter::FromMemory(void* address)
+{
+// special case for arrays: return a Python int instead of str (following the
+// same convention as module array.array)
+    return PyInt_FromLong((long)*((unsigned char*)address));
+}
+
+
 //----------------------------------------------------------------------------
 CPPYY_IMPL_BASIC_CONVERTER(
     Short, short, long, PyInt_FromLong, CPyCppyy_PyLong_AsShort, 'l')
@@ -1598,6 +1606,7 @@ public:
         gf["bool&"] =                       (cf_t)+[](long sz) { return new BoolArrayRefConverter{sz}; };
         gf["const unsigned char*"] =        (cf_t)+[](long sz) { return new UCharArrayConverter{sz}; };
         gf["unsigned char*"] =              (cf_t)+[](long sz) { return new UCharArrayConverter{sz}; };
+        gf["UCharArrayAsInt"] =             (cf_t)+[](long sz) { return new UCharArrayAsIntConverter{sz}; };
         gf["short*"] =                      (cf_t)+[](long sz) { return new ShortArrayConverter{sz}; };
         gf["short&"] =                      (cf_t)+[](long sz) { return new ShortArrayRefConverter{sz}; };
         gf["unsigned short*"] =             (cf_t)+[](long sz) { return new UShortArrayConverter{sz}; };
