@@ -43,6 +43,7 @@ static CPyCppyy::LowLevelView* ll_new(PyTypeObject* subtype, PyObject*, PyObject
 static void ll_dealloc(CPyCppyy::LowLevelView* pyobj)
 {
 // Destruction requires the deletion of the converter (if any)
+    PyMem_Free(pyobj->fBufInfo.shape);
     PyMem_Free(pyobj->fBufInfo.strides);
     delete pyobj->fConverter;
     Py_TYPE(pyobj)->tp_free((PyObject*)pyobj);

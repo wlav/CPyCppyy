@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <deque>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -29,6 +30,7 @@
 //- data _______________________________________________________________________
 namespace CPyCppyy {
     extern PyObject* gThisModule;
+    extern std::set<Cppyy::TCppType_t> gPinnedTypes;
 }
 
 // to prevent having to walk scopes, track python classes by C++ class
@@ -728,8 +730,8 @@ PyObject* CPyCppyy::BindCppObject(
 
 // downcast to real class for object returns, unless pinned
     if (clActual && klass != clActual) {
-        PyClassMap_t::iterator pci = gPyClasses.find(klass);
-        if (pci == gPyClasses.end() || !(((CPPClass*)pci->second)->fFlags & CPPClass::kIsPinned)) {
+        auto pci = gPinnedTypes.find(klass);
+        if (pci == gPinnedTypes.end()) {
             ptrdiff_t offset = Cppyy::GetBaseOffset(
                 clActual, klass, address, -1 /* down-cast */, true /* report errors */);
             if (offset != -1) {   // may fail if clActual not fully defined

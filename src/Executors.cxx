@@ -11,6 +11,7 @@
 // Standard
 #include <cstring>
 #include <map>
+#include <new>
 #include <sstream>
 #include <utility>
 
@@ -380,7 +381,7 @@ PyObject* CPyCppyy::STLStringExecutor::Execute(
 
     PyObject* pyresult =
         CPyCppyy_PyUnicode_FromStringAndSize(result->c_str(), result->size());
-    free(result); // GILCallO calls Cppyy::CallO which calls malloc.
+    ::operator delete(result); // calls Cppyy::CallO which calls ::operator new
 
     return pyresult;
 }
@@ -489,7 +490,7 @@ PyObject* CPyCppyy::CppObjectBySmartPtrExecutor::Execute(
         return nullptr;
     }
 
-// fixme? - why doesn't this do the same as `self._get_smart_ptr().get()'
+// fixme? - why doesn't this do the same as `self.__smartptr__().get()'
     CPPInstance* pyobj = (CPPInstance*)BindCppObjectNoCast(value, fRawPtrType);
 
     if (pyobj) {

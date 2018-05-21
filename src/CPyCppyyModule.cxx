@@ -17,6 +17,7 @@
 // Standard
 #include <algorithm>
 #include <map>
+#include <set>
 #include <string>
 #include <sstream>
 #include <utility>
@@ -153,6 +154,7 @@ namespace CPyCppyy {
     PyObject* gThisModule = nullptr;
     PyObject* gNullPtrObject = nullptr;
     std::map<std::string, std::vector<PyObject*>> gPythonizations;
+    std::set<Cppyy::TCppType_t> gPinnedTypes;
 }
 
 
@@ -630,13 +632,12 @@ PyObject* PinType(PyObject*, PyObject* pyclass)
 {
 // Add a pinning so that objects of type `derived' are interpreted as
 // objects of type `base'.
-    PyObject_Print(pyclass, stderr, Py_PRINT_RAW);
     if (!CPPScope_Check(pyclass)) {
         PyErr_SetString(PyExc_TypeError, "C++ class expected");
         return nullptr;
     }
 
-    ((CPPClass*)pyclass)->fFlags |= CPPClass::kIsPinned;
+    gPinnedTypes.insert(((CPPClass*)pyclass)->fCppType);
 
     Py_RETURN_NONE;
 }

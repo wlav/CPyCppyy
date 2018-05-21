@@ -137,7 +137,6 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
     if (!result)
         return nullptr;
 
-    result->fFlags      = CPPScope::kNone;
     result->fCppObjects = new CppToPyMap_t;
     result->fModuleName = nullptr;
 
