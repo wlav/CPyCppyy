@@ -3,6 +3,7 @@
 import os, glob, subprocess
 from setuptools import setup, find_packages, Extension
 from distutils.command.build_ext import build_ext as _build_ext
+from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
 from codecs import open
 
 
@@ -27,9 +28,14 @@ class my_build_extension(_build_ext):
         ext.extra_compile_args = ['-O2']+get_cflags().split()
         return _build_ext.build_extension(self, ext)
 
+class my_bdist_wheel(_bdist_wheel):
+    def run(self, *args):
+     # wheels do not respect dependencies; make this a no-op so that it fails (mostly) silently
+        pass
+
 setup(
     name='CPyCppyy',
-    version='0.9.2',
+    version='1.0.0',
     description='Cling-based Python-C++ bindings for CPython',
     long_description=long_description,
 
@@ -42,7 +48,7 @@ setup(
     license='LBNL BSD',
 
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
 
         'Intended Audience :: Developers',
 
@@ -63,10 +69,11 @@ setup(
 
     install_requires=['cppyy-backend>=0.5'],
 
-    keywords='C++ bindings',
+    keywords='C++ bindings data science',
 
     cmdclass = {
         'build_ext': my_build_extension,
+        'bdist_wheel': my_bdist_wheel
     },
 
     ext_modules=[Extension('libcppyy',
