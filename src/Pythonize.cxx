@@ -470,7 +470,6 @@ PyObject* MapContains(PyObject* self, PyObject* obj)
 }
 
 //- STL container iterator support --------------------------------------------
-/* TODO: compare commented code below; is for performance only
 PyObject* StlSequenceIter(PyObject* self)
 {
 // Implement python's __iter__ for std::iterator<>s.
@@ -486,10 +485,9 @@ PyObject* StlSequenceIter(PyObject* self)
     }
     return iter;
 }
-*/
 
 //- safe indexing for STL-like vector w/o iterator dictionaries ---------------
-/* TODO: compare commented code below; is for convenience only
+/*
 PyObject* CheckedGetItem(PyObject* self, PyObject* obj)
 {
 // Implement a generic python __getitem__ for std::vector<>s that are missing
@@ -698,31 +696,19 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
     if (HasAttrDirect(pyclass, PyStrings::gSize))
         Utility::AddToClass(pyclass, "__len__", "size");
 
-    if (HasAttrDirect(pyclass, PyStrings::gBegin) && HasAttrDirect(pyclass, PyStrings::gEnd)) {
-   // some classes may not have dicts for their iterators, making begin/end useless
-   /* TODO: remove use of TClass/TMethod
-        PyObject* pyfullname = PyObject_GetAttr(pyclass, PyStrings::gCppName);
-        if (!pyfullname) pyfullname = PyObject_GetAttr(pyclass, PyStrings::gName);
-        TClass* klass = TClass::GetClass(CPyCppyy_PyUnicode_AsString(pyfullname));
-        Py_DECREF(pyfullname);
+    if (!IsTemplatedSTLClass(name, "vector")) {       // vector is dealt with below
+        if (HasAttrDirect(pyclass, PyStrings::gBegin) && HasAttrDirect(pyclass, PyStrings::gEnd)) {
+        // TODO: check whether iterator type is available
 
-        TMethod* meth = klass->GetMethodAllAny("begin");
-
-        TClass* iklass = nullptr;
-        if (meth) {
-            Int_t oldl = gErrorIgnoreLevel; gErrorIgnoreLevel = 3000;
-            iklass = TClass::GetClass(meth->GetReturnTypeNormalizedName().c_str());
-            gErrorIgnoreLevel = oldl;
-        }
-
-        if (iklass && iklass->GetClassInfo()) {
+        // if yes: install iterator protocol
             ((PyTypeObject*)pyclass)->tp_iter = (getiterfunc)StlSequenceIter;
             Utility::AddToClass(pyclass, "__iter__", (PyCFunction) StlSequenceIter, METH_NOARGS);
-        } else if (HasAttrDirect(pyclass, PyStrings::gGetItem) && HasAttrDirect(pyclass, PyStrings::gLen)) {
-            Utility::AddToClass(pyclass, "_getitem__unchecked", "__getitem__");
-            Utility::AddToClass(pyclass, "__getitem__", (PyCFunction) CheckedGetItem, METH_O);
+
+        // if not and  if (HasAttrDirect(pyclass, PyStrings::gGetItem) && HasAttrDirect(pyclass, PyStrings::gLen)) {
+        // install increment until StopIteration "protocol"
+            //Utility::AddToClass(pyclass, "_getitem__unchecked", "__getitem__");
+            //Utility::AddToClass(pyclass, "__getitem__", (PyCFunction) CheckedGetItem, METH_O);
         }
-      */
     }
 
 // search for global comparator overloads (may fail; not sure whether it isn't better to
