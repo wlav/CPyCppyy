@@ -632,42 +632,6 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
 }
 
 //----------------------------------------------------------------------------
-PyObject* CPyCppyy::GetCppGlobal(PyObject*, PyObject* args)
-{
-// get the requested name
-    std::string ename = CPyCppyy_PyUnicode_AsString(PyTuple_GetItem(args, 0));
-
-    if (PyErr_Occurred())
-        return nullptr;
-
-    return GetCppGlobal(ename);
-}
-
-//----------------------------------------------------------------------------
-PyObject* CPyCppyy::GetCppGlobal(const std::string& name)
-{
-// try named global variable/enum
-    Cppyy::TCppIndex_t idata = Cppyy::GetDatamemberIndex(Cppyy::gGlobalScope, name);
-    if (0 <= idata)
-        return (PyObject*)CPPDataMember_New(Cppyy::gGlobalScope, idata);
-
-// still here ... try functions (sync has been fixed, so is okay)
-    const std::vector<Cppyy::TCppIndex_t>& methods =
-        Cppyy::GetMethodIndicesFromName(Cppyy::gGlobalScope, name);
-    if (!methods.empty()) {
-        std::vector<PyCallable*> overloads;
-        for (auto method : methods)
-            overloads.push_back(new CPPFunction(
-                Cppyy::gGlobalScope, Cppyy::GetMethod(Cppyy::gGlobalScope, method)));
-        return (PyObject*)CPPOverload_New(name, overloads);
-    }
-
-// nothing found
-    PyErr_Format(PyExc_LookupError, "\'%s\' is not a known C++ global", name.c_str());
-    return nullptr;
-}
-
-//----------------------------------------------------------------------------
 PyObject* CPyCppyy::BindCppObjectNoCast(
     Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, bool isRef, bool isValue)
 {

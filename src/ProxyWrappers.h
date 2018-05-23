@@ -14,10 +14,6 @@ PyObject* CreateScopeProxy(PyObject*, PyObject* args);
 PyObject* CreateScopeProxy(
     const std::string& scope_name, PyObject* parent = nullptr);
 
-// convenience functions to retrieve global variables and enums
-PyObject* GetCppGlobal(const std::string& name);
-PyObject* GetCppGlobal(PyObject*, PyObject* args);
-
 // bind a C++ object into a Python proxy object
 PyObject* BindCppObjectNoCast(Cppyy::TCppObject_t object, Cppyy::TCppType_t klass,
     bool isRef = false, bool isValue = false);

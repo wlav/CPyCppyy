@@ -241,11 +241,6 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
             Utility::FetchError(errors);
         }
 
-        if (!attr && scope == Cppyy::gGlobalScope /* at global level only */) {
-        // get the attribute as a global
-            attr = GetCppGlobal(name /*, tag */);
-        }
-
         if (attr) {
         // cache the result
             if (CPPDataMember_Check(attr)) {
