@@ -912,7 +912,7 @@ bool CPyCppyy::CppObjectConverter::SetArg(
 PyObject* CPyCppyy::CppObjectConverter::FromMemory(void* address)
 {
 // construct python object from C++ instance read at <address>
-    return BindCppObject(address, fClass, false);
+    return BindCppObject(address, fClass);
 }
 
 //----------------------------------------------------------------------------
@@ -1077,7 +1077,7 @@ template <bool ISREFERENCE>
 PyObject* CPyCppyy::CppObjectPtrConverter<ISREFERENCE>::FromMemory(void* address)
 {
 // construct python object from C++ instance* read at <address>
-    return BindCppObject(address, fClass, true);
+    return BindCppObject(address, fClass, CPPInstance::kIsReference);
 }
 
 //----------------------------------------------------------------------------
@@ -1510,7 +1510,7 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long
                 result = new STLIteratorConverter();
             else
        // -- CLING WORKAROUND
-            if (cpd == "**" || cpd == "&*")
+            if (cpd == "**" || cpd == "*[]" || cpd == "&*")
                 result = new CppObjectPtrConverter<false>(klass, control);
             else if (cpd == "*&")
                 result = new CppObjectPtrConverter<true>(klass, control);
@@ -1651,6 +1651,7 @@ public:
 #endif
         gf["void*&"] =                      (cf_t)+[](long) { return new VoidPtrRefConverter{}; };
         gf["void**"] =                      (cf_t)+[](long) { return new VoidPtrPtrConverter{}; };
+        gf["void*[]"] =                     (cf_t)+[](long) { return new VoidPtrPtrConverter{}; };
         gf["PyObject*"] =                   (cf_t)+[](long) { return new PyObjectConverter{}; };
         gf["_object*"] =                    (cf_t)+[](long) { return new PyObjectConverter{}; };
         gf["FILE*"] =                       (cf_t)+[](long) { return new VoidArrayConverter{}; };

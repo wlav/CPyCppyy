@@ -632,8 +632,8 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
 }
 
 //----------------------------------------------------------------------------
-PyObject* CPyCppyy::BindCppObjectNoCast(
-    Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, bool isRef, bool isValue)
+PyObject* CPyCppyy::BindCppObjectNoCast(Cppyy::TCppObject_t address,
+        Cppyy::TCppType_t klass, int flags)
 {
 // only known or knowable objects will be bound (null object is ok)
     if (!klass) {
@@ -646,11 +646,17 @@ PyObject* CPyCppyy::BindCppObjectNoCast(
     if (!pyclass)
         return nullptr;                 // error has been set in CreateScopeProxy
 
+    bool isRef   = flags & CPPInstance::kIsReference;
+    bool isValue = flags & CPPInstance::kIsValue;
+
 // TODO: add convenience function to MemoryRegulator to use pyclass directly
 // TODO: make sure that a consistent address is used (may have to be done in BindCppObject)
     if (address && !isValue /* always fresh */) {
-        PyObject* oldPyObject = MemoryRegulator::RetrievePyObject(isRef ? *(void**)address : address, klass);
-        if (oldPyObject)
+        PyObject* oldPyObject = MemoryRegulator::RetrievePyObject(
+            isRef ? *(void**)address : address, klass);
+    // ptr-ptr requires old object to be a reference to enable re-use
+        if (oldPyObject && (!(flags & CPPInstance::kIsPtrPtr) ||
+                ((CPPInstance*)oldPyObject)->fFlags & CPPInstance::kIsReference))
             return oldPyObject;
     }
 
@@ -676,18 +682,20 @@ PyObject* CPyCppyy::BindCppObjectNoCast(
 }
 
 //----------------------------------------------------------------------------
-PyObject* CPyCppyy::BindCppObject(
-    Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, bool isRef)
+PyObject* CPyCppyy::BindCppObject(Cppyy::TCppObject_t address,
+        Cppyy::TCppType_t klass, int flags)
 {
 // if the object is a null pointer, return a typed one (as needed for overloading)
     if (!address)
-        return BindCppObjectNoCast(address, klass, isRef);
+        return BindCppObjectNoCast(address, klass, flags);
 
 // only known or knowable objects will be bound
     if (!klass) {
         PyErr_SetString(PyExc_TypeError, "attempt to bind C++ object w/o class");
         return nullptr;
     }
+
+    bool isRef = flags & CPPInstance::kIsReference;
 
 // get actual class for recycling checking and/or downcasting
     Cppyy::TCppType_t clActual = isRef ? 0 : Cppyy::GetActualClass(klass, address);
@@ -706,7 +714,7 @@ PyObject* CPyCppyy::BindCppObject(
     }
 
 // actual binding (returned object may be zero w/ a python exception set)
-    return BindCppObjectNoCast(address, klass, isRef);
+    return BindCppObjectNoCast(address, klass, flags);
 }
 
 //----------------------------------------------------------------------------

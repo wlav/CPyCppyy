@@ -11,10 +11,10 @@ static inline
 std::string::size_type find_qualifier_index(const std::string& name)
 {
 // Find the first location that is not part of the class name proper.
-    std::string::size_type i = name.size();
+    std::string::size_type i = name.size() - 1;
     for ( ; 0 < i; --i) {
         std::string::value_type c = name[i];
-        if (isalnum((int)c) || c == '>' or c == ']' or c == ')')
+        if (isalnum((int)c) || c == '>')
             break;
     }
 

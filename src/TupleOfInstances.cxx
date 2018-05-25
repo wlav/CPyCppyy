@@ -1,6 +1,7 @@
 // Bindings
 #include "CPyCppyy.h"
 #include "TupleOfInstances.h"
+#include "CPPInstance.h"
 #include "ProxyWrappers.h"
 
 
@@ -17,7 +18,7 @@ PyObject* TupleOfInstances_New(
     // TODO: there's an assumption here that there is no padding, which is bound
     // to be incorrect in certain cases
         PyTuple_SetItem(tup, i,
-           BindCppObject((char*)address + i*Cppyy::SizeOf(klass), klass, false /* isRef */));
+            BindCppObject((char*)address + i*Cppyy::SizeOf(klass), klass, CPPInstance::kIsReference));
     // Note: objects are bound as pointers, yet since the pointer value stays in
     // place, updates propagate just as if they were bound by-reference
     }

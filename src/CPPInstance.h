@@ -28,7 +28,8 @@ public:
         kIsReference = 0x0002,
         kIsRValue    = 0x0004,
         kIsValue     = 0x0008,
-        kIsSmartPtr  = 0x0010 };
+        kIsSmartPtr  = 0x0010,
+        kIsPtrPtr    = 0x0020 };
 
 public:
     void Set(void* address, EFlags flags = kNone)

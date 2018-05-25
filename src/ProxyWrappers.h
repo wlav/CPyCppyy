@@ -15,16 +15,10 @@ PyObject* CreateScopeProxy(
     const std::string& scope_name, PyObject* parent = nullptr);
 
 // bind a C++ object into a Python proxy object
-PyObject* BindCppObjectNoCast(Cppyy::TCppObject_t object, Cppyy::TCppType_t klass,
-    bool isRef = false, bool isValue = false);
-PyObject* BindCppObject(
-    Cppyy::TCppObject_t object, Cppyy::TCppType_t klass, bool isRef = false);
-inline PyObject* BindCppObject(
-    Cppyy::TCppObject_t object, const std::string& clName, bool isRef = false)
-{
-    return BindCppObject(object, Cppyy::GetScope(clName), isRef);
-}
-
+PyObject* BindCppObjectNoCast(Cppyy::TCppObject_t object,
+    Cppyy::TCppType_t klass, int flags = 0x0);
+PyObject* BindCppObject(Cppyy::TCppObject_t object,
+    Cppyy::TCppType_t klass, int flags = 0x0);
 PyObject* BindCppObjectArray(
     Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, Int_t size);
 

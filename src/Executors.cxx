@@ -406,13 +406,13 @@ PyObject* CPyCppyy::CppObjectByValueExecutor::Execute(
     }
 
 // the result can then be bound
-    CPPInstance* pyobj = (CPPInstance*)BindCppObjectNoCast(value, fClass, false, true);
+    PyObject* pyobj = BindCppObjectNoCast(value, fClass, CPPInstance::kIsValue);
     if (!pyobj)
         return nullptr;
 
 // python ref counting will now control this object's life span
-    pyobj->PythonOwns();
-    return (PyObject*)pyobj;
+    ((CPPInstance*)pyobj)->PythonOwns();
+    return pyobj;
 }
 
 //----------------------------------------------------------------------------
@@ -461,7 +461,7 @@ static inline PyObject* SetInstanceCheckError(PyObject* pyobj) {
     PyObject* pystr = PyObject_Str(pyobj);
     if (pystr) {
         PyErr_Format(PyExc_TypeError,
-           "C++ object expected, got %s", CPyCppyy_PyUnicode_AsString(pyobj));
+           "C++ object expected, got %s", CPyCppyy_PyUnicode_AsString(pystr));
         Py_DECREF(pystr);
     } else
         PyErr_SetString(PyExc_TypeError, "C++ object expected");
@@ -478,7 +478,8 @@ PyObject* CPyCppyy::CppObjectPtrPtrExecutor::Execute(
 
     void** result = (void**)GILCallR(method, self, ctxt);
     if (!fAssignable)
-        return BindCppObject((void*)result, fClass, true);
+        return BindCppObject((void*)result, fClass,
+                             CPPInstance::kIsPtrPtr | CPPInstance::kIsReference);
 
     CPPInstance* cppinst = (CPPInstance*)fAssignable;
     *result = cppinst->fObject;
@@ -500,7 +501,7 @@ PyObject* CPyCppyy::CppObjectPtrRefExecutor::Execute(
 
     void** result = (void**)GILCallR(method, self, ctxt);
     if (!fAssignable)
-        return BindCppObject(*result, fClass, false);
+        return BindCppObject(*result, fClass);
 
     CPPInstance* cppinst = (CPPInstance*)fAssignable;
     *result = cppinst->fObject;
@@ -715,9 +716,9 @@ CPyCppyy::Executor* CPyCppyy::CreateExecutor(
                 result = new CppObjectByValueExecutor(klass);
             else if (cpd == "&")
                 result = new CppObjectRefExecutor(klass);
-            else if (cpd == "**")
+            else if (cpd == "**" || cpd == "*[]" || cpd == "&*")
                 result = new CppObjectPtrPtrExecutor(klass);
-            else if (cpd == "*&"|| cpd == "&*")
+            else if (cpd == "*&")
                 result = new CppObjectPtrRefExecutor(klass);
             else if (cpd == "[]") {
                 Py_ssize_t asize = Utility::ArraySize(resolvedType);
