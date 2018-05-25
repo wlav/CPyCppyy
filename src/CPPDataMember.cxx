@@ -32,7 +32,7 @@ static PyObject* pp_get(CPPDataMember* pyprop, CPPInstance* pyobj, PyObject*)
     if (pyprop->fProperty & kIsArrayType)
         ptr = &address;
 
-// not-initialized or public data accesses through class (e.g. by help())
+// non-initialized or public data accesses through class (e.g. by help())
     if (!ptr || (ptrdiff_t)ptr == -1 /* Cling error */) {
         Py_INCREF(pyprop);
         return (PyObject*)pyprop;
@@ -51,6 +51,7 @@ static PyObject* pp_get(CPPDataMember* pyprop, CPPInstance* pyobj, PyObject*)
             if (PyObject_SetAttr(result, PyStrings::gLifeLine, (PyObject*)pyobj) == -1)
                 PyErr_Clear();     // ignored
         }
+
         return result;
     }
 
@@ -100,7 +101,7 @@ static CPPDataMember* pp_new(PyTypeObject* pytype, PyObject*, PyObject*)
 
     pyprop->fOffset         = 0;
     pyprop->fProperty       = 0;
-    pyprop->fConverter      = 0;
+    pyprop->fConverter      = nullptr;
     pyprop->fEnclosingScope = 0;
     new (&pyprop->fName) std::string();
 

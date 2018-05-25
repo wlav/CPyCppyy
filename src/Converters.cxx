@@ -382,10 +382,10 @@ CPPYY_IMPL_BASIC_CONVERTER(
 CPPYY_IMPL_BASIC_CHAR_CONVERTER(Char,  char,          CHAR_MIN,  CHAR_MAX)
 CPPYY_IMPL_BASIC_CHAR_CONVERTER(UChar, unsigned char,        0, UCHAR_MAX)
 
-PyObject* CPyCppyy::UCharArrayAsIntConverter::FromMemory(void* address)
+PyObject* CPyCppyy::UCharAsIntConverter::FromMemory(void* address)
 {
-// special case for arrays: return a Python int instead of str (following the
-// same convention as module array.array)
+// special case to be used with arrays: return a Python int instead of str
+// (following the same convention as module array.array)
     return PyInt_FromLong((long)*((unsigned char*)address));
 }
 
@@ -1571,6 +1571,7 @@ public:
         gf["const signed char&"] =          (cf_t)+[](long) { return new ConstCharRefConverter{}; };
         gf["unsigned char"] =               (cf_t)+[](long) { return new UCharConverter{}; };
         gf["const unsigned char&"] =        (cf_t)+[](long) { return new ConstUCharRefConverter{}; };
+        gf["UCharAsInt"] =                  (cf_t)+[](long) { return new UCharAsIntConverter{}; };
         gf["short"] =                       (cf_t)+[](long) { return new ShortConverter{}; };
         gf["const short&"] =                (cf_t)+[](long) { return new ConstShortRefConverter{}; };
         gf["unsigned short"] =              (cf_t)+[](long) { return new UShortConverter{}; };
@@ -1606,7 +1607,6 @@ public:
         gf["bool&"] =                       (cf_t)+[](long sz) { return new BoolArrayRefConverter{sz}; };
         gf["const unsigned char*"] =        (cf_t)+[](long sz) { return new UCharArrayConverter{sz}; };
         gf["unsigned char*"] =              (cf_t)+[](long sz) { return new UCharArrayConverter{sz}; };
-        gf["UCharArrayAsInt"] =             (cf_t)+[](long sz) { return new UCharArrayAsIntConverter{sz}; };
         gf["short*"] =                      (cf_t)+[](long sz) { return new ShortArrayConverter{sz}; };
         gf["short&"] =                      (cf_t)+[](long sz) { return new ShortArrayRefConverter{sz}; };
         gf["unsigned short*"] =             (cf_t)+[](long sz) { return new UShortArrayConverter{sz}; };

@@ -66,6 +66,11 @@ CPPYY_DECLARE_BASIC_CONVERTER(Long);
 CPPYY_DECLARE_BASIC_CONVERTER(Bool);
 CPPYY_DECLARE_BASIC_CONVERTER(Char);
 CPPYY_DECLARE_BASIC_CONVERTER(UChar);
+class UCharAsIntConverter : public UCharConverter {
+public:
+    using UCharConverter::UCharConverter;
+    virtual PyObject* FromMemory(void*);
+};
 CPPYY_DECLARE_BASIC_CONVERTER(Short);
 CPPYY_DECLARE_BASIC_CONVERTER(UShort);
 CPPYY_DECLARE_BASIC_CONVERTER(Int);
@@ -112,11 +117,6 @@ public:
 // pointer/array conversions
 CPPYY_DECLARE_ARRAY_CONVERTER(BoolArray);
 CPPYY_DECLARE_ARRAY_CONVERTER(UCharArray);
-class UCharArrayAsIntConverter : public UCharArrayConverter {
-public:
-    using UCharArrayConverter::UCharArrayConverter;
-    virtual PyObject* FromMemory(void*);
-};
 CPPYY_DECLARE_ARRAY_CONVERTER(ShortArray);
 CPPYY_DECLARE_ARRAY_CONVERTER(UShortArray);
 CPPYY_DECLARE_ARRAY_CONVERTER(IntArray);

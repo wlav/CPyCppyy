@@ -724,7 +724,7 @@ template<typename T> struct typecode_traits {};
 template<> struct typecode_traits<bool> {
     static constexpr const char* format = "?"; static constexpr const char* name = "bool"; };
 template<> struct typecode_traits<unsigned char> {
-    static constexpr const char* format = "B"; static constexpr const char* name = "UCharArrayAsInt"; };
+    static constexpr const char* format = "B"; static constexpr const char* name = "UCharAsInt"; };
 template<> struct typecode_traits<short> {
     static constexpr const char* format = "h"; static constexpr const char* name = "short"; };
 template<> struct typecode_traits<unsigned short> {
