@@ -291,19 +291,17 @@ PyObject* CPyCppyy::STLStringRefExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, return python string return value
-    if (!fAssignable) {
-        std::string* result = (std::string*)GILCallR(method, self, ctxt);
+    std::string* result = (std::string*)GILCallR(method, self, ctxt);
+    if (!fAssignable)
         return CPyCppyy_PyUnicode_FromStringAndSize(result->c_str(), result->size());
-    } else {
-        std::string* result = (std::string*)GILCallR(method, self, ctxt);
-        *result = std::string(
-            CPyCppyy_PyUnicode_AsString(fAssignable), CPyCppyy_PyUnicode_GET_SIZE(fAssignable));
 
-        Py_DECREF(fAssignable);
-        fAssignable = nullptr;
+    *result = std::string(
+        CPyCppyy_PyUnicode_AsString(fAssignable), CPyCppyy_PyUnicode_GET_SIZE(fAssignable));
 
-        Py_RETURN_NONE;
-    }
+    Py_DECREF(fAssignable);
+    fAssignable = nullptr;
+
+    Py_RETURN_NONE;
 }
 
 //----------------------------------------------------------------------------
@@ -459,12 +457,36 @@ PyObject* CPyCppyy::CppObjectRefExecutor::Execute(
 }
 
 //----------------------------------------------------------------------------
+static inline PyObject* SetInstanceCheckError(PyObject* pyobj) {
+    PyObject* pystr = PyObject_Str(pyobj);
+    if (pystr) {
+        PyErr_Format(PyExc_TypeError,
+           "C++ object expected, got %s", CPyCppyy_PyUnicode_AsString(pyobj));
+        Py_DECREF(pystr);
+    } else
+        PyErr_SetString(PyExc_TypeError, "C++ object expected");
+    return nullptr;
+}
+
 PyObject* CPyCppyy::CppObjectPtrPtrExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python C++ proxy object
 // return ptr value
-    return BindCppObject((void*)GILCallR(method, self, ctxt), fClass, true);
+    if (fAssignable && !CPPInstance_Check(fAssignable))
+        return SetInstanceCheckError(fAssignable);
+
+    void** result = (void**)GILCallR(method, self, ctxt);
+    if (!fAssignable)
+        return BindCppObject((void*)result, fClass, true);
+
+    CPPInstance* cppinst = (CPPInstance*)fAssignable;
+    *result = cppinst->fObject;
+
+    Py_DECREF(fAssignable);
+    fAssignable = nullptr;
+
+    Py_RETURN_NONE;
 }
 
 //----------------------------------------------------------------------------
@@ -473,7 +495,20 @@ PyObject* CPyCppyy::CppObjectPtrRefExecutor::Execute(
 {
 // execute <method> with argument <self, ctxt>, construct python C++ proxy object
 // ignoring ref) return ptr value
-    return BindCppObject(*(void**)GILCallR(method, self, ctxt), fClass, false);
+    if (fAssignable && !CPPInstance_Check(fAssignable))
+        return SetInstanceCheckError(fAssignable);
+
+    void** result = (void**)GILCallR(method, self, ctxt);
+    if (!fAssignable)
+        return BindCppObject(*result, fClass, false);
+
+    CPPInstance* cppinst = (CPPInstance*)fAssignable;
+    *result = cppinst->fObject;
+
+    Py_DECREF(fAssignable);
+    fAssignable = nullptr;
+
+    Py_RETURN_NONE;
 }
 
 

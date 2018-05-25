@@ -108,16 +108,16 @@ protected:
     Cppyy::TCppType_t fClass;
 };
 
-class CppObjectPtrPtrExecutor : public CppObjectExecutor {
+class CppObjectPtrPtrExecutor : public CppObjectRefExecutor {
 public:
-    using CppObjectExecutor::CppObjectExecutor;
+    using CppObjectRefExecutor::CppObjectRefExecutor;
     virtual PyObject* Execute(
         Cppyy::TCppMethod_t, Cppyy::TCppObject_t, CallContext*);
 };
 
-class CppObjectPtrRefExecutor : public CppObjectExecutor {
+class CppObjectPtrRefExecutor : public CppObjectRefExecutor {
 public:
-    using CppObjectExecutor::CppObjectExecutor;
+    using CppObjectRefExecutor::CppObjectRefExecutor;
     virtual PyObject* Execute(
         Cppyy::TCppMethod_t, Cppyy::TCppObject_t, CallContext*);
 };
