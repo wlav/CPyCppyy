@@ -132,6 +132,7 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass) {
 
 // some properties that'll affect building the dictionary
     bool isNamespace = Cppyy::IsNamespace(scope);
+    bool isAbstract  = Cppyy::IsAbstract(scope);
     bool hasConstructor = false;
 
 // load all public methods and data members
@@ -145,8 +146,7 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass) {
 
 // functions in namespaces are properly found through lazy lookup, so do not
 // create them until needed (the same is not true for data members)
-    const Cppyy::TCppIndex_t nMethods =
-        Cppyy::IsNamespace(scope) ? 0 : Cppyy::GetNumMethods(scope);
+    const Cppyy::TCppIndex_t nMethods = isNamespace ? 0 : Cppyy::GetNumMethods(scope);
     for (Cppyy::TCppIndex_t imeth = 0; imeth < nMethods; ++imeth) {
         Cppyy::TCppMethod_t method = Cppyy::GetMethod(scope, imeth);
 
@@ -215,16 +215,16 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass) {
         }
 
     // construct the holder
-        PyCallable* pycall = 0;
+        PyCallable* pycall = nullptr;
         if (Cppyy::IsStaticMethod(method))  // class method
             pycall = new CPPClassMethod(scope, method);
-        else if (isNamespace)               // free function
+         else if (isNamespace)               // free function
             pycall = new CPPFunction(scope, method);
-        else if (isConstructor) {           // constructor
+         else if (isConstructor && !isAbstract) { // ctor
             pycall = new CPPConstructor(scope, method);
             mtName = "__init__";
             hasConstructor = true;
-        } else                              // member function
+        } else                               // member function
             pycall = new CPPMethod(scope, method);
 
     // lookup method dispatcher and store method
@@ -247,8 +247,16 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass) {
     }
 
 // add a pseudo-default ctor, if none defined
-    if (!isNamespace && !hasConstructor)
-        cache["__init__"].push_back(new CPPConstructor(scope, (Cppyy::TCppMethod_t)0));
+    if (!hasConstructor) {
+        PyCallable* defctor = nullptr;
+        if (isAbstract)
+            defctor = new CPPAbstractClassConstructor(scope, (Cppyy::TCppMethod_t)0);
+        else if (isNamespace)
+            defctor = new CPPNamespaceConstructor(scope, (Cppyy::TCppMethod_t)0);
+        else
+            defctor = new CPPConstructor(scope, (Cppyy::TCppMethod_t)0);
+        cache["__init__"].push_back(defctor);
+    }
 
 // add the methods to the class dictionary
     for (CallableCache_t::iterator imd = cache.begin(); imd != cache.end(); ++imd) {

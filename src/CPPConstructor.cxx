@@ -36,13 +36,6 @@ PyObject* CPyCppyy::CPPConstructor::Call(
         return nullptr;
     }
 
-// do not allow instantiation of abstract classes
-    if (Cppyy::IsAbstract(this->GetScope())) {
-        PyErr_Format(PyExc_TypeError, "cannot instantiate abstract class \'%s\'",
-            Cppyy::GetScopedFinalName(this->GetScope()).c_str());
-        return nullptr;
-    }
-
 // setup as necessary
     if (!this->Initialize(ctxt))
         return nullptr;                     // important: 0, not Py_None
@@ -88,3 +81,25 @@ PyObject* CPyCppyy::CPPConstructor::Call(
 // different constructor, which if all fails will throw an exception
     return nullptr;
 }
+
+
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::CPPAbstractClassConstructor::Call(
+        CPPInstance*&, PyObject*, PyObject*, CallContext*)
+{
+// do not allow instantiation of abstract classes
+    PyErr_Format(PyExc_TypeError, "cannot instantiate abstract class \'%s\'",
+        Cppyy::GetScopedFinalName(this->GetScope()).c_str());
+    return nullptr;
+}
+
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::CPPNamespaceConstructor::Call(
+        CPPInstance*&, PyObject*, PyObject*, CallContext*)
+{
+// do not allow instantiation of namespaces
+    PyErr_Format(PyExc_TypeError, "cannot instantiate namespace \'%s\'",
+        Cppyy::GetScopedFinalName(this->GetScope()).c_str());
+    return nullptr;
+}
+
