@@ -1,7 +1,6 @@
 // Bindings
 #include "CPyCppyy.h"
 #include "TupleOfInstances.h"
-#include "CPPInstance.h"
 #include "ProxyWrappers.h"
 
 
@@ -14,11 +13,12 @@ PyObject* TupleOfInstances_New(
 // TODO: the extra copy is inefficient, but it appears that the only way to
 // initialize a subclass of a tuple is through a sequence
     PyObject* tup = PyTuple_New(nelems);
+    char* array_start = *(char**)address;
     for (int i = 0; i < nelems; ++i) {
     // TODO: there's an assumption here that there is no padding, which is bound
     // to be incorrect in certain cases
         PyTuple_SetItem(tup, i,
-            BindCppObject((char*)address + i*Cppyy::SizeOf(klass), klass, CPPInstance::kIsReference));
+            BindCppObjectNoCast((char*)array_start + i*Cppyy::SizeOf(klass), klass));
     // Note: objects are bound as pointers, yet since the pointer value stays in
     // place, updates propagate just as if they were bound by-reference
     }
