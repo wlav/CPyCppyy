@@ -54,7 +54,6 @@ namespace Cppyy {
     void          CallDestructor(TCppType_t type, TCppObject_t self);
     TCppObject_t  CallO(TCppMethod_t method, TCppObject_t self, void* args, TCppType_t result_type);
 
-    TCppFuncAddr_t GetFunctionAddress(TCppScope_t scope, TCppIndex_t imeth);
     TCppFuncAddr_t GetFunctionAddress(TCppMethod_t method);
 
 // handling of function argument buffer --------------------------------------
@@ -93,6 +92,7 @@ namespace Cppyy {
     TCppMethod_t GetMethod(TCppScope_t scope, TCppIndex_t imeth);
 
     std::string GetMethodName(TCppMethod_t);
+    std::string GetMethodFullName(TCppMethod_t);
     std::string GetMethodMangledName(TCppMethod_t);
     std::string GetMethodResultType(TCppMethod_t);
     TCppIndex_t GetMethodNumArgs(TCppMethod_t);
@@ -100,17 +100,15 @@ namespace Cppyy {
     std::string GetMethodArgName(TCppMethod_t, int iarg);
     std::string GetMethodArgType(TCppMethod_t, int iarg);
     std::string GetMethodArgDefault(TCppMethod_t, int iarg);
-    std::string GetMethodSignature(TCppScope_t scope, TCppIndex_t imeth, bool show_formalargs);
-    std::string GetMethodPrototype(TCppScope_t scope, TCppIndex_t imeth, bool show_formalargs);
+    std::string GetMethodSignature(TCppMethod_t, bool show_formalargs);
+    std::string GetMethodPrototype(TCppScope_t scope, TCppMethod_t, bool show_formalargs);
     bool        IsConstMethod(TCppMethod_t);
 
     bool        ExistsMethodTemplate(TCppScope_t scope, const std::string& name);
     bool        IsMethodTemplate(TCppScope_t scope, TCppIndex_t imeth);
-    TCppIndex_t GetMethodNumTemplateArgs(TCppScope_t scope, TCppIndex_t imeth);
-    std::string GetMethodTemplateArgName(TCppScope_t scope, TCppIndex_t imeth, TCppIndex_t iarg);
-
     TCppMethod_t GetMethodTemplate(
         TCppScope_t scope, const std::string& name, const std::string& proto);
+
     TCppIndex_t  GetGlobalOperator(
         TCppType_t scope, TCppType_t lc, TCppScope_t rc, const std::string& op);
 
