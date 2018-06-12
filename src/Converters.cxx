@@ -1390,12 +1390,23 @@ bool CPyCppyy::InitializerListConverter::SetArg(
 
     for (faux_initlist::size_type i = 0; i < fake->_M_len; ++i) {
         PyObject* item = PySequence_GetItem(pyobject, i);
-        if (!fConverter->ToMemory(item, (char*)fake->_M_array + i*fValueSize)) {
-            Py_DECREF(item);
+        bool convert_ok = false;
+        if (!fConverter) {
+            if (CPPInstance_Check(item)) {
+            // by convention, use byte copy
+                memcpy((char*)fake->_M_array + i*fValueSize,
+                       ((CPPInstance*)item)->GetObject(), fValueSize);
+                convert_ok = true;
+            }
+        } else
+            convert_ok = fConverter->ToMemory(item, (char*)fake->_M_array + i*fValueSize);
+
+        Py_DECREF(item);
+
+        if (!convert_ok) {
             free((void*)fake);
             return false;
         }
-        Py_DECREF(item);
     }
 
 // TODO: this passes, but how to clean up?
@@ -1482,8 +1493,16 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long
     // get the type of the list and create a converter (TODO: get hold of value_type?)
         auto pos2 = realType.find('<');
         std::string value_type = realType.substr(pos2+1, realType.size()-pos2-2);
-        Converter* cnv = CreateConverter(value_type);
-        if (cnv)
+        Converter* cnv = nullptr; bool use_byte_cnv = false;
+        if (cpd == "" && Cppyy::GetScope(realType)) {
+        // initializer list of object values does not work as the target is raw
+        // memory; simply use byte copies
+
+        // by convention, leave cnv as nullptr
+            use_byte_cnv = true;
+        } else
+            cnv = CreateConverter(value_type);
+        if (cnv || use_byte_cnv)
             return new InitializerListConverter(cnv, Cppyy::SizeOf(value_type));
     }
 
