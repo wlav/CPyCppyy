@@ -1391,17 +1391,19 @@ bool CPyCppyy::InitializerListConverter::SetArg(
     for (faux_initlist::size_type i = 0; i < fake->_M_len; ++i) {
         PyObject* item = PySequence_GetItem(pyobject, i);
         bool convert_ok = false;
-        if (!fConverter) {
-            if (CPPInstance_Check(item)) {
-            // by convention, use byte copy
-                memcpy((char*)fake->_M_array + i*fValueSize,
-                       ((CPPInstance*)item)->GetObject(), fValueSize);
-                convert_ok = true;
-            }
-        } else
-            convert_ok = fConverter->ToMemory(item, (char*)fake->_M_array + i*fValueSize);
+        if (item) {
+            if (!fConverter) {
+                if (CPPInstance_Check(item)) {
+                // by convention, use byte copy
+                    memcpy((char*)fake->_M_array + i*fValueSize,
+                           ((CPPInstance*)item)->GetObject(), fValueSize);
+                    convert_ok = true;
+                }
+            } else
+                convert_ok = fConverter->ToMemory(item, (char*)fake->_M_array + i*fValueSize);
 
-        Py_DECREF(item);
+            Py_DECREF(item);
+        }
 
         if (!convert_ok) {
             free((void*)fake);

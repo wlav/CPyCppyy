@@ -225,6 +225,63 @@ PyObject* GenObjectIsNotEqual(PyObject* self, PyObject* obj)
 }
 
 //- vector behavior as primitives ----------------------------------------------
+PyObject* VectorInit(PyObject* self, PyObject* args)
+{
+// using initializer_list is possible, but error-prone; since it's so common for
+// std::vector, this implements construction from python iterables directly.
+    if (PyTuple_GET_SIZE(args) == 1 && PySequence_Check(PyTuple_GET_ITEM(args, 0))) {
+        PyObject* empty_args = PyTuple_New(0);
+        PyObject* mname = CPyCppyy_PyUnicode_FromString("__real_init__");
+        PyObject* result = PyObject_CallMethodObjArgs(self, mname, empty_args, nullptr);
+        Py_DECREF(mname);
+        Py_DECREF(empty_args);
+        if (!result)
+            return result;
+
+        PyObject* ll = PyTuple_GET_ITEM(args, 0);
+        Py_ssize_t sz = PySequence_Size(ll);
+        PyObject* res = PyObject_CallMethod(self, (char*)"reserve", (char*)"n", sz);
+        Py_DECREF(res);
+
+        bool fill_ok = true;
+        PyObject* pb_call = PyObject_GetAttrString(self, (char*)"push_back");
+        if (pb_call) {
+            PyObject* pb_args = PyTuple_New(1);
+            for (Py_ssize_t i = 0; i < sz; ++i) {
+                PyObject* item = PySequence_GetItem(ll, i);
+                if (item) {
+                    PyTuple_SET_ITEM(pb_args, 0, item);
+                    PyObject* pbres = PyObject_CallObject(pb_call, pb_args);
+                    Py_DECREF(item);
+                    if (!pbres) {
+                        fill_ok = false;
+                        break;
+                    }
+                    Py_DECREF(pbres);
+                } else {
+                    fill_ok = false;
+                    break;
+                }
+            }
+            PyTuple_SET_ITEM(pb_args, 0, nullptr);
+            Py_DECREF(pb_args);
+        }
+        Py_DECREF(pb_call);
+
+        if (!fill_ok) {
+            Py_DECREF(result);
+            return nullptr;
+        }
+
+        return result;
+    }
+
+    PyObject* mname = CPyCppyy_PyUnicode_FromString("__real_init__");
+    PyObject* result = PyObject_CallMethodObjArgs(self, mname, args, nullptr);
+    Py_DECREF(mname);
+    return result;
+}
+
 typedef struct {
     PyObject_HEAD
     PyObject*                vi_vector;
@@ -481,7 +538,7 @@ PyObject* StlSequenceIter(PyObject* self)
         Py_XDECREF(end);
 
     // add iterated collection as attribute so its refcount stays >= 1 while it's being iterated over
-        PyObject_SetAttr(iter, PyUnicode_FromString("_collection"), self);
+        PyObject_SetAttr(iter, CPyCppyy_PyUnicode_FromString("_collection"), self);
     }
     return iter;
 }
@@ -743,7 +800,11 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
             Utility::AddToClass(pyclass, "__getitem__", (PyCFunction)VectorBoolGetItem, METH_O);
             Utility::AddToClass(pyclass, "__setitem__", (PyCFunction)VectorBoolSetItem);
         } else {
+        // constructor that takes python collections
+            Utility::AddToClass(pyclass, "__real_init__", "__init__");
+            Utility::AddToClass(pyclass, "__init__", (PyCFunction)VectorInit);
 
+        // checked getitem
             if (HasAttrDirect(pyclass, PyStrings::gLen) && HasAttrDirect(pyclass, PyStrings::gAt)) {
                 Utility::AddToClass(pyclass, "_vector__at", "at");
             // remove iterator that was set earlier (checked __getitem__ will do the trick)
