@@ -1494,7 +1494,7 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long
         auto pos2 = realType.find('<');
         std::string value_type = realType.substr(pos2+1, realType.size()-pos2-2);
         Converter* cnv = nullptr; bool use_byte_cnv = false;
-        if (cpd == "" && Cppyy::GetScope(realType)) {
+        if (cpd == "" && Cppyy::GetScope(value_type)) {
         // initializer list of object values does not work as the target is raw
         // memory; simply use byte copies
 
