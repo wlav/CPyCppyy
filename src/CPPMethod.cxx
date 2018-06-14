@@ -132,17 +132,17 @@ bool CPyCppyy::CPPMethod::InitConverters_()
 // setup the dispatch cache
     for (size_t iarg = 0; iarg < nArgs; ++iarg) {
         const std::string& fullType = Cppyy::GetMethodArgType(fMethod, iarg);
-   // CLING WORKAROUND -- std::string ca not use kExactMatch as that will
+   // CLING WORKAROUND -- std::string cannot use kExactMatch as that will
    //                     fail, but if no exact match is used, the const-ref
    //                     std::string arguments will mask the const char* ones,
    //                     even though the extra default arguments differ
         if (Cppyy::GetFinalName(fScope) == "string" && \
                 Cppyy::GetMethodName(fMethod) == "string" &&
-                // Note with the improve naming normalization we should see only
+                // Note with the improved naming normalization we should see only
                 // the spelling "const string&" (and will be "const std::string&")
                 (fullType == "const std::string&" || fullType == "const std::string &"
                 || fullType == "const string&" || fullType == "const string &")) {
-            fConverters[iarg] = new StrictCppObjectConverter(
+            fConverters[iarg] = new StrictInstancePtrConverter(
                 Cppyy::GetScope("string"), false);    // TODO: this is sooo wrong
    // -- CLING WORKAROUND
         } else

@@ -828,7 +828,7 @@ CPPYY_IMPL_ARRAY_CONVERTER (Double, double,                'd')
 //- converters for special cases ---------------------------------------------
 #define CPPYY_IMPL_STRING_AS_PRIMITIVE_CONVERTER(name, type, F1, F2)         \
 CPyCppyy::name##Converter::name##Converter(bool keepControl) :               \
-    CppObjectConverter(Cppyy::GetScope(#type), keepControl) {}               \
+    InstancePtrConverter(Cppyy::GetScope(#type), keepControl) {}             \
                                                                              \
 bool CPyCppyy::name##Converter::SetArg(                                      \
     PyObject* pyobject, Parameter& para, CallContext* ctxt)                  \
@@ -842,7 +842,7 @@ bool CPyCppyy::name##Converter::SetArg(                                      \
     }                                                                        \
                                                                              \
     if (!(PyInt_Check(pyobject) || PyLong_Check(pyobject))) {                \
-        bool result = CppObjectConverter::SetArg(pyobject, para, ctxt);      \
+        bool result = InstancePtrConverter::SetArg(pyobject, para, ctxt);    \
         para.fTypeCode = 'V';                                                \
         return result;                                                       \
     }                                                                        \
@@ -864,7 +864,7 @@ bool CPyCppyy::name##Converter::ToMemory(PyObject* value, void* address)     \
         return true;                                                         \
     }                                                                        \
                                                                              \
-    return CppObjectConverter::ToMemory(value, address);                     \
+    return InstancePtrConverter::ToMemory(value, address);                   \
 }
 
 CPPYY_IMPL_STRING_AS_PRIMITIVE_CONVERTER(STLString, std::string, c_str, size)
@@ -873,7 +873,7 @@ CPPYY_IMPL_STRING_AS_PRIMITIVE_CONVERTER(STLStringView, std::string_view, data, 
 #endif
 
 //----------------------------------------------------------------------------
-bool CPyCppyy::CppObjectConverter::SetArg(
+bool CPyCppyy::InstancePtrConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* ctxt)
 {
 // convert <pyobject> to C++ instance*, set arg for call
@@ -909,14 +909,14 @@ bool CPyCppyy::CppObjectConverter::SetArg(
 }
 
 //----------------------------------------------------------------------------
-PyObject* CPyCppyy::CppObjectConverter::FromMemory(void* address)
+PyObject* CPyCppyy::InstancePtrConverter::FromMemory(void* address)
 {
 // construct python object from C++ instance read at <address>
     return BindCppObject(address, fClass);
 }
 
 //----------------------------------------------------------------------------
-bool CPyCppyy::CppObjectConverter::ToMemory(PyObject* value, void* address)
+bool CPyCppyy::InstancePtrConverter::ToMemory(PyObject* value, void* address)
 {
 // convert <value> to C++ instance, write it at <address>
     if (!CPPInstance_Check(value)) {
@@ -949,10 +949,10 @@ bool CPyCppyy::CppObjectConverter::ToMemory(PyObject* value, void* address)
     return false;
 }
 
-// TODO: CONSOLIDATE ValueCpp, RefCpp, and CppObject ...
+// TODO: CONSOLIDATE Instance, InstanceRef, InstancePtr ...
 
 //----------------------------------------------------------------------------
-bool CPyCppyy::ValueCppObjectConverter::SetArg(
+bool CPyCppyy::InstanceConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)
 {
 // convert <pyobject> to C++ instance, set arg for call
@@ -979,7 +979,7 @@ bool CPyCppyy::ValueCppObjectConverter::SetArg(
 }
 
 //----------------------------------------------------------------------------
-bool CPyCppyy::RefCppObjectConverter::SetArg(
+bool CPyCppyy::InstanceRefConverter::SetArg(
         PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)
 {
 // convert <pyobject> to C++ instance&, set arg for call
@@ -1017,7 +1017,7 @@ const size_t refcount_cutoff = 1;
 const size_t refcount_cutoff = 2;
 #endif
 
-bool CPyCppyy::MoveCppObjectConverter::SetArg(
+bool CPyCppyy::InstanceMoveConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* ctxt)
 {
 // convert <pyobject> to C++ instance&&, set arg for call
@@ -1035,7 +1035,7 @@ bool CPyCppyy::MoveCppObjectConverter::SetArg(
     }
 
     if (moveit_reason) {
-        bool result = this->RefCppObjectConverter::SetArg(pyobject, para, ctxt);
+        bool result = this->InstanceRefConverter::SetArg(pyobject, para, ctxt);
         if (!result && moveit_reason == 2)       // restore the movability flag?
             ((CPPInstance*)pyobject)->fFlags |= CPPInstance::kIsRValue;
         return result;
@@ -1047,7 +1047,7 @@ bool CPyCppyy::MoveCppObjectConverter::SetArg(
 
 //----------------------------------------------------------------------------
 template <bool ISREFERENCE>
-bool CPyCppyy::CppObjectPtrConverter<ISREFERENCE>::SetArg(
+bool CPyCppyy::InstancePtrPtrConverter<ISREFERENCE>::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* ctxt)
 {
 // convert <pyobject> to C++ instance**, set arg for call
@@ -1074,7 +1074,7 @@ bool CPyCppyy::CppObjectPtrConverter<ISREFERENCE>::SetArg(
 
 //----------------------------------------------------------------------------
 template <bool ISREFERENCE>
-PyObject* CPyCppyy::CppObjectPtrConverter<ISREFERENCE>::FromMemory(void* address)
+PyObject* CPyCppyy::InstancePtrPtrConverter<ISREFERENCE>::FromMemory(void* address)
 {
 // construct python object from C++ instance* read at <address>
     return BindCppObject(address, fClass, CPPInstance::kIsReference);
@@ -1082,7 +1082,7 @@ PyObject* CPyCppyy::CppObjectPtrConverter<ISREFERENCE>::FromMemory(void* address
 
 //----------------------------------------------------------------------------
 template <bool ISREFERENCE>
-bool CPyCppyy::CppObjectPtrConverter<ISREFERENCE>::ToMemory(PyObject* value, void* address)
+bool CPyCppyy::InstancePtrPtrConverter<ISREFERENCE>::ToMemory(PyObject* value, void* address)
 {
 // convert <value> to C++ instance*, write it at <address>
     if (!CPPInstance_Check(value))
@@ -1107,12 +1107,12 @@ bool CPyCppyy::CppObjectPtrConverter<ISREFERENCE>::ToMemory(PyObject* value, voi
 
 namespace CPyCppyy {
 // Instantiate the templates
-    template class CPyCppyy::CppObjectPtrConverter<true>;
-    template class CPyCppyy::CppObjectPtrConverter<false>;
+    template class CPyCppyy::InstancePtrPtrConverter<true>;
+    template class CPyCppyy::InstancePtrPtrConverter<false>;
 }
 
 //----------------------------------------------------------------------------
-bool CPyCppyy::CppObjectArrayConverter::SetArg(
+bool CPyCppyy::InstanceArrayConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* /* txt */)
 {
 // convert <pyobject> to C++ instance**, set arg for call
@@ -1139,7 +1139,7 @@ bool CPyCppyy::CppObjectArrayConverter::SetArg(
 }
 
 //----------------------------------------------------------------------------
-PyObject* CPyCppyy::CppObjectArrayConverter::FromMemory(void* address)
+PyObject* CPyCppyy::InstanceArrayConverter::FromMemory(void* address)
 {
 // construct python tuple of instances from C++ array read at <address>
     if (m_size <= 0)     // if size unknown, just hand out the first object
@@ -1149,7 +1149,7 @@ PyObject* CPyCppyy::CppObjectArrayConverter::FromMemory(void* address)
 }
 
 //----------------------------------------------------------------------------
-bool CPyCppyy::CppObjectArrayConverter::ToMemory(PyObject* /* value */, void* /* address */)
+bool CPyCppyy::InstanceArrayConverter::ToMemory(PyObject* /* value */, void* /* address */)
 {
 // convert <value> to C++ array of instances, write it at <address>
 
@@ -1287,7 +1287,7 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
 
 
 //- smart pointer converters -------------------------------------------------
-bool CPyCppyy::SmartPtrCppObjectConverter::SetArg(
+bool CPyCppyy::SmartPtrConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* ctxt)
 {
     char typeCode = fIsRef ? 'p' : 'V';
@@ -1339,7 +1339,7 @@ bool CPyCppyy::SmartPtrCppObjectConverter::SetArg(
     return false;
 }
 
-PyObject* CPyCppyy::SmartPtrCppObjectConverter::FromMemory(void* address)
+PyObject* CPyCppyy::SmartPtrConverter::FromMemory(void* address)
 {
     if (!address || !fSmartPtrType)
         return nullptr;
@@ -1517,11 +1517,11 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long
         Cppyy::TCppType_t raw; Cppyy::TCppMethod_t deref;
         if (Cppyy::GetSmartPtrInfo(realType, raw, deref)) {
             if (cpd == "") {
-                result = new SmartPtrCppObjectConverter(klass, raw, deref, control);
+                result = new SmartPtrConverter(klass, raw, deref, control);
             } else if (cpd == "&") {
-                result = new SmartPtrCppObjectConverter(klass, raw, deref);
+                result = new SmartPtrConverter(klass, raw, deref);
             } else if (cpd == "*" && size <= 0) {
-                result = new SmartPtrCppObjectConverter(klass, raw, deref, control, true);
+                result = new SmartPtrConverter(klass, raw, deref, control, true);
             }
         }
 
@@ -1532,19 +1532,19 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long
             else
        // -- CLING WORKAROUND
             if (cpd == "**" || cpd == "*[]" || cpd == "&*")
-                result = new CppObjectPtrConverter<false>(klass, control);
+                result = new InstancePtrPtrConverter<false>(klass, control);
             else if (cpd == "*&")
-                result = new CppObjectPtrConverter<true>(klass, control);
+                result = new InstancePtrPtrConverter<true>(klass, control);
             else if (cpd == "*" && size <= 0)
-                result = new CppObjectConverter(klass, control);
+                result = new InstancePtrConverter(klass, control);
             else if (cpd == "&")
-                result = new RefCppObjectConverter(klass);
+                result = new InstanceRefConverter(klass);
             else if (cpd == "&&")
-                result = new MoveCppObjectConverter(klass);
+                result = new InstanceMoveConverter(klass);
             else if (cpd == "[]" || size > 0)
-                result = new CppObjectArrayConverter(klass, size, false);
+                result = new InstanceArrayConverter(klass, size, false);
             else if (cpd == "")             // by value
-                result = new ValueCppObjectConverter(klass, true);
+                result = new InstanceConverter(klass, true);
         }
     } else if (resolvedType.find("(*)") != std::string::npos ||
                (resolvedType.find("::*)") != std::string::npos)) {

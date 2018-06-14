@@ -134,15 +134,15 @@ public:
 };
 
 // converters for special cases
-class ValueCppObjectConverter : public StrictCppObjectConverter {
+class InstanceConverter : public StrictInstancePtrConverter {
 public:
-    using StrictCppObjectConverter::StrictCppObjectConverter;
+    using StrictInstancePtrConverter::StrictInstancePtrConverter;
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
 };
 
-class RefCppObjectConverter : public Converter  {
+class InstanceRefConverter : public Converter  {
 public:
-    RefCppObjectConverter(Cppyy::TCppType_t klass) : fClass(klass) {}
+    InstanceRefConverter(Cppyy::TCppType_t klass) : fClass(klass) {}
 
 public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
@@ -151,16 +151,16 @@ protected:
     Cppyy::TCppType_t fClass;
 };
 
-class MoveCppObjectConverter : public RefCppObjectConverter  {
+class InstanceMoveConverter : public InstanceRefConverter  {
 public:
-    using RefCppObjectConverter::RefCppObjectConverter;
+    using InstanceRefConverter::InstanceRefConverter;
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
 };
 
 template <bool ISREFERENCE>
-class CppObjectPtrConverter : public CppObjectConverter {
+class InstancePtrPtrConverter : public InstancePtrConverter {
 public:
-    using CppObjectConverter::CppObjectConverter;
+    using InstancePtrConverter::InstancePtrConverter;
 
 public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
@@ -168,13 +168,13 @@ public:
     virtual bool ToMemory(PyObject* value, void* address);
 };
 
-extern template class CppObjectPtrConverter<true>;
-extern template class CppObjectPtrConverter<false>;
+extern template class InstancePtrPtrConverter<true>;
+extern template class InstancePtrPtrConverter<false>;
 
-class CppObjectArrayConverter : public CppObjectConverter {
+class InstanceArrayConverter : public InstancePtrConverter {
 public:
-    CppObjectArrayConverter(Cppyy::TCppType_t klass, size_t size, bool keepControl = false) :
-        CppObjectConverter(klass, keepControl), m_size(size) {}
+    InstanceArrayConverter(Cppyy::TCppType_t klass, size_t size, bool keepControl = false) :
+        InstancePtrConverter(klass, keepControl), m_size(size) {}
 
 public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
@@ -207,7 +207,7 @@ public:
 CPPYY_DECLARE_BASIC_CONVERTER(PyObject);
 
 #define CPPYY_DECLARE_STRING_CONVERTER(name, strtype)                        \
-class name##Converter : public CppObjectConverter {                          \
+class name##Converter : public InstancePtrConverter {                        \
 public:                                                                      \
     name##Converter(bool keepControl = true);                                \
 public:                                                                      \
@@ -236,13 +236,13 @@ protected:
 };
 
 // smart pointer converter
-class SmartPtrCppObjectConverter : public Converter {
+class SmartPtrConverter : public Converter {
 public:
-    SmartPtrCppObjectConverter(Cppyy::TCppType_t smart,
-                               Cppyy::TCppType_t raw,
-                               Cppyy::TCppMethod_t deref,
-                               bool keepControl = false,
-                               bool isRef = false)
+    SmartPtrConverter(Cppyy::TCppType_t smart,
+                      Cppyy::TCppType_t raw,
+                      Cppyy::TCppMethod_t deref,
+                      bool keepControl = false,
+                      bool isRef = false)
         : fSmartPtrType(smart), fRawPtrType(raw), fDereferencer(deref),
           fKeepControl(keepControl), fIsRef(isRef) {}
 
