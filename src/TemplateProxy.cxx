@@ -94,7 +94,7 @@ PyCallable* TemplateProxy::Instantiate(const std::string& fullname, PyObject* ar
             Py_XDECREF(pytc);
         }
 
-        const std::string& name_v1 = Utility::ConstructTemplateArgs(nullptr, tpArgs, 0);
+        const std::string& name_v1 = Utility::ConstructTemplateArgs(nullptr, tpArgs, args, 0);
         Py_DECREF(tpArgs);
         if (name_v1.size())
             proto = name_v1.substr(1, name_v1.size()-2);
@@ -352,7 +352,7 @@ static PyObject* tpp_subscript(TemplateProxy* pytmpl, PyObject* args)
 
 // construct full, explicit name of function
     PyObject* pyfullname = CPyCppyy_PyUnicode_FromString(CPyCppyy_PyUnicode_AsString(pytmpl->fCppName));
-    PyObject* tmpl_args = CPyCppyy_PyUnicode_FromString(Utility::ConstructTemplateArgs(nullptr, newArgs, 0).c_str());
+    PyObject* tmpl_args = CPyCppyy_PyUnicode_FromString(Utility::ConstructTemplateArgs(nullptr, newArgs, nullptr, 0).c_str());
     Py_DECREF(newArgs);
     CPyCppyy_PyUnicode_Append(&pyfullname, tmpl_args);
 

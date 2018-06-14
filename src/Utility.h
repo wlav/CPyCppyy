@@ -37,7 +37,7 @@ bool AddBinaryOperator(PyObject* pyclass, const std::string& lcname, const std::
     const char* op, const char* label, const char* alt_label = nullptr);
 
 // helper for template classes and methods
-std::string ConstructTemplateArgs(PyObject* pyname, PyObject* args, int argoff);
+std::string ConstructTemplateArgs(PyObject* pyname, PyObject* tpArgs, PyObject* args, int argoff);
 
 // initialize proxy type objects
 bool InitProxy(PyObject* module, PyTypeObject* pytype, const char* name);

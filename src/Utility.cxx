@@ -431,7 +431,7 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& 
 }
 
 //----------------------------------------------------------------------------
-std::string CPyCppyy::Utility::ConstructTemplateArgs(PyObject* pyname, PyObject* args, int argoff)
+std::string CPyCppyy::Utility::ConstructTemplateArgs(PyObject* pyname, PyObject* tpArgs, PyObject* args, int argoff)
 {
 // Helper to construct the "<type, type, ...>" part of a templated name (either
 // for a class or method lookup
@@ -440,14 +440,26 @@ std::string CPyCppyy::Utility::ConstructTemplateArgs(PyObject* pyname, PyObject*
         tmpl_name << CPyCppyy_PyUnicode_AsString(pyname);
     tmpl_name << '<';
 
-    Py_ssize_t nArgs = PyTuple_GET_SIZE(args);
+    Py_ssize_t nArgs = PyTuple_GET_SIZE(tpArgs);
     for (int i = argoff; i < nArgs; ++i) {
     // add type as string to name
-        PyObject* tn = PyTuple_GET_ITEM(args, i);
+        PyObject* tn = PyTuple_GET_ITEM(tpArgs, i);
         if (CPyCppyy_PyUnicode_Check(tn)) {
             tmpl_name << CPyCppyy_PyUnicode_AsString(tn);
         } else if (CPPScope_Check(tn)) {
             tmpl_name << Cppyy::GetScopedFinalName(((CPPClass*)tn)->fCppType);
+            if (args) {
+            // try to specialize the type match for the given object
+                CPPInstance* pyobj = (CPPInstance*)PyTuple_GET_ITEM(args, i);
+                if (CPPInstance_Check(pyobj)) {
+                    if (pyobj->fFlags & CPPInstance::kIsRValue)
+                        tmpl_name << "&&";
+                    else if (pyobj->fFlags & CPPInstance::kIsReference)
+                        tmpl_name << '*';
+                    else
+                        tmpl_name << '&';
+                }
+            }
         } else if (PyObject_HasAttr(tn, PyStrings::gName)) {
             PyObject* tpName = PyObject_GetAttr(tn, PyStrings::gName);
 
