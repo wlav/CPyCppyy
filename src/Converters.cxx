@@ -148,7 +148,7 @@ static inline long CPyCppyy_PyLong_AsStrictLong(PyObject* pyobject)
 PyObject* CPyCppyy::Converter::FromMemory(void*)
 {
 // could happen if no derived class override
-    PyErr_SetString(PyExc_TypeError, "C++ type can not be converted from memory");
+    PyErr_SetString(PyExc_TypeError, "C++ type cannot be converted from memory");
     return nullptr;
 }
 
@@ -156,7 +156,7 @@ PyObject* CPyCppyy::Converter::FromMemory(void*)
 bool CPyCppyy::Converter::ToMemory(PyObject*, void*)
 {
 // could happen if no derived class override
-    PyErr_SetString(PyExc_TypeError, "C++ type can not be converted to memory");
+    PyErr_SetString(PyExc_TypeError, "C++ type cannot be converted to memory");
     return false;
 }
 
@@ -501,7 +501,7 @@ bool CPyCppyy::LongLongConverter::SetArg(
     if (PyFloat_Check(pyobject)) {
     // special case: float implements nb_int, but allowing rounding conversions
     // interferes with overloading
-        PyErr_SetString(PyExc_ValueError, "can not convert float to long long");
+        PyErr_SetString(PyExc_ValueError, "cannot convert float to long long");
         return false;
     }
 
@@ -1422,7 +1422,7 @@ bool CPyCppyy::InitializerListConverter::SetArg(
 bool CPyCppyy::NotImplementedConverter::SetArg(PyObject*, Parameter&, CallContext*)
 {
 // raise a NotImplemented exception to take a method out of overload resolution
-    PyErr_SetString(PyExc_NotImplementedError, "this method can not (yet) be called");
+    PyErr_SetString(PyExc_NotImplementedError, "this method cannot (yet) be called");
     return false;
 }
 

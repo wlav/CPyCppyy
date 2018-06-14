@@ -132,7 +132,7 @@ bool CPyCppyy::CPPMethod::InitConverters_()
 // setup the dispatch cache
     for (size_t iarg = 0; iarg < nArgs; ++iarg) {
         const std::string& fullType = Cppyy::GetMethodArgType(fMethod, iarg);
-   // CLING WORKAROUND -- std::string can not use kExactMatch as that will
+   // CLING WORKAROUND -- std::string ca not use kExactMatch as that will
    //                     fail, but if no exact match is used, the const-ref
    //                     std::string arguments will mask the const char* ones,
    //                     even though the extra default arguments differ

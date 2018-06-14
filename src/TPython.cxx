@@ -51,7 +51,7 @@
 //  (int)2
 //
 //  // Load a python module with a class definition, and use it. Casts are
-//  // necessary as the type information can not be otherwise derived.
+//  // necessary as the type information cannot be otherwise derived.
 //  root [6] TPython::LoadMacro("MyPyClass.py");
 //  creating class MyPyClass ...
 //  root [7] MyPyClass m;

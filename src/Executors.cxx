@@ -430,10 +430,10 @@ PyObject* CPyCppyy::CppObjectRefExecutor::Execute(
             PyErr_Clear();
             PyObject* descr = PyObject_Str(result);
             if (descr && CPyCppyy_PyUnicode_CheckExact(descr)) {
-                PyErr_Format(PyExc_TypeError, "can not assign to return object (%s)",
+                PyErr_Format(PyExc_TypeError, "cannot assign to return object (%s)",
                              CPyCppyy_PyUnicode_AsString(descr));
             } else {
-                PyErr_SetString(PyExc_TypeError, "can not assign to result");
+                PyErr_SetString(PyExc_TypeError, "cannot assign to result");
             }
             Py_XDECREF(descr);
             Py_DECREF(result);
@@ -582,10 +582,10 @@ PyObject* CPyCppyy::CppObjectBySmartPtrRefExecutor::Execute(
            PyErr_Clear();
            PyObject* descr = PyObject_Str(result);
            if (descr && PyBytes_CheckExact(descr)) {
-               PyErr_Format(PyExc_TypeError, "can not assign to return object (%s)",
+               PyErr_Format(PyExc_TypeError, "cannot assign to return object (%s)",
                    PyBytes_AS_STRING(descr));
            } else {
-               PyErr_SetString(PyExc_TypeError, "can not assign to result");
+               PyErr_SetString(PyExc_TypeError, "cannot assign to result");
            }
            Py_XDECREF(descr);
            Py_DECREF(result);

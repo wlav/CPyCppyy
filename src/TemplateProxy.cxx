@@ -295,7 +295,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
     }
 
 // moderately generic error message, but should be clear enough
-    PyErr_Format(PyExc_TypeError, "can not resolve method template call for \'%s\'",
+    PyErr_Format(PyExc_TypeError, "cannot resolve method template call for \'%s\'",
         CPyCppyy_PyUnicode_AsString(pytmpl->fPyName));
     return nullptr;
 }
