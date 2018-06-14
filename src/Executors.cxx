@@ -385,7 +385,7 @@ PyObject* CPyCppyy::STLStringExecutor::Execute(
 }
 
 //----------------------------------------------------------------------------
-PyObject* CPyCppyy::CppObjectExecutor::Execute(
+PyObject* CPyCppyy::InstancePtrExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python proxy object return value
@@ -393,7 +393,7 @@ PyObject* CPyCppyy::CppObjectExecutor::Execute(
 }
 
 //----------------------------------------------------------------------------
-PyObject* CPyCppyy::CppObjectByValueExecutor::Execute(
+PyObject* CPyCppyy::InstanceExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
 // execution will bring a temporary in existence
@@ -416,7 +416,7 @@ PyObject* CPyCppyy::CppObjectByValueExecutor::Execute(
 }
 
 //----------------------------------------------------------------------------
-PyObject* CPyCppyy::CppObjectRefExecutor::Execute(
+PyObject* CPyCppyy::InstanceRefExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
 // executor binds the result to the left-hand side, overwriting if an old object
@@ -468,7 +468,7 @@ static inline PyObject* SetInstanceCheckError(PyObject* pyobj) {
     return nullptr;
 }
 
-PyObject* CPyCppyy::CppObjectPtrPtrExecutor::Execute(
+PyObject* CPyCppyy::InstancePtrPtrExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python C++ proxy object
@@ -491,7 +491,7 @@ PyObject* CPyCppyy::CppObjectPtrPtrExecutor::Execute(
 }
 
 //----------------------------------------------------------------------------
-PyObject* CPyCppyy::CppObjectPtrRefExecutor::Execute(
+PyObject* CPyCppyy::InstancePtrRefExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python C++ proxy object
@@ -514,7 +514,7 @@ PyObject* CPyCppyy::CppObjectPtrRefExecutor::Execute(
 
 
 //- smart pointers -----------------------------------------------------------
-PyObject* CPyCppyy::CppObjectBySmartPtrExecutor::Execute(
+PyObject* CPyCppyy::SmartPtrExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
 // smart pointer executor
@@ -537,7 +537,7 @@ PyObject* CPyCppyy::CppObjectBySmartPtrExecutor::Execute(
     return (PyObject*)pyobj;
 }
 
-PyObject* CPyCppyy::CppObjectBySmartPtrPtrExecutor::Execute(
+PyObject* CPyCppyy::SmartPtrPtrExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
     Cppyy::TCppObject_t value = GILCallR(method, self, ctxt);
@@ -553,7 +553,7 @@ PyObject* CPyCppyy::CppObjectBySmartPtrPtrExecutor::Execute(
     return (PyObject*)pyobj;
 }
 
-PyObject* CPyCppyy::CppObjectBySmartPtrRefExecutor::Execute(
+PyObject* CPyCppyy::SmartPtrRefExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
     Cppyy::TCppObject_t value = GILCallR(method, self, ctxt);
@@ -613,7 +613,7 @@ PyObject* CPyCppyy::CppObjectBySmartPtrRefExecutor::Execute(
 
 
 //----------------------------------------------------------------------------
-PyObject* CPyCppyy::CppObjectArrayExecutor::Execute(
+PyObject* CPyCppyy::InstanceArrayExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct TupleOfInstances from
@@ -703,31 +703,31 @@ CPyCppyy::Executor* CPyCppyy::CreateExecutor(
         Cppyy::TCppType_t raw; Cppyy::TCppMethod_t deref;
         if (manage_smart_ptr && Cppyy::GetSmartPtrInfo(realType, raw, deref)) {
             if (cpd == "") {
-                result = new CppObjectBySmartPtrExecutor(klass, raw, deref);
+                result = new SmartPtrExecutor(klass, raw, deref);
             } else if (cpd == "*") {
-                result = new CppObjectBySmartPtrPtrExecutor(klass, raw, deref);
+                result = new SmartPtrPtrExecutor(klass, raw, deref);
             } else if (cpd == "&") {
-                result = new CppObjectBySmartPtrRefExecutor(klass, raw, deref);
+                result = new SmartPtrRefExecutor(klass, raw, deref);
             }
         }
 
         if (!result) {
             if (cpd == "")
-                result = new CppObjectByValueExecutor(klass);
+                result = new InstanceExecutor(klass);
             else if (cpd == "&")
-                result = new CppObjectRefExecutor(klass);
+                result = new InstanceRefExecutor(klass);
             else if (cpd == "**" || cpd == "*[]" || cpd == "&*")
-                result = new CppObjectPtrPtrExecutor(klass);
+                result = new InstancePtrPtrExecutor(klass);
             else if (cpd == "*&")
-                result = new CppObjectPtrRefExecutor(klass);
+                result = new InstancePtrRefExecutor(klass);
             else if (cpd == "[]") {
                 Py_ssize_t asize = Utility::ArraySize(resolvedType);
                 if (0 < asize)
-                    result = new CppObjectArrayExecutor(klass, asize);
+                    result = new InstanceArrayExecutor(klass, asize);
                 else
-                    result = new CppObjectPtrRefExecutor(klass);
+                    result = new InstancePtrRefExecutor(klass);
             } else
-                result = new CppObjectExecutor(klass);
+                result = new InstancePtrExecutor(klass);
         }
     } else {
     // unknown: void* may work ("user knows best"), void will fail on use of return value
