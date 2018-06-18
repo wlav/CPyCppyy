@@ -1,6 +1,7 @@
 #ifndef CPYCPPYY_LOWLEVELVIEWS_H
 #define CPYCPPYY_LOWLEVELVIEWS_H
 
+#include <complex>
 #include <stddef.h>
 
 namespace CPyCppyy {
@@ -17,6 +18,7 @@ PyObject* CreateLowLevelView(long long*,              Py_ssize_t* shape = nullpt
 PyObject* CreateLowLevelView(unsigned long long*,     Py_ssize_t* shape = nullptr);
 PyObject* CreateLowLevelView(float*,                  Py_ssize_t* shape = nullptr);
 PyObject* CreateLowLevelView(double*,                 Py_ssize_t* shape = nullptr);
+PyObject* CreateLowLevelView(std::complex<double>*,   Py_ssize_t* shape = nullptr);
 
 inline PyObject* CreatePointerView(void* ptr) {
     Py_ssize_t shape[] = {1, 1};

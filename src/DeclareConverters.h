@@ -5,6 +5,7 @@
 #include "Converters.h"
 
 // Standard
+#include <complex>
 #include <string>
 
 
@@ -185,6 +186,21 @@ protected:
     size_t m_size;
 };
 
+
+class ComplexDConverter: public InstanceConverter {
+public:
+    ComplexDConverter(bool keepControl = false);
+
+public:
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
+    virtual PyObject* FromMemory(void* address);
+    virtual bool ToMemory(PyObject* value, void* address);
+
+private:
+    std::complex<double> fBuffer;
+};
+
+
 // CLING WORKAROUND -- classes for STL iterators are completely undefined in that
 // they come in a bazillion different guises, so just do whatever
 class STLIteratorConverter : public Converter {
@@ -192,6 +208,7 @@ public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
 };
 // -- END CLING WORKAROUND
+
 
 class VoidPtrRefConverter : public Converter {
 public:
@@ -205,6 +222,7 @@ public:
 };
 
 CPPYY_DECLARE_BASIC_CONVERTER(PyObject);
+
 
 #define CPPYY_DECLARE_STRING_CONVERTER(name, strtype)                        \
 class name##Converter : public InstancePtrConverter {                        \
@@ -223,6 +241,7 @@ CPPYY_DECLARE_STRING_CONVERTER(STLString, std::string);
 CPPYY_DECLARE_STRING_CONVERTER(STLStringView, std::string_view);
 #endif
 
+
 // function pointers
 class FunctionPointerConverter : public Converter {
 public:
@@ -234,6 +253,7 @@ public:
 protected:
     std::string fSignature;
 };
+
 
 // smart pointer converter
 class SmartPtrConverter : public Converter {
@@ -261,6 +281,7 @@ protected:
     bool                fIsRef;
 };
 
+
 // initializer lists
 class InitializerListConverter : public Converter {
 public:
@@ -277,6 +298,7 @@ protected:
     Converter* fConverter;
     size_t     fValueSize;
 };
+
 
 // raising converter to take out overloads
 class NotImplementedConverter : public Converter {

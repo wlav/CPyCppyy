@@ -364,6 +364,26 @@ CPPYY_IMPL_ARRAY_EXEC(Double, double)
 
 
 //- special cases ------------------------------------------------------------
+PyObject* CPyCppyy::ComplexDExecutor::Execute(
+    Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
+{
+// execute <method> with argument <self, ctxt>, construct python complex return value
+
+// TODO: make use of GILLCallS (?!)
+    static Cppyy::TCppScope_t sComplexDScope = Cppyy::GetScope("std::complex<double>");
+    std::complex<double>* result = (std::complex<double>*)GILCallO(method, self, ctxt, sComplexDScope);
+    if (!result) {
+        PyErr_SetString(PyExc_ValueError, "NULL result where temporary expected");
+        return nullptr;
+    }
+
+    PyObject* pyresult = PyComplex_FromDoubles(result->real(), result->imag());
+    ::operator delete(result); // calls Cppyy::CallO which calls ::operator new
+
+    return pyresult;
+}
+
+//----------------------------------------------------------------------------
 PyObject* CPyCppyy::STLStringExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
@@ -829,6 +849,8 @@ public:
         gf["string"] =                      (ef_t)+[]() { return new STLStringExecutor{}; };
         gf["std::string&"] =                (ef_t)+[]() { return new STLStringRefExecutor{}; };
         gf["string&"] =                     (ef_t)+[]() { return new STLStringRefExecutor{}; };
+        gf["std::complex<double>"] =        (ef_t)+[]() { return new ComplexDExecutor{}; };
+        gf["complex<double>"] =             (ef_t)+[]() { return new ComplexDExecutor{}; };
         gf["__init__"] =                    (ef_t)+[]() { return new ConstructorExecutor{}; };
         gf["PyObject*"] =                   (ef_t)+[]() { return new PyObjectExecutor{}; };
         gf["_object*"] =                    (ef_t)+[]() { return new PyObjectExecutor{}; };

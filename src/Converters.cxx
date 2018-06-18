@@ -458,6 +458,44 @@ CPPYY_IMPL_BASIC_CONVERTER(
 CPPYY_IMPL_BASIC_CONVERTER(
     LongDouble, LongDouble_t, LongDouble_t, PyFloat_FromDouble, PyFloat_AsDouble, 'g')
 
+CPyCppyy::ComplexDConverter::ComplexDConverter(bool keepControl) :
+    InstanceConverter(Cppyy::GetScope("std::complex<double>"), keepControl) {}
+
+// special case for std::complex<double>, maps it to/from Python's complex
+bool CPyCppyy::ComplexDConverter::SetArg(
+    PyObject* pyobject, Parameter& para, CallContext* ctxt)
+{
+    const Py_complex& pc = PyComplex_AsCComplex(pyobject);
+    if (pc.real != -1.0 || !PyErr_Occurred()) {
+        fBuffer.real(pc.real);
+        fBuffer.imag(pc.imag);
+        para.fValue.fVoidp = &fBuffer;
+        para.fTypeCode = 'V';
+        return true;
+    }
+
+    return this->InstanceConverter::SetArg(pyobject, para, ctxt);
+}                                                                            \
+                                                                             \
+PyObject* CPyCppyy::ComplexDConverter::FromMemory(void* address)
+{
+    std::complex<double>* dc = (std::complex<double>*)address;
+    return PyComplex_FromDoubles(dc->real(), dc->imag());
+}
+
+bool CPyCppyy::ComplexDConverter::ToMemory(PyObject* value, void* address)
+{
+    const Py_complex& pc = PyComplex_AsCComplex(value);
+    if (pc.real != -1.0 || !PyErr_Occurred()) {
+         std::complex<double>* dc = (std::complex<double>*)address;
+         dc->real(pc.real);
+         dc->imag(pc.imag);
+         return true;
+    }
+    return this->InstanceConverter::ToMemory(value, address);
+}
+
+
 //----------------------------------------------------------------------------
 bool CPyCppyy::DoubleRefConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)
@@ -1670,6 +1708,7 @@ public:
         gf["string_view"] =                 (cf_t)+[](long) { return new STLStringViewConverter{}; };
         gf["experimental::basic_string_view<char,char_traits<char> >"] = (cf_t)+[](long) { return new STLStringViewConverter{}; };
 #endif
+        gf["std::complex<double>"] =        (cf_t)+[](long) { return new ComplexDConverter{}; };
         gf["void*&"] =                      (cf_t)+[](long) { return new VoidPtrRefConverter{}; };
         gf["void**"] =                      (cf_t)+[](long) { return new VoidPtrPtrConverter{}; };
         gf["void*[]"] =                     (cf_t)+[](long) { return new VoidPtrPtrConverter{}; };

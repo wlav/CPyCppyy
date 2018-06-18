@@ -52,6 +52,7 @@ CPPYY_DECL_EXEC(FloatArray);
 CPPYY_DECL_EXEC(DoubleArray);
 
 // special cases
+CPPYY_DECL_EXEC(ComplexD);
 CPPYY_DECL_EXEC(STLString);
 
 class InstancePtrExecutor : public Executor {
