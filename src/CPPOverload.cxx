@@ -509,6 +509,19 @@ static int mp_setthreaded(CPPOverload* pymeth, PyObject* value, void*)
 
 
 //-----------------------------------------------------------------------------
+static PyObject* mp_getuseffi(CPPOverload*, void*)
+{
+    return PyInt_FromLong(0); // dummy (__useffi__ unused)
+}
+
+//-----------------------------------------------------------------------------
+static int mp_setuseffi(CPPOverload*, PyObject*, void*)
+{
+    return 0;                 // dummy (__useffi__ unused)
+}
+
+
+//-----------------------------------------------------------------------------
 static PyGetSetDef mp_getset[] = {
     {(char*)"__name__",   (getter)mp_name,   nullptr, nullptr, nullptr},
     {(char*)"__module__", (getter)mp_module, nullptr, nullptr, nullptr},
@@ -536,6 +549,8 @@ static PyGetSetDef mp_getset[] = {
       (char*)"If a smart pointer is returned, determines management policy.", nullptr},
     {(char*)"_threaded", (getter)mp_getthreaded, (setter)mp_setthreaded,
       (char*)"If true, releases GIL on call into C++", nullptr},
+    {(char*)"__useffi__", (getter)mp_getuseffi, (setter)mp_setuseffi,
+      (char*)"unused", nullptr},
     {(char*)nullptr, nullptr, nullptr, nullptr, nullptr}
 };
 

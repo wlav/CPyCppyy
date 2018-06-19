@@ -377,6 +377,19 @@ static PyObject* tpp_subscript(TemplateProxy* pytmpl, PyObject* args)
     return (PyObject*)typeBoundMethod;
 }
 
+//-----------------------------------------------------------------------------
+static PyObject* tpp_getuseffi(CPPOverload*, void*)
+{   
+    return PyInt_FromLong(0); // dummy (__useffi__ unused)
+}   
+    
+//-----------------------------------------------------------------------------
+static int tpp_setuseffi(CPPOverload*, PyObject*, void*)
+{   
+    return 0;                 // dummy (__useffi__ unused)
+}   
+
+
 //----------------------------------------------------------------------------
 static PyMappingMethods tpp_as_mapping = {
     nullptr, (binaryfunc)tpp_subscript, nullptr
@@ -384,6 +397,8 @@ static PyMappingMethods tpp_as_mapping = {
 
 static PyGetSetDef tpp_getset[] = {
     {(char*)"__doc__", (getter)tpp_doc, nullptr, nullptr, nullptr},
+    {(char*)"__useffi__", (getter)tpp_getuseffi, (setter)tpp_setuseffi,
+      (char*)"unused", nullptr},
     {(char*)nullptr,   nullptr,         nullptr, nullptr, nullptr}
 };
 
