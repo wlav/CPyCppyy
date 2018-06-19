@@ -1421,38 +1421,47 @@ bool CPyCppyy::InitializerListConverter::SetArg(
     if (!PySequence_Check(pyobject))
         return false;
 
-// can only construct empty lists, so use a fake initializer list
-    size_t len = (size_t)PySequence_Size(pyobject);
-    faux_initlist* fake = (faux_initlist*)malloc(sizeof(faux_initlist)+fValueSize*len);
-    fake->_M_len = (faux_initlist::size_type)len;
-    fake->_M_array = (faux_initlist::iterator)((char*)fake+sizeof(faux_initlist));
+    void* buf;
+    int buflen = Utility::GetBuffer(pyobject, '*', fValueSize, buf, true);
+    faux_initlist* fake = nullptr;
+    if (buf && buflen) {
+    // dealing with an array here, pass on whole-sale
+        fake = (faux_initlist*)malloc(sizeof(faux_initlist));
+        fake->_M_len = (faux_initlist::size_type)buflen;
+        fake->_M_array = buf;
+    } else {
+    // can only construct empty lists, so use a fake initializer list
+        size_t len = (size_t)PySequence_Size(pyobject);
+        fake = (faux_initlist*)malloc(sizeof(faux_initlist)+fValueSize*len);
+        fake->_M_len = (faux_initlist::size_type)len;
+        fake->_M_array = (faux_initlist::iterator)((char*)fake+sizeof(faux_initlist));
 
-    for (faux_initlist::size_type i = 0; i < fake->_M_len; ++i) {
-        PyObject* item = PySequence_GetItem(pyobject, i);
-        bool convert_ok = false;
-        if (item) {
-            if (!fConverter) {
-                if (CPPInstance_Check(item)) {
-                // by convention, use byte copy
-                    memcpy((char*)fake->_M_array + i*fValueSize,
-                           ((CPPInstance*)item)->GetObject(), fValueSize);
-                    convert_ok = true;
-                }
-            } else
-                convert_ok = fConverter->ToMemory(item, (char*)fake->_M_array + i*fValueSize);
+        for (faux_initlist::size_type i = 0; i < fake->_M_len; ++i) {
+            PyObject* item = PySequence_GetItem(pyobject, i);
+            bool convert_ok = false;
+            if (item) {
+                if (!fConverter) {
+                    if (CPPInstance_Check(item)) {
+                    // by convention, use byte copy
+                        memcpy((char*)fake->_M_array + i*fValueSize,
+                               ((CPPInstance*)item)->GetObject(), fValueSize);
+                        convert_ok = true;
+                    }
+                } else
+                    convert_ok = fConverter->ToMemory(item, (char*)fake->_M_array + i*fValueSize);
 
-            Py_DECREF(item);
-        }
+                Py_DECREF(item);
+            }
 
-        if (!convert_ok) {
-            free((void*)fake);
-            return false;
+            if (!convert_ok) {
+                free((void*)fake);
+                return false;
+            }
         }
     }
 
-// TODO: this passes, but how to clean up?
     para.fValue.fVoidp = (void*)fake;
-    para.fTypeCode = 'X';
+    para.fTypeCode = 'X';     // means ptr that backend has to free after call
     return true;
 #endif
 }

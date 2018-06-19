@@ -230,13 +230,13 @@ PyObject* GenObjectIsNotEqual(PyObject* self, PyObject* obj)
 PyObject* VectorInit(PyObject* self, PyObject* args)
 {
 // using initializer_list is possible, but error-prone; since it's so common for
-// std::vector, this implements construction from python iterables directly.
-    if (PyTuple_GET_SIZE(args) == 1 && PySequence_Check(PyTuple_GET_ITEM(args, 0))) {
-        PyObject* empty_args = PyTuple_New(0);
+// std::vector, this implements construction from python iterables directly, except
+// for arrays, which can be passed wholesale.
+    if (PyTuple_GET_SIZE(args) == 1 && PySequence_Check(PyTuple_GET_ITEM(args, 0)) && \
+            !Py_TYPE(PyTuple_GET_ITEM(args, 0))->tp_as_buffer) {
         PyObject* mname = CPyCppyy_PyUnicode_FromString("__real_init__");
-        PyObject* result = PyObject_CallMethodObjArgs(self, mname, empty_args, nullptr);
+        PyObject* result = PyObject_CallMethodObjArgs(self, mname, nullptr);
         Py_DECREF(mname);
-        Py_DECREF(empty_args);
         if (!result)
             return result;
 
@@ -278,10 +278,13 @@ PyObject* VectorInit(PyObject* self, PyObject* args)
         return result;
     }
 
-    PyObject* mname = CPyCppyy_PyUnicode_FromString("__real_init__");
-    PyObject* result = PyObject_CallMethodObjArgs(self, mname, args, nullptr);
-    Py_DECREF(mname);
-    return result;
+    PyObject* realInit = PyObject_GetAttrString(self, "__real_init__");
+    if (realInit) {
+        PyObject* result = PyObject_Call(realInit, args, nullptr);
+        Py_DECREF(realInit);
+        return result;
+    }
+    return nullptr;
 }
 
 typedef struct {

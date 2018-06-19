@@ -530,7 +530,7 @@ int CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, void*& b
             if (tc == '*' || strchr(bufinfo.format, tc)) {
                 buf = bufinfo.buf;
                 if (buf && bufinfo.ndim == 0) {
-                    return 1;
+                    return bufinfo.len/bufinfo.itemsize;
                 } else if (buf && bufinfo.ndim == 1 && bufinfo.shape) {
                     int size1d = (int)bufinfo.shape[0];
                     PyBuffer_Release(&bufinfo);
