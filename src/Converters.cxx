@@ -1660,6 +1660,10 @@ public:
         gf["const double&"] =               (cf_t)+[](long) { return new ConstDoubleRefConverter{}; };
         gf["long double"] =                 (cf_t)+[](long) { return new LongDoubleConverter{}; };
         gf["const long double&"] =          (cf_t)+[](long) { return new ConstLongDoubleRefConverter{}; };
+        gf["std::complex<double>"] =        (cf_t)+[](long) { return new ComplexDConverter{}; };
+        gf["complex<double>"] =             (cf_t)+[](long) { return new ComplexDConverter{}; };
+        gf["const std::complex<double>&"] = (cf_t)+[](long) { return new ComplexDConverter{}; };
+        gf["const complex<double>&"] =      (cf_t)+[](long) { return new ComplexDConverter{}; };
         gf["void"] =                        (cf_t)+[](long) { return new VoidConverter{}; };
 
     // pointer/array factories
@@ -1711,7 +1715,6 @@ public:
         gf["string_view"] =                 (cf_t)+[](long) { return new STLStringViewConverter{}; };
         gf["experimental::basic_string_view<char,char_traits<char> >"] = (cf_t)+[](long) { return new STLStringViewConverter{}; };
 #endif
-        gf["std::complex<double>"] =        (cf_t)+[](long) { return new ComplexDConverter{}; };
         gf["void*&"] =                      (cf_t)+[](long) { return new VoidPtrRefConverter{}; };
         gf["void**"] =                      (cf_t)+[](long) { return new VoidPtrPtrConverter{}; };
         gf["void*[]"] =                     (cf_t)+[](long) { return new VoidPtrPtrConverter{}; };

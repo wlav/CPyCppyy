@@ -12,6 +12,7 @@
 // Standard
 #include <complex>
 #include <stdexcept>
+#include <sstream>
 #include <string>
 #include <utility>
 
@@ -732,74 +733,65 @@ PyObject* StlIterIsNotEqual(PyObject* self, PyObject* other)
 
 
 //- STL complex<double> behavior ---------------------------------------------
-static PyObject* ComplexRealGet(PyObject* obj, void*)
+#define COMPLEX_METH_GETSET(name, cppname)                                   \
+static PyObject* name##ComplexGet(PyObject* self, void*) {                   \
+    return CallPyObjMethod(self, #cppname);                                  \
+}                                                                            \
+static int name##ComplexSet(PyObject* self, PyObject* value, void*) {        \
+    PyObject* result = CallPyObjMethod(self, #cppname, value);               \
+    if (result) {                                                            \
+        Py_DECREF(result);                                                   \
+        return 0;                                                            \
+    }                                                                        \
+    return -1;                                                               \
+}                                                                            \
+PyGetSetDef name##Complex{(char*)#name, (getter)name##ComplexGet, (setter)name##ComplexSet, nullptr, nullptr};
+
+COMPLEX_METH_GETSET(real, __cpp_real)
+COMPLEX_METH_GETSET(imag, __cpp_imag)
+
+
+static PyObject* ComplexDRealGet(CPPInstance* self, void*)
 {
-    return CallPyObjMethod(obj, "cppreal");
+    return PyFloat_FromDouble(((std::complex<double>*)self->GetObject())->real());
 }
 
-static int ComplexRealSet(PyObject* obj, PyObject* value, void*)
-{
-    PyObject* result = CallPyObjMethod(obj, "cppreal", value);
-    if (result) {
-        Py_DECREF(result);
-        return 0;
-    }
-    return -1;
-}
-
-PyGetSetDef ComplexReal{(char*)"real", (getter)ComplexRealGet, (setter)ComplexRealSet, nullptr, nullptr};
-
-
-static PyObject* ComplexImagGet(PyObject* obj, void*)
-{
-    return CallPyObjMethod(obj, "cppimag");
-}
-
-static int ComplexImagSet(PyObject* obj, PyObject* value, void*)
-{
-    PyObject* result = CallPyObjMethod(obj, "cppimag", value);
-    if (result) {
-        Py_DECREF(result);
-        return 0;
-    }
-    return -1;
-}
-
-PyGetSetDef ComplexImag{(char*)"imag", (getter)ComplexImagGet, (setter)ComplexImagSet, nullptr, nullptr};
-
-
-static PyObject* ComplexDRealGet(CPPInstance* obj, void*)
-{
-    return PyFloat_FromDouble(((std::complex<double>*)obj->GetObject())->real());
-}
-
-static int ComplexDRealSet(CPPInstance* obj, PyObject* value, void*)
+static int ComplexDRealSet(CPPInstance* self, PyObject* value, void*)
 {
     double d = PyFloat_AsDouble(value);
     if (d == -1.0 && PyErr_Occurred())
         return -1;
-    ((std::complex<double>*)obj->GetObject())->real(d);
+    ((std::complex<double>*)self->GetObject())->real(d);
     return 0;
 }
 
 PyGetSetDef ComplexDReal{(char*)"real", (getter)ComplexDRealGet, (setter)ComplexDRealSet, nullptr, nullptr};
 
 
-static PyObject* ComplexDImagGet(CPPInstance* obj, void*)
+static PyObject* ComplexDImagGet(CPPInstance* self, void*)
 {
-    return PyFloat_FromDouble(((std::complex<double>*)obj->GetObject())->imag());
+    return PyFloat_FromDouble(((std::complex<double>*)self->GetObject())->imag());
 }
 
-static int ComplexDImagSet(CPPInstance* obj, PyObject* value, void*)
+static int ComplexDImagSet(CPPInstance* self, PyObject* value, void*)
 {
     double d = PyFloat_AsDouble(value);
     if (d == -1.0 && PyErr_Occurred())
         return -1;
-    ((std::complex<double>*)obj->GetObject())->imag(d);
+    ((std::complex<double>*)self->GetObject())->imag(d);
     return 0;
 }
 
 PyGetSetDef ComplexDImag{(char*)"imag", (getter)ComplexDImagGet, (setter)ComplexDImagSet, nullptr, nullptr};
+
+PyObject* ComplexDRepr(CPPInstance* self)
+{
+    double r = ((std::complex<double>*)self->GetObject())->real();
+    double i = ((std::complex<double>*)self->GetObject())->imag();
+    std::ostringstream s;
+    s << r << '+' << i << 'j';
+    return CPyCppyy_PyUnicode_FromString(s.str().c_str());
+}
 
 } // unnamed namespace
 
@@ -939,15 +931,16 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
     }
 
     else if (name == "complex<double>" || name == "std::complex<double>") {
-        PyObject_SetAttrString(pyclass, "real", PyDescr_NewGetSet((PyTypeObject*)pyclass, &ComplexDReal));
-        PyObject_SetAttrString(pyclass, "imag", PyDescr_NewGetSet((PyTypeObject*)pyclass, &ComplexDImag));
+        Utility::AddToClass(pyclass, "__repr__", (PyCFunction)ComplexDRepr, METH_NOARGS);
+        PyObject_SetAttrString(pyclass, "real",  PyDescr_NewGetSet((PyTypeObject*)pyclass, &ComplexDReal));
+        PyObject_SetAttrString(pyclass, "imag",  PyDescr_NewGetSet((PyTypeObject*)pyclass, &ComplexDImag));
     }
 
     else if (IsTemplatedSTLClass(name, "complex")) {
-        Utility::AddToClass(pyclass, "cppreal", "real");
-        PyObject_SetAttrString(pyclass, "real", PyDescr_NewGetSet((PyTypeObject*)pyclass, &ComplexReal));
-        Utility::AddToClass(pyclass, "cppimag", "imag");
-        PyObject_SetAttrString(pyclass, "imag", PyDescr_NewGetSet((PyTypeObject*)pyclass, &ComplexImag)); 
+        Utility::AddToClass(pyclass, "__cpp_real", "real");
+        PyObject_SetAttrString(pyclass, "real", PyDescr_NewGetSet((PyTypeObject*)pyclass, &realComplex));
+        Utility::AddToClass(pyclass, "__cpp_imag", "imag");
+        PyObject_SetAttrString(pyclass, "imag", PyDescr_NewGetSet((PyTypeObject*)pyclass, &imagComplex)); 
     }
 
     PyObject* args = PyTuple_New(2);
