@@ -50,6 +50,7 @@ CPPYY_DECL_EXEC(LLongArray);
 CPPYY_DECL_EXEC(ULLongArray);
 CPPYY_DECL_EXEC(FloatArray);
 CPPYY_DECL_EXEC(DoubleArray);
+CPPYY_DECL_EXEC(ComplexDArray);
 
 // special cases
 CPPYY_DECL_EXEC(ComplexD);

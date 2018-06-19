@@ -849,18 +849,19 @@ bool CPyCppyy::name##ArrayRefConverter::SetArg(                              \
 
 
 //----------------------------------------------------------------------------
-CPPYY_IMPL_ARRAY_CONVERTER2(Bool,   bool,                  'b')  // signed char
-CPPYY_IMPL_ARRAY_CONVERTER (UChar,  unsigned char,         'B')
-CPPYY_IMPL_ARRAY_CONVERTER2(Short,  short,                 'h')
-CPPYY_IMPL_ARRAY_CONVERTER2(UShort, unsigned short,        'H')
-CPPYY_IMPL_ARRAY_CONVERTER (Int,    int,                   'i')
-CPPYY_IMPL_ARRAY_CONVERTER2(UInt,   unsigned int,          'I')
-CPPYY_IMPL_ARRAY_CONVERTER (Long,   long,                  'l')
-CPPYY_IMPL_ARRAY_CONVERTER2(ULong,  unsigned long,         'L')
-CPPYY_IMPL_ARRAY_CONVERTER2(LLong,  long long,             'q')
-CPPYY_IMPL_ARRAY_CONVERTER2(ULLong, unsigned long long,    'Q')
-CPPYY_IMPL_ARRAY_CONVERTER2(Float,  float,                 'f')
-CPPYY_IMPL_ARRAY_CONVERTER (Double, double,                'd')
+CPPYY_IMPL_ARRAY_CONVERTER2(Bool,     bool,                 'b')  // signed char
+CPPYY_IMPL_ARRAY_CONVERTER (UChar,    unsigned char,        'B')
+CPPYY_IMPL_ARRAY_CONVERTER2(Short,    short,                'h')
+CPPYY_IMPL_ARRAY_CONVERTER2(UShort,   unsigned short,       'H')
+CPPYY_IMPL_ARRAY_CONVERTER (Int,      int,                  'i')
+CPPYY_IMPL_ARRAY_CONVERTER2(UInt,     unsigned int,         'I')
+CPPYY_IMPL_ARRAY_CONVERTER (Long,     long,                 'l')
+CPPYY_IMPL_ARRAY_CONVERTER2(ULong,    unsigned long,        'L')
+CPPYY_IMPL_ARRAY_CONVERTER2(LLong,    long long,            'q')
+CPPYY_IMPL_ARRAY_CONVERTER2(ULLong,   unsigned long long,   'Q')
+CPPYY_IMPL_ARRAY_CONVERTER2(Float,    float,                'f')
+CPPYY_IMPL_ARRAY_CONVERTER (Double,   double,               'd')
+CPPYY_IMPL_ARRAY_CONVERTER (ComplexD, std::complex<double>, 'Z')
 
 
 //- converters for special cases ---------------------------------------------
@@ -1676,13 +1677,15 @@ public:
         gf["long*"] =                       (cf_t)+[](long sz) { return new LongArrayConverter{sz}; };
         gf["unsigned long*"] =              (cf_t)+[](long sz) { return new ULongArrayConverter{sz}; };
         gf["unsigned long&"] =              (cf_t)+[](long sz) { return new ULongArrayRefConverter{sz}; };
-        gf["float*"] =                      (cf_t)+[](long sz) { return new FloatArrayConverter{sz}; };
-        gf["float&"] =                      (cf_t)+[](long sz) { return new FloatArrayRefConverter{sz}; };
-        gf["double*"] =                     (cf_t)+[](long sz) { return new DoubleArrayConverter{sz}; };
         gf["long long*"] =                  (cf_t)+[](long sz) { return new LLongArrayConverter{sz}; };
         gf["long long&"] =                  (cf_t)+[](long sz) { return new LLongArrayRefConverter{sz}; };
         gf["unsigned long long*"] =         (cf_t)+[](long sz) { return new ULLongArrayConverter{sz}; };
         gf["unsigned long long&"] =         (cf_t)+[](long sz) { return new ULLongArrayRefConverter{sz}; };
+        gf["float*"] =                      (cf_t)+[](long sz) { return new FloatArrayConverter{sz}; };
+        gf["float&"] =                      (cf_t)+[](long sz) { return new FloatArrayRefConverter{sz}; };
+        gf["double*"] =                     (cf_t)+[](long sz) { return new DoubleArrayConverter{sz}; };
+        gf["std::complex<double>*"] =       (cf_t)+[](long sz) { return new ComplexDArrayConverter{sz}; };
+        gf["complex<double>*"] =            (cf_t)+[](long sz) { return new ComplexDArrayConverter{sz}; };
         gf["void*"] =                       (cf_t)+[](long sz) { return new VoidArrayConverter{static_cast<bool>(sz)}; };
 
     // aliases

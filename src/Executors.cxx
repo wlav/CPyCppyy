@@ -349,18 +349,19 @@ PyObject* CPyCppyy::name##ArrayExecutor::Execute(                            \
     return CreateLowLevelView((type*)GILCallR(method, self, ctxt));          \
 }
 
-CPPYY_IMPL_ARRAY_EXEC(Bool,   bool)
-CPPYY_IMPL_ARRAY_EXEC(UChar,  unsigned char)
-CPPYY_IMPL_ARRAY_EXEC(Short,  short)
-CPPYY_IMPL_ARRAY_EXEC(UShort, unsigned short)
-CPPYY_IMPL_ARRAY_EXEC(Int,    int)
-CPPYY_IMPL_ARRAY_EXEC(UInt,   unsigned int)
-CPPYY_IMPL_ARRAY_EXEC(Long,   long)
-CPPYY_IMPL_ARRAY_EXEC(ULong,  unsigned long)
-CPPYY_IMPL_ARRAY_EXEC(LLong,  long long)
-CPPYY_IMPL_ARRAY_EXEC(ULLong, unsigned long long)
-CPPYY_IMPL_ARRAY_EXEC(Float,  float)
-CPPYY_IMPL_ARRAY_EXEC(Double, double)
+CPPYY_IMPL_ARRAY_EXEC(Bool,     bool)
+CPPYY_IMPL_ARRAY_EXEC(UChar,    unsigned char)
+CPPYY_IMPL_ARRAY_EXEC(Short,    short)
+CPPYY_IMPL_ARRAY_EXEC(UShort,   unsigned short)
+CPPYY_IMPL_ARRAY_EXEC(Int,      int)
+CPPYY_IMPL_ARRAY_EXEC(UInt,     unsigned int)
+CPPYY_IMPL_ARRAY_EXEC(Long,     long)
+CPPYY_IMPL_ARRAY_EXEC(ULong,    unsigned long)
+CPPYY_IMPL_ARRAY_EXEC(LLong,    long long)
+CPPYY_IMPL_ARRAY_EXEC(ULLong,   unsigned long long)
+CPPYY_IMPL_ARRAY_EXEC(Float,    float)
+CPPYY_IMPL_ARRAY_EXEC(Double,   double)
+CPPYY_IMPL_ARRAY_EXEC(ComplexD, std::complex<double>)
 
 
 //- special cases ------------------------------------------------------------
@@ -839,6 +840,8 @@ public:
         gf["ULong64_t*"] =                  (ef_t)+[]() { return new ULLongArrayExecutor{}; };
         gf["float*"] =                      (ef_t)+[]() { return new FloatArrayExecutor{}; };
         gf["double*"] =                     (ef_t)+[]() { return new DoubleArrayExecutor{}; };
+        gf["std::complex<double>*"] =       (ef_t)+[]() { return new ComplexDArrayExecutor{}; };
+        gf["complex<double>*"] =            (ef_t)+[]() { return new ComplexDArrayExecutor{}; };
 
     // factories for special cases
         gf["const char*"] =                 (ef_t)+[]() { return new CStringExecutor{}; };
