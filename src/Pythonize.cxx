@@ -327,6 +327,8 @@ static PyObject* vectoriter_iternext(vectoriterobject* vi) {
     return result;
 }
 
+
+// TODO: where is PyType_Ready called on this one? Is it needed, given that it's internal?
 PyTypeObject VectorIter_Type = {
     PyVarObject_HEAD_INIT(&PyType_Type, 0)
     (char*)"cppyy.vectoriter",    // tp_name
@@ -341,8 +343,7 @@ PyTypeObject VectorIter_Type = {
     0, 0, 0,
     PyObject_SelfIter,            // tp_iter
     (iternextfunc)vectoriter_iternext,      // tp_iternext
-    0,                            // tp_methods
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 #if PY_VERSION_HEX >= 0x02030000
     , 0                           // tp_del
 #endif

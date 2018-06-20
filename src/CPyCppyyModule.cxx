@@ -806,6 +806,9 @@ extern "C" void initlibcppyy()
     if (!Utility::InitProxy(gThisModule, &TupleOfInstances_Type, "InstancesArray"))
        CPYCPPYY_INIT_ERROR;
 
+    if (!Utility::InitProxy(gThisModule, &InstanceArrayIter_Type, "instancearrayiter"))
+       CPYCPPYY_INIT_ERROR;
+
     if (!Utility::InitProxy(gThisModule, &PyNullPtr_t_Type, "nullptr_t"))
         CPYCPPYY_INIT_ERROR;
 

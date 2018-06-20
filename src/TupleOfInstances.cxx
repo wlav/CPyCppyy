@@ -4,34 +4,125 @@
 #include "ProxyWrappers.h"
 
 
+namespace {
+
+typedef struct {
+    PyObject_HEAD
+    Cppyy::TCppType_t        ia_klass;
+    void*                    ia_array_start;
+    Py_ssize_t               ia_pos;
+    Py_ssize_t               ia_len;
+    Py_ssize_t               ia_stride;
+} ia_iterobject;
+
+static PyObject* ia_iternext(ia_iterobject* ia) {
+    if (ia->ia_len != -1 && ia->ia_pos >= ia->ia_len) {
+        ia->ia_pos = 0;      // debatable, but since the iterator is cached, this
+        return nullptr;      //   allows for multiple conversions to e.g. a tuple
+    }
+    PyObject* result = CPyCppyy::BindCppObjectNoCast(
+        (char*)ia->ia_array_start + ia->ia_pos*ia->ia_stride, ia->ia_klass);
+    ia->ia_pos += 1;
+    return result;
+}
+
+static int ia_traverse(ia_iterobject*, visitproc, void*) {
+    return 0;
+}
+
+static PyObject* ia_getsize(ia_iterobject* ia, void*) {
+    return PyInt_FromSsize_t(ia->ia_len);
+}
+
+static int ia_setsize(ia_iterobject* ia, PyObject* pysize, void*) {
+    Py_ssize_t size = PyInt_AsSsize_t(pysize);
+    if (size == (Py_ssize_t)-1 && PyErr_Occurred())
+        return -1;
+    ia->ia_len = size;
+    return 0;
+}
+
+static PyGetSetDef ia_getset[] = {
+    {(char*)"size", (getter)ia_getsize, (setter)ia_setsize,
+      (char*)"set size of array to which this iterator refers", nullptr},
+    {(char*)nullptr, nullptr, nullptr, nullptr, nullptr}
+};
+
+} // unnamed namespace
+
+
 namespace CPyCppyy {
+
+PyTypeObject InstanceArrayIter_Type = {
+    PyVarObject_HEAD_INIT(&PyType_Type, 0)
+    (char*)"cppyy.instancearrayiter",  // tp_name
+    sizeof(ia_iterobject),        // tp_basicsize
+    0,
+    (destructor)PyObject_GC_Del,  // tp_dealloc
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    Py_TPFLAGS_DEFAULT |
+        Py_TPFLAGS_HAVE_GC,       // tp_flags
+    0,
+    (traverseproc)ia_traverse,    // tp_traverse
+    0, 0, 0,
+    PyObject_SelfIter,            // tp_iter
+    (iternextfunc)ia_iternext,    // tp_iternext
+    0, 0, ia_getset, 0, 0, 0, 0,
+    0,                   // tp_getset
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+#if PY_VERSION_HEX >= 0x02030000
+    , 0                           // tp_del
+#endif
+#if PY_VERSION_HEX >= 0x02060000
+    , 0                           // tp_version_tag
+#endif
+#if PY_VERSION_HEX >= 0x03040000
+    , 0                           // tp_finalize
+#endif
+};
+
 
 //= support for C-style arrays of objects ====================================
 PyObject* TupleOfInstances_New(
     Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, Py_ssize_t nelems)
 {
-// TODO: the extra copy is inefficient, but it appears that the only way to
-// initialize a subclass of a tuple is through a sequence
-    PyObject* tup = PyTuple_New(nelems);
-    char* array_start = *(char**)address;
-    for (int i = 0; i < nelems; ++i) {
-    // TODO: there's an assumption here that there is no padding, which is bound
-    // to be incorrect in certain cases
-        PyTuple_SetItem(tup, i,
-            BindCppObjectNoCast((char*)array_start + i*Cppyy::SizeOf(klass), klass));
-    // Note: objects are bound as pointers, yet since the pointer value stays in
-    // place, updates propagate just as if they were bound by-reference
+    if (nelems != -1) {
+    // TODO: the extra copy is inefficient, but it appears that the only way to
+    // initialize a subclass of a tuple is through a sequence
+        PyObject* tup = PyTuple_New(nelems);
+        char* array_start = *(char**)address;
+        for (int i = 0; i < nelems; ++i) {
+        // TODO: there's an assumption here that there is no padding, which is bound
+        // to be incorrect in certain cases
+            PyTuple_SetItem(tup, i,
+                BindCppObjectNoCast((char*)array_start + i*Cppyy::SizeOf(klass), klass));
+        // Note: objects are bound as pointers, yet since the pointer value stays in
+        // place, updates propagate just as if they were bound by-reference
+        }
+
+        PyObject* args = PyTuple_New(1);
+        Py_INCREF(tup); PyTuple_SET_ITEM(args, 0, tup);
+        PyObject* arr = PyTuple_Type.tp_new(&TupleOfInstances_Type, args, nullptr);
+        if (PyErr_Occurred()) PyErr_Print();
+
+        Py_DECREF(args);
+        // tup ref eaten by SET_ITEM on args
+
+        return arr;
+    } else {
+    // no known length ... return an iterable object and let the user figure it out
+        ia_iterobject* ia = PyObject_GC_New(ia_iterobject, &InstanceArrayIter_Type);
+        if (!ia) return nullptr;
+
+        ia->ia_klass       = klass;
+        ia->ia_array_start = *(char**)address;
+        ia->ia_pos         = 0;
+        ia->ia_len         = nelems;   // == -1
+        ia->ia_stride      = Cppyy::SizeOf(klass);
+
+         _PyObject_GC_TRACK(ia);
+        return (PyObject*)ia;
     }
-
-    PyObject* args = PyTuple_New(1);
-    Py_INCREF(tup); PyTuple_SET_ITEM(args, 0, tup);
-    PyObject* arr = PyTuple_Type.tp_new(&TupleOfInstances_Type, args, nullptr);
-    if (PyErr_Occurred()) PyErr_Print();
-
-    Py_DECREF(args);
-    // tup ref eaten by SET_ITEM on args
-
-    return arr;
 }
 
 //= CPyCppyy custom tuple-like array type ====================================
