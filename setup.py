@@ -35,7 +35,7 @@ class my_bdist_wheel(_bdist_wheel):
 
 setup(
     name='CPyCppyy',
-    version='1.1.1',
+    version='1.2.0',
     description='Cling-based Python-C++ bindings for CPython',
     long_description=long_description,
 
