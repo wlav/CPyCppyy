@@ -1181,10 +1181,7 @@ bool CPyCppyy::InstanceArrayConverter::SetArg(
 PyObject* CPyCppyy::InstanceArrayConverter::FromMemory(void* address)
 {
 // construct python tuple of instances from C++ array read at <address>
-    if (m_size <= 0)     // if size unknown, just hand out the first object
-        return BindCppObjectNoCast(address, fClass);
-
-    return BindCppObjectArray(address, fClass, m_size);
+    return BindCppObjectArray(*(char**)address, fClass, m_dims);
 }
 
 //----------------------------------------------------------------------------
@@ -1476,7 +1473,7 @@ bool CPyCppyy::NotImplementedConverter::SetArg(PyObject*, Parameter&, CallContex
 
 
 //- factories ----------------------------------------------------------------
-CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long size)
+CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long* dims)
 {
 // The matching of the fulltype to a converter factory goes through up to five levels:
 //   1) full, exact match
@@ -1486,6 +1483,8 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long
 //   5) generalized cases (covers basically all C++ classes)
 //
 // If all fails, void is used, which will generate a run-time warning when used.
+
+    long size = (dims && dims[0] != -1) ? dims[1] : -1;
 
 // an exactly matching converter is best
     ConvFactories_t::iterator h = gConvFactories.find(fullType);
@@ -1590,7 +1589,7 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long
             else if (cpd == "&&")
                 result = new InstanceMoveConverter(klass);
             else if (cpd == "[]" || size > 0)
-                result = new InstanceArrayConverter(klass, size, false);
+                result = new InstanceArrayConverter(klass, dims, false);
             else if (cpd == "")             // by value
                 result = new InstanceConverter(klass, true);
         }

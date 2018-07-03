@@ -84,18 +84,48 @@ PyTypeObject InstanceArrayIter_Type = {
 
 //= support for C-style arrays of objects ====================================
 PyObject* TupleOfInstances_New(
-    Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, Py_ssize_t nelems)
+    Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, long ndims, long* dims)
 {
-    if (nelems != -1) {
+// recursively set up tuples of instances on all dimensions
+    if (ndims == -1 /* unknown shape */ || dims[0] == -1 /* unknown size */) {
+    // no known length ... return an iterable object and let the user figure it out
+        ia_iterobject* ia = PyObject_GC_New(ia_iterobject, &InstanceArrayIter_Type);
+        if (!ia) return nullptr;
+
+        ia->ia_klass       = klass;
+        ia->ia_array_start = address;
+        ia->ia_pos         = 0;
+        ia->ia_len         = -1;
+        ia->ia_stride      = Cppyy::SizeOf(klass);
+
+         _PyObject_GC_TRACK(ia);
+        return (PyObject*)ia;
+    } else if (1 < ndims) {
+    // not the innermost dimension, descend one level
+        int nelems = (int)dims[0];
+        size_t block_size = 0;
+        for (int i = 1; i < (int)ndims; ++i) block_size += (size_t)dims[i];
+        block_size *= Cppyy::SizeOf(klass);
+
+        PyObject* tup = PyTuple_New(nelems);
+        for (int i = 0; i < nelems; ++i) {
+            PyTuple_SetItem(tup, i, TupleOfInstances_New(
+                (char*)address + i*block_size, klass, ndims-1, dims+1));
+        }
+        return tup;
+    } else {
+    // innermost dimension: construct tuple
+        int nelems = (int)dims[0];
+        size_t block_size = Cppyy::SizeOf(klass);
+
     // TODO: the extra copy is inefficient, but it appears that the only way to
     // initialize a subclass of a tuple is through a sequence
         PyObject* tup = PyTuple_New(nelems);
-        char* array_start = *(char**)address;
         for (int i = 0; i < nelems; ++i) {
         // TODO: there's an assumption here that there is no padding, which is bound
         // to be incorrect in certain cases
             PyTuple_SetItem(tup, i,
-                BindCppObjectNoCast((char*)array_start + i*Cppyy::SizeOf(klass), klass));
+                BindCppObjectNoCast((char*)address + i*block_size, klass));
         // Note: objects are bound as pointers, yet since the pointer value stays in
         // place, updates propagate just as if they were bound by-reference
         }
@@ -109,20 +139,10 @@ PyObject* TupleOfInstances_New(
         // tup ref eaten by SET_ITEM on args
 
         return arr;
-    } else {
-    // no known length ... return an iterable object and let the user figure it out
-        ia_iterobject* ia = PyObject_GC_New(ia_iterobject, &InstanceArrayIter_Type);
-        if (!ia) return nullptr;
-
-        ia->ia_klass       = klass;
-        ia->ia_array_start = *(char**)address;
-        ia->ia_pos         = 0;
-        ia->ia_len         = nelems;   // == -1
-        ia->ia_stride      = Cppyy::SizeOf(klass);
-
-         _PyObject_GC_TRACK(ia);
-        return (PyObject*)ia;
     }
+
+// never get here
+    return nullptr;
 }
 
 //= CPyCppyy custom tuple-like array type ====================================

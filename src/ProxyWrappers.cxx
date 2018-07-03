@@ -727,8 +727,8 @@ PyObject* CPyCppyy::BindCppObject(Cppyy::TCppObject_t address,
 
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::BindCppObjectArray(
-    Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, Int_t size)
+    Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, long* dims)
 {
 // TODO: this function exists for symmetry; need to figure out if it's useful
-    return TupleOfInstances_New(address, klass, size);
+    return TupleOfInstances_New(address, klass, dims[0], dims+1);
 }

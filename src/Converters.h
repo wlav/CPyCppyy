@@ -21,7 +21,7 @@ public:
 };
 
 // create converter from fully qualified type
-Converter* CreateConverter(const std::string& fullType, Long_t size = -1);
+Converter* CreateConverter(const std::string& fullType, long* dims = nullptr);
 
 
 // converters for special cases (only here b/c of external use of StrictInstancePtrConverter)

@@ -7,6 +7,7 @@
 
 // Standard
 #include <limits.h>
+#include <vector>
 
 
 namespace CPyCppyy {
@@ -189,12 +190,19 @@ void CPyCppyy::CPPDataMember::Set(Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t i
     fOffset         = Cppyy::GetDatamemberOffset(scope, idata); // TODO: make lazy
     fProperty       = Cppyy::IsStaticData(scope, idata) ? kIsStaticData : 0;
 
-    int size = Cppyy::GetDimensionSize(scope, idata, 0);
-    if (0 < size)
+    std::vector<long> dims;
+    int ndim = 0; long size = 0;
+    while (0 < (size = Cppyy::GetDimensionSize(scope, idata, ndim))) {
+         ndim += 1;
+         if (size == INT_MAX)      // meaning: incomplete array type
+             size = -1;
+         if (ndim == 1) { dims.reserve(4); dims.push_back(0); }
+         dims.push_back(size);
+    }
+    if (ndim) {
+        dims[0] = ndim;
         fProperty |= kIsArrayType;
-
-    if (size == INT_MAX)      // meaning: incomplete array type
-        size = -1;
+    }
 
     std::string fullType = Cppyy::GetDatamemberType(scope, idata);
     if (Cppyy::IsEnumData(scope, idata)) {
@@ -205,7 +213,7 @@ void CPyCppyy::CPPDataMember::Set(Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t i
     if (Cppyy::IsConstData(scope, idata))
         fProperty |= kIsConstData;
 
-    fConverter = CreateConverter(fullType, size);
+    fConverter = CreateConverter(fullType, dims.empty() ? nullptr : dims.data());
 }
 
 //-----------------------------------------------------------------------------
@@ -215,7 +223,7 @@ void CPyCppyy::CPPDataMember::Set(Cppyy::TCppScope_t scope, const std::string& n
     fName           = name;
     fOffset         = (ptrdiff_t)address;
     fProperty       = (kIsStaticData | kIsConstData | kIsEnumData /* true, but may chance */);
-    fConverter      = CreateConverter("UInt_t", -1);   // TODO: use general enum_t type
+    fConverter      = CreateConverter("internal_enum_type_t");
 }
 
 //-----------------------------------------------------------------------------

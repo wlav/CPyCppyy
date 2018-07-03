@@ -175,8 +175,17 @@ extern template class InstancePtrPtrConverter<false>;
 
 class InstanceArrayConverter : public InstancePtrConverter {
 public:
-    InstanceArrayConverter(Cppyy::TCppType_t klass, size_t size, bool keepControl = false) :
-        InstancePtrConverter(klass, keepControl), m_size(size) {}
+    InstanceArrayConverter(Cppyy::TCppType_t klass, long* dims, bool keepControl = false) :
+            InstancePtrConverter(klass, keepControl) {
+        long size = (dims && 0 < dims[0]) ? dims[0]+1: 1;
+        m_dims = new long[size];
+        if (dims) {
+            for (long i = 0; i < size; ++i) m_dims[i] = dims[i];
+        } else {
+            m_dims[0] = -1;
+        }
+    }
+    ~InstanceArrayConverter() { delete [] m_dims; }
 
 public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
@@ -184,7 +193,7 @@ public:
     virtual bool ToMemory(PyObject* value, void* address);
 
 protected:
-    size_t m_size;
+    long* m_dims;
 };
 
 
