@@ -404,7 +404,7 @@ bool CPyCppyy::ULongConverter::SetArg(
 {
 // convert <pyobject> to C++ unsigned long, set arg for call
     para.fValue.fULong = PyLongOrInt_AsULong(pyobject);
-    if (PyErr_Occurred())
+    if (para.fValue.fULong == (unsigned long)-1 && PyErr_Occurred())
         return false;
     para.fTypeCode = 'L';
     return true;
@@ -420,7 +420,7 @@ bool CPyCppyy::ULongConverter::ToMemory(PyObject* value, void* address)
 {
 // convert <value> to C++ unsigned long, write it at <address>
     unsigned long u = PyLongOrInt_AsULong(value);
-    if (PyErr_Occurred())
+    if (u == (unsigned long)-1 && PyErr_Occurred())
         return false;
     *((unsigned long*)address) = u;
     return true;
@@ -437,7 +437,7 @@ bool CPyCppyy::UIntConverter::ToMemory(PyObject* value, void* address)
 {
 // convert <value> to C++ unsigned int, write it at <address>
     ULong_t u = PyLongOrInt_AsULong(value);
-    if (PyErr_Occurred())
+    if (u == (unsigned long)-1 && PyErr_Occurred())
         return false;
 
     if (u > (ULong_t)UINT_MAX) {

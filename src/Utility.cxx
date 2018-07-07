@@ -136,6 +136,7 @@ unsigned long CPyCppyy::PyLongOrInt_AsULong(PyObject* pyobject)
         } else {
             PyErr_SetString(PyExc_ValueError,
                 "can\'t convert negative value to unsigned long");
+            return (unsigned long)-1;
         }
     }
 

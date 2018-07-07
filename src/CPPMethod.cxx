@@ -500,11 +500,14 @@ PyObject* CPyCppyy::CPPMethod::Execute(void* self, ptrdiff_t offset, CallContext
         result = CallSafe(self, offset, ctxt);
     }
 
-    if (result && Utility::PyErr_Occurred_WithGIL()) {
-    // can happen in the case of a CINT error: trigger exception processing
-        Py_DECREF(result);
-        result = 0;
-    } else if (!result && PyErr_Occurred())
+// TODO: the following is dreadfully slow and dead-locks on Apache: revisit
+// raising exceptions through callbacks by using magic returns
+//    if (result && Utility::PyErr_Occurred_WithGIL()) {
+//    // can happen in the case of a CINT error: trigger exception processing
+//        Py_DECREF(result);
+//        result = 0;
+//    } else if (!result && PyErr_Occurred())
+    if (!result && PyErr_Occurred())
         SetPyError_(0);
 
     return result;
@@ -521,7 +524,7 @@ PyObject* CPyCppyy::CPPMethod::Call(
     }
 
 // setup as necessary
-    if (!Initialize(ctxt))
+    if (!fIsInitialized && !Initialize(ctxt))
         return nullptr;
 
 // fetch self, verify, and put the arguments in usable order
@@ -529,9 +532,11 @@ PyObject* CPyCppyy::CPPMethod::Call(
         return nullptr;
 
 // translate the arguments
-    if (!ConvertAndSetArgs(args, ctxt)) {
-        Py_DECREF(args);
-        return nullptr;
+    if (fArgsRequired || PyTuple_GET_SIZE(args)) {
+        if (!ConvertAndSetArgs(args, ctxt)) {
+            Py_DECREF(args);
+            return nullptr;
+        }
     }
 
 // get the C++ object that this object proxy is a handle for

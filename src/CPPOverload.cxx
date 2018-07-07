@@ -26,6 +26,15 @@ namespace CPyCppyy {
 
 namespace {
 
+// from CPython's instancemethod: Free list for method objects to safe malloc/free overhead
+// The im_self element is used to chain the elements.
+static CPPOverload* free_list;
+static int numfree = 0;
+#ifndef CPPOverload_MAXFREELIST
+#define CPPOverload_MAXFREELIST 32
+#endif
+
+
 // TODO: only used here, but may be better off integrated with Pythonize.cxx callbacks
 class TPythonCallback : public PyCallable {
 public:
@@ -644,8 +653,24 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
 //-----------------------------------------------------------------------------
 static CPPOverload* mp_descrget(CPPOverload* pymeth, CPPInstance* pyobj, PyObject*)
 {
-// Descriptor; create and return a new bound method proxy (language requirement).
-    CPPOverload* newPyMeth = (CPPOverload*)CPPOverload_Type.tp_alloc(&CPPOverload_Type, 0);
+// Descriptor; create and return a new bound method proxy (language requirement) if self
+    if (!pyobj) {
+        Py_INCREF(pymeth);
+        return pymeth;       // unbound, e.g. free functions
+    }
+
+// else: bound
+    CPPOverload* newPyMeth = free_list;
+    if (newPyMeth != NULL) {
+        free_list = (CPPOverload*)(newPyMeth->fSelf);
+        (void)PyObject_INIT(newPyMeth, &CPPOverload_Type);
+        numfree--;
+    }
+    else {
+        newPyMeth = PyObject_GC_New(CPPOverload, &CPPOverload_Type);
+        if (!newPyMeth)
+            return nullptr;
+    }
 
 // method info is shared, as it contains the collected overload knowledge
     *pymeth->fMethodInfo->fRefCount += 1;
@@ -655,6 +680,7 @@ static CPPOverload* mp_descrget(CPPOverload* pymeth, CPPInstance* pyobj, PyObjec
     Py_XINCREF((PyObject*)pyobj);
     newPyMeth->fSelf = pyobj;
 
+    _PyObject_GC_TRACK(newPyMeth);
     return newPyMeth;
 }
 
@@ -685,7 +711,14 @@ static void mp_dealloc(CPPOverload* pymeth)
         delete pymeth->fMethodInfo;
     }
 
-    PyObject_GC_Del(pymeth);
+    if (numfree < CPPOverload_MAXFREELIST) {
+        pymeth->fSelf = (CPyCppyy::CPPInstance*)free_list;
+        free_list = pymeth;
+        numfree++;
+    }
+    else {
+        PyObject_GC_Del(pymeth);
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -900,3 +933,5 @@ CPyCppyy::CPPOverload::MethodInfo_t::~MethodInfo_t()
     fMethods.clear();
     delete fRefCount;
 }
+
+// TODO: something like PyMethod_Fini to clear up the free_list

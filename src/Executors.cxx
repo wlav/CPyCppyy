@@ -195,7 +195,7 @@ PyObject* CPyCppyy::ULongExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python unsigned long return value
-   return PyLong_FromUnsignedLong((ULong_t)GILCallLL(method, self, ctxt));
+    return PyLong_FromUnsignedLong((ULong_t)GILCallLL(method, self, ctxt));
 }
 
 //----------------------------------------------------------------------------
@@ -266,6 +266,8 @@ PyObject* CPyCppyy::name##RefExecutor::Execute(                              \
         *ref = (type)F2(fAssignable);                                        \
         Py_DECREF(fAssignable);                                              \
         fAssignable = nullptr;                                               \
+        if (*ref == (type)-1 && PyErr_Occurred())                            \
+            return nullptr;                                                  \
         Py_INCREF(Py_None);                                                  \
         return Py_None;                                                      \
     }                                                                        \
