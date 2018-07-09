@@ -98,7 +98,7 @@ PyObject* TupleOfInstances_New(
         ia->ia_len         = -1;
         ia->ia_stride      = Cppyy::SizeOf(klass);
 
-         _PyObject_GC_TRACK(ia);
+         PyObject_GC_Track(ia);
         return (PyObject*)ia;
     } else if (1 < ndims) {
     // not the innermost dimension, descend one level

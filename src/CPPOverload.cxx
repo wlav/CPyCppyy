@@ -680,7 +680,7 @@ static CPPOverload* mp_descrget(CPPOverload* pymeth, CPPInstance* pyobj, PyObjec
     Py_XINCREF((PyObject*)pyobj);
     newPyMeth->fSelf = pyobj;
 
-    _PyObject_GC_TRACK(newPyMeth);
+    PyObject_GC_Track(newPyMeth);
     return newPyMeth;
 }
 
