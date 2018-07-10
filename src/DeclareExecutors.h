@@ -50,10 +50,16 @@ CPPYY_DECL_EXEC(LLongArray);
 CPPYY_DECL_EXEC(ULLongArray);
 CPPYY_DECL_EXEC(FloatArray);
 CPPYY_DECL_EXEC(DoubleArray);
+CPPYY_DECL_EXEC(ComplexFArray);
 CPPYY_DECL_EXEC(ComplexDArray);
+CPPYY_DECL_EXEC(ComplexIArray);
+CPPYY_DECL_EXEC(ComplexLArray);
 
 // special cases
+CPPYY_DECL_EXEC(ComplexF);
 CPPYY_DECL_EXEC(ComplexD);
+CPPYY_DECL_EXEC(ComplexI);
+CPPYY_DECL_EXEC(ComplexL);
 CPPYY_DECL_EXEC(STLString);
 
 class InstancePtrExecutor : public Executor {
@@ -97,6 +103,7 @@ CPPYY_DECL_REFEXEC(ULongLong);
 CPPYY_DECL_REFEXEC(Float);
 CPPYY_DECL_REFEXEC(Double);
 CPPYY_DECL_REFEXEC(LongDouble);
+CPPYY_DECL_REFEXEC(ComplexD);
 CPPYY_DECL_REFEXEC(STLString);
 
 // special cases

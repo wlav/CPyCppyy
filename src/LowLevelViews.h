@@ -6,6 +6,15 @@
 
 namespace CPyCppyy {
 
+class Converter;
+
+class LowLevelView {
+public:
+    PyObject_HEAD
+    Py_buffer   fBufInfo;
+    Converter*  fConverter;
+};
+
 PyObject* CreateLowLevelView(bool*,                   Py_ssize_t* shape = nullptr);
 PyObject* CreateLowLevelView(unsigned char*,          Py_ssize_t* shape = nullptr);
 PyObject* CreateLowLevelView(short*,                  Py_ssize_t* shape = nullptr);
@@ -18,7 +27,10 @@ PyObject* CreateLowLevelView(long long*,              Py_ssize_t* shape = nullpt
 PyObject* CreateLowLevelView(unsigned long long*,     Py_ssize_t* shape = nullptr);
 PyObject* CreateLowLevelView(float*,                  Py_ssize_t* shape = nullptr);
 PyObject* CreateLowLevelView(double*,                 Py_ssize_t* shape = nullptr);
+PyObject* CreateLowLevelView(std::complex<float>*,    Py_ssize_t* shape = nullptr);
 PyObject* CreateLowLevelView(std::complex<double>*,   Py_ssize_t* shape = nullptr);
+PyObject* CreateLowLevelView(std::complex<int>*,      Py_ssize_t* shape = nullptr);
+PyObject* CreateLowLevelView(std::complex<long>*,     Py_ssize_t* shape = nullptr);
 
 inline PyObject* CreatePointerView(void* ptr) {
     Py_ssize_t shape[] = {1, 1};

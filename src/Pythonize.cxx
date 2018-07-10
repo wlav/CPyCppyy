@@ -4,6 +4,7 @@
 #include "Converters.h"
 #include "CPPInstance.h"
 #include "CPPOverload.h"
+#include "LowLevelViews.h"
 #include "ProxyWrappers.h"
 #include "PyCallable.h"
 #include "PyStrings.h"
@@ -287,6 +288,32 @@ PyObject* VectorInit(PyObject* self, PyObject* args)
     return nullptr;
 }
 
+//---------------------------------------------------------------------------
+PyObject* VectorData(PyObject* self, PyObject*)
+{
+    PyObject* pydata = CallPyObjMethod(self, "_vector_data");
+    if (!LowLevelView_Check(pydata)) return pydata;
+
+    PyObject* pylen = CallPyObjMethod(self, "size");
+    if (!pylen) {
+        PyErr_Clear();
+        return pydata;
+    }
+
+    long clen = PyInt_AsLong(pylen);
+    Py_DECREF(pylen);
+
+// TODO: should be a LowLevelView helper
+    Py_buffer& bi = ((LowLevelView*)pydata)->fBufInfo;
+    bi.len = clen * bi.itemsize;
+    if (bi.ndim == 1 && bi.shape)
+        bi.shape[0] = clen;
+
+    return pydata;
+}
+
+
+//-----------------------------------------------------------------------------
 typedef struct {
     PyObject_HEAD
     PyObject*                vi_vector;
@@ -736,7 +763,7 @@ PyObject* StlIterIsNotEqual(PyObject* self, PyObject* other)
 }
 
 
-//- STL complex<double> behavior ---------------------------------------------
+//- STL complex<T> behavior --------------------------------------------------
 #define COMPLEX_METH_GETSET(name, cppname)                                   \
 static PyObject* name##ComplexGet(PyObject* self, void*) {                   \
     return CallPyObjMethod(self, #cppname);                                  \
@@ -754,6 +781,43 @@ PyGetSetDef name##Complex{(char*)#name, (getter)name##ComplexGet, (setter)name##
 COMPLEX_METH_GETSET(real, __cpp_real)
 COMPLEX_METH_GETSET(imag, __cpp_imag)
 
+static PyObject* ComplexComplex(PyObject* self) {
+    PyObject* real = CallPyObjMethod(self, "__cpp_real");
+    if (!real) return nullptr;
+    double r = PyFloat_AsDouble(real);
+    Py_DECREF(real);
+    if (r == -1. && PyErr_Occurred())
+        return nullptr;
+
+    PyObject* imag = CallPyObjMethod(self, "__cpp_imag");
+    if (!imag) return nullptr;
+    double i = PyFloat_AsDouble(imag);
+    Py_DECREF(imag);
+    if (i == -1. && PyErr_Occurred())
+        return nullptr;
+
+    return PyComplex_FromDoubles(r, i);
+}
+
+static PyObject* ComplexRepr(PyObject* self) {
+    PyObject* real = CallPyObjMethod(self, "__cpp_real");
+    if (!real) return nullptr;
+    double r = PyFloat_AsDouble(real);
+    Py_DECREF(real);
+    if (r == -1. && PyErr_Occurred())
+        return nullptr;
+
+    PyObject* imag = CallPyObjMethod(self, "__cpp_imag");
+    if (!imag) return nullptr;
+    double i = PyFloat_AsDouble(imag);
+    Py_DECREF(imag);
+    if (i == -1. && PyErr_Occurred())
+        return nullptr;
+
+    std::ostringstream s;
+    s << '(' << r << '+' << i << "j)";
+    return CPyCppyy_PyUnicode_FromString(s.str().c_str());
+}
 
 static PyObject* ComplexDRealGet(CPPInstance* self, void*)
 {
@@ -788,14 +852,13 @@ static int ComplexDImagSet(CPPInstance* self, PyObject* value, void*)
 
 PyGetSetDef ComplexDImag{(char*)"imag", (getter)ComplexDImagGet, (setter)ComplexDImagSet, nullptr, nullptr};
 
-PyObject* ComplexDRepr(CPPInstance* self)
+static PyObject* ComplexDComplex(CPPInstance* self)
 {
     double r = ((std::complex<double>*)self->GetObject())->real();
     double i = ((std::complex<double>*)self->GetObject())->imag();
-    std::ostringstream s;
-    s << r << '+' << i << 'j';
-    return CPyCppyy_PyUnicode_FromString(s.str().c_str());
+    return PyComplex_FromDoubles(r, i);
 }
+
 
 } // unnamed namespace
 
@@ -868,6 +931,10 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
             Utility::AddToClass(pyclass, "__getitem__", (PyCFunction)VectorBoolGetItem, METH_O);
             Utility::AddToClass(pyclass, "__setitem__", (PyCFunction)VectorBoolSetItem);
         } else {
+        // data with size
+            Utility::AddToClass(pyclass, "_vector_data", "data");
+            Utility::AddToClass(pyclass, "data", (PyCFunction)VectorData);
+
         // constructor that takes python collections
             Utility::AddToClass(pyclass, "__real_init__", "__init__");
             Utility::AddToClass(pyclass, "__init__", (PyCFunction)VectorInit);
@@ -882,8 +949,8 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
                 Utility::AddToClass(pyclass, "_vector__at", "__getitem__");   // unchecked!
             }
 
-       // vector-optimized iterator protocol
-            ((PyTypeObject*)pyclass)->tp_iter     = (getiterfunc)vector_iter;
+        // vector-optimized iterator protocol
+            ((PyTypeObject*)pyclass)->tp_iter      = (getiterfunc)vector_iter;
 
        // helpers for iteration
        /*TODO: remove this use of gInterpreter
@@ -935,9 +1002,10 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
     }
 
     else if (name == "complex<double>" || name == "std::complex<double>") {
-        Utility::AddToClass(pyclass, "__repr__", (PyCFunction)ComplexDRepr, METH_NOARGS);
         PyObject_SetAttrString(pyclass, "real",  PyDescr_NewGetSet((PyTypeObject*)pyclass, &ComplexDReal));
         PyObject_SetAttrString(pyclass, "imag",  PyDescr_NewGetSet((PyTypeObject*)pyclass, &ComplexDImag));
+        Utility::AddToClass(pyclass, "__complex__", (PyCFunction)ComplexDComplex, METH_NOARGS);
+        Utility::AddToClass(pyclass, "__repr__", (PyCFunction)ComplexRepr, METH_NOARGS);
     }
 
     else if (IsTemplatedSTLClass(name, "complex")) {
@@ -945,6 +1013,8 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         PyObject_SetAttrString(pyclass, "real", PyDescr_NewGetSet((PyTypeObject*)pyclass, &realComplex));
         Utility::AddToClass(pyclass, "__cpp_imag", "imag");
         PyObject_SetAttrString(pyclass, "imag", PyDescr_NewGetSet((PyTypeObject*)pyclass, &imagComplex)); 
+        Utility::AddToClass(pyclass, "__complex__", (PyCFunction)ComplexComplex, METH_NOARGS);
+        Utility::AddToClass(pyclass, "__repr__", (PyCFunction)ComplexRepr, METH_NOARGS);
     }
 
     PyObject* args = PyTuple_New(2);

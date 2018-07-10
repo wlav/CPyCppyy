@@ -16,17 +16,6 @@
 // converters, and typed results and assignments are supported. Code reused
 // under PSF License Version 2.
 
-namespace CPyCppyy {
-
-class LowLevelView {
-public:
-    PyObject_HEAD
-    Py_buffer   fBufInfo;
-    Converter*  fConverter;
-};
-
-} // namespace CPyCppyy
-
 //= CPyCppyy low level view construction/destruction =========================
 static CPyCppyy::LowLevelView* ll_new(PyTypeObject* subtype, PyObject*, PyObject*)
 {
@@ -416,7 +405,7 @@ static PyObject* ll_item_multi(CPyCppyy::LowLevelView* self, PyObject *tup)
 // 0-d lowlevelptr objects can be referenced using llp[...] or llp[()]
 // but not with anything else.
 //---------------------------------------------------------------------------
-static PyObject* ll_subscript(CPyCppyy::LowLevelView* self, PyObject *key)
+static PyObject* ll_subscript(CPyCppyy::LowLevelView* self, PyObject* key)
 {
     Py_buffer& view = self->fBufInfo;
 
@@ -751,8 +740,14 @@ template<> struct typecode_traits<float> {
     static constexpr const char* format = "f"; static constexpr const char* name = "float"; };
 template<> struct typecode_traits<double> {
     static constexpr const char* format = "d"; static constexpr const char* name = "double"; };
+template<> struct typecode_traits<std::complex<float>> {
+    static constexpr const char* format = "Zf"; static constexpr const char* name = "std::complex<float>"; };
 template<> struct typecode_traits<std::complex<double>> {
-    static constexpr const char* format = "Z"; static constexpr const char* name = "std::complex<double>"; };
+    static constexpr const char* format = "Zd"; static constexpr const char* name = "std::complex<double>"; };
+template<> struct typecode_traits<std::complex<int>> {
+    static constexpr const char* format = "Zi"; static constexpr const char* name = "std::complex<int>"; };
+template<> struct typecode_traits<std::complex<long>> {
+    static constexpr const char* format = "Zl"; static constexpr const char* name = "std::complex<long>"; };
 
 } // unnamed namespace
 
@@ -837,6 +832,18 @@ PyObject* CPyCppyy::CreateLowLevelView(double* address, Py_ssize_t* shape) {
     return CreateLowLevelViewT<double>(address, shape);
 }
 
+PyObject* CPyCppyy::CreateLowLevelView(std::complex<float>* address, Py_ssize_t* shape) {
+    return CreateLowLevelViewT<std::complex<float>>(address, shape);
+}
+
 PyObject* CPyCppyy::CreateLowLevelView(std::complex<double>* address, Py_ssize_t* shape) {
     return CreateLowLevelViewT<std::complex<double>>(address, shape);
+}
+
+PyObject* CPyCppyy::CreateLowLevelView(std::complex<int>* address, Py_ssize_t* shape) {
+    return CreateLowLevelViewT<std::complex<int>>(address, shape);
+}
+
+PyObject* CPyCppyy::CreateLowLevelView(std::complex<long>* address, Py_ssize_t* shape) {
+    return CreateLowLevelViewT<std::complex<long>>(address, shape);
 }
