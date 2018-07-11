@@ -35,7 +35,7 @@ class my_bdist_wheel(_bdist_wheel):
 
 setup(
     name='CPyCppyy',
-    version='1.2.2',
+    version='1.3.0',
     description='Cling-based Python-C++ bindings for CPython',
     long_description=long_description,
 
@@ -68,7 +68,7 @@ setup(
         'Natural Language :: English'
     ],
 
-    install_requires=['cppyy-backend>=1.1'],
+    install_requires=['cppyy-backend>=1.2'],
 
     keywords='C++ bindings data science',
 

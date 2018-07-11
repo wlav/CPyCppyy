@@ -582,7 +582,7 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
 
     int nMethods = methods.size();
 
-    CallContext ctxt = {0};
+    CallContext ctxt{};
     ctxt.fFlags |= (mflags & CallContext::kUseHeuristics);
     ctxt.fFlags |= (mflags & CallContext::kUseStrict);
     ctxt.fFlags |= (mflags & CallContext::kManageSmartPtr);

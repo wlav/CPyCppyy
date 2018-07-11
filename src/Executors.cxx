@@ -55,7 +55,7 @@ static inline rtype GILCall##tcode(                                          \
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CPyCppyy::CallContext* ctxt)\
 {                                                                            \
     GILControl gc(ctxt);                                                     \
-    return Cppyy::Call##tcode(method, self, &ctxt->fArgs);                   \
+    return Cppyy::Call##tcode(method, self, ctxt->GetSize(), ctxt->GetArgs());\
 }
 
 CPPYY_IMPL_GILCALL(void,          V)
@@ -78,7 +78,7 @@ static inline char* GILCallS(
     GILControl gc(ctxt);
 // TODO: make use of getting the string length returned ...
     size_t len;
-    return Cppyy::CallS(method, self, &ctxt->fArgs, &len);
+    return Cppyy::CallS(method, self, ctxt->GetSize(), ctxt->GetArgs(), &len);
 }
 */
 
@@ -86,14 +86,14 @@ static inline Cppyy::TCppObject_t GILCallO(Cppyy::TCppMethod_t method,
     Cppyy::TCppObject_t self, CPyCppyy::CallContext* ctxt, Cppyy::TCppType_t klass)
 {
     GILControl gc(ctxt);
-    return Cppyy::CallO(method, self, &ctxt->fArgs, klass);
+    return Cppyy::CallO(method, self, ctxt->GetSize(), ctxt->GetArgs(), klass);
 }
 
 static inline Cppyy::TCppObject_t GILCallConstructor(
     Cppyy::TCppMethod_t method, Cppyy::TCppType_t klass, CPyCppyy::CallContext* ctxt)
 {
     GILControl gc(ctxt);
-    return Cppyy::CallConstructor(method, klass, &ctxt->fArgs);
+    return Cppyy::CallConstructor(method, klass, ctxt->GetSize(), ctxt->GetArgs());
 }
 
 static inline PyObject* CPyCppyy_PyUnicode_FromInt(int c)

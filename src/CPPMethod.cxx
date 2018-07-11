@@ -474,10 +474,10 @@ bool CPyCppyy::CPPMethod::ConvertAndSetArgs(PyObject* args, CallContext* ctxt)
     }
 
 // convert the arguments to the method call array
-    ctxt->fArgs.resize(argc);
+    Parameter* cppArgs = ctxt->GetArgs(argc);
     for (int i = 0; i < argc; ++i) {
         if (!fConverters[i]->SetArg(
-                PyTuple_GET_ITEM(args, i), ctxt->fArgs[i], ctxt)) {
+                PyTuple_GET_ITEM(args, i), cppArgs[i], ctxt)) {
             SetPyError_(CPyCppyy_PyUnicode_FromFormat("could not convert argument %d", i+1));
             return false;
         }

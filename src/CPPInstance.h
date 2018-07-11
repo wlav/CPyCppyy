@@ -55,8 +55,7 @@ public:
     // We get the raw pointer from the smart pointer each time, in case
     // it has changed or has been freed.
         if (fFlags & kIsSmartPtr) {
-            std::vector<Parameter> args;
-            return Cppyy::CallR(fDereferencer, fObject, &args);
+            return Cppyy::CallR(fDereferencer, fObject, 0, nullptr);
         }
 
         if (fObject && (fFlags & kIsReference))
