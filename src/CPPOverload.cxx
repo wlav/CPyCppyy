@@ -161,7 +161,6 @@ static inline void ResetCallState(CPPInstance*& selfnew, CPPInstance* selfold, b
 static inline PyObject* HandleReturn(
     CPPOverload* pymeth, CPPInstance* oldSelf, PyObject* result)
 {
-
 // special case for python exceptions, propagated through C++ layer
     if (result) {
 

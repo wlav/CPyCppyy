@@ -94,7 +94,7 @@ extern PyTypeObject CPPInstance_Type;
 template<typename T>
 inline bool CPPInstance_Check(T* object)
 {
-    return object && PyObject_TypeCheck(object, &CPPInstance_Type);
+    return object && (PyObject*)object != Py_None && PyObject_TypeCheck(object, &CPPInstance_Type);
 }
 
 template<typename T>
