@@ -7,6 +7,7 @@
 // Standard
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 
@@ -14,7 +15,7 @@ namespace CPyCppyy {
 
 class CPPOverload {
 public:
-    typedef std::map<uint64_t, int>  DispatchMap_t;
+    typedef std::vector<std::pair<uint64_t, PyCallable*>> DispatchMap_t;
     typedef std::vector<PyCallable*> Methods_t;
 
     struct MethodInfo_t {

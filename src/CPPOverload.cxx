@@ -129,8 +129,7 @@ static inline uint64_t HashSignature(PyObject* args)
     // improved overloads for implicit conversions
         PyObject* pyobj = PyTuple_GET_ITEM(args, i);
         hash += (uint64_t)Py_TYPE(pyobj);
-        if (pyobj->ob_refcnt == 1)
-            hash += (uint64_t)pyobj->ob_refcnt;
+        hash += (uint64_t)(pyobj->ob_refcnt == 1 ? 1 : 0);
         hash += (hash << 10); hash ^= (hash >> 6);
     }
 
@@ -598,17 +597,22 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
     uint64_t sighash = HashSignature(args);
 
 // look for known signatures ...
-    CPPOverload::DispatchMap_t::iterator m = dispatchMap.find(sighash);
-    if (m != dispatchMap.end()) {
-        int index = m->second;
-        PyObject* result = methods[index]->Call(pymeth->fSelf, args, kwds, &ctxt);
+    PyCallable* pc = nullptr;
+    for (const auto& p : dispatchMap) {
+        if (p.first == sighash) {
+            pc = p.second;
+            break;
+        }
+    }
+    if (pc != nullptr) {
+        PyObject* result = pc->Call(pymeth->fSelf, args, kwds, &ctxt);
         result = HandleReturn(pymeth, oldSelf, result);
 
         if (result != 0)
             return result;
 
     // fall through: python is dynamic, and so, the hashing isn't infallible
-        ResetCallState(pymeth->fSelf, oldSelf, true);
+        PyErr_Clear();
     }
     
 // ... otherwise loop over all methods and find the one that does not fail
@@ -623,8 +627,9 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
 
         if (result != 0) {
         // success: update the dispatch map for subsequent calls
-            dispatchMap[sighash] = i;
-            std::for_each(errors.begin(), errors.end(), Utility::PyError_t::Clear);
+            dispatchMap.push_back(std::make_pair(sighash, methods[i]));
+            if (!errors.empty())
+                std::for_each(errors.begin(), errors.end(), Utility::PyError_t::Clear);
             return HandleReturn(pymeth, oldSelf, result);
         }
 
