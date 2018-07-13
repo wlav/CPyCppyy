@@ -3,7 +3,11 @@
 import os, glob, subprocess
 from setuptools import setup, find_packages, Extension
 from distutils.command.build_ext import build_ext as _build_ext
-from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
+try:
+    from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
+    has_wheel = True
+except ImportError:
+    has_wheel = False
 from codecs import open
 
 
@@ -28,10 +32,14 @@ class my_build_extension(_build_ext):
         ext.extra_compile_args = ['-O2']+get_cflags().split()
         return _build_ext.build_extension(self, ext)
 
-class my_bdist_wheel(_bdist_wheel):
-    def run(self, *args):
-     # wheels do not respect dependencies; make this a no-op so that it fails (mostly) silently
-        pass
+cmdclass = { 'build_ext': my_build_extension }
+if has_wheel:
+    class my_bdist_wheel(_bdist_wheel):
+        def run(self, *args):
+         # wheels do not respect dependencies; make this a no-op so that it fails (mostly) silently
+            pass
+    cmdclass['bdist_wheel'] = my_bdist_wheel
+
 
 setup(
     name='CPyCppyy',
@@ -68,14 +76,12 @@ setup(
         'Natural Language :: English'
     ],
 
+    setup_requires=['wheel'],
     install_requires=['cppyy-backend>=1.2'],
 
     keywords='C++ bindings data science',
 
-    cmdclass = {
-        'build_ext': my_build_extension,
-        'bdist_wheel': my_bdist_wheel
-    },
+    cmdclass = cmdclass,
 
     ext_modules=[Extension('libcppyy',
         sources=glob.glob('src/*.cxx'),
