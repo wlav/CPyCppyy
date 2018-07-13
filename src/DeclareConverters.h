@@ -251,6 +251,14 @@ CPPYY_DECLARE_STRING_CONVERTER(STLString, std::string);
 CPPYY_DECLARE_STRING_CONVERTER(STLStringView, std::string_view);
 #endif
 
+class STLStringMoveConverter : public STLStringConverter {
+public:
+    using STLStringConverter::STLStringConverter;
+
+public:
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
+};
+
 
 // function pointers
 class FunctionPointerConverter : public Converter {

@@ -40,6 +40,16 @@ namespace CPyCppyy {
 
 }
 
+#if PY_VERSION_HEX < 0x03000000
+const size_t MOVE_REFCOUNT_CUTOFF = 1;
+#else
+// p3 has at least 2 ref-counts, as contrary to p2, it will create a descriptor
+// copy for the method holding self in the case of __init__; but there can also
+// be a reference held by the frame object, which is indistinguishable from a
+// local variable reference, so the cut-off has to remain 2.
+const size_t MOVE_REFCOUNT_CUTOFF = 2;
+#endif
+
 //- pretend-ctypes helpers ---------------------------------------------------
 #if PY_VERSION_HEX >= 0x02050000
 
@@ -911,6 +921,34 @@ CPPYY_IMPL_STRING_AS_PRIMITIVE_CONVERTER(STLString, std::string, c_str, size)
 CPPYY_IMPL_STRING_AS_PRIMITIVE_CONVERTER(STLStringView, std::string_view, data, size)
 #endif
 
+bool CPyCppyy::STLStringMoveConverter::SetArg(
+    PyObject* pyobject, Parameter& para, CallContext* ctxt)
+{
+// convert <pyobject> to C++ std::string&&, set arg for call
+    int moveit_reason = 3;   // move on temporary fBuffer
+    if (CPPInstance_Check(pyobject)) {
+        CPPInstance* pyobj = (CPPInstance*)pyobject;
+        if (pyobj->fFlags & CPPInstance::kIsRValue) {
+            pyobj->fFlags &= ~CPPInstance::kIsRValue;
+            moveit_reason = 2;
+        } else if (pyobject->ob_refcnt == MOVE_REFCOUNT_CUTOFF) {
+            moveit_reason = 1;
+        } else
+            moveit_reason = 0;
+    }
+
+    if (moveit_reason) {
+        bool result = this->STLStringConverter::SetArg(pyobject, para, ctxt);
+        if (!result && moveit_reason == 2)       // restore the movability flag?
+            ((CPPInstance*)pyobject)->fFlags |= CPPInstance::kIsRValue;
+        return result;
+    }
+
+    PyErr_SetString(PyExc_ValueError, "object is not an rvalue");
+    return false;      // not a temporary or movable object
+}
+
+
 //----------------------------------------------------------------------------
 bool CPyCppyy::InstancePtrConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* ctxt)
@@ -1046,16 +1084,6 @@ bool CPyCppyy::InstanceRefConverter::SetArg(
 }
 
 //----------------------------------------------------------------------------
-#if PY_VERSION_HEX < 0x03000000
-const size_t refcount_cutoff = 1;
-#else
-// p3 has at least 2 ref-counts, as contrary to p2, it will create a descriptor
-// copy for the method holding self in the case of __init__; but there can also
-// be a reference held by the frame object, which is indistinguishable from a
-// local variable reference, so the cut-off has to remain 2.
-const size_t refcount_cutoff = 2;
-#endif
-
 bool CPyCppyy::InstanceMoveConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* ctxt)
 {
@@ -1069,7 +1097,7 @@ bool CPyCppyy::InstanceMoveConverter::SetArg(
     if (pyobj->fFlags & CPPInstance::kIsRValue) {
         pyobj->fFlags &= ~CPPInstance::kIsRValue;
         moveit_reason = 2;
-    } else if (pyobject->ob_refcnt == refcount_cutoff) {
+    } else if (pyobject->ob_refcnt == MOVE_REFCOUNT_CUTOFF) {
         moveit_reason = 1;
     }
 
@@ -1718,6 +1746,8 @@ public:
         gf["string"] =                      (cf_t)+[](long) { return new STLStringConverter{}; };
         gf["const std::string&"] =          (cf_t)+[](long) { return new STLStringConverter{}; };
         gf["const string&"] =               (cf_t)+[](long) { return new STLStringConverter{}; };
+        gf["string&&"] =                    (cf_t)+[](long) { return new STLStringMoveConverter{}; };
+        gf["std::string&&"] =               (cf_t)+[](long) { return new STLStringMoveConverter{}; };
 #if __cplusplus > 201402L
         gf["std::string_view"] =            (cf_t)+[](long) { return new STLStringViewConverter{}; };
         gf["string_view"] =                 (cf_t)+[](long) { return new STLStringViewConverter{}; };
