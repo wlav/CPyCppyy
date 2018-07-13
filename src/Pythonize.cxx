@@ -291,7 +291,7 @@ PyObject* VectorInit(PyObject* self, PyObject* args)
 //---------------------------------------------------------------------------
 PyObject* VectorData(PyObject* self, PyObject*)
 {
-    PyObject* pydata = CallPyObjMethod(self, "_vector_data");
+    PyObject* pydata = CallPyObjMethod(self, "__real_data");
     if (!LowLevelView_Check(pydata)) return pydata;
 
     PyObject* pylen = CallPyObjMethod(self, "size");
@@ -932,7 +932,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
             Utility::AddToClass(pyclass, "__setitem__", (PyCFunction)VectorBoolSetItem);
         } else {
         // data with size
-            Utility::AddToClass(pyclass, "_vector_data", "data");
+            Utility::AddToClass(pyclass, "__real_data", "data");
             Utility::AddToClass(pyclass, "data", (PyCFunction)VectorData);
 
         // constructor that takes python collections
