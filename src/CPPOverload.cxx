@@ -403,22 +403,22 @@ static PyObject* mp_func_globals(CPPOverload* /* pymeth */, void*)
 //-----------------------------------------------------------------------------
 PyObject* mp_getcreates(CPPOverload* pymeth, void*)
 {
-// Get '_creates' boolean, which determines ownership of return values.
+// Get '__creates__' boolean, which determines ownership of return values.
     return PyInt_FromLong((long)IsCreator(pymeth->fMethodInfo->fFlags));
 }
 
 //-----------------------------------------------------------------------------
 static int mp_setcreates(CPPOverload* pymeth, PyObject* value, void*)
 {
-// Set '_creates' boolean, which determines ownership of return values.
-    if (!value) {        // means that _creates is being deleted
+// Set '__creates__' boolean, which determines ownership of return values.
+    if (!value) {        // means that __creates__ is being deleted
         pymeth->fMethodInfo->fFlags &= ~CallContext::kIsCreator;
         return 0;
     }
 
     long iscreator = PyLong_AsLong(value);
     if (iscreator == -1 && PyErr_Occurred()) {
-        PyErr_SetString(PyExc_ValueError, "a boolean 1 or 0 is required for _creates");
+        PyErr_SetString(PyExc_ValueError, "a boolean 1 or 0 is required for __creates__");
         return -1;
     }
 
@@ -456,7 +456,7 @@ static int mp_setmempolicy(CPPOverload* pymeth, PyObject* value, void*)
         pymeth->fMethodInfo->fFlags &= ~CallContext::kUseHeuristics;
     } else {
         PyErr_SetString(PyExc_ValueError,
-            "expected kMemoryStrict or kMemoryHeuristics as value for _mempolicy");
+            "expected kMemoryStrict or kMemoryHeuristics as value for __mempolicy__");
         return -1;
     }
 
@@ -464,22 +464,22 @@ static int mp_setmempolicy(CPPOverload* pymeth, PyObject* value, void*)
 }
 
 //-----------------------------------------------------------------------------
-static PyObject* mp_get_manage_smart_ptr(CPPOverload* pymeth, void*)
+static PyObject* mp_get_manage_smartptr(CPPOverload* pymeth, void*)
 {
-// Get '_manage_smart_ptr' boolean, which determines whether or not to
+// Get '__manage_smartptr__' boolean, which determines whether or not to
 // manage returned smart pointers intelligently.
     return PyInt_FromLong(
         (long)(pymeth->fMethodInfo->fFlags & CallContext::kManageSmartPtr));
 }
 
 //-----------------------------------------------------------------------------
-static int mp_set_manage_smart_ptr(CPPOverload* pymeth, PyObject* value, void*)
+static int mp_set_manage_smartptr(CPPOverload* pymeth, PyObject* value, void*)
 {
-// Set '_manage_smart_ptr' boolean, which determines whether or not to
+// Set '__manage_smartptr__' boolean, which determines whether or not to
 // manage returned smart pointers intelligently.
     long policy = PyLong_AsLong(value);
     if (policy == -1 && PyErr_Occurred()) {
-        PyErr_SetString(PyExc_ValueError, "a boolean 1 or 0 is required for _manage_smart_ptr");
+        PyErr_SetString(PyExc_ValueError, "a boolean 1 or 0 is required for __manage_smartptr__");
         return -1;
     }
 
@@ -502,7 +502,7 @@ static int mp_setthreaded(CPPOverload* pymeth, PyObject* value, void*)
 // Set '_threaded' boolean, which determines whether the GIL will be released.
     long isthreaded = PyLong_AsLong(value);
     if (isthreaded == -1 && PyErr_Occurred()) {
-        PyErr_SetString(PyExc_ValueError, "a boolean 1 or 0 is required for _creates");
+        PyErr_SetString(PyExc_ValueError, "a boolean 1 or 0 is required for __release_gil__");
         return -1;
     }
 
@@ -548,16 +548,16 @@ static PyGetSetDef mp_getset[] = {
     {(char*)"func_doc",      (getter)mp_doc,           nullptr, nullptr, nullptr},
     {(char*)"func_name",     (getter)mp_name,          nullptr, nullptr, nullptr},
 
-    {(char*)"_creates", (getter)mp_getcreates, (setter)mp_setcreates,
+    {(char*)"__creates__",         (getter)mp_getcreates, (setter)mp_setcreates,
       (char*)"For ownership rules of result: if true, objects are python-owned", nullptr},
-    {(char*)"_mempolicy", (getter)mp_getmempolicy, (setter)mp_setmempolicy,
+    {(char*)"__mempolicy__",       (getter)mp_getmempolicy, (setter)mp_setmempolicy,
       (char*)"For argument ownership rules: like global, either heuristic or strict", nullptr},
-    {(char*)"_manage_smart_ptr", (getter)mp_get_manage_smart_ptr, (setter)mp_set_manage_smart_ptr,
+    {(char*)"__manage_smartptr__", (getter)mp_get_manage_smartptr, (setter)mp_set_manage_smartptr,
       (char*)"If a smart pointer is returned, determines management policy.", nullptr},
-    {(char*)"_threaded", (getter)mp_getthreaded, (setter)mp_setthreaded,
+    {(char*)"__release_gil__",     (getter)mp_getthreaded, (setter)mp_setthreaded,
       (char*)"If true, releases GIL on call into C++", nullptr},
-    {(char*)"__useffi__", (getter)mp_getuseffi, (setter)mp_setuseffi,
-      (char*)"unused", nullptr},
+    {(char*)"__useffi__",          (getter)mp_getuseffi, (setter)mp_setuseffi,
+      (char*)"not implemented", nullptr},
     {(char*)nullptr, nullptr, nullptr, nullptr, nullptr}
 };
 
