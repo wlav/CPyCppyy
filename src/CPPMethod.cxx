@@ -150,8 +150,7 @@ bool CPyCppyy::CPPMethod::InitExecutor_(Executor*& executor, CallContext* ctxt)
 // install executor conform to the return type
     executor = CreateExecutor(
         (bool)fMethod == true ? Cppyy::ResolveName(Cppyy::GetMethodResultType(fMethod))\
-                              : Cppyy::GetScopedFinalName(fScope),
-        ctxt ? ManagesSmartPtr(ctxt) : false);
+                              : Cppyy::GetScopedFinalName(fScope));
 
     if (!executor)
         return false;

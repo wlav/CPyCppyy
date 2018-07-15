@@ -682,8 +682,7 @@ PyObject* CPyCppyy::PyObjectExecutor::Execute(
 
 
 //- factories ----------------------------------------------------------------
-CPyCppyy::Executor* CPyCppyy::CreateExecutor(
-    const std::string& fullType, bool manage_smart_ptr)
+CPyCppyy::Executor* CPyCppyy::CreateExecutor(const std::string& fullType)
 {
 // The matching of the fulltype to an executor factory goes through up to 4 levels:
 //   1) full, qualified match
@@ -743,7 +742,7 @@ CPyCppyy::Executor* CPyCppyy::CreateExecutor(
     Executor* result = 0;
     if (Cppyy::TCppType_t klass = Cppyy::GetScope(realType)) {
         Cppyy::TCppType_t raw; Cppyy::TCppMethod_t deref;
-        if (manage_smart_ptr && Cppyy::GetSmartPtrInfo(realType, raw, deref)) {
+        if (Cppyy::GetSmartPtrInfo(realType, raw, deref)) {
             if (cpd == "") {
                 result = new SmartPtrExecutor(klass, raw, deref);
             } else if (cpd == "*") {

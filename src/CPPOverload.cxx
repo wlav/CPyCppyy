@@ -464,31 +464,6 @@ static int mp_setmempolicy(CPPOverload* pymeth, PyObject* value, void*)
 }
 
 //-----------------------------------------------------------------------------
-static PyObject* mp_get_manage_smartptr(CPPOverload* pymeth, void*)
-{
-// Get '__manage_smartptr__' boolean, which determines whether or not to
-// manage returned smart pointers intelligently.
-    return PyInt_FromLong(
-        (long)(pymeth->fMethodInfo->fFlags & CallContext::kManageSmartPtr));
-}
-
-//-----------------------------------------------------------------------------
-static int mp_set_manage_smartptr(CPPOverload* pymeth, PyObject* value, void*)
-{
-// Set '__manage_smartptr__' boolean, which determines whether or not to
-// manage returned smart pointers intelligently.
-    long policy = PyLong_AsLong(value);
-    if (policy == -1 && PyErr_Occurred()) {
-        PyErr_SetString(PyExc_ValueError, "a boolean 1 or 0 is required for __manage_smartptr__");
-        return -1;
-    }
-
-    pymeth->fMethodInfo->fFlags |= CallContext::kManageSmartPtr;
-
-    return 0;
-}
-
-//-----------------------------------------------------------------------------
 static PyObject* mp_getthreaded(CPPOverload* pymeth, void*)
 {
 // Get '_threaded' boolean, which determines whether the GIL will be released.
@@ -513,7 +488,6 @@ static int mp_setthreaded(CPPOverload* pymeth, PyObject* value, void*)
 
     return 0;
 }
-
 
 //-----------------------------------------------------------------------------
 static PyObject* mp_getuseffi(CPPOverload*, void*)
@@ -552,8 +526,6 @@ static PyGetSetDef mp_getset[] = {
       (char*)"For ownership rules of result: if true, objects are python-owned", nullptr},
     {(char*)"__mempolicy__",       (getter)mp_getmempolicy, (setter)mp_setmempolicy,
       (char*)"For argument ownership rules: like global, either heuristic or strict", nullptr},
-    {(char*)"__manage_smartptr__", (getter)mp_get_manage_smartptr, (setter)mp_set_manage_smartptr,
-      (char*)"If a smart pointer is returned, determines management policy.", nullptr},
     {(char*)"__release_gil__",     (getter)mp_getthreaded, (setter)mp_setthreaded,
       (char*)"If true, releases GIL on call into C++", nullptr},
     {(char*)"__useffi__",          (getter)mp_getuseffi, (setter)mp_setuseffi,
@@ -583,7 +555,6 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
     CallContext ctxt{};
     ctxt.fFlags |= (mflags & CallContext::kUseHeuristics);
     ctxt.fFlags |= (mflags & CallContext::kUseStrict);
-    ctxt.fFlags |= (mflags & CallContext::kManageSmartPtr);
     if (!ctxt.fFlags) ctxt.fFlags |= CallContext::sMemoryPolicy;
     ctxt.fFlags |= (mflags & CallContext::kReleaseGIL);
 
@@ -899,7 +870,6 @@ void CPyCppyy::CPPOverload::Set(const std::string& name, std::vector<PyCallable*
     fMethodInfo->fName = name;
     fMethodInfo->fMethods.swap(methods);
     fMethodInfo->fFlags &= ~CallContext::kIsSorted;
-    fMethodInfo->fFlags |= CallContext::kManageSmartPtr;
 
 // special case: all constructors are considered creators by default
     if (name == "__init__")

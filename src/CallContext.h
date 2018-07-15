@@ -45,10 +45,9 @@ struct CallContext {
         kIsConstructor  =    4,   // if method is a C++ constructor
         kUseHeuristics  =    8,   // if method applies heuristics memory policy
         kUseStrict      =   16,   // if method applies strict memory policy
-        kManageSmartPtr =   32,   // if executor should manage smart pointers
-        kReleaseGIL     =   64,   // if method should release the GIL
-        kFast           =  128,   // if method should NOT handle signals
-        kSafe           =  256    // if method should return on signals
+        kReleaseGIL     =   32,   // if method should release the GIL
+        kFast           =   64,   // if method should NOT handle signals
+        kSafe           =  128    // if method should return on signals
     };
 
 // memory handling
@@ -89,10 +88,6 @@ inline bool IsCreator(uint64_t flags) {
 
 inline bool IsConstructor(uint64_t flags) {
     return flags & CallContext::kIsConstructor;
-}
-
-inline bool ManagesSmartPtr(CallContext* ctxt) {
-    return ctxt->fFlags & CallContext::kManageSmartPtr;
 }
 
 inline bool ReleasesGIL(uint64_t flags) {
