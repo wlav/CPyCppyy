@@ -1548,15 +1548,6 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long
             return (h->second)(size);
     }
 
-// CLING WORKAROUND -- if the type is a fixed-size array, it will have a funky
-// resolved type like MyClass(&)[N], which TClass::GetClass() fails on. So, strip
-// it down:
-/* TODO: remove TClassEdit usage
-   if (cpd == "[]")
-      realType = TClassEdit::CleanType(realType.substr(0, realType.rfind("(")).c_str(), 1);
-*/
-// -- CLING WORKAROUND
-
 //-- still nothing? try pointer instead of array (for builtins)
     if (cpd == "[]") {
         h = gConvFactories.find(realType + "*");
