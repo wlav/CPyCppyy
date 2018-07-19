@@ -346,7 +346,7 @@ static PyObject* vectoriter_iternext(vectoriterobject* vi) {
         result = vi->vi_converter->FromMemory(location);
     } else {
         PyObject* pyindex = PyLong_FromLong(vi->vi_pos);
-        result = CallPyObjMethod((PyObject*)vi->vi_vector, "_vector__at", pyindex);
+        result = CallPyObjMethod((PyObject*)vi->vi_vector, "_getitem__unchecked", pyindex);
         Py_DECREF(pyindex);
     }
 
@@ -434,14 +434,14 @@ PyObject* VectorGetItem(CPPInstance* self, PySliceObject* index)
         PySlice_GetIndices((CPyCppyy_PySliceCast)index, PyObject_Length((PyObject*)self), &start, &stop, &step);
         for (Py_ssize_t i = start; i < stop; i += step) {
             PyObject* pyidx = PyInt_FromSsize_t(i);
-            CallPyObjMethod(nseq, "push_back", CallPyObjMethod((PyObject*)self, "_vector__at", pyidx));
+            CallPyObjMethod(nseq, "push_back", CallPyObjMethod((PyObject*)self, "_getitem__unchecked", pyidx));
             Py_DECREF(pyidx);
         }
 
         return nseq;
     }
 
-    return CallSelfIndex(self, (PyObject*)index, "_vector__at");
+    return CallSelfIndex(self, (PyObject*)index, "_getitem__unchecked");
 }
 
 
@@ -575,33 +575,6 @@ PyObject* StlSequenceIter(PyObject* self)
     }
     return iter;
 }
-
-//- safe indexing for STL-like vector w/o iterator dictionaries ---------------
-/*
-PyObject* CheckedGetItem(PyObject* self, PyObject* obj)
-{
-// Implement a generic python __getitem__ for std::vector<>s that are missing
-// their std::vector<>::iterator dictionary. This is then used for iteration
-// by means of consecutive index.
-    bool inbounds = false;
-    Py_ssize_t size = PySequence_Size(self);
-    Py_ssize_t idx  = PyInt_AsSsize_t(obj);
-    if (0 <= idx && 0 <= size && idx < size)
-        inbounds = true;
-
-    if (inbounds) {
-        return CallPyObjMethod(self, "_getitem__unchecked", obj);
-    } else if (PyErr_Occurred()) {
-    // argument conversion problem: let method itself resolve anew and report
-        PyErr_Clear();
-        return CallPyObjMethod(self, "_getitem__unchecked", obj);
-    } else {
-        PyErr_SetString(PyExc_IndexError, "index out of range");
-    }
-
-    return nullptr;
-}
-*/
 
 //- pair as sequence to allow tuple unpacking --------------------------------
 PyObject* PairUnpack(PyObject* self, PyObject* pyindex)
@@ -891,11 +864,6 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         // if yes: install iterator protocol
             ((PyTypeObject*)pyclass)->tp_iter = (getiterfunc)StlSequenceIter;
             Utility::AddToClass(pyclass, "__iter__", (PyCFunction) StlSequenceIter, METH_NOARGS);
-
-        // if not and  if (HasAttrDirect(pyclass, PyStrings::gGetItem) && HasAttrDirect(pyclass, PyStrings::gLen)) {
-        // install increment until StopIteration "protocol"
-            //Utility::AddToClass(pyclass, "_getitem__unchecked", "__getitem__");
-            //Utility::AddToClass(pyclass, "__getitem__", (PyCFunction) CheckedGetItem, METH_O);
         }
     }
 
@@ -931,45 +899,35 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
             Utility::AddToClass(pyclass, "__getitem__", (PyCFunction)VectorBoolGetItem, METH_O);
             Utility::AddToClass(pyclass, "__setitem__", (PyCFunction)VectorBoolSetItem);
         } else {
-        // data with size
-            Utility::AddToClass(pyclass, "__real_data", "data");
-            Utility::AddToClass(pyclass, "data", (PyCFunction)VectorData);
-
         // constructor that takes python collections
             Utility::AddToClass(pyclass, "__real_init__", "__init__");
             Utility::AddToClass(pyclass, "__init__", (PyCFunction)VectorInit);
 
+        // data with size
+            Utility::AddToClass(pyclass, "__real_data", "data");
+            Utility::AddToClass(pyclass, "data", (PyCFunction)VectorData);
+
         // checked getitem
-            if (HasAttrDirect(pyclass, PyStrings::gLen) && HasAttrDirect(pyclass, PyStrings::gAt)) {
-                Utility::AddToClass(pyclass, "_vector__at", "at");
-            // remove iterator that was set earlier (checked __getitem__ will do the trick)
-                if (HasAttrDirect(pyclass, PyStrings::gIter))
-                    PyObject_DelAttr(pyclass, PyStrings::gIter);
-            } else if (HasAttrDirect(pyclass, PyStrings::gGetItem)) {
-                Utility::AddToClass(pyclass, "_vector__at", "__getitem__");   // unchecked!
+            if (HasAttrDirect(pyclass, PyStrings::gLen)) {
+                Utility::AddToClass(pyclass, "_getitem__unchecked", "__getitem__");
+                Utility::AddToClass(pyclass, "__getitem__", (PyCFunction)VectorGetItem, METH_O);
             }
 
         // vector-optimized iterator protocol
             ((PyTypeObject*)pyclass)->tp_iter      = (getiterfunc)vector_iter;
 
        // helpers for iteration
-       /*TODO: remove this use of gInterpreter
-            TypedefInfo_t* ti = gInterpreter->TypedefInfo_Factory((name+"::value_type").c_str());
-            if (gInterpreter->TypedefInfo_IsValid(ti)) {
-                PyObject* pyvalue_size = PyLong_FromLong(gInterpreter->TypedefInfo_Size(ti));
+            const std::string& vtype = Cppyy::ResolveName(name+"::value_type");
+            size_t typesz = Cppyy::SizeOf(vtype);
+            if (typesz) {
+                PyObject* pyvalue_size = PyLong_FromLong(typesz);
                 PyObject_SetAttrString(pyclass, "value_size", pyvalue_size);
                 Py_DECREF(pyvalue_size);
 
-                PyObject* pyvalue_type = CPyCppyy_PyUnicode_FromString(gInterpreter->TypedefInfo_TrueName(ti));
+                PyObject* pyvalue_type = CPyCppyy_PyUnicode_FromString(vtype.c_str());
                 PyObject_SetAttrString(pyclass, "value_type", pyvalue_type);
                 Py_DECREF(pyvalue_type);
             }
-            gInterpreter->TypedefInfo_Delete(ti);
-          */
-
-       // provide a slice-able __getitem__, if possible
-            if (HasAttrDirect(pyclass, PyStrings::gVectorAt))
-                Utility::AddToClass(pyclass, "__getitem__", (PyCFunction)VectorGetItem, METH_O);
         }
     }
 
