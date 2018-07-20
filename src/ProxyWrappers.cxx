@@ -126,7 +126,24 @@ void AddPropertyToClass(PyObject* pyclass,
 //- public functions ---------------------------------------------------------
 namespace CPyCppyy {
 
-static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass) {
+static inline void sync_templates(
+    PyObject* pyclass, const std::string& mtCppName, const std::string& mtName)
+{
+// TODO: the following is incorrect if both base and derived have the same
+// templated method (but that is an unlikely scenario anyway)
+    PyObject* attr = PyObject_GetAttrString(pyclass, const_cast<char*>(mtName.c_str()));
+    if (!TemplateProxy_Check(attr)) {
+        PyErr_Clear();
+        TemplateProxy* pytmpl = TemplateProxy_New(mtCppName, mtName, pyclass);
+        if (CPPOverload_Check(attr)) pytmpl->AddOverload((CPPOverload*)attr);
+        PyObject_SetAttrString(pyclass, const_cast<char*>(mtName.c_str()), (PyObject*)pytmpl);
+        Py_DECREF(pytmpl);
+    }
+    Py_XDECREF(attr);
+}
+
+static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
+{
 // Collect methods and data for the given scope, and add them to the given python
 // proxy object.
 
@@ -198,18 +215,7 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass) {
 
     // template members; handled by adding a dispatcher to the class
         if (isTemplate) {
-        // TODO: the following is incorrect if both base and derived have the same
-        // templated method (but that is an unlikely scenario anyway)
-            PyObject* attr = PyObject_GetAttrString(pyclass, const_cast<char*>(mtName.c_str()));
-            if (!TemplateProxy_Check(attr)) {
-                PyErr_Clear();
-                TemplateProxy* pytmpl = TemplateProxy_New(mtCppName, mtName, pyclass);
-                if (CPPOverload_Check(attr)) pytmpl->AddOverload((CPPOverload*)attr);
-                PyObject_SetAttrString(
-                    pyclass, const_cast<char*>(mtName.c_str()), (PyObject*)pytmpl);
-                Py_DECREF(pytmpl);
-            }
-            Py_XDECREF(attr);
+            sync_templates(pyclass, mtCppName, mtName);
         // continue processing to actually add the method so that the proxy can find
         // it on the class when called explicitly
         }
@@ -244,6 +250,16 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass) {
             ((TemplateProxy*)attr)->AddTemplate(pycall->Clone());
             Py_DECREF(attr);
         }
+    }
+
+// add un-instantiated/non-overloaded templated methods (TODO: should this skip namespace?)
+    const Cppyy::TCppIndex_t nTemplMethods = isNamespace ? 0 : Cppyy::GetNumTemplatedMethods(scope);
+    for (Cppyy::TCppIndex_t imeth = 0; imeth < nTemplMethods; ++imeth) {
+        const std::string mtCppName = Cppyy::GetTemplatedMethodName(scope, imeth);
+        // TODO: figure out number of arguments to distinguish operators (problem is
+        // that it's not known until instantiation, so perhaps add both 0 and 1?)
+        std::string mtName = Utility::MapOperatorName(mtCppName, 0);
+        sync_templates(pyclass, mtCppName, mtName);
     }
 
 // add a pseudo-default ctor, if none defined

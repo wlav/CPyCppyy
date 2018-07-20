@@ -104,6 +104,8 @@ namespace Cppyy {
     std::string GetMethodPrototype(TCppScope_t scope, TCppMethod_t, bool show_formalargs);
     bool        IsConstMethod(TCppMethod_t);
 
+    TCppIndex_t GetNumTemplatedMethods(TCppScope_t scope);
+    std::string GetTemplatedMethodName(TCppScope_t scope, TCppIndex_t imeth);
     bool        ExistsMethodTemplate(TCppScope_t scope, const std::string& name);
     bool        IsMethodTemplate(TCppScope_t scope, TCppIndex_t imeth);
     TCppMethod_t GetMethodTemplate(
