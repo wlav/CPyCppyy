@@ -77,7 +77,7 @@ setup(
     ],
 
     setup_requires=['wheel'],
-    install_requires=['cppyy-backend>=1.2'],
+    install_requires=['cppyy-backend>=1.3'],
 
     keywords='C++ bindings data science',
 
