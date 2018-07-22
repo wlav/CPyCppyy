@@ -621,11 +621,15 @@ std::string CPyCppyy::Utility::MapOperatorName(const std::string& name, bool bTa
         std::string::size_type start = 0, end = op.size();
         while (start < end && isspace(op[start])) ++start;
         while (start < end && isspace(op[end-1])) --end;
-    // TODO: resolve name only if mapping failed
-        op = Cppyy::ResolveName(op.substr(start, end - start));
+
+    // check first if none, to prevent spurious deserializing downstream
+        TC2POperatorMapping_t::iterator pop = gC2POperatorMapping.find(op);
+        if (pop == gC2POperatorMapping.end()) {
+            op = Cppyy::ResolveName(op.substr(start, end - start));
+            pop = gC2POperatorMapping.find(op);
+        }
 
     // map C++ operator to python equivalent, or made up name if no equivalent exists
-        TC2POperatorMapping_t::iterator pop = gC2POperatorMapping.find(op);
         if (pop != gC2POperatorMapping.end()) {
             return pop->second;
 
