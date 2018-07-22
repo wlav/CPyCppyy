@@ -230,6 +230,8 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
 //    obj.method[type<a0>, type<a1>, ...](a0, a1, ...)
 //
 
+// TODO: should previously instantiated templates be considered first?
+
 // case 1: explicit template previously selected through subscript
 
     if (pytmpl->fTemplateArgs) {
