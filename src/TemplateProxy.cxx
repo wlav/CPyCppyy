@@ -26,6 +26,7 @@ void TemplateProxy::Set(const std::string& cppname, const std::string& pyname, P
     std::vector<PyCallable*> dummy;
     fNonTemplated = CPPOverload_New(pyname, dummy);
     fTemplated    = CPPOverload_New(pyname, dummy);
+    new (&fDispatchMap) DispatchMap_t{};
 }
 
 //----------------------------------------------------------------------------
@@ -162,6 +163,7 @@ static void tpp_dealloc(TemplateProxy* pytmpl)
 // Destroy the given template method proxy.
     PyObject_GC_UnTrack(pytmpl);
     tpp_clear(pytmpl);
+    pytmpl->fDispatchMap.TemplateProxy::DispatchMap_t::~DispatchMap_t();
     PyObject_GC_Del(pytmpl);
 }
 
@@ -232,6 +234,32 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
 
 // TODO: should previously instantiated templates be considered first?
 
+// short-cut through memoization map
+    uint64_t sighash = HashSignature(args);
+
+// look for known signatures ...
+    CPPOverload* ol = nullptr;
+    for (const auto& p : pytmpl->fDispatchMap) {
+        if (p.first == sighash) {
+            ol = p.second;
+            break;
+        }
+    }
+    if (ol != nullptr) {
+        PyObject* result = nullptr;
+        if (!pytmpl->fSelf) {
+            result = CPPOverload_Type.tp_call((PyObject*)ol, args, kwds);
+        } else {
+            PyObject* pymeth = CPPOverload_Type.tp_descr_get(
+                (PyObject*)ol, pytmpl->fSelf, (PyObject*)&CPPOverload_Type);
+            result = CPPOverload_Type.tp_call(pymeth, args, kwds);
+            Py_DECREF(pymeth);
+        }
+        if (result)
+            return result;
+        PyErr_Clear();
+    }
+
 // case 1: explicit template previously selected through subscript
 
     if (pytmpl->fTemplateArgs) {
@@ -264,8 +292,10 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
 // now call the method with the arguments (loops internally)
     PyObject* result = CPPOverload_Type.tp_call(pymeth, args, kwds);
     Py_DECREF(pymeth); pymeth = nullptr;
-    if (result)
+    if (result) {
+        pytmpl->fDispatchMap.push_back(std::make_pair(sighash, pytmpl->fNonTemplated));
         return result;
+    }
 // TODO: collect error here, as the failure may be either an overload
 // failure after which we should continue; or a real failure, which should
 // be reported.
@@ -277,8 +307,10 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
 // now call the method with the arguments (loops internally)
     result = CPPOverload_Type.tp_call(pymeth, args, kwds);
     Py_DECREF(pymeth); pymeth = nullptr;
-    if (result)
+    if (result) {
+        pytmpl->fDispatchMap.push_back(std::make_pair(sighash, pytmpl->fTemplated));
         return result;
+    }
 // TODO: collect error here, as the failure may be either an overload
 // failure after which we should continue; or a real failure, which should
 // be reported.
@@ -292,8 +324,10 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
             (PyObject*)pytmpl->fTemplated, pytmpl->fSelf, (PyObject*)&CPPOverload_Type);
         result = CPPOverload_Type.tp_call(pymeth, args, kwds);
         Py_DECREF(pymeth);
-        if (result)
+        if (result) {
+            pytmpl->fDispatchMap.push_back(std::make_pair(sighash, pytmpl->fTemplated));
             return result;
+        }
     }
 
 // moderately generic error message, but should be clear enough

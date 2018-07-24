@@ -117,27 +117,6 @@ static inline bool IsPseudoFunc(CPPOverload* pymeth)
     return (void*)pymeth == (void*)pymeth->fSelf;
 }
 
-// helper to hash tuple (using tuple hash would cause self-tailing loops)
-static inline uint64_t HashSignature(PyObject* args)
-{
-// Build a hash from the types of the given python function arguments.
-    uint64_t hash = 0;
-
-    int nargs = PyTuple_GET_SIZE(args);
-    for (int i = 0; i < nargs; ++i) {
-    // TODO: hashing in the ref-count is for moves; resolve this together with the
-    // improved overloads for implicit conversions
-        PyObject* pyobj = PyTuple_GET_ITEM(args, i);
-        hash += (uint64_t)Py_TYPE(pyobj);
-        hash += (uint64_t)(pyobj->ob_refcnt == 1 ? 1 : 0);
-        hash += (hash << 10); hash ^= (hash >> 6);
-    }
-
-    hash += (hash << 3); hash ^= (hash >> 11); hash += (hash << 15);
-
-    return hash;
-}
-
 // helper to sort on method priority
 static int PriorityCmp(PyCallable* left, PyCallable* right)
 {
