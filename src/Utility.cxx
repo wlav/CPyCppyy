@@ -606,6 +606,7 @@ int CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, void*& b
             }
         }
 
+        if (!buf) return 0;
         return buflen;
     }
 

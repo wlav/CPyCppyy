@@ -677,7 +677,7 @@ inline bool CArraySetArg(PyObject* pyobject, Parameter& para, char tc, int size)
         para.fValue.fVoidp = nullptr;
     } else {
         int buflen = Utility::GetBuffer(pyobject, tc, size, para.fValue.fVoidp);
-        if (!para.fValue.fVoidp || buflen == 0)
+        if (buflen == 0)
             return false;
     }
     para.fTypeCode = 'p';
