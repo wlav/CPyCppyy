@@ -13,6 +13,7 @@ namespace TypeManip {
             bool template_strip = true, bool const_strip = true);
 
     void cppscope_to_pyscope(std::string& cppscope);
+    std::string extract_namespace(const std::string& name);
 
 } // namespace TypeManip
 

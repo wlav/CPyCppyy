@@ -103,3 +103,31 @@ void CPyCppyy::TypeManip::cppscope_to_pyscope(std::string& cppscope)
         pos += 1;
     }
 }
+
+//----------------------------------------------------------------------------
+std::string CPyCppyy::TypeManip::extract_namespace(const std::string& name)
+{
+// Find the namespace the named class lives in, take care of templates
+    if (name.empty())
+        return name;
+
+    int tpl_open = 0;
+    for (std::string::size_type pos = name.size()-1; 0 < pos; --pos) {
+        std::string::value_type c = name[pos];
+
+    // count '<' and '>' to be able to skip template contents
+        if (c == '>')
+            ++tpl_open;
+        else if (c == '<')
+            --tpl_open;
+
+    // collect name up to "::"
+        else if (tpl_open == 0 && c == ':' && name[pos-1] == ':') {
+        // found the extend of the scope ... done
+            return name.substr(0, pos-1);
+        }
+    }
+
+// no namespace; assume outer scope
+    return "";
+}

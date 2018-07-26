@@ -528,8 +528,9 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
 // locate the parent, if necessary, for building the class if not specified
     std::string::size_type last = 0;
     if (!parent) {
-    // TODO: move this to TypeManip
-    // need to deal with template paremeters that can have scopes themselves
+    // TODO: move this to TypeManip, which already has something similar in
+    // the form of 'extract_namespace'
+    // need to deal with template parameters that can have scopes themselves
         int tpl_open = 0;
         for (std::string::size_type pos = 0; pos < name.size(); ++pos) {
             std::string::value_type c = name[pos];

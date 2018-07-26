@@ -8,6 +8,7 @@
 #include "ProxyWrappers.h"
 #include "PyCallable.h"
 #include "PyStrings.h"
+#include "TypeManip.h"
 #include "Utility.h"
 
 // Standard
@@ -73,32 +74,6 @@ inline PyObject* CallPyObjMethod(PyObject* obj, const char* meth, PyObject* arg1
         obj, const_cast<char*>(meth), const_cast<char*>("O"), arg1);
     Py_DECREF(obj);
     return result;
-}
-
-
-//- helpers --------------------------------------------------------------------
-static std::string ExtractNamespace(const std::string& name)
-{
-// Find the namespace the named class lives in, take care of templates
-    int tpl_open = 0;
-    for (std::string::size_type pos = name.size()-1; 0 < pos; --pos) {
-        std::string::value_type c = name[pos];
-
-    // count '<' and '>' to be able to skip template contents
-        if (c == '>')
-            ++tpl_open;
-        else if (c == '<')
-            --tpl_open;
-
-    // collect name up to "::"
-        else if (tpl_open == 0 && c == ':' && name[pos-1] == ':') {
-        // found the extend of the scope ... done
-            return name.substr(0, pos-1);
-        }
-    }
-
-// no namespace; assume outer scope
-    return "";
 }
 
 //-----------------------------------------------------------------------------
@@ -979,7 +954,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
     Py_INCREF(pyclass);
     PyTuple_SET_ITEM(args, 0, pyclass);
 
-    std::string outer_scope = ExtractNamespace(name);
+    std::string outer_scope = TypeManip::extract_namespace(name);
 
     bool pstatus = true;
     auto p = outer_scope.empty() ? gPythonizations.end() : gPythonizations.find(outer_scope);

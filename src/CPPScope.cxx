@@ -53,20 +53,28 @@ static PyObject* meta_getmodule(CPPScope* meta, void*)
     if (meta->fModuleName)
         return CPyCppyy_PyUnicode_FromString(meta->fModuleName);
 
-    std::string modname = Cppyy::GetScopedFinalName(meta->fCppType);
-    std::string::size_type pos1 = modname.rfind("::");
-    if (modname.empty() || pos1 == std::string::npos)
+// get C++ representation of outer scope
+    std::string modname =
+        TypeManip::extract_namespace(Cppyy::GetScopedFinalName(meta->fCppType));
+    if (modname.empty())
         return CPyCppyy_PyUnicode_FromString(const_cast<char*>("cppyy.gbl"));
 
+// now peel scopes one by one, pulling in the python naming (which will
+// simply recurse if not overridden in python)
     PyObject* pymodule = nullptr;
-    std::string::size_type pos2 = modname.rfind("::", pos1-1);
-    pos2 = (pos2 == std::string::npos) ? 0 : pos2 + 2;
-    PyObject* pyscope = CPyCppyy::GetScopeProxy(Cppyy::GetScope(modname.substr(0, pos1)));
+    PyObject* pyscope = CPyCppyy::GetScopeProxy(Cppyy::GetScope(modname));
     if (pyscope) {
+    // get the module of our module
         pymodule = PyObject_GetAttr(pyscope, PyStrings::gModule);
-        CPyCppyy_PyUnicode_AppendAndDel(&pymodule,
-            CPyCppyy_PyUnicode_FromString(('.'+modname.substr(pos2, pos1-pos2)).c_str()));
-
+        if (pymodule) {
+        // append name of our module
+            PyObject* pymodname = PyObject_GetAttr(pyscope, PyStrings::gName);
+            if (pymodname) {
+                CPyCppyy_PyUnicode_AppendAndDel(
+                    &pymodule, CPyCppyy_PyUnicode_FromString("."));
+                CPyCppyy_PyUnicode_AppendAndDel(&pymodule, pymodname);
+            }
+        }
         Py_DECREF(pyscope);
     }
 
@@ -74,8 +82,9 @@ static PyObject* meta_getmodule(CPPScope* meta, void*)
         return pymodule;
     PyErr_Clear();
 
+// lookup through python failed, so simply cook up a '::' -> '.' replacement
     TypeManip::cppscope_to_pyscope(modname);
-    return CPyCppyy_PyUnicode_FromString(("cppyy.gbl."+modname.substr(0, pos1)).c_str());
+    return CPyCppyy_PyUnicode_FromString(("cppyy.gbl."+modname).c_str());
 }
 
 //-----------------------------------------------------------------------------
