@@ -43,7 +43,7 @@ if has_wheel:
 
 setup(
     name='CPyCppyy',
-    version='1.3.1',
+    version='1.3.2',
     description='Cling-based Python-C++ bindings for CPython',
     long_description=long_description,
 
