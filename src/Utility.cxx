@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <list>
 #include <mutex>
+#include <set>
 #include <sstream>
 #include <utility>
 
@@ -25,6 +26,7 @@ bool CPyCppyy::gDictLookupActive = false;
 
 typedef std::map<std::string, std::string> TC2POperatorMapping_t;
 static TC2POperatorMapping_t gC2POperatorMapping;
+static std::set<std::string> gOpSkip;
 
 namespace {
 
@@ -35,10 +37,10 @@ namespace {
         InitOperatorMapping_t() {
         // Initialize the global map of operator names C++ -> python.
 
-         // gC2POperatorMapping["[]"]  = "__setitem__";     // depends on return type
-         // gC2POperatorMapping["+"]   = "__add__";         // depends on # of args (see __pos__)
-         // gC2POperatorMapping["-"]   = "__sub__";         // id. (eq. __neg__)
-         // gC2POperatorMapping["*"]   = "__mul__";         // double meaning in C++
+            gOpSkip.insert("[]");      // __s/getitem__, depends on return type
+            gOpSkip.insert("+");       // __add__, depends on # of args (see __pos__)
+            gOpSkip.insert("-");       // __sub__, id. (eq. __neg__)
+            gOpSkip.insert("+");       // __mul__, double meaning in C++
 
             gC2POperatorMapping["[]"]  = "__getitem__";
             gC2POperatorMapping["()"]  = "__call__";
@@ -624,7 +626,7 @@ std::string CPyCppyy::Utility::MapOperatorName(const std::string& name, bool bTa
 
     // check first if none, to prevent spurious deserializing downstream
         TC2POperatorMapping_t::iterator pop = gC2POperatorMapping.find(op);
-        if (pop == gC2POperatorMapping.end()) {
+        if (pop == gC2POperatorMapping.end() && gOpSkip.find(op) == gOpSkip.end()) {
             op = Cppyy::ResolveName(op.substr(start, end - start));
             pop = gC2POperatorMapping.find(op);
         }
