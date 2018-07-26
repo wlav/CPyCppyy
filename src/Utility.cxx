@@ -663,7 +663,7 @@ std::string CPyCppyy::Utility::MapOperatorName(const std::string& name, bool bTa
 //----------------------------------------------------------------------------
 const std::string CPyCppyy::Utility::Compound(const std::string& name)
 {
-// TODO: consolidate with other string manipulations in Helpers.cxx
+// TODO: consolidate with other string manipulations in TypeManip.cxx
 // Break down the compound of a fully qualified type name.
     std::string cleanName = name;
     RemoveConst(cleanName);

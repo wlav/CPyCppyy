@@ -728,17 +728,12 @@ CPyCppyy::Executor* CPyCppyy::CreateExecutor(const std::string& fullType)
 
 //-- still nothing? try pointer instead of array (for builtins)
     if (cpd == "[]") {
-    /* // CLING WORKAROUND -- if the type is a fixed-size array, it will have a funky
-    // resolved type like MyClass(&)[N], which TClass::GetClass() fails on. So, strip
-    // it down:
-        realType = TClassEdit::CleanType(realType.substr(0, realType.rfind("(")).c_str(), 1);
-    // -- CLING WORKAROUND */
         h = gExecFactories.find(realType + "*");
         if (h != gExecFactories.end())
             return (h->second)();           // TODO: use array size
     }
 
-// C++ classes and special cases (enum)
+// C++ classes and special cases
     Executor* result = 0;
     if (Cppyy::TCppType_t klass = Cppyy::GetScope(realType)) {
         Cppyy::TCppType_t raw; Cppyy::TCppMethod_t deref;
