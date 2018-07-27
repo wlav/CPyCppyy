@@ -51,7 +51,7 @@ PyObject* CPyCppyy::PyStrings::gThisModule       = nullptr;
 bool CPyCppyy::CreatePyStrings() {
 // Build cache of commonly used python strings (the cache is python intern, so
 // all strings are shared python-wide, not just in cppyy).
-    CPPYY_INITIALIZE_STRING(gBases,          __assign__);
+    CPPYY_INITIALIZE_STRING(gAssign,         __assign__);
     CPPYY_INITIALIZE_STRING(gBases,          __bases__);
     CPPYY_INITIALIZE_STRING(gBase,           __base__);
     CPPYY_INITIALIZE_STRING(gClass,          __class__);
