@@ -551,6 +551,32 @@ PyObject* StlSequenceIter(PyObject* self)
     return iter;
 }
 
+//- safe indexing for STL-like vector w/o iterator dictionaries ---------------
+PyObject* CheckedGetItem(PyObject* self, PyObject* obj)
+{
+// Implement a generic python __getitem__ for STL-like classes that are missing the
+// reflection info for their iterators. This is then used for iteration by means of
+// consecutive indeces, it such index is of integer type.
+    Py_ssize_t size = PySequence_Size(self);
+    Py_ssize_t idx  = PyInt_AsSsize_t(obj);
+    if ((size == (Py_ssize_t)-1 || idx == (Py_ssize_t)-1) && PyErr_Occurred()) {
+    // argument conversion problem: let method itself resolve anew and report
+        PyErr_Clear();
+        return CallPyObjMethod(self, "_getitem__unchecked", obj);
+    }
+
+    bool inbounds = false;
+    if (0 <= idx && 0 <= size && idx < size)
+        inbounds = true;
+
+    if (inbounds)
+        return CallPyObjMethod(self, "_getitem__unchecked", obj);
+    else
+        PyErr_SetString( PyExc_IndexError, "index out of range" );
+
+    return nullptr;
+}
+
 //- pair as sequence to allow tuple unpacking --------------------------------
 PyObject* PairUnpack(PyObject* self, PyObject* pyindex)
 {
@@ -834,11 +860,16 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
 
     if (!IsTemplatedSTLClass(name, "vector")) {       // vector is dealt with below
         if (HasAttrDirect(pyclass, PyStrings::gBegin) && HasAttrDirect(pyclass, PyStrings::gEnd)) {
-        // TODO: check whether iterator type is available
-
-        // if yes: install iterator protocol
-            ((PyTypeObject*)pyclass)->tp_iter = (getiterfunc)StlSequenceIter;
-            Utility::AddToClass(pyclass, "__iter__", (PyCFunction) StlSequenceIter, METH_NOARGS);
+            if (Cppyy::GetScope(name+"::iterator") || Cppyy::GetScope(name+"::const_iterator")) {
+            // iterator protocol fully implemented, so use it (TODO: check return type, rather than
+            // the existence of these typedefs? I.e. what's the "full protocol"?)
+                ((PyTypeObject*)pyclass)->tp_iter = (getiterfunc)StlSequenceIter;
+                Utility::AddToClass(pyclass, "__iter__", (PyCFunction)StlSequenceIter, METH_NOARGS);
+            } else if (HasAttrDirect(pyclass, PyStrings::gGetItem) && HasAttrDirect(pyclass, PyStrings::gLen)) {
+            // only partial implementation of the protocol, but checked getitem should od
+                Utility::AddToClass(pyclass, "_getitem__unchecked", "__getitem__");
+                Utility::AddToClass(pyclass, "__getitem__", (PyCFunction)CheckedGetItem, METH_O);
+            }
         }
     }
 
