@@ -30,6 +30,7 @@
 //- data _______________________________________________________________________
 namespace CPyCppyy {
     extern PyObject* gThisModule;
+    extern PyObject* gPyTypeMap;
     extern std::set<Cppyy::TCppType_t> gPinnedTypes;
 }
 
@@ -512,7 +513,22 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
         return pytemplate;
     }
 
-    if (!(bool)klass) {   // if so, all options have been exhausted: it doesn't exist as such
+    if (!(bool)klass) {
+    // final possibility is a typedef of a builtin; these are mapped on the python side
+        std::string resolved = Cppyy::ResolveName(lookup);
+        if (gPyTypeMap) {
+            PyObject* tc = PyDict_GetItemString(gPyTypeMap, resolved.c_str()); // borrowed
+            if (tc && PyCallable_Check(tc)) {
+                PyObject* nt = PyObject_CallFunction(tc, (char*)"ss", name.c_str(), scName.c_str());
+                if (nt) {
+                    if (parent) PyObject_SetAttrString(parent, (char*)name.c_str(), nt);
+                    return nt;
+                }
+                PyErr_Clear();
+            }
+        }
+
+    // all options have been exhausted: it doesn't exist as such
         PyErr_Format(PyExc_TypeError, "\'%s\' is not a known C++ class", lookup.c_str());
         Py_XDECREF(parent);
         return nullptr;

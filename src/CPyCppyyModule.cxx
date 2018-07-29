@@ -152,6 +152,7 @@ PyObject _CPyCppyy_NullPtrStruct = {
 
 namespace CPyCppyy {
     PyObject* gThisModule = nullptr;
+    PyObject* gPyTypeMap = nullptr;
     PyObject* gNullPtrObject = nullptr;
     std::map<std::string, std::vector<PyObject*>> gPythonizations;
     std::set<Cppyy::TCppType_t> gPinnedTypes;
@@ -769,6 +770,10 @@ extern "C" void initlibcppyy()
 
 // keep gThisModule, but do not increase its reference count even as it is borrowed,
 // or a self-referencing cycle would be created
+
+// external types
+    gPyTypeMap = PyDict_New();
+    PyModule_AddObject(gThisModule, "type_map", gPyTypeMap);    // steals reference
 
 // Pythonizations ...
     PyModule_AddObject(gThisModule, "UserExceptions",     PyDict_New());

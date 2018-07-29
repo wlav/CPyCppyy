@@ -463,6 +463,10 @@ std::string CPyCppyy::Utility::ConstructTemplateArgs(PyObject* pyname, PyObject*
                         tmpl_name << '&';
                 }
             }
+        } else if (PyObject_HasAttr(tn, PyStrings::gCppName)) {
+            PyObject* tpName = PyObject_GetAttr(tn, PyStrings::gCppName);
+            tmpl_name << CPyCppyy_PyUnicode_AsString(tpName);
+            Py_DECREF(tpName);
         } else if (PyObject_HasAttr(tn, PyStrings::gName)) {
             PyObject* tpName = PyObject_GetAttr(tn, PyStrings::gName);
 
