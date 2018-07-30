@@ -529,6 +529,12 @@ int CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, void*& b
     if (PyBytes_Check(pyobject))
         return 0;
 
+// special case: bytes array
+    if ((!check || tc == '*' || tc == 'B') && PyByteArray_CheckExact(pyobject)) {
+        buf = PyByteArray_AS_STRING(pyobject);
+        return PyByteArray_GET_SIZE(pyobject);
+    }
+
 // new-style buffer interface
     if (PyObject_CheckBuffer(pyobject)) {
         Py_buffer bufinfo;
@@ -537,15 +543,17 @@ int CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, void*& b
             if (tc == '*' || strchr(bufinfo.format, tc)) {
                 buf = bufinfo.buf;
                 if (buf && bufinfo.ndim == 0) {
+                    PyBuffer_Release(&bufinfo);
                     return bufinfo.len/bufinfo.itemsize;
-                } else if (buf && bufinfo.ndim == 1 && bufinfo.shape) {
-                    int size1d = (int)bufinfo.shape[0];
+                } else if (buf && bufinfo.ndim == 1) {
+                    int size1d = bufinfo.shape ? (int)bufinfo.shape[0] : (int)bufinfo.len;
                     PyBuffer_Release(&bufinfo);
                     return size1d;
                 }
             } else {
             // have buf, but format mismatch: bail out now, otherwise the old
             // code will return based on itemsize match
+                PyBuffer_Release(&bufinfo);
                 return 0;                
             }
         }

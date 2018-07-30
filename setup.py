@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os, glob, subprocess
+import os, sys, glob, subprocess
 from setuptools import setup, find_packages, Extension
 from distutils.command.build_ext import build_ext as _build_ext
 try:
@@ -29,7 +29,9 @@ def get_cflags():
 
 class my_build_extension(_build_ext):
     def build_extension(self, ext):
-        ext.extra_compile_args = ['-O2']+get_cflags().split()
+        ext.extra_compile_args += ['-O2']+get_cflags().split()
+        if 'linux' in sys.platform:
+            ext.extra_link_args += ['-Wl,-Bsymbolic-functions']
         return _build_ext.build_extension(self, ext)
 
 cmdclass = { 'build_ext': my_build_extension }

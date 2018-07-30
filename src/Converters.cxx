@@ -673,12 +673,20 @@ using namespace CPyCppyy;
 inline bool CArraySetArg(PyObject* pyobject, Parameter& para, char tc, int size)
 {
 // general case of loading a C array pointer (void* + type code) as function argument
-    if (pyobject == gNullPtrObject || (PyInt_Check(pyobject) && PyInt_AsLong(pyobject) == 0)) {
+    if (pyobject == gNullPtrObject)
         para.fValue.fVoidp = nullptr;
-    } else {
+    else {
         int buflen = Utility::GetBuffer(pyobject, tc, size, para.fValue.fVoidp);
-        if (buflen == 0)
-            return false;
+        if (!buflen) {
+        // stuck here as it's the least common
+            if (CPyCppyy_PyLong_AsStrictInt(pyobject) == 0)
+                para.fValue.fVoidp = nullptr;
+            else {
+                PyErr_Format(PyExc_TypeError,     // ValueError?
+                   "could not convert argument to buffer or nullptr");
+                return false;
+            }
+        }
     }
     para.fTypeCode = 'p';
     return true;
@@ -833,7 +841,7 @@ bool CPyCppyy::name##ArrayConverter::ToMemory(PyObject* value, void* address)\
 {                                                                            \
     void* buf = nullptr;                                                     \
     int buflen = Utility::GetBuffer(value, code, sizeof(type), buf);         \
-    if (!buf || buflen == 0)                                                 \
+    if (buflen == 0)                                                         \
         return false;                                                        \
     if (0 <= fSize) {                                                        \
         if (fSize < buflen/(int)sizeof(type)) {                              \
