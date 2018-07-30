@@ -34,12 +34,16 @@ using namespace CPyCppyy;
 bool HasAttrDirect(PyObject* pyclass, PyObject* pyname, bool mustBeCPyCppyy = false) {
 // prevents calls to Py_TYPE(pyclass)->tp_getattr, which is unnecessary for our
 // purposes here and could tickle problems w/ spurious lookups into ROOT meta
-    PyObject* attr = PyType_Type.tp_getattro(pyclass, pyname);
-    if (attr != 0 && (!mustBeCPyCppyy || CPPOverload_Check(attr))) {
-        Py_DECREF(attr);
-        return true;
+    PyObject* dct = PyObject_GetAttr(pyclass, PyStrings::gDict);
+    if (dct) {
+        PyObject* attr = PyObject_GetItem(dct, pyname);
+        Py_DECREF(dct);
+        if (attr) {
+            bool ret = !mustBeCPyCppyy || CPPOverload_Check(attr);
+            Py_DECREF(attr);
+            return ret;
+        }
     }
-
     PyErr_Clear();
     return false;
 }
@@ -566,6 +570,7 @@ PyObject* CheckedGetItem(PyObject* self, PyObject* obj)
     }
 
     bool inbounds = false;
+    if (idx < 0) idx += size;
     if (0 <= idx && 0 <= size && idx < size)
         inbounds = true;
 
