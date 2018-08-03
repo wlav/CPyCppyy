@@ -51,12 +51,8 @@ bool HasAttrDirect(PyObject* pyclass, PyObject* pyname, bool mustBeCPyCppyy = fa
 //-----------------------------------------------------------------------------
 inline bool IsTemplatedSTLClass(const std::string& name, const std::string& klass) {
 // Scan the name of the class and determine whether it is a template instantiation.
-    const int nsize = (int)name.size();
-    const int ksize = (int)klass.size();
-
-    return ((ksize   < nsize && name.substr(0, ksize) == klass) ||
-            (ksize+5 < nsize && name.substr(5, ksize) == klass)) &&
-            name.find("::", name.find(">")) == std::string::npos;
+    auto pos = name.find(klass);
+    return (pos == 0 || pos == 5) && name.find("::", name.rfind(">")) == std::string::npos;
 }
 
 // to prevent compiler warnings about const char* -> char*
