@@ -267,6 +267,7 @@ CPPYY_DECLARE_STRING_CONVERTER(STLString, std::string);
 #if __cplusplus > 201402L
 CPPYY_DECLARE_STRING_CONVERTER(STLStringView, std::string_view);
 #endif
+CPPYY_DECLARE_STRING_CONVERTER(STLWString, std::wstring);
 
 class STLStringMoveConverter : public STLStringConverter {
 public:

@@ -450,6 +450,24 @@ PyObject* CPyCppyy::STLStringExecutor::Execute(
 }
 
 //----------------------------------------------------------------------------
+PyObject* CPyCppyy::STLWStringExecutor::Execute(
+    Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
+{
+// execute <method> with argument <self, ctxt>, construct python string return value
+    static Cppyy::TCppScope_t sSTLWStringScope = Cppyy::GetScope("std::wstring");
+    std::wstring* result = (std::wstring*)GILCallO(method, self, ctxt, sSTLWStringScope);
+    if (!result) {
+        wchar_t w = L'\0';
+        return PyUnicode_FromWideChar(&w, 0);
+    }
+
+    PyObject* pyresult = PyUnicode_FromWideChar(result->c_str(), result->size());
+    ::operator delete(result); // calls Cppyy::CallO which calls ::operator new
+
+    return pyresult;
+}
+
+//----------------------------------------------------------------------------
 PyObject* CPyCppyy::InstancePtrExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
@@ -807,6 +825,8 @@ namespace {
 
 using namespace CPyCppyy;
 
+#define WSTRING "basic_string<wchar_t,char_traits<wchar_t>,allocator<wchar_t> >"
+
 struct InitExecFactories_t {
 public:
     InitExecFactories_t() {
@@ -895,6 +915,9 @@ public:
         gf["string"] =                      (ef_t)+[]() { return new STLStringExecutor{}; };
         gf["std::string&"] =                (ef_t)+[]() { return new STLStringRefExecutor{}; };
         gf["string&"] =                     (ef_t)+[]() { return new STLStringRefExecutor{}; };
+        gf["std::wstring"] =                (ef_t)+[]() { return new STLWStringExecutor{}; };
+        gf["std::" WSTRING] =               (ef_t)+[]() { return new STLWStringExecutor{}; };
+        gf[WSTRING] =                       (ef_t)+[]() { return new STLWStringExecutor{}; };
         gf["complex<double>"] =             (ef_t)+[]() { return new ComplexDExecutor{}; };
         gf["complex<double>&"] =            (ef_t)+[]() { return new ComplexDRefExecutor{}; };
         gf["__init__"] =                    (ef_t)+[]() { return new ConstructorExecutor{}; };

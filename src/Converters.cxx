@@ -1025,6 +1025,54 @@ CPPYY_IMPL_STRING_AS_PRIMITIVE_CONVERTER(STLString, std::string, c_str, size)
 CPPYY_IMPL_STRING_AS_PRIMITIVE_CONVERTER(STLStringView, std::string_view, data, size)
 #endif
 
+CPyCppyy::STLWStringConverter::STLWStringConverter(bool keepControl) :
+    InstancePtrConverter(Cppyy::GetScope("std::wstring"), keepControl) {}
+
+bool CPyCppyy::STLWStringConverter::SetArg(
+    PyObject* pyobject, Parameter& para, CallContext* ctxt)
+{
+    if (PyUnicode_Check(pyobject)) {
+        Py_ssize_t len = PyUnicode_GET_SIZE(pyobject);
+        wchar_t* buf = new wchar_t[len+1];
+        CPyCppyy_PyUnicode_AsWideChar(pyobject, buf, len);
+        fBuffer = std::wstring(buf, len);
+        delete[] buf;
+        para.fValue.fVoidp = &fBuffer;
+        para.fTypeCode = 'V';
+        return true;
+    }
+
+    if (!(PyInt_Check(pyobject) || PyLong_Check(pyobject))) {
+        bool result = InstancePtrConverter::SetArg(pyobject, para, ctxt);
+        para.fTypeCode = 'V';
+        return result;
+    }
+
+    return false;
+}
+
+PyObject* CPyCppyy::STLWStringConverter::FromMemory(void* address)
+{
+    if (address)
+        return PyUnicode_FromWideChar(((std::wstring*)address)->c_str(), ((std::wstring*)address)->size());
+    wchar_t w = L'\0';
+    return PyUnicode_FromWideChar(&w, 0);
+}
+
+bool CPyCppyy::STLWStringConverter::ToMemory(PyObject* value, void* address)
+{
+    if (PyUnicode_Check(value)) {
+        Py_ssize_t len = PyUnicode_GET_SIZE(value);
+        wchar_t* buf = new wchar_t[len+1];
+        CPyCppyy_PyUnicode_AsWideChar(value, buf, len);
+        *((std::wstring*)address) = std::wstring(buf, len);
+        delete[] buf;
+        return true;
+    }
+    return InstancePtrConverter::ToMemory(value, address);
+}
+
+
 bool CPyCppyy::STLStringMoveConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* ctxt)
 {
@@ -1747,6 +1795,8 @@ namespace {
 
 using namespace CPyCppyy;
 
+#define WSTRING "basic_string<wchar_t,char_traits<wchar_t>,allocator<wchar_t> >"
+
 static struct InitConvFactories_t {
 public:
     InitConvFactories_t() {
@@ -1850,6 +1900,12 @@ public:
         gf["string_view"] =                 (cf_t)+[](long) { return new STLStringViewConverter{}; };
         gf["experimental::basic_string_view<char,char_traits<char> >"] = (cf_t)+[](long) { return new STLStringViewConverter{}; };
 #endif
+        gf["std::wstring"] =                (cf_t)+[](long) { return new STLWStringConverter{}; };
+        gf[WSTRING] =                       (cf_t)+[](long) { return new STLWStringConverter{}; };
+        gf["std::" WSTRING] =               (cf_t)+[](long) { return new STLWStringConverter{}; };
+        gf["const std::wstring&"] =         (cf_t)+[](long) { return new STLWStringConverter{}; };
+        gf["const std::" WSTRING "&"] =     (cf_t)+[](long) { return new STLWStringConverter{}; };
+        gf["const " WSTRING "&"] =          (cf_t)+[](long) { return new STLWStringConverter{}; };
         gf["void*&"] =                      (cf_t)+[](long) { return new VoidPtrRefConverter{}; };
         gf["void**"] =                      (cf_t)+[](long) { return new VoidPtrPtrConverter{}; };
         gf["void*[]"] =                     (cf_t)+[](long) { return new VoidPtrPtrConverter{}; };

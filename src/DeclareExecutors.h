@@ -63,6 +63,7 @@ CPPYY_DECL_EXEC(ComplexD);
 CPPYY_DECL_EXEC(ComplexI);
 CPPYY_DECL_EXEC(ComplexL);
 CPPYY_DECL_EXEC(STLString);
+CPPYY_DECL_EXEC(STLWString);
 
 class InstancePtrExecutor : public Executor {
 public:

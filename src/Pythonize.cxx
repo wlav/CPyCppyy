@@ -617,6 +617,10 @@ static inline PyObject* CPyCppyy_PyString_FromCppString(std::string* s) {
     return CPyCppyy_PyUnicode_FromStringAndSize(s->c_str(), s->size());
 }
 
+static inline PyObject* CPyCppyy_PyString_FromCppString(std::wstring* s) {
+    return PyUnicode_FromWideChar(s->c_str(), s->size());
+}
+
 #define CPPYY_IMPL_STRING_PYTHONIZATION(type, name)                          \
 inline PyObject* name##GetData(PyObject* self)                               \
 {                                                                            \
@@ -682,6 +686,7 @@ PyObject* name##StringCompare(PyObject* self, PyObject* obj)                 \
 }
 
 CPPYY_IMPL_STRING_PYTHONIZATION_CMP(std::string, Stl)
+CPPYY_IMPL_STRING_PYTHONIZATION_CMP(std::wstring, StlW)
 
 
 //- STL iterator behavior ----------------------------------------------------
@@ -964,6 +969,15 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         Utility::AddToClass(pyclass, "__cmp__", (PyCFunction)StlStringCompare, METH_O);
         Utility::AddToClass(pyclass, "__eq__",  (PyCFunction)StlStringIsEqual, METH_O);
         Utility::AddToClass(pyclass, "__ne__",  (PyCFunction)StlStringIsNotEqual, METH_O);
+    }
+
+    else if (name == "basic_string<wchar_t,char_traits<wchar_t>,allocator<wchar_t> >" || \
+             name == "std::basic_string<wchar_t,char_traits<wchar_t>,allocator<wchar_t> >") {
+        Utility::AddToClass(pyclass, "__repr__", (PyCFunction)StlWStringRepr, METH_NOARGS);
+        Utility::AddToClass(pyclass, "__str__", "c_str");
+        Utility::AddToClass(pyclass, "__cmp__", (PyCFunction)StlWStringCompare, METH_O);
+        Utility::AddToClass(pyclass, "__eq__",  (PyCFunction)StlWStringIsEqual, METH_O);
+        Utility::AddToClass(pyclass, "__ne__",  (PyCFunction)StlWStringIsNotEqual, METH_O);
     }
 
     else if (name == "complex<double>" || name == "std::complex<double>") {
