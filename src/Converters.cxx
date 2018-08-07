@@ -399,6 +399,42 @@ PyObject* CPyCppyy::UCharAsIntConverter::FromMemory(void* address)
     return PyInt_FromLong((long)*((unsigned char*)address));
 }
 
+//----------------------------------------------------------------------------
+bool CPyCppyy::WCharConverter::SetArg(
+    PyObject* pyobject, Parameter& para, CallContext* ctxt)
+{
+// convert <pyobject> to C++ <wchar_t>, set arg for call
+    if (!PyUnicode_Check(pyobject) || PyUnicode_GET_SIZE(pyobject) != 1) {
+        PyErr_SetString(PyExc_ValueError, "single wchar_t character expected");
+        return false;
+    }
+    wchar_t val;
+    Py_ssize_t res = CPyCppyy_PyUnicode_AsWideChar(pyobject, &val, 1);
+    if (res == -1)
+        return false;
+    para.fValue.fLong = (long)val;
+    para.fTypeCode = 'U';
+    return true;
+}
+
+PyObject* CPyCppyy::WCharConverter::FromMemory(void* address)
+{
+    return PyUnicode_FromWideChar((const wchar_t*)address, 1);
+}
+
+bool CPyCppyy::WCharConverter::ToMemory(PyObject* value, void* address)
+{
+    if (!PyUnicode_Check(value) || PyUnicode_GET_SIZE(value) != 1) {
+        PyErr_SetString(PyExc_ValueError, "single wchar_t character expected");
+        return false;
+    }
+    wchar_t val;
+    Py_ssize_t res = CPyCppyy_PyUnicode_AsWideChar(value, &val, 1);
+    if (res == -1)
+        return false;
+    *((wchar_t*)address) = val;
+    return true;
+}
 
 //----------------------------------------------------------------------------
 CPPYY_IMPL_BASIC_CONVERTER(
@@ -652,7 +688,7 @@ bool CPyCppyy::CStringConverter::ToMemory(PyObject* value, void* address)
         return false;
 
 // verify (too long string will cause truncation, no crash)
-    if (fMaxSize < (UInt_t)CPyCppyy_PyUnicode_GET_SIZE(value))
+    if (fMaxSize != -1 && fMaxSize < (UInt_t)CPyCppyy_PyUnicode_GET_SIZE(value))
         PyErr_Warn(PyExc_RuntimeWarning, (char*)"string too long for char array (truncated)");
 
     if (fMaxSize != -1)
@@ -662,6 +698,66 @@ bool CPyCppyy::CStringConverter::ToMemory(PyObject* value, void* address)
         strcpy(*(char**)address, s);
 
    return true;
+}
+
+//----------------------------------------------------------------------------
+bool CPyCppyy::WCStringConverter::SetArg(
+    PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)
+{
+// construct a new string and copy it in new memory
+    Py_ssize_t len = PyUnicode_GetSize(pyobject);
+    if (len == (Py_ssize_t)-1 && PyErr_Occurred())
+        return false;
+
+// TODO: does it matter that realloc may copy?
+    fBuffer = (wchar_t*)realloc(fBuffer, sizeof(wchar_t)*(len+1));
+
+    Py_ssize_t res = CPyCppyy_PyUnicode_AsWideChar(pyobject, fBuffer, len);
+    if (res == -1)
+        return false;   // could free the buffer here
+
+// set the value and declare success
+    fBuffer[len] = L'\0';
+    para.fValue.fVoidp = (void*)fBuffer;
+    para.fTypeCode = 'p';
+    return true;
+}
+
+PyObject* CPyCppyy::WCStringConverter::FromMemory(void* address)
+{
+// construct python object from C++ wchar_t* read at <address>
+    if (address && *(wchar_t**)address) {
+        if (fMaxSize != -1)        // need to prevent reading beyond boundary
+            return PyUnicode_FromWideChar(*(wchar_t**)address, fMaxSize);
+    // with unknown size
+        return PyUnicode_FromWideChar(*(wchar_t**)address, wcslen(*(wchar_t**)address));
+    }
+
+// empty string in case there's no valid address
+    wchar_t w = L'\0';
+    return PyUnicode_FromWideChar(&w, 0);
+}
+
+bool CPyCppyy::WCStringConverter::ToMemory(PyObject* value, void* address)
+{
+// convert <value> to C++ wchar_t*, write it at <address>
+    Py_ssize_t len = PyUnicode_GetSize(value);
+    if (len == (Py_ssize_t)-1 && PyErr_Occurred())
+        return false;
+
+// verify (too long string will cause truncation, no crash)
+    if (fMaxSize != -1 && fMaxSize < len)
+        PyErr_Warn(PyExc_RuntimeWarning, (char*)"string too long for wchar array (truncated)");
+
+    Py_ssize_t res = -1;
+    if (fMaxSize != -1)
+        res = CPyCppyy_PyUnicode_AsWideChar(value, *(wchar_t**)address, fMaxSize);
+    else
+    // coverity[secure_coding] - can't help it, it's intentional.
+        res = CPyCppyy_PyUnicode_AsWideChar(value, *(wchar_t**)address, len);
+
+    if (res == -1) return false;
+    return true;
 }
 
 
@@ -1667,6 +1763,7 @@ public:
         gf["unsigned char"] =               (cf_t)+[](long) { return new UCharConverter{}; };
         gf["const unsigned char&"] =        (cf_t)+[](long) { return new ConstUCharRefConverter{}; };
         gf["UCharAsInt"] =                  (cf_t)+[](long) { return new UCharAsIntConverter{}; };
+        gf["wchar_t"] =                     (cf_t)+[](long) { return new WCharConverter{}; };
         gf["short"] =                       (cf_t)+[](long) { return new ShortConverter{}; };
         gf["const short&"] =                (cf_t)+[](long) { return new ConstShortRefConverter{}; };
         gf["unsigned short"] =              (cf_t)+[](long) { return new UShortConverter{}; };
@@ -1741,6 +1838,7 @@ public:
         gf["const char*"] =                 (cf_t)+[](long) { return new CStringConverter{}; };
         gf["const char[]"] =                (cf_t)+[](long) { return new CStringConverter{}; };
         gf["char*"] =                       (cf_t)+[](long) { return new NonConstCStringConverter{}; };
+        gf["wchar_t*"] =                    (cf_t)+[](long) { return new WCStringConverter{}; };
         gf["std::string"] =                 (cf_t)+[](long) { return new STLStringConverter{}; };
         gf["string"] =                      (cf_t)+[](long) { return new STLStringConverter{}; };
         gf["const std::string&"] =          (cf_t)+[](long) { return new STLStringConverter{}; };

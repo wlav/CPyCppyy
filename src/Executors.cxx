@@ -167,6 +167,16 @@ PyObject* CPyCppyy::UCharConstRefExecutor::Execute(
 }
 
 //----------------------------------------------------------------------------
+PyObject* CPyCppyy::WCharExecutor::Execute(
+    Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
+{
+// execute <method> with argument <self, args>, construct python string return value
+// with the single char
+    wchar_t res = (wchar_t)GILCallL(method, self, ctxt);
+    return PyUnicode_FromWideChar(&res, 1);
+}
+
+//----------------------------------------------------------------------------
 PyObject* CPyCppyy::IntExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
@@ -342,6 +352,20 @@ PyObject* CPyCppyy::CStringExecutor::Execute(
     }
 
     return CPyCppyy_PyUnicode_FromString(result);
+}
+
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::WCStringExecutor::Execute(
+    Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
+{
+// execute <method> with argument <self, ctxt>, construct python unicode return value
+    wchar_t* result = (wchar_t*)GILCallR(method, self, ctxt);
+    if (!result) {
+        wchar_t w = L'\0';
+        return PyUnicode_FromWideChar(&w, 0);
+    }
+
+    return PyUnicode_FromWideChar(result, wcslen(result));
 }
 
 
@@ -802,6 +826,7 @@ public:
         gf["const char&"] =                 (ef_t)+[]() { return new CharConstRefExecutor{}; };
         gf["const signed char&"] =          (ef_t)+[]() { return new CharConstRefExecutor{}; };
         gf["const unsigned char&"] =        (ef_t)+[]() { return new UCharConstRefExecutor{}; };
+        gf["wchar_t"] =                     (ef_t)+[]() { return new WCharExecutor{}; };
         gf["short"] =                       (ef_t)+[]() { return new ShortExecutor{}; };
         gf["short&"] =                      (ef_t)+[]() { return new ShortRefExecutor{}; };
         gf["unsigned short"] =              (ef_t)+[]() { return new IntExecutor{}; };
@@ -865,6 +890,7 @@ public:
         gf["char*"] =                       (ef_t)+[]() { return new CStringExecutor{}; };
         gf["const signed char*"] =          (ef_t)+[]() { return new CStringExecutor{}; };
         gf["signed char*"] =                (ef_t)+[]() { return new CStringExecutor{}; };
+        gf["wchar_t*"] =                    (ef_t)+[]() { return new WCStringExecutor{}; };
         gf["std::string"] =                 (ef_t)+[]() { return new STLStringExecutor{}; };
         gf["string"] =                      (ef_t)+[]() { return new STLStringExecutor{}; };
         gf["std::string&"] =                (ef_t)+[]() { return new STLStringRefExecutor{}; };

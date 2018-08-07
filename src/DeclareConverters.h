@@ -72,6 +72,7 @@ public:
     using UCharConverter::UCharConverter;
     virtual PyObject* FromMemory(void*);
 };
+CPPYY_DECLARE_BASIC_CONVERTER(WChar);
 CPPYY_DECLARE_BASIC_CONVERTER(Short);
 CPPYY_DECLARE_BASIC_CONVERTER(UShort);
 CPPYY_DECLARE_BASIC_CONVERTER(Int);
@@ -114,6 +115,22 @@ public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
     virtual PyObject* FromMemory(void* address);
 };
+
+class WCStringConverter : public Converter {
+public:
+    WCStringConverter(long maxSize = -1) : fBuffer(nullptr), fMaxSize(maxSize) {}
+    ~WCStringConverter() { free(fBuffer); }
+
+public:
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
+    virtual PyObject* FromMemory(void* address);
+    virtual bool ToMemory(PyObject* value, void* address);
+
+protected:
+    wchar_t* fBuffer;
+    long fMaxSize;
+};
+
 
 // pointer/array conversions
 CPPYY_DECLARE_ARRAY_CONVERTER(BoolArray);
