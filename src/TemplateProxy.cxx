@@ -26,7 +26,7 @@ void TemplateProxy::Set(const std::string& cppname, const std::string& pyname, P
     std::vector<PyCallable*> dummy;
     fNonTemplated = CPPOverload_New(pyname, dummy);
     fTemplated    = CPPOverload_New(pyname, dummy);
-    new (&fDispatchMap) DispatchMap_t{};
+    new (&fDispatchMap) TP_DispatchMap_t{};
 }
 
 //----------------------------------------------------------------------------
@@ -163,7 +163,7 @@ static void tpp_dealloc(TemplateProxy* pytmpl)
 // Destroy the given template method proxy.
     PyObject_GC_UnTrack(pytmpl);
     tpp_clear(pytmpl);
-    pytmpl->fDispatchMap.TemplateProxy::DispatchMap_t::~DispatchMap_t();
+    pytmpl->fDispatchMap.~TP_DispatchMap_t();
     PyObject_GC_Del(pytmpl);
 }
 

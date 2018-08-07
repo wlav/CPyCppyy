@@ -21,6 +21,8 @@ class CPPOverload;
       @version 1.0
  */
 
+typedef std::vector<std::pair<uint64_t, CPPOverload*>> TP_DispatchMap_t;
+
 class TemplateProxy {
 private:
     friend TemplateProxy* TemplateProxy_New(
@@ -37,8 +39,7 @@ public:                 // public, as the python C-API works with C structs
     CPPOverload* fNonTemplated;   // holder for non-template overloads
     CPPOverload* fTemplated;      // holder for templated overloads
 
-    typedef std::vector<std::pair<uint64_t, CPPOverload*>> DispatchMap_t;
-    DispatchMap_t fDispatchMap;
+    TP_DispatchMap_t fDispatchMap;
 
 public:
     void AddOverload(CPPOverload* mp);
