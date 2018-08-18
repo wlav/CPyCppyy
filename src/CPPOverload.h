@@ -19,7 +19,7 @@ inline uint64_t HashSignature(PyObject* args)
 // Build a hash from the types of the given python function arguments.
     uint64_t hash = 0;
 
-    int nargs = PyTuple_GET_SIZE(args);
+    int nargs = (int)PyTuple_GET_SIZE(args);
     for (int i = 0; i < nargs; ++i) {
     // TODO: hashing in the ref-count is for moves; resolve this together with the
     // improved overloads for implicit conversions

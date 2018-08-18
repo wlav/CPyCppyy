@@ -149,7 +149,7 @@ bool CPyCppyy::MemoryRegulator::RecursiveRemove(
         }
 
     // notify any other weak referents by playing dead
-        int refcnt = ((PyObject*)pyobj)->ob_refcnt;
+        Py_ssize_t refcnt = ((PyObject*)pyobj)->ob_refcnt;
         ((PyObject*)pyobj)->ob_refcnt = 0;
         PyObject_ClearWeakRefs((PyObject*)pyobj);
         ((PyObject*)pyobj)->ob_refcnt = refcnt;

@@ -194,7 +194,7 @@ static PyObject* mp_doc(CPPOverload* pymeth, void*)
     CPPOverload::Methods_t& methods = pymeth->fMethodInfo->fMethods;
 
 // collect doc strings
-    int nMethods = methods.size();
+    CPPOverload::Methods_t::size_type nMethods = methods.size();
     if (nMethods == 0)       // from template proxy with no instantiations
         return nullptr;
     PyObject* doc = methods[0]->GetDocString();
@@ -288,7 +288,7 @@ static PyObject* mp_func_code(CPPOverload* pymeth, void*)
         PyTuple_SET_ITEM(co_varnames, 1, CPyCppyy_PyUnicode_FromString("*args"));
     }
 
-    int co_argcount = PyTuple_Size(co_varnames);
+    int co_argcount = (int)PyTuple_Size(co_varnames);
 
 // for now, code object representing the statement 'pass'
     PyObject* co_code = PyString_FromStringAndSize("d\x00\x00S", 4);
@@ -529,7 +529,7 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
     auto& dispatchMap = pymeth->fMethodInfo->fDispatchMap;
     auto& mflags      = pymeth->fMethodInfo->fFlags;
 
-    int nMethods = methods.size();
+    CPPOverload::Methods_t::size_type nMethods = methods.size();
 
     CallContext ctxt{};
     ctxt.fFlags |= (mflags & CallContext::kUseHeuristics);
@@ -597,7 +597,7 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
 
 // first summarize, then add details
     PyObject* topmsg = CPyCppyy_PyUnicode_FromFormat(
-        "none of the %d overloaded methods succeeded. Full details:", nMethods);
+        "none of the %d overloaded methods succeeded. Full details:", (int)nMethods);
     SetDetailedException(errors, topmsg /* steals */, PyExc_TypeError /* default error */);
 
 // report failure

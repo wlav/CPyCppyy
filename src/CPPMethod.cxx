@@ -130,7 +130,7 @@ bool CPyCppyy::CPPMethod::InitConverters_()
     fConverters.resize(nArgs);
 
 // setup the dispatch cache
-    for (size_t iarg = 0; iarg < nArgs; ++iarg) {
+    for (int iarg = 0; iarg < (int)nArgs; ++iarg) {
         const std::string& fullType = Cppyy::GetMethodArgType(fMethod, iarg);
         Converter* conv = CreateConverter(fullType);
         if (!conv) {
@@ -165,7 +165,7 @@ std::string CPyCppyy::CPPMethod::GetSignatureString(bool fa)
     std::stringstream sig; sig << "(";
     int count = 0;
     const size_t nArgs = Cppyy::GetMethodNumArgs(fMethod);
-    for (size_t iarg = 0; iarg < nArgs; ++iarg) {
+    for (int iarg = 0; iarg < (int)nArgs; ++iarg) {
         if (count) sig << (fa ? ", " : ",");
 
         sig << Cppyy::GetMethodArgType(fMethod, iarg);
@@ -286,7 +286,7 @@ int CPyCppyy::CPPMethod::GetPriority()
     int priority = 0;
 
     const size_t nArgs = Cppyy::GetMethodNumArgs(fMethod);
-    for (size_t iarg = 0; iarg < nArgs; ++iarg) {
+    for (int iarg = 0; iarg < (int)nArgs; ++iarg) {
         const std::string aname = Cppyy::GetMethodArgType(fMethod, iarg);
 
     // the following numbers are made up and may cause problems in specific
@@ -329,7 +329,7 @@ int CPyCppyy::CPPMethod::GetPriority()
 //----------------------------------------------------------------------------
 int CPyCppyy::CPPMethod::GetMaxArgs()
 {
-    return Cppyy::GetMethodNumArgs(fMethod);
+    return (int)Cppyy::GetMethodNumArgs(fMethod);
 }
 
 //----------------------------------------------------------------------------
@@ -458,23 +458,23 @@ PyObject* CPyCppyy::CPPMethod::PreProcessArgs(
 //----------------------------------------------------------------------------
 bool CPyCppyy::CPPMethod::ConvertAndSetArgs(PyObject* args, CallContext* ctxt)
 {
-    int argc = PyTuple_GET_SIZE(args);
-    int argMax = fConverters.size();
+    Py_ssize_t argc = PyTuple_GET_SIZE(args);
+    Py_ssize_t argMax = (Py_ssize_t)fConverters.size();
 
 // argc must be between min and max number of arguments
     if (argc < fArgsRequired) {
         SetPyError_(CPyCppyy_PyUnicode_FromFormat(
-            "takes at least %d arguments (%d given)", fArgsRequired, argc));
+            "takes at least %ld arguments (%ld given)", fArgsRequired, argc));
         return false;
     } else if (argMax < argc) {
         SetPyError_(CPyCppyy_PyUnicode_FromFormat(
-            "takes at most %d arguments (%d given)", argMax, argc));
+            "takes at most %ld arguments (%ld given)", argMax, argc));
         return false;
     }
 
 // convert the arguments to the method call array
     Parameter* cppArgs = ctxt->GetArgs(argc);
-    for (int i = 0; i < argc; ++i) {
+    for (int i = 0; i < (int)argc; ++i) {
         if (!fConverters[i]->SetArg(
                 PyTuple_GET_ITEM(args, i), cppArgs[i], ctxt)) {
             SetPyError_(CPyCppyy_PyUnicode_FromFormat("could not convert argument %d", i+1));

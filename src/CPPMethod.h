@@ -73,7 +73,7 @@ private:
     std::vector<Converter*> fConverters;
 
 // cached values
-    int  fArgsRequired;
+    Py_ssize_t fArgsRequired;
 
 // admin
     bool fIsInitialized;

@@ -200,17 +200,17 @@ bool CPyCppyy::name##Converter::ToMemory(PyObject* value, void* address)     \
 }
 
 //----------------------------------------------------------------------------
-static inline Int_t ExtractChar(PyObject* pyobject, const char* tname, Int_t low, Int_t high)
+static inline int ExtractChar(PyObject* pyobject, const char* tname, int low, int high)
 {
-    Int_t lchar = -1;
+    int lchar = -1;
     if (CPyCppyy_PyUnicode_Check(pyobject)) {
         if (CPyCppyy_PyUnicode_GET_SIZE(pyobject) == 1)
-            lchar = (Int_t)CPyCppyy_PyUnicode_AsChar(pyobject);
+            lchar = (int)CPyCppyy_PyUnicode_AsChar(pyobject);
         else
             PyErr_Format(PyExc_ValueError, "%s expected, got string of size " PY_SSIZE_T_FORMAT,
                 tname, CPyCppyy_PyUnicode_GET_SIZE(pyobject));
     } else if (!PyFloat_Check(pyobject)) {   // don't allow truncating conversion
-        lchar = PyLong_AsLong(pyobject);
+        lchar = (int)PyLong_AsLong(pyobject);
         if (lchar == -1 && PyErr_Occurred())
             ; // empty, as error already set
         else if (!(low <= lchar && lchar <= high)) {
@@ -277,9 +277,9 @@ bool CPyCppyy::name##Converter::ToMemory(PyObject* value, void* address)     \
         const char* buf = CPyCppyy_PyUnicode_AsString(value);                \
         if (PyErr_Occurred())                                                \
             return false;                                                    \
-        int len = CPyCppyy_PyUnicode_GET_SIZE(value);                        \
+        Py_ssize_t len = CPyCppyy_PyUnicode_GET_SIZE(value);                 \
         if (len != 1) {                                                      \
-            PyErr_Format(PyExc_TypeError, #type" expected, got string of size %d", len);\
+            PyErr_Format(PyExc_TypeError, #type" expected, got string of size %ld", len);\
             return false;                                                    \
         }                                                                    \
         *((type*)address) = (type)buf[0];                                    \
@@ -369,7 +369,7 @@ bool CPyCppyy::IntRefConverter::SetArg(
 #endif
 
 // alternate, pass pointer from buffer
-    int buflen = Utility::GetBuffer(pyobject, 'i', sizeof(int), para.fValue.fVoidp);
+    Py_ssize_t buflen = Utility::GetBuffer(pyobject, 'i', sizeof(int), para.fValue.fVoidp);
     if (para.fValue.fVoidp && buflen) {
         para.fTypeCode = 'V';
         return true;
@@ -554,7 +554,7 @@ bool CPyCppyy::DoubleRefConverter::SetArg(
     }
 
 // alternate, pass pointer from buffer
-    int buflen = Utility::GetBuffer(pyobject, 'd', sizeof(double), para.fValue.fVoidp);
+    Py_ssize_t buflen = Utility::GetBuffer(pyobject, 'd', sizeof(double), para.fValue.fVoidp);
     if (para.fValue.fVoidp && buflen) {
         para.fTypeCode = 'V';
         return true;
@@ -772,7 +772,7 @@ inline bool CArraySetArg(PyObject* pyobject, Parameter& para, char tc, int size)
     if (pyobject == gNullPtrObject)
         para.fValue.fVoidp = nullptr;
     else {
-        int buflen = Utility::GetBuffer(pyobject, tc, size, para.fValue.fVoidp);
+        Py_ssize_t buflen = Utility::GetBuffer(pyobject, tc, size, para.fValue.fVoidp);
         if (!buflen) {
         // stuck here as it's the least common
             if (CPyCppyy_PyLong_AsStrictInt(pyobject) == 0)
@@ -865,7 +865,7 @@ bool CPyCppyy::VoidArrayConverter::SetArg(
     }
 
 // final try: attempt to get buffer
-    int buflen = Utility::GetBuffer(pyobject, '*', 1, para.fValue.fVoidp, false);
+    Py_ssize_t buflen = Utility::GetBuffer(pyobject, '*', 1, para.fValue.fVoidp, false);
 
 // ok if buffer exists (can't perform any useful size checks)
     if (para.fValue.fVoidp && buflen != 0) {
@@ -911,7 +911,7 @@ bool CPyCppyy::VoidArrayConverter::ToMemory(PyObject* value, void* address)
 
 // final try: attempt to get buffer
     void* buf = nullptr;
-    int buflen = Utility::GetBuffer(value, '*', 1, buf, false);
+    Py_ssize_t buflen = Utility::GetBuffer(value, '*', 1, buf, false);
     if (!buf || buflen == 0)
         return false;
 
@@ -936,7 +936,7 @@ PyObject* CPyCppyy::name##ArrayConverter::FromMemory(void* address)          \
 bool CPyCppyy::name##ArrayConverter::ToMemory(PyObject* value, void* address)\
 {                                                                            \
     void* buf = nullptr;                                                     \
-    int buflen = Utility::GetBuffer(value, code, sizeof(type), buf);         \
+    Py_ssize_t buflen = Utility::GetBuffer(value, code, sizeof(type), buf);  \
     if (buflen == 0)                                                         \
         return false;                                                        \
     if (0 <= fSize) {                                                        \
@@ -1419,7 +1419,7 @@ bool CPyCppyy::VoidPtrPtrConverter::SetArg(
     }
 
 // buffer objects are allowed under "user knows best"
-    int buflen = Utility::GetBuffer(pyobject, '*', 1, para.fValue.fVoidp, false);
+    Py_ssize_t buflen = Utility::GetBuffer(pyobject, '*', 1, para.fValue.fVoidp, false);
 
 // ok if buffer exists (can't perform any useful size checks)
     if (para.fValue.fVoidp && buflen != 0) {
@@ -1599,7 +1599,7 @@ bool CPyCppyy::InitializerListConverter::SetArg(
         return false;
 
     void* buf;
-    int buflen = Utility::GetBuffer(pyobject, '*', fValueSize, buf, true);
+    Py_ssize_t buflen = Utility::GetBuffer(pyobject, '*', (int)fValueSize, buf, true);
     faux_initlist* fake = nullptr;
     if (buf && buflen) {
     // dealing with an array here, pass on whole-sale
