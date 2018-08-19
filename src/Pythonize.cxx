@@ -745,26 +745,6 @@ PyObject* StlIterNext(PyObject* self)
     return next;
 }
 
-//----------------------------------------------------------------------------
-PyObject* StlIterIsEqual(PyObject* self, PyObject* other)
-{
-// Called if operator== not available (e.g. if a global overload as under gcc).
-// An exception is raised as the user should fix the dictionary.
-    return PyErr_Format(PyExc_LookupError,
-        "No operator==(const %s&, const %s&) available in the dictionary!",
-        Utility::ClassName(self).c_str(), Utility::ClassName(other).c_str());
-}
-
-//----------------------------------------------------------------------------
-PyObject* StlIterIsNotEqual(PyObject* self, PyObject* other)
-{
-// Called if operator!= not available (e.g. if a global overload as under gcc).
-// An exception is raised as the user should fix the dictionary.
-    return PyErr_Format(PyExc_LookupError,
-        "No operator!=(const %s&, const %s&) available in the dictionary!",
-        Utility::ClassName(self).c_str(), Utility::ClassName(other).c_str());
-}
-
 
 //- STL complex<T> behavior --------------------------------------------------
 #define COMPLEX_METH_GETSET(name, cppname)                                   \
@@ -974,12 +954,6 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
     else if (name.find("iterator") != std::string::npos) {
         ((PyTypeObject*)pyclass)->tp_iternext = (iternextfunc)StlIterNext;
         Utility::AddToClass(pyclass, CPPYY__next__, (PyCFunction)StlIterNext, METH_NOARGS);
-
-    // special case, if operator== is a global overload and included in the dictionary
-        if (!HasAttrDirect(pyclass, PyStrings::gCppEq, true))
-            Utility::AddToClass(pyclass, "__eq__", (PyCFunction)StlIterIsEqual, METH_O);
-        if (!HasAttrDirect(pyclass, PyStrings::gCppNe, true))
-            Utility::AddToClass(pyclass, "__ne__", (PyCFunction)StlIterIsNotEqual, METH_O);
     }
 
     else if (name == "string" || name == "std::string") { // TODO: ask backend as well
