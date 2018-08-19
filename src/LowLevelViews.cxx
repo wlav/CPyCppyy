@@ -770,7 +770,7 @@ static inline PyObject* CreateLowLevelViewT(T* address, Py_ssize_t* shape)
     view.readonly       = 0;
     view.itemsize       = sizeof(T);
     view.format         = (char*)typecode_traits<T>::format;
-    view.ndim           = shape ? shape[0] : 1;
+    view.ndim           = shape ? (int)shape[0] : 1;
     view.shape          = (Py_ssize_t*)PyMem_Malloc(view.ndim * sizeof(Py_ssize_t));
     view.shape[0]       = nx; // view.len / view.itemsize
     view.strides        = (Py_ssize_t*)PyMem_Malloc(view.ndim * sizeof(Py_ssize_t));

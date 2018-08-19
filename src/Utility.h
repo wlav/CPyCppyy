@@ -45,7 +45,7 @@ bool InitProxy(PyObject* module, PyTypeObject* pytype, const char* name);
 // retrieve the memory buffer from pyobject, return buflength, tc (optional) is python
 // array.array type code, size is type size, buf will point to buffer, and if check is
 // true, some heuristics will be applied to check buffer compatibility with the type
-int GetBuffer(PyObject* pyobject, char tc, int size, void*& buf, bool check = true);
+Py_ssize_t GetBuffer(PyObject* pyobject, char tc, int size, void*& buf, bool check = true);
 
 // data/operator mappings
 std::string MapOperatorName(const std::string& name, bool bTakesParames);

@@ -96,14 +96,30 @@ static inline Cppyy::TCppObject_t GILCallConstructor(
     return Cppyy::CallConstructor(method, klass, ctxt->GetSize(), ctxt->GetArgs());
 }
 
-static inline PyObject* CPyCppyy_PyUnicode_FromInt(int c)
+static inline PyObject* CPyCppyy_PyUnicode_FromLong(long cl)
 {
 // python chars are range(256)
+    if (cl < -256 || cl > 255) {
+        PyErr_SetString(PyExc_ValueError, "char conversion out of range");
+        return nullptr;
+    }
+    int c = (int)cl;
     if (c < 0) return CPyCppyy_PyUnicode_FromFormat("%c", 256 - std::abs(c));
     return CPyCppyy_PyUnicode_FromFormat("%c", c);
 }
 
-static inline PyObject* CPyCppyy_PyBool_FromInt(int b)
+static inline PyObject* CPyCppyy_PyUnicode_FromULong(unsigned long uc)
+{
+// TODO: range check here?
+    if (255 < uc) {
+        PyErr_SetString(PyExc_ValueError, "char conversion out of range");
+        return nullptr;
+    }
+    int c = (int)uc;
+    return CPyCppyy_PyUnicode_FromFormat("%c", c);
+}
+
+static inline PyObject* CPyCppyy_PyBool_FromLong(long b)
 {
     PyObject* result = (bool)b ? Py_True : Py_False;
     Py_INCREF(result);
@@ -127,7 +143,7 @@ PyObject* CPyCppyy::BoolConstRefExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python bool return value
-    return CPyCppyy_PyBool_FromInt(*((bool*)GILCallR(method, self, ctxt)));
+    return CPyCppyy_PyBool_FromLong(*((bool*)GILCallR(method, self, ctxt)));
 }
 
 //----------------------------------------------------------------------------
@@ -136,7 +152,7 @@ PyObject* CPyCppyy::CharExecutor::Execute(
 {
 // execute <method with argument <self, ctxt>, construct python string return value
 // with the single char
-    return CPyCppyy_PyUnicode_FromInt((int)GILCallC(method, self, ctxt));
+    return CPyCppyy_PyUnicode_FromLong((int)GILCallC(method, self, ctxt));
 }
 
 //----------------------------------------------------------------------------
@@ -145,7 +161,7 @@ PyObject* CPyCppyy::CharConstRefExecutor::Execute(
 {
 // execute <method> with argument <self, ctxt>, construct python string return value
 // with the single char
-    return CPyCppyy_PyUnicode_FromInt(*((char*)GILCallR(method, self, ctxt)));
+    return CPyCppyy_PyUnicode_FromLong(*((char*)GILCallR(method, self, ctxt)));
 }
 
 //----------------------------------------------------------------------------
@@ -154,7 +170,7 @@ PyObject* CPyCppyy::UCharExecutor::Execute(
 {
 // execute <method> with argument <self, args>, construct python string return value
 // with the single char
-    return CPyCppyy_PyUnicode_FromInt((unsigned char)GILCallB(method, self, ctxt));
+    return CPyCppyy_PyUnicode_FromLong((unsigned char)GILCallB(method, self, ctxt));
 }
 
 //----------------------------------------------------------------------------
@@ -163,7 +179,7 @@ PyObject* CPyCppyy::UCharConstRefExecutor::Execute(
 {
 // execute <method> with argument <self, ctxt>, construct python string return value
 // with the single char from the pointer return
-    return CPyCppyy_PyUnicode_FromInt(*((unsigned char*)GILCallR(method, self, ctxt)));
+    return CPyCppyy_PyUnicode_FromLong(*((unsigned char*)GILCallR(method, self, ctxt)));
 }
 
 //----------------------------------------------------------------------------
@@ -283,9 +299,9 @@ PyObject* CPyCppyy::name##RefExecutor::Execute(                              \
     }                                                                        \
 }
 
-CPPYY_IMPL_REFEXEC(Bool,   bool,   Long_t,   CPyCppyy_PyBool_FromInt,    PyLong_AsLong)
-CPPYY_IMPL_REFEXEC(Char,   char,   Long_t,   CPyCppyy_PyUnicode_FromInt, PyLong_AsLong)
-CPPYY_IMPL_REFEXEC(UChar,  unsigned char,  ULong_t,  CPyCppyy_PyUnicode_FromInt, PyLongOrInt_AsULong)
+CPPYY_IMPL_REFEXEC(Bool,   bool,   Long_t,   CPyCppyy_PyBool_FromLong,    PyLong_AsLong)
+CPPYY_IMPL_REFEXEC(Char,   char,   Long_t,   CPyCppyy_PyUnicode_FromLong, PyLong_AsLong)
+CPPYY_IMPL_REFEXEC(UChar,  unsigned char,  ULong_t,  CPyCppyy_PyUnicode_FromULong, PyLongOrInt_AsULong)
 CPPYY_IMPL_REFEXEC(Short,  short,  Long_t,   PyInt_FromLong,     PyLong_AsLong)
 CPPYY_IMPL_REFEXEC(UShort, unsigned short, ULong_t,  PyInt_FromLong,     PyLongOrInt_AsULong)
 CPPYY_IMPL_REFEXEC(Int,    Int_t,    Long_t,   PyInt_FromLong,     PyLong_AsLong)

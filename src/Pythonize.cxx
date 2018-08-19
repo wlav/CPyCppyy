@@ -165,6 +165,17 @@ PyObject* FollowGetAttr(PyObject* self, PyObject* name)
 }
 
 //-----------------------------------------------------------------------------
+PyObject* GenObjectIsEqualNoCpp(PyObject* self, PyObject* obj)
+{
+// bootstrap as necessary
+    if (Utility::AddBinaryOperator(self, obj, "==", "__eq__"))
+        return CallPyObjMethod(self, "__eq__", obj);
+
+// failed: fallback to generic rich comparison
+    PyErr_Clear();
+    return CPPInstance_Type.tp_richcompare(self, obj, Py_EQ);
+}
+
 PyObject* GenObjectIsEqual(PyObject* self, PyObject* obj)
 {
 // Call the C++ operator==() if available, otherwise default.
@@ -178,12 +189,23 @@ PyObject* GenObjectIsEqual(PyObject* self, PyObject* obj)
     if (result)
         return result;
 
-// failed: fallback to generic rich comparison
+// failed, try generic
     PyErr_Clear();
-    return CPPInstance_Type.tp_richcompare(self, obj, Py_EQ);
+    return GenObjectIsEqualNoCpp(self, obj);
 }
 
 //-----------------------------------------------------------------------------
+PyObject* GenObjectIsNotEqualNoCpp(PyObject* self, PyObject* obj)
+{
+// bootstrap as necessary
+    if (Utility::AddBinaryOperator(self, obj, "!=", "__ne__"))
+        return CallPyObjMethod(self, "__ne__", obj);
+
+// failed: fallback to generic rich comparison
+    PyErr_Clear();
+    return CPPInstance_Type.tp_richcompare(self, obj, Py_NE);
+}
+
 PyObject* GenObjectIsNotEqual(PyObject* self, PyObject* obj)
 {
 // Reverse of GenObjectIsEqual, if operator!= defined.
@@ -197,10 +219,11 @@ PyObject* GenObjectIsNotEqual(PyObject* self, PyObject* obj)
     if (result)
         return result;
 
-// failed: fallback to generic rich comparison
+// failed, try generic
     PyErr_Clear();
-    return CPPInstance_Type.tp_richcompare(self, obj, Py_NE);
+    return GenObjectIsNotEqualNoCpp(self, obj);
 }
+
 
 //- vector behavior as primitives ----------------------------------------------
 PyObject* VectorInit(PyObject* self, PyObject* args)
@@ -722,26 +745,6 @@ PyObject* StlIterNext(PyObject* self)
     return next;
 }
 
-//----------------------------------------------------------------------------
-PyObject* StlIterIsEqual(PyObject* self, PyObject* other)
-{
-// Called if operator== not available (e.g. if a global overload as under gcc).
-// An exception is raised as the user should fix the dictionary.
-    return PyErr_Format(PyExc_LookupError,
-        "No operator==(const %s&, const %s&) available in the dictionary!",
-        Utility::ClassName(self).c_str(), Utility::ClassName(other).c_str());
-}
-
-//----------------------------------------------------------------------------
-PyObject* StlIterIsNotEqual(PyObject* self, PyObject* other)
-{
-// Called if operator!= not available (e.g. if a global overload as under gcc).
-// An exception is raised as the user should fix the dictionary.
-    return PyErr_Format(PyExc_LookupError,
-        "No operator!=(const %s&, const %s&) available in the dictionary!",
-        Utility::ClassName(self).c_str(), Utility::ClassName(other).c_str());
-}
-
 
 //- STL complex<T> behavior --------------------------------------------------
 #define COMPLEX_METH_GETSET(name, cppname)                                   \
@@ -879,26 +882,22 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         }
     }
 
-// search for global comparator overloads (may fail; not sure whether it isn't better to
-// do this lazily just as is done for math operators, but this interplays nicely with the
-// generic versions)
-    Utility::AddBinaryOperator(pyclass, "==", "__eq__");
-    Utility::AddBinaryOperator(pyclass, "!=", "__ne__");
-
 // map operator==() through GenObjectIsEqual to allow comparison to None (true is to
 // require that the located method is a CPPOverload; this prevents circular calls as
-// GenObjectIsEqual is no CPPOverload)
+// GenObjectIsEqual is no CPPOverload); this will search lazily for a global overload
     if (HasAttrDirect(pyclass, PyStrings::gEq, true)) {
         Utility::AddToClass(pyclass, "__cpp_eq__",  "__eq__");
         Utility::AddToClass(pyclass, "__eq__", (PyCFunction)GenObjectIsEqual, METH_O);
-    }
+    } else
+        Utility::AddToClass(pyclass, "__eq__", (PyCFunction)GenObjectIsEqualNoCpp, METH_O);
 
 // map operator!=() through GenObjectIsNotEqual to allow comparison to None (see note
-// on true above for __eq__)
+// on true above for __eq__); this will search lazily for a global overload
     if (HasAttrDirect(pyclass, PyStrings::gNe, true)) {
         Utility::AddToClass(pyclass, "__cpp_ne__",  "__ne__");
         Utility::AddToClass(pyclass, "__ne__",  (PyCFunction)GenObjectIsNotEqual, METH_O);
-    }
+    } else
+        Utility::AddToClass(pyclass, "__ne__",  (PyCFunction)GenObjectIsNotEqualNoCpp, METH_O);
 
 
 //- class name based pythonization -------------------------------------------
@@ -955,12 +954,6 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
     else if (name.find("iterator") != std::string::npos) {
         ((PyTypeObject*)pyclass)->tp_iternext = (iternextfunc)StlIterNext;
         Utility::AddToClass(pyclass, CPPYY__next__, (PyCFunction)StlIterNext, METH_NOARGS);
-
-    // special case, if operator== is a global overload and included in the dictionary
-        if (!HasAttrDirect(pyclass, PyStrings::gCppEq, true))
-            Utility::AddToClass(pyclass, "__eq__", (PyCFunction)StlIterIsEqual, METH_O);
-        if (!HasAttrDirect(pyclass, PyStrings::gCppNe, true))
-            Utility::AddToClass(pyclass, "__ne__", (PyCFunction)StlIterIsNotEqual, METH_O);
     }
 
     else if (name == "string" || name == "std::string") { // TODO: ask backend as well

@@ -464,7 +464,7 @@ PyObject* BindObject(PyObject*, PyObject* args, PyObject* kwds)
                 PyErr_Clear();
 
             // last chance, perhaps it's a buffer/array (return from void*)
-                int buflen = Utility::GetBuffer(PyTuple_GetItem(args, 0), '*', 1, addr, false);
+                Py_ssize_t buflen = Utility::GetBuffer(PyTuple_GetItem(args, 0), '*', 1, addr, false);
                 if (!addr || !buflen) {
                     PyErr_SetString(PyExc_TypeError,
                         "BindObject requires a CObject or long integer as first argument");
