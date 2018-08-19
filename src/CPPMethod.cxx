@@ -7,6 +7,7 @@
 #include "ProxyWrappers.h"
 #include "PyStrings.h"
 #include "TPyException.h"
+#include "TypeManip.h"
 #include "Utility.h"
 
 // Standard
@@ -316,6 +317,11 @@ int CPyCppyy::CPPMethod::GetPriority()
             else
                 priority -= 100000; // prefer pointer passing over reference
         }
+
+    // prefer more derived classes
+        Cppyy::TCppScope_t scope = Cppyy::GetScope(TypeManip::clean_type(aname));
+        if (scope)
+            priority += Cppyy::GetNumBases(scope);
     }
 
 // add a small penalty to prefer non-const methods over const ones for

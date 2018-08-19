@@ -203,7 +203,7 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
     // does not create the interface methods for private/protected methods ...
     // TODO: check whether Cling allows private method calling; otherwise delete this
         if (!Cppyy::IsPublicMethod(method)) {
-            if (isConstructor)              // don't expose private ctors
+            if (isConstructor)               // don't expose private ctors
                 continue;
             else {                           // mangle private methods
             // TODO: drop use of TClassEdit here ...
