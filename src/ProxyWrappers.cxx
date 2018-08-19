@@ -130,17 +130,21 @@ namespace CPyCppyy {
 static inline void sync_templates(
     PyObject* pyclass, const std::string& mtCppName, const std::string& mtName)
 {
-// TODO: the following is incorrect if both base and derived have the same
-// templated method (but that is an unlikely scenario anyway)
-    PyObject* attr = PyObject_GetAttrString(pyclass, const_cast<char*>(mtName.c_str()));
-    if (!TemplateProxy_Check(attr)) {
-        PyErr_Clear();
-        TemplateProxy* pytmpl = TemplateProxy_New(mtCppName, mtName, pyclass);
-        if (CPPOverload_Check(attr)) pytmpl->AddOverload((CPPOverload*)attr);
-        PyObject_SetAttrString(pyclass, const_cast<char*>(mtName.c_str()), (PyObject*)pytmpl);
-        Py_DECREF(pytmpl);
+    PyObject* dct = PyObject_GetAttr(pyclass, PyStrings::gDict);
+    if (dct) {
+        PyObject* pyname = CPyCppyy_PyUnicode_FromString(const_cast<char*>(mtName.c_str()));
+        PyObject* attr = PyObject_GetItem(dct, pyname);
+        Py_DECREF(dct);
+        if (!TemplateProxy_Check(attr)) {
+            PyErr_Clear();
+            TemplateProxy* pytmpl = TemplateProxy_New(mtCppName, mtName, pyclass);
+            if (CPPOverload_Check(attr)) pytmpl->AddOverload((CPPOverload*)attr);
+            PyObject_SetAttr(pyclass, pyname, (PyObject*)pytmpl);
+            Py_DECREF(pytmpl);
+        }
+        Py_XDECREF(attr);
+        Py_DECREF(pyname);
     }
-    Py_XDECREF(attr);
 }
 
 static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
