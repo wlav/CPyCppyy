@@ -30,6 +30,12 @@ def get_cflags():
 class my_build_extension(_build_ext):
     def build_extension(self, ext):
         ext.extra_compile_args += ['-O2']+get_cflags().split()
+        if 'linux' or 'darwin' in sys.platform:
+            ext.extra_compile_args += \
+                ['-Wno-cast-function-type',      # g++ >8.2, complaint of CPyFunction cast
+                 '-Wno-bad-function-cast',       # clang for same
+                 '-Wno-register',                # C++17, Python headers
+                 '-Wno-unknown-warning-option']  # since clang/g++ don't have the same options
         if 'linux' in sys.platform:
             ext.extra_link_args += ['-Wl,-Bsymbolic-functions']
         return _build_ext.build_extension(self, ext)
