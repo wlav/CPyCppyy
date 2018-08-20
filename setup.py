@@ -35,7 +35,7 @@ class my_build_extension(_build_ext):
                 ['-Wno-cast-function-type',      # g++ >8.2, complaint of CPyFunction cast
                  '-Wno-bad-function-cast',       # clang for same
                  '-Wno-register',                # C++17, Python headers
-                 '-Wno-unknown-warning-option']  # since clang/g++ don't have the same options
+                 '-Wno-unknown-warning']         # since clang/g++ don't have the same options
         if 'linux' in sys.platform:
             ext.extra_link_args += ['-Wl,-Bsymbolic-functions']
         return _build_ext.build_extension(self, ext)
@@ -51,7 +51,7 @@ if has_wheel:
 
 setup(
     name='CPyCppyy',
-    version='1.3.4',
+    version='1.3.5',
     description='Cling-based Python-C++ bindings for CPython',
     long_description=long_description,
 
