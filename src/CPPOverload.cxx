@@ -205,7 +205,7 @@ static PyObject* mp_doc(CPPOverload* pymeth, void*)
 
 // overloaded method
     PyObject* separator = CPyCppyy_PyUnicode_FromString("\n");
-    for (int i = 1; i < nMethods; ++i) {
+    for (CPPOverload::Methods_t::size_type i = 1; i < nMethods; ++i) {
         CPyCppyy_PyUnicode_Append(&doc, separator);
         CPyCppyy_PyUnicode_AppendAndDel(&doc, methods[i]->GetDocString());
     }
@@ -572,7 +572,7 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
     }
 
     std::vector<Utility::PyError_t> errors;
-    for (int i = 0; i < nMethods; ++i) {
+    for (CPPOverload::Methods_t::size_type i = 0; i < nMethods; ++i) {
         PyObject* result = methods[i]->Call(pymeth->fSelf, args, kwds, &ctxt);
 
         if (result != 0) {
