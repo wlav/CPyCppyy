@@ -340,6 +340,9 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& 
 // in addition, __gnu_cxx, std::__1, and __cppyy_internal are searched pro-actively (as
 // there's AFAICS no way to unearth using information).
 
+    if (rcname == "<unknown>" || lcname == "<unknown>")
+        return false;
+
     PyCallable* pyfunc = 0;
 
     const std::string& nsname = TypeManip::extract_namespace(lcname);
@@ -375,12 +378,6 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& 
             if (func) pyfunc = new CPPFunction(std__1, func);
         }
     }
-
-
-/*    if (!pyfunc) {
-        Cppyy::TCppMethod_t func = FindAndAddOperator(lcname, rcname, op);
-        if (func) pyfunc = new CPPFunction(Cppyy::gGlobalScope, func);
-    }*/
 
     if (!pyfunc) {
     // One more, mostly for Mac, but again not sure whether this is not a general issue. Some

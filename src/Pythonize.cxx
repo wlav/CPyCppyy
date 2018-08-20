@@ -49,6 +49,23 @@ bool HasAttrDirect(PyObject* pyclass, PyObject* pyname, bool mustBeCPyCppyy = fa
 }
 
 //-----------------------------------------------------------------------------
+inline bool IsTopLevelClass(PyObject* pyclass) {
+// determine whether this class directly derives from CPPInstance
+    PyObject* bases = PyObject_GetAttr(pyclass, PyStrings::gBases);
+    if (!bases)
+        return false;
+
+    bool isTopLevel = false;
+    if (PyTuple_CheckExact(bases) && PyTuple_GET_SIZE(bases) && \
+            (void*)PyTuple_GET_ITEM(bases, 0) == (void*)&CPPInstance_Type) {
+        isTopLevel = true;
+    }
+
+    Py_DECREF(bases);
+    return isTopLevel;
+}
+
+//-----------------------------------------------------------------------------
 inline bool IsTemplatedSTLClass(const std::string& name, const std::string& klass) {
 // Scan the name of the class and determine whether it is a template instantiation.
     auto pos = name.find(klass);
@@ -168,11 +185,21 @@ PyObject* FollowGetAttr(PyObject* self, PyObject* name)
 PyObject* GenObjectIsEqualNoCpp(PyObject* self, PyObject* obj)
 {
 // bootstrap as necessary
-    if (Utility::AddBinaryOperator(self, obj, "==", "__eq__"))
-        return CallPyObjMethod(self, "__eq__", obj);
+    if (obj != Py_None) {
+        if (Utility::AddBinaryOperator(self, obj, "==", "__eq__"))
+            return CallPyObjMethod(self, "__eq__", obj);
+
+    // drop lazy lookup from future considerations if both types are the same
+    // and lookup failed (theoretically, it is possible to write a class that
+    // can only compare to other types, but that's very unlikely)
+        if (Py_TYPE(self) == Py_TYPE(obj) && \
+                HasAttrDirect((PyObject*)Py_TYPE(self), PyStrings::gEq)) {
+            if (PyObject_DelAttr((PyObject*)Py_TYPE(self), PyStrings::gEq) != 0)
+                PyErr_Clear();
+        }
+    }
 
 // failed: fallback to generic rich comparison
-    PyErr_Clear();
     return CPPInstance_Type.tp_richcompare(self, obj, Py_EQ);
 }
 
@@ -182,27 +209,40 @@ PyObject* GenObjectIsEqual(PyObject* self, PyObject* obj)
     PyObject* result = CallPyObjMethod(self, "__cpp_eq__", obj);
     if (result)
         return result;
+    PyErr_Clear();
 
 // failed: fallback like python would do by reversing the arguments
-    PyErr_Clear();
-    result = CallPyObjMethod(obj, "__cpp_eq__", self);
-    if (result)
-        return result;
+    if (CPPInstance_Check(obj)) {
+        result = CallPyObjMethod(obj, "__cpp_eq__", self);
+        if (result)
+            return result;
+        PyErr_Clear();
+    }
 
 // failed, try generic
-    PyErr_Clear();
-    return GenObjectIsEqualNoCpp(self, obj);
+    return CPPInstance_Type.tp_richcompare(self, obj, Py_EQ);
 }
 
 //-----------------------------------------------------------------------------
 PyObject* GenObjectIsNotEqualNoCpp(PyObject* self, PyObject* obj)
 {
 // bootstrap as necessary
-    if (Utility::AddBinaryOperator(self, obj, "!=", "__ne__"))
-        return CallPyObjMethod(self, "__ne__", obj);
+    if (obj != Py_None) {
+        if (Utility::AddBinaryOperator(self, obj, "!=", "__ne__"))
+            return CallPyObjMethod(self, "__ne__", obj);
+        PyErr_Clear();
+
+    // drop lazy lookup from future considerations if both types are the same
+    // and lookup failed (theoretically, it is possible to write a class that
+    // can only compare to other types, but that's very unlikely)
+        if (Py_TYPE(self) == Py_TYPE(obj) && \
+                HasAttrDirect((PyObject*)Py_TYPE(self), PyStrings::gNe)) {
+            if (PyObject_DelAttr((PyObject*)Py_TYPE(self), PyStrings::gNe) != 0)
+                PyErr_Clear();
+        }
+    }
 
 // failed: fallback to generic rich comparison
-    PyErr_Clear();
     return CPPInstance_Type.tp_richcompare(self, obj, Py_NE);
 }
 
@@ -212,16 +252,18 @@ PyObject* GenObjectIsNotEqual(PyObject* self, PyObject* obj)
     PyObject* result = CallPyObjMethod(self, "__cpp_ne__", obj);
     if (result)
         return result;
+    PyErr_Clear();
 
 // failed: fallback like python would do by reversing the arguments
-    PyErr_Clear();
-    result = CallPyObjMethod(obj, "__cpp_ne__", self);
-    if (result)
-        return result;
+    if (CPPInstance_Check(obj)) {
+        result = CallPyObjMethod(obj, "__cpp_ne__", self);
+        if (result)
+            return result;
+        PyErr_Clear();
+    }
 
 // failed, try generic
-    PyErr_Clear();
-    return GenObjectIsNotEqualNoCpp(self, obj);
+    return CPPInstance_Type.tp_richcompare(self, obj, Py_NE);
 }
 
 
@@ -888,7 +930,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
     if (HasAttrDirect(pyclass, PyStrings::gEq, true)) {
         Utility::AddToClass(pyclass, "__cpp_eq__",  "__eq__");
         Utility::AddToClass(pyclass, "__eq__", (PyCFunction)GenObjectIsEqual, METH_O);
-    } else
+    } else if (IsTopLevelClass(pyclass))
         Utility::AddToClass(pyclass, "__eq__", (PyCFunction)GenObjectIsEqualNoCpp, METH_O);
 
 // map operator!=() through GenObjectIsNotEqual to allow comparison to None (see note
@@ -896,7 +938,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
     if (HasAttrDirect(pyclass, PyStrings::gNe, true)) {
         Utility::AddToClass(pyclass, "__cpp_ne__",  "__ne__");
         Utility::AddToClass(pyclass, "__ne__",  (PyCFunction)GenObjectIsNotEqual, METH_O);
-    } else
+    } else if (IsTopLevelClass(pyclass))
         Utility::AddToClass(pyclass, "__ne__",  (PyCFunction)GenObjectIsNotEqualNoCpp, METH_O);
 
 
