@@ -280,11 +280,14 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
     }
 
 // add the methods to the class dictionary
+    PyObject* dct = PyObject_GetAttr(pyclass, PyStrings::gDict);
     for (CallableCache_t::iterator imd = cache.begin(); imd != cache.end(); ++imd) {
     // in order to prevent removing templated editions of this method (which were set earlier,
     // above, as a different proxy object), we'll check and add this method flagged as a generic
     // one (to be picked up by the templated one as appropriate) if a template exists
-        PyObject* attr = PyObject_GetAttrString(pyclass, const_cast<char*>(imd->first.c_str()));
+        PyObject* pyname = CPyCppyy_PyUnicode_FromString(const_cast<char*>(imd->first.c_str()));
+        PyObject* attr = PyObject_GetItem(dct, pyname);
+        Py_DECREF(pyname);
         if (TemplateProxy_Check(attr)) {
         // template exists, supply it with the non-templated method overloads
             for (Callables_t::iterator cit = imd->second.begin(); cit != imd->second.end(); ++cit)
@@ -300,6 +303,7 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
 
         Py_XDECREF(attr);         // could have be found in base class or non-existent
     }
+    Py_DECREF(dct);
 
  // collect data members (including enums)
     const Cppyy::TCppIndex_t nDataMembers = Cppyy::GetNumDatamembers(scope);
