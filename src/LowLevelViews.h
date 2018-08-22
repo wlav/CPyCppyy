@@ -12,25 +12,34 @@ class LowLevelView {
 public:
     PyObject_HEAD
     Py_buffer   fBufInfo;
+    void**      fBuf;
     Converter*  fConverter;
+
+public:
+    void* get_buf() { return fBuf ? *fBuf : fBufInfo.buf; }
+    void  set_buf(void** buf) { fBuf = buf; fBufInfo.buf = get_buf(); }
 };
 
-PyObject* CreateLowLevelView(bool*,                   Py_ssize_t* shape = nullptr);
-PyObject* CreateLowLevelView(unsigned char*,          Py_ssize_t* shape = nullptr);
-PyObject* CreateLowLevelView(short*,                  Py_ssize_t* shape = nullptr);
-PyObject* CreateLowLevelView(unsigned short*,         Py_ssize_t* shape = nullptr);
-PyObject* CreateLowLevelView(int*,                    Py_ssize_t* shape = nullptr);
-PyObject* CreateLowLevelView(unsigned int*,           Py_ssize_t* shape = nullptr);
-PyObject* CreateLowLevelView(long*,                   Py_ssize_t* shape = nullptr);
-PyObject* CreateLowLevelView(unsigned long*,          Py_ssize_t* shape = nullptr);
-PyObject* CreateLowLevelView(long long*,              Py_ssize_t* shape = nullptr);
-PyObject* CreateLowLevelView(unsigned long long*,     Py_ssize_t* shape = nullptr);
-PyObject* CreateLowLevelView(float*,                  Py_ssize_t* shape = nullptr);
-PyObject* CreateLowLevelView(double*,                 Py_ssize_t* shape = nullptr);
-PyObject* CreateLowLevelView(std::complex<float>*,    Py_ssize_t* shape = nullptr);
-PyObject* CreateLowLevelView(std::complex<double>*,   Py_ssize_t* shape = nullptr);
-PyObject* CreateLowLevelView(std::complex<int>*,      Py_ssize_t* shape = nullptr);
-PyObject* CreateLowLevelView(std::complex<long>*,     Py_ssize_t* shape = nullptr);
+#define CPPYY_DECL_VIEW_CREATOR(type)                                        \
+    PyObject* CreateLowLevelView(type*,  Py_ssize_t* shape = nullptr);       \
+    PyObject* CreateLowLevelView(type**, Py_ssize_t* shape = nullptr)
+
+CPPYY_DECL_VIEW_CREATOR(bool);
+CPPYY_DECL_VIEW_CREATOR(unsigned char);
+CPPYY_DECL_VIEW_CREATOR(short);
+CPPYY_DECL_VIEW_CREATOR(unsigned short);
+CPPYY_DECL_VIEW_CREATOR(int);
+CPPYY_DECL_VIEW_CREATOR(unsigned int);
+CPPYY_DECL_VIEW_CREATOR(long);
+CPPYY_DECL_VIEW_CREATOR(unsigned long);
+CPPYY_DECL_VIEW_CREATOR(long long);
+CPPYY_DECL_VIEW_CREATOR(unsigned long long);
+CPPYY_DECL_VIEW_CREATOR(float);
+CPPYY_DECL_VIEW_CREATOR(double);
+CPPYY_DECL_VIEW_CREATOR(std::complex<float>);
+CPPYY_DECL_VIEW_CREATOR(std::complex<double>);
+CPPYY_DECL_VIEW_CREATOR(std::complex<int>);
+CPPYY_DECL_VIEW_CREATOR(std::complex<long>);
 
 inline PyObject* CreatePointerView(void* ptr) {
     Py_ssize_t shape[] = {1, 1};

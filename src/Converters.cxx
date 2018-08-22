@@ -28,6 +28,9 @@
   #define Parameter CPyCppyy::Parameter
 #endif
 
+#define UNKNOWN_SIZE         -1
+#define UNKNOWN_ARRAY_SIZE   -2
+
 
 //- data _____________________________________________________________________
 namespace CPyCppyy {
@@ -930,6 +933,10 @@ bool CPyCppyy::name##ArrayConverter::SetArg(                                 \
 PyObject* CPyCppyy::name##ArrayConverter::FromMemory(void* address)          \
 {                                                                            \
     Py_ssize_t shape[] = {1, fSize};                                         \
+    if (fSize == UNKNOWN_SIZE)                                               \
+        return CreateLowLevelView((type**)address, shape);                   \
+    else if (fSize == UNKNOWN_ARRAY_SIZE)                                    \
+        shape[1] = UNKNOWN_SIZE;                                             \
     return CreateLowLevelView(*(type**)address, shape);                      \
 }                                                                            \
                                                                              \
@@ -1703,8 +1710,10 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long
 //-- still nothing? try pointer instead of array (for builtins)
     if (cpd == "[]") {
         h = gConvFactories.find(realType + "*");
-        if (h != gConvFactories.end())
+        if (h != gConvFactories.end()) {
+            if (size == -1) size = -2;
             return (h->second)(size);
+        }
     }
 
 //-- special case: initializer list

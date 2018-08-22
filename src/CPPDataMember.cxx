@@ -3,6 +3,8 @@
 #include "PyStrings.h"
 #include "CPPDataMember.h"
 #include "CPPInstance.h"
+#include "LowLevelViews.h"
+#include "PyStrings.h"
 #include "Utility.h"
 
 // Standard
@@ -17,12 +19,24 @@ enum ETypeDetails {
     kIsStaticData   =    1,
     kIsEnumData     =    2,
     kIsConstData    =    4,
-    kIsArrayType    =    8
+    kIsArrayType    =    8,
+    kIsCached       =   16
 };
 
 //= CPyCppyy data member as Python property behavior =========================
-static PyObject* pp_get(CPPDataMember* pyprop, CPPInstance* pyobj, PyObject*)
+static PyObject* pp_get(CPPDataMember* pyprop, CPPInstance* pyobj, PyObject* kls)
 {
+// cache lookup for low level views
+    if (pyprop->fProperty & kIsCached) {
+        PyObject* dct = PyObject_GetAttr((PyObject*)pyobj, PyStrings::gDict);
+        PyObject* attr = PyObject_GetItem(dct, pyprop->fName);
+        Py_DECREF(dct);
+        if (attr)
+            return attr;
+        pyprop->fProperty &= ~kIsCached;
+        PyErr_Clear();
+    }
+
 // normal getter access
     void* address = pyprop->GetAddress(pyobj);
     if (!address || (ptrdiff_t)address == -1 /* Cling error */)
@@ -44,11 +58,25 @@ static PyObject* pp_get(CPPDataMember* pyprop, CPPInstance* pyobj, PyObject*)
         if (!result)
             return result;
 
+    // low level views are expensive to create, so cache them on the object instead
+        bool isLLView = LowLevelView_CheckExact(result);
+        if (isLLView) {
+            PyObject* dct = PyObject_GetAttr((PyObject*)pyobj, PyStrings::gDict);
+            if (dct) {
+                if (PyObject_SetItem(dct, pyprop->fName, result) == -1)
+                    PyErr_Clear();
+                else
+                    pyprop->fProperty |= kIsCached;
+                Py_DECREF(dct);
+            }
+        }
+
     // ensure that the encapsulating class does not go away for the duration
     // of the data member's lifetime, if it is a bound type (it doesn't matter
     // for builtin types, b/c those are copied over into python types and thus
     // end up being "stand-alone")
-        if (pyobj && CPPInstance_Check(result)) {
+    // TODO: should be done for LLViews as well
+        else if (pyobj && CPPInstance_Check(result)) {
             if (PyObject_SetAttr(result, PyStrings::gLifeLine, (PyObject*)pyobj) == -1)
                 PyErr_Clear();     // ignored
         }
@@ -71,6 +99,15 @@ static int pp_set(CPPDataMember* pyprop, CPPInstance* pyobj, PyObject* value)
     if (pyprop->fProperty & kIsConstData) {
         PyErr_SetString(PyExc_TypeError, "assignment to const data not allowed");
         return errret;
+    }
+
+// remove cached low level view, if any
+    if (pyprop->fProperty & kIsCached) {
+        PyObject* dct = PyObject_GetAttr((PyObject*)pyobj, PyStrings::gDict);
+        if (PyObject_DelItem(dct, pyprop->fName) == -1)
+            PyErr_Clear();
+        Py_DECREF(dct);
+        pyprop->fProperty &= ~kIsCached;
     }
 
     ptrdiff_t address = (ptrdiff_t)pyprop->GetAddress(pyobj);
@@ -104,7 +141,7 @@ static CPPDataMember* pp_new(PyTypeObject* pytype, PyObject*, PyObject*)
     pyprop->fProperty       = 0;
     pyprop->fConverter      = nullptr;
     pyprop->fEnclosingScope = 0;
-    new (&pyprop->fName) std::string();
+    pyprop->fName           = nullptr;
 
     return pyprop;
 }
@@ -115,7 +152,7 @@ static void pp_dealloc(CPPDataMember* pyprop)
 // Deallocate memory held by this descriptor.
     using namespace std;
     delete pyprop->fConverter;
-    pyprop->fName.~string();
+    Py_XDECREF(pyprop->fName);    // never exposed so no GC necessary
 
     Py_TYPE(pyprop)->tp_free((PyObject*)pyprop);
 }
@@ -186,7 +223,7 @@ PyTypeObject CPPDataMember_Type = {
 void CPyCppyy::CPPDataMember::Set(Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t idata)
 {
     fEnclosingScope = scope;
-    fName           = Cppyy::GetDatamemberName(scope, idata);
+    fName           = CPyCppyy_PyUnicode_FromString(Cppyy::GetDatamemberName(scope, idata).c_str());
     fOffset         = Cppyy::GetDatamemberOffset(scope, idata); // TODO: make lazy
     fProperty       = Cppyy::IsStaticData(scope, idata) ? kIsStaticData : 0;
 
@@ -220,7 +257,7 @@ void CPyCppyy::CPPDataMember::Set(Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t i
 void CPyCppyy::CPPDataMember::Set(Cppyy::TCppScope_t scope, const std::string& name, void* address)
 {
     fEnclosingScope = scope;
-    fName           = name;
+    fName           = CPyCppyy_PyUnicode_FromString(name.c_str());
     fOffset         = (ptrdiff_t)address;
     fProperty       = (kIsStaticData | kIsConstData | kIsEnumData /* true, but may chance */);
     fConverter      = CreateConverter("internal_enum_type_t");
