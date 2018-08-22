@@ -47,7 +47,7 @@ void CPyCppyy::op_dealloc_nofree(CPPInstance* pyobj) {
 
     for (auto& pc : pyobj->fDatamemberCache)
         Py_XDECREF(pc.second);
-    pyobj->fDatamemberCache.~CI_DatamemberCache_t();
+    pyobj->fDatamemberCache.clear();
 }
 
 
@@ -146,6 +146,7 @@ static void op_dealloc(CPPInstance* pyobj)
 {
 // Remove (Python-side) memory held by the object proxy.
     op_dealloc_nofree(pyobj);
+    pyobj->fDatamemberCache.~CI_DatamemberCache_t();
     Py_TYPE(pyobj)->tp_free((PyObject*)pyobj);
 }
 

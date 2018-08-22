@@ -106,8 +106,7 @@ static int pp_set(CPPDataMember* pyprop, CPPInstance* pyobj, PyObject* value)
         CPyCppyy::CI_DatamemberCache_t& cache = pyobj->fDatamemberCache;
         for (auto it = cache.begin(); it != cache.end(); ++it) {
             if (it->first == pyprop->fOffset) {
-                if (it->second)
-                    Py_DECREF(it->second);
+                Py_XDECREF(it->second);
                 cache.erase(it);
                 break;
             }
