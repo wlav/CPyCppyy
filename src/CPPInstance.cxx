@@ -44,6 +44,10 @@ void CPyCppyy::op_dealloc_nofree(CPPInstance* pyobj) {
         Cppyy::Destruct(klass, addr);
     }
     pyobj->fObject = nullptr;
+
+    for (auto& pc : pyobj->fDatamemberCache)
+        Py_XDECREF(pc.second);
+    pyobj->fDatamemberCache.~CI_DatamemberCache_t();
 }
 
 
@@ -132,6 +136,7 @@ static CPPInstance* op_new(PyTypeObject* subtype, PyObject*, PyObject*)
     pyobj->fFlags  = 0;
     pyobj->fSmartPtrType = (Cppyy::TCppType_t)0;
     pyobj->fDereferencer = (Cppyy::TCppMethod_t)0;
+    new (&pyobj->fDatamemberCache) CI_DatamemberCache_t{};
 
     return pyobj;
 }

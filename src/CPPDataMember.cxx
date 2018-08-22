@@ -8,8 +8,9 @@
 #include "Utility.h"
 
 // Standard
-#include <limits.h>
+#include <algorithm>
 #include <vector>
+#include <limits.h>
 
 
 namespace CPyCppyy {
@@ -20,21 +21,25 @@ enum ETypeDetails {
     kIsEnumData     =    2,
     kIsConstData    =    4,
     kIsArrayType    =    8,
-    kIsCached       =   16
+    kIsCachable     =   16
 };
 
 //= CPyCppyy data member as Python property behavior =========================
 static PyObject* pp_get(CPPDataMember* pyprop, CPPInstance* pyobj, PyObject* kls)
 {
 // cache lookup for low level views
-    if (pyprop->fProperty & kIsCached) {
-        PyObject* dct = PyObject_GetAttr((PyObject*)pyobj, PyStrings::gDict);
-        PyObject* attr = PyObject_GetItem(dct, pyprop->fName);
-        Py_DECREF(dct);
-        if (attr)
-            return attr;
-        pyprop->fProperty &= ~kIsCached;
-        PyErr_Clear();
+    if (pyprop->fProperty & kIsCachable) {
+        CPyCppyy::CI_DatamemberCache_t& cache = pyobj->fDatamemberCache;
+        for (auto it = cache.begin(); it != cache.end(); ++it) {
+            if (it->first == pyprop->fOffset) {
+                if (it->second) {
+                    Py_INCREF(it->second);
+                    return it->second;
+                } else
+                    cache.erase(it);
+                break;
+            }
+        }
     }
 
 // normal getter access
@@ -60,15 +65,10 @@ static PyObject* pp_get(CPPDataMember* pyprop, CPPInstance* pyobj, PyObject* kls
 
     // low level views are expensive to create, so cache them on the object instead
         bool isLLView = LowLevelView_CheckExact(result);
-        if (isLLView) {
-            PyObject* dct = PyObject_GetAttr((PyObject*)pyobj, PyStrings::gDict);
-            if (dct) {
-                if (PyObject_SetItem(dct, pyprop->fName, result) == -1)
-                    PyErr_Clear();
-                else
-                    pyprop->fProperty |= kIsCached;
-                Py_DECREF(dct);
-            }
+        if (isLLView && CPPInstance_Check(pyobj)) {
+            Py_INCREF(result);
+            pyobj->fDatamemberCache.push_back(std::make_pair(pyprop->fOffset, result));
+            pyprop->fProperty |= kIsCachable;
         }
 
     // ensure that the encapsulating class does not go away for the duration
@@ -101,13 +101,17 @@ static int pp_set(CPPDataMember* pyprop, CPPInstance* pyobj, PyObject* value)
         return errret;
     }
 
-// remove cached low level view, if any
-    if (pyprop->fProperty & kIsCached) {
-        PyObject* dct = PyObject_GetAttr((PyObject*)pyobj, PyStrings::gDict);
-        if (PyObject_DelItem(dct, pyprop->fName) == -1)
-            PyErr_Clear();
-        Py_DECREF(dct);
-        pyprop->fProperty &= ~kIsCached;
+// remove cached low level view, if any (will be restored upon reaeding)
+    if (pyprop->fProperty & kIsCachable) {
+        CPyCppyy::CI_DatamemberCache_t& cache = pyobj->fDatamemberCache;
+        for (auto it = cache.begin(); it != cache.end(); ++it) {
+            if (it->first == pyprop->fOffset) {
+                if (it->second)
+                    Py_DECREF(it->second);
+                cache.erase(it);
+                break;
+            }
+        }
     }
 
     ptrdiff_t address = (ptrdiff_t)pyprop->GetAddress(pyobj);

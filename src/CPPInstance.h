@@ -15,10 +15,16 @@
 #include "Cppyy.h"
 #include "CallContext.h"     // for Parameter
 
+// Standard
+#include <utility>
+#include <vector>
+
 
 // TODO: have an CPPInstance derived or alternative type for smart pointers
 
 namespace CPyCppyy {
+
+typedef std::vector<std::pair<ptrdiff_t, PyObject*>> CI_DatamemberCache_t;
 
 class CPPInstance {
 public:
@@ -77,6 +83,9 @@ public:                 // public, as the python C-API works with C structs
     PyObject_HEAD
     void*     fObject;
     int       fFlags;
+
+// cache for expensive to create data member objects
+    CI_DatamemberCache_t fDatamemberCache;
 
 // TODO: should be its own version of CPPInstance so as not to clutter the
 // normal instances
