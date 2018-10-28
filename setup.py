@@ -34,17 +34,21 @@ try:
 except KeyError:
     root_install = None
 
-def get_cflags():
-    config_exec = 'cling-config'
+def _get_config_exec():
     if root_install:
-        config_exec = 'root-config'
-    cli_arg = subprocess.check_output([config_exec, '--auxcflags'])
+        return ['root-config']
+    return ['python', '-m', 'cppyy_backend._cling_config']
+
+def get_cflags():
+    config_exec_args = _get_config_exec()
+    config_exec_args.append('--auxcflags')
+    cli_arg = subprocess.check_output(config_exec_args)
     return cli_arg.decode("utf-8").strip()
 
 class my_build_extension(_build_ext):
     def build_extension(self, ext):
         ext.extra_compile_args += ['-O2']+get_cflags().split()
-        if 'linux' or 'darwin' in sys.platform:
+        if ('linux' in sys.platform) or ('darwin' in sys.platform):
             ext.extra_compile_args += \
                 ['-Wno-cast-function-type',      # g++ >8.2, complaint of CPyFunction cast
                  '-Wno-bad-function-cast',       # clang for same
@@ -67,7 +71,7 @@ if has_wheel:
 
 setup(
     name='CPyCppyy',
-    version='1.3.6',
+    version='1.3.7',
     description='Cling-based Python-C++ bindings for CPython',
     long_description=long_description,
 

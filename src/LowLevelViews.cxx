@@ -285,17 +285,18 @@ static Py_ssize_t ll_length(CPyCppyy::LowLevelView* self)
 }
 
 //---------------------------------------------------------------------------
-static inline int init_slice(Py_buffer* base, PyObject* key, int dim)
+static inline int init_slice(Py_buffer* base, PyObject* _key, int dim)
 {
     Py_ssize_t start, stop, step, slicelength;
 
-    if (PySlice_GetIndicesEx(
 #if PY_VERSION_HEX < 0x03000000
-        (PySliceObject*)
+    PySliceObject* key = (PySliceObject*)_key;
+#else
+    PyObject* key = _key;
 #endif
-            key, base->shape[dim], &start, &stop, &step, &slicelength) < 0) {
+
+    if (PySlice_GetIndicesEx(key, base->shape[dim], &start, &stop, &step, &slicelength) < 0)
         return -1;
-    }
 
     if (!base->suboffsets || dim == 0) {
     adjust_buf:
