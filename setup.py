@@ -49,10 +49,14 @@ class my_build_extension(_build_ext):
     def build_extension(self, ext):
         ext.extra_compile_args += ['-O2']+get_cflags().split()
         if ('linux' in sys.platform) or ('darwin' in sys.platform):
+            if 'g++' in self.compiler.compiler_cxx[0]:
+                ext.extra_compile_args += \
+                   ['-Wno-cast-function-type']   # g++ >8.2, complaint of CPyFunction cast
+            elif 'clang' in self.compiler.compiler_cxx[0]:
+                ext.extra_compile_args += \
+                   ['-Wno-bad-function-cast']    # clang for same
             ext.extra_compile_args += \
-                ['-Wno-cast-function-type',      # g++ >8.2, complaint of CPyFunction cast
-                 '-Wno-bad-function-cast',       # clang for same
-                 '-Wno-register',                # C++17, Python headers
+                ['-Wno-register',                # C++17, Python headers
                  '-Wno-unknown-warning']         # since clang/g++ don't have the same options
         if 'linux' in sys.platform:
             ext.extra_link_args += ['-Wl,-Bsymbolic-functions']
