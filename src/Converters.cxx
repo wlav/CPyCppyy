@@ -1804,6 +1804,7 @@ namespace {
 
 using namespace CPyCppyy;
 
+#define STRINGVIEW "basic_string_view<char,char_traits<char> >"
 #define WSTRING "basic_string<wchar_t,char_traits<wchar_t>,allocator<wchar_t> >"
 
 static struct InitConvFactories_t {
@@ -1907,7 +1908,8 @@ public:
 #if __cplusplus > 201402L
         gf["std::string_view"] =            (cf_t)+[](long) { return new STLStringViewConverter{}; };
         gf["string_view"] =                 (cf_t)+[](long) { return new STLStringViewConverter{}; };
-        gf["experimental::basic_string_view<char,char_traits<char> >"] = (cf_t)+[](long) { return new STLStringViewConverter{}; };
+        gf[STRINGVIEW] =                    (cf_t)+[](long) { return new STLStringViewConverter{}; };
+        gf["experimental::" STRINGVIEW] =   (cf_t)+[](long) { return new STLStringViewConverter{}; };
 #endif
         gf["std::wstring"] =                (cf_t)+[](long) { return new STLWStringConverter{}; };
         gf[WSTRING] =                       (cf_t)+[](long) { return new STLWStringConverter{}; };
