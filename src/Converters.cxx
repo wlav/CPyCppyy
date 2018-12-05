@@ -691,7 +691,7 @@ bool CPyCppyy::CStringConverter::ToMemory(PyObject* value, void* address)
         return false;
 
 // verify (too long string will cause truncation, no crash)
-    if (fMaxSize != -1 && fMaxSize < (UInt_t)CPyCppyy_PyUnicode_GET_SIZE(value))
+    if (fMaxSize != -1 && fMaxSize < (long)CPyCppyy_PyUnicode_GET_SIZE(value))
         PyErr_Warn(PyExc_RuntimeWarning, (char*)"string too long for char array (truncated)");
 
     if (fMaxSize != -1)
