@@ -34,6 +34,14 @@ try:
 except KeyError:
     root_install = None
 
+if 'win' in sys.platform:
+    link_libraries = ['libcppyy_backend']
+    import cppyy_backend
+    link_dirs = [os.path.join(os.path.dirname(cppyy_backend.__file__), 'lib')]
+else:
+    link_libraries = None
+    link_dirs = None
+
 def _get_config_exec():
     if root_install:
         return ['root-config']
@@ -117,5 +125,7 @@ setup(
 
     ext_modules=[Extension('libcppyy',
         sources=glob.glob('src/*.cxx'),
-        include_dirs=['include'])],
+        include_dirs=['include'],
+        libraries=link_libraries,
+        library_dirs=link_dirs)],
 )
