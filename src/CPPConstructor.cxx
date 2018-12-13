@@ -103,3 +103,27 @@ PyObject* CPyCppyy::CPPNamespaceConstructor::Call(
     return nullptr;
 }
 
+
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::CPPDispatcherConstructor::PreProcessArgs(
+    CPPInstance*& self, PyObject* args, PyObject* kwds)
+{
+// normal processing to find self
+    args = this->CPPMethod::PreProcessArgs(self, args, kwds);
+
+// add self again as an additional first argument to make sure it propagates
+// to the C++-side
+    Py_ssize_t sz = PyTuple_GET_SIZE(args);
+    PyObject* newArgs = PyTuple_New(sz+1);
+    for (int i = 0; i < sz; ++i) {
+        PyObject* item = PyTuple_GET_ITEM(args, i);
+        Py_INCREF(item);
+        PyTuple_SET_ITEM(newArgs, i+1, item);
+    }
+
+    Py_INCREF(self);
+    PyTuple_SET_ITEM(newArgs, 0, (PyObject*)self);
+
+    Py_DECREF(args); // which was a new args from the base method
+    return newArgs;
+}

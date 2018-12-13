@@ -73,17 +73,13 @@ static PyObject* CreateNewCppProxyClass(Cppyy::TCppScope_t klass, PyObject* pyba
     PyDict_SetItem(PyTuple_GET_ITEM(args, 2), PyStrings::gModule, Py_True);
     Py_DECREF(pymetabases);
 
-    PyObject* pymeta = PyType_Type.tp_new(&CPPScope_Type, args, nullptr);
-
+    PyObject* pymeta = (PyObject*)CPPScopeMeta_New(klass, args);
     Py_DECREF(args);
     if (!pymeta) {
         PyErr_Print();
         Py_DECREF(pybases);
         return nullptr;
     }
-
-// set the klass id, in case there is derivation Python-side
-    ((CPPClass*)pymeta)->fCppType = klass;
 
 // alright, and now we really badly want to get rid of the dummy ...
     PyObject* dictproxy = PyObject_GetAttr(pymeta, PyStrings::gDict);

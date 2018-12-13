@@ -41,6 +41,16 @@ public:
     virtual PyObject* Call(CPPInstance*&, PyObject*, PyObject*, CallContext* = nullptr);
 };
 
+
+// specialization for dispatchers of overridden methods
+class CPPDispatcherConstructor : public CPPConstructor {
+public:
+    using CPPConstructor::CPPConstructor;
+
+public:
+    virtual PyObject* PreProcessArgs(CPPInstance*& self, PyObject* args, PyObject* kwds);
+};
+
 } // namespace CPyCppyy
 
 #endif // !CPYCPPYY_CPPCONSTRUCTOR_H
