@@ -182,7 +182,7 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
             Py_ssize_t sz = PyDict_Size(dct);
             if (0 < sz && !Cppyy::IsNamespace(result->fCppType)) {
                 result->fFlags |= CPPScope::kIsPython;
-                InsertDispatcher(Cppyy::GetScopedFinalName(result->fCppType), result, dct);
+                InsertDispatcher(result, dct);
             } else if (sz == -1)
                 PyErr_Clear();
         }

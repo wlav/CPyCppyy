@@ -11,7 +11,7 @@
 
 //----------------------------------------------------------------------------
 static bool includesDone = false;
-bool CPyCppyy::InsertDispatcher(const std::string& name, CPPScope* klass, PyObject* dct)
+bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
 {
 // Scan all methods in dct and where it overloads base methods in klass, create
 // dispatchers on the C++ side. Then interject the dispatcher class.
@@ -55,29 +55,33 @@ bool CPyCppyy::InsertDispatcher(const std::string& name, CPPScope* klass, PyObje
     if (!includesDone)
         return false;
 
+    const std::string& baseName       = Cppyy::GetFinalName(klass->fCppType);
+    const std::string& baseNameScoped = Cppyy::GetScopedFinalName(klass->fCppType);
+
 // once classes can be extended, should consider re-use; for now, since derived
 // python classes can differ in what they override, simply use different shims
     static int counter = 0;
     std::ostringstream osname;
-    osname << name << ++counter;
-    const std::string clName = osname.str();
+    osname << baseName << ++counter;
+    const std::string& derivedName = osname.str();
 
 // generate proxy class with the relevant method dispatchers
     std::ostringstream code;
 
 // start class declaration
     code << "namespace __cppyy_internal {\n"
-         << "class " << clName << " : public ::" << name << " {\n"
+         << "class " << derivedName << " : public ::" << baseNameScoped << " {\n"
             "  PyObject* m_self;\n"
             "public:\n";
 
 // constructors
-    code << "  " << clName << "(PyObject* self) : m_self(self) {}\n";
+    code << "  " << derivedName << "(PyObject* self) : m_self(self) { }\n";
 
 // methods
     const Cppyy::TCppIndex_t nMethods = Cppyy::GetNumMethods(klass->fCppType);
     for (Cppyy::TCppIndex_t imeth = 0; imeth < nMethods; ++imeth) {
         Cppyy::TCppMethod_t method = Cppyy::GetMethod(klass->fCppType, imeth);
+
 
         std::string mtCppName = Cppyy::GetMethodName(method);
         PyObject* key = CPyCppyy_PyUnicode_FromString(mtCppName.c_str());
@@ -107,12 +111,12 @@ bool CPyCppyy::InsertDispatcher(const std::string& name, CPPScope* klass, PyObje
     if (!Cppyy::Compile(code.str()))
         return false;
 
-    Cppyy::TCppScope_t disp = Cppyy::GetScope("__cppyy_internal::"+clName);
+    Cppyy::TCppScope_t disp = Cppyy::GetScope("__cppyy_internal::"+derivedName);
     if (!disp) return false;
 
 // interject the new constructor only (this ensures that C++ sees the proxy, but
 // Python does not, pre-empting circular calls)
-    const auto& v = Cppyy::GetMethodIndicesFromName(disp, name);
+    const auto& v = Cppyy::GetMethodIndicesFromName(disp, derivedName);
     if (v.empty()) return false;
     Cppyy::TCppMethod_t cppmeth = Cppyy::GetMethod(disp, v[0]);
     CPPConstructor* ctor = new CPPDispatcherConstructor(disp, cppmeth);
