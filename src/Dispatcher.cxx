@@ -80,7 +80,6 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
     for (Cppyy::TCppIndex_t imeth = 0; imeth < nMethods; ++imeth) {
         Cppyy::TCppMethod_t method = Cppyy::GetMethod(klass->fCppType, imeth);
 
-
         std::string mtCppName = Cppyy::GetMethodName(method);
         PyObject* key = CPyCppyy_PyUnicode_FromString(mtCppName.c_str());
         int contains = PyDict_Contains(dct, key);
@@ -95,11 +94,15 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
         // argument loop here ...
              code << "() {\n";
 
-    // function body
+    // function body (TODO: if the method throws a C++ exception, the GIL will
+    // not be released.)
         code << "    static CPyCppyy::Converter* conv = CPyCppyy::CreateConverter(\"" << retType << "\");\n"
                 "    " << retType << " ret{};\n"
+                "    PyGILState_STATE state = PyGILState_Ensure();\n"
                 "    PyObject* val = PyObject_CallMethod(m_self, (char*)\"" << mtCppName << "\", NULL);\n"
-                "    conv->ToMemory(val, &ret);\n"
+                "    if (val) conv->ToMemory(val, &ret);\n"
+                "    else PyErr_Print();\n"       // should throw TPyException instead
+                "    PyGILState_Release(state);\n"
                 "    return ret;\n"
                 "  }\n";
     }
