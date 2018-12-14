@@ -1,8 +1,6 @@
 // Bindings
 #include "CPyCppyy.h"
 #include "Dispatcher.h"
-#include "CPPConstructor.h"
-#include "CPPOverload.h"
 #include "CPPScope.h"
 
 // Standard
@@ -74,8 +72,8 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
             "  PyObject* m_self;\n"
             "public:\n";
 
-// constructors
-    code << "  " << derivedName << "(PyObject* self) : m_self(self) { }\n";
+// constructors are simply inherited
+    code << "  using " << baseName << "::" << baseName << ";\n";
 
 // methods
     const Cppyy::TCppIndex_t nMethods = Cppyy::GetNumMethods(klass->fCppType);
@@ -111,19 +109,11 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
     if (!Cppyy::Compile(code.str()))
         return false;
 
+// keep track internally of the actual C++ type (this is used in
+// CPPConstructor to call the dispatcher's one instead of the base)
     Cppyy::TCppScope_t disp = Cppyy::GetScope("__cppyy_internal::"+derivedName);
     if (!disp) return false;
+    klass->fCppType = disp;
 
-// interject the new constructor only (this ensures that C++ sees the proxy, but
-// Python does not, pre-empting circular calls)
-    const auto& v = Cppyy::GetMethodIndicesFromName(disp, derivedName);
-    if (v.empty()) return false;
-    Cppyy::TCppMethod_t cppmeth = Cppyy::GetMethod(disp, v[0]);
-    CPPConstructor* ctor = new CPPDispatcherConstructor(disp, cppmeth);
-    CPPOverload* ol = CPPOverload_New("__init__", ctor);
-    bool isOk = PyObject_SetAttrString(
-        (PyObject*)klass, const_cast<char*>("__init__"), (PyObject*)ol) == 0;
-    Py_DECREF(ol);
-    return isOk;
+    return true;
 }
-

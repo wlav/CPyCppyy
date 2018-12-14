@@ -50,8 +50,37 @@ PyObject* CPyCppyy::CPPConstructor::Call(
         return nullptr;
     }
 
-// perform the call, 0 makes the other side allocate the memory
-    Long_t address = (Long_t)this->Execute(nullptr, 0, ctxt);
+// perform the call, nullptr 'this' makes the other side allocate the memory
+    Cppyy::TCppScope_t disp = self->ObjectIsA();
+    Cppyy::TCppMethod_t tmpMethod = GetMethod();
+    if (GetScope() != disp) {
+    // happens for Python derived types, which have a dispatcher inserted that
+    // is not otherwise user-visible: temporarily reset fMethod
+    // TODO: these lookups are slow and need caching
+        const std::string& dispName = Cppyy::GetFinalName(disp);
+    // select proper overload based on signature match
+        const std::string& sig = Cppyy::GetMethodSignature(GetMethod(), false);
+        Cppyy::TCppMethod_t method = (Cppyy::TCppMethod_t)0;
+        const auto& v = Cppyy::GetMethodIndicesFromName(disp, dispName);
+        for (auto idx : v) {
+            Cppyy::TCppMethod_t mm = Cppyy::GetMethod(disp, idx);
+            if (Cppyy::GetMethodSignature(mm, false) == sig) {
+                method = mm;
+                break;
+            }
+        }
+        if (method) SetMethod(method);
+    }
+    ptrdiff_t address = (ptrdiff_t)this->Execute(nullptr, 0, ctxt);
+    if (GetMethod() != tmpMethod) {
+    // restore the original constructor
+        SetMethod(tmpMethod);
+
+    // set m_self (TODO: get this from the compiler in case of some
+    // unorthodox padding or if the inheritance hierarchy extends back
+    // into C++ land)
+        *((void**)(address + Cppyy::SizeOf(GetScope()))) = self;
+    }
 
 // done with filtered args
     Py_DECREF(args);
@@ -101,29 +130,4 @@ PyObject* CPyCppyy::CPPNamespaceConstructor::Call(
     PyErr_Format(PyExc_TypeError, "cannot instantiate namespace \'%s\'",
         Cppyy::GetScopedFinalName(this->GetScope()).c_str());
     return nullptr;
-}
-
-
-//----------------------------------------------------------------------------
-PyObject* CPyCppyy::CPPDispatcherConstructor::PreProcessArgs(
-    CPPInstance*& self, PyObject* args, PyObject* kwds)
-{
-// normal processing to find self
-    args = this->CPPMethod::PreProcessArgs(self, args, kwds);
-
-// add self again as an additional first argument to make sure it propagates
-// to the C++-side
-    Py_ssize_t sz = PyTuple_GET_SIZE(args);
-    PyObject* newArgs = PyTuple_New(sz+1);
-    for (int i = 0; i < sz; ++i) {
-        PyObject* item = PyTuple_GET_ITEM(args, i);
-        Py_INCREF(item);
-        PyTuple_SET_ITEM(newArgs, i+1, item);
-    }
-
-    Py_INCREF(self);
-    PyTuple_SET_ITEM(newArgs, 0, (PyObject*)self);
-
-    Py_DECREF(args); // which was a new args from the base method
-    return newArgs;
 }

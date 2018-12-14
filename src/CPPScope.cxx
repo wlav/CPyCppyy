@@ -182,7 +182,10 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
             Py_ssize_t sz = PyDict_Size(dct);
             if (0 < sz && !Cppyy::IsNamespace(result->fCppType)) {
                 result->fFlags |= CPPScope::kIsPython;
-                InsertDispatcher(result, dct);
+                if (!InsertDispatcher(result, dct)) {
+                    PyErr_Warn(PyExc_RuntimeWarning,
+                        (char*)"no python-side overrides supported");
+                }
             } else if (sz == -1)
                 PyErr_Clear();
         }

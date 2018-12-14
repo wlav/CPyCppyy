@@ -45,6 +45,9 @@ public:
 
 protected:
     Cppyy::TCppMethod_t GetMethod()   { return fMethod; }
+// TODO: the following is a special case to allow shimming of the
+// constructor; there's probably a better way ...
+    void SetMethod(Cppyy::TCppMethod_t m) { fMethod = m; }
     Cppyy::TCppScope_t  GetScope()    { return fScope; }
     Executor*           GetExecutor() { return fExecutor; }
     std::string         GetSignatureString(bool show_formalargs = true);
