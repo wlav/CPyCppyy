@@ -51,62 +51,62 @@ inline void CPyCppyy::CPPMethod::Destroy_() const
 
 //----------------------------------------------------------------------------
 inline PyObject* CPyCppyy::CPPMethod::CallFast(
-        void* self, ptrdiff_t offset, CallContext* ctxt)
+    void* self, ptrdiff_t offset, CallContext* ctxt)
 {
 // Helper code to prevent some duplication; this is called from CallSafe() as well
 // as directly from CPPMethod::Execute in fast mode.
-   PyObject* result = nullptr;
+    PyObject* result = nullptr;
 
-   try {       // C++ try block
-       result = fExecutor->Execute(fMethod, (Cppyy::TCppObject_t)((Long_t)self+offset), ctxt);
-   } catch (TPyException&) {
-       result = nullptr;           // error already set
-   } catch (std::exception& e) {
-   /* TODO: figure out what this is about ... ?
-      if (gInterpreter->DiagnoseIfInterpreterException(e)) {
-         return result;
-      }
+    try {       // C++ try block
+        result = fExecutor->Execute(fMethod, (Cppyy::TCppObject_t)((Long_t)self+offset), ctxt);
+    } catch (TPyException&) {
+        result = nullptr;           // error already set
+    } catch (std::exception& e) {
+    /* TODO: figure out what this is about ... ?
+        if (gInterpreter->DiagnoseIfInterpreterException(e)) {
+           return result;
+        }
 
-      // TODO: write w/ot use of TClass
+        // TODO: write w/o use of TClass
 
-   // map user exceptions .. this needs to move to Cppyy.cxx
-      TClass* cl = TClass::GetClass(typeid(e));
+    // map user exceptions .. this needs to move to Cppyy.cxx
+        TClass* cl = TClass::GetClass(typeid(e));
 
-      PyObject* pyUserExcepts = PyObject_GetAttrString(gThisModule, "UserExceptions");
-      std::string exception_type;
-      if (cl) exception_type = cl->GetName();
-      else {
-         int errorCode;
-         std::unique_ptr<char[]> demangled(TClassEdit::DemangleTypeIdName(typeid(e),errorCode));
-         if (errorCode) exception_type = typeid(e).name();
-         else exception_type = demangled.get();
-      }
-      PyObject* pyexc = PyDict_GetItemString(pyUserExcepts, exception_type.c_str());
-      if (!pyexc) {
-         PyErr_Clear();
-         pyexc = PyDict_GetItemString(pyUserExcepts, ("std::"+exception_type).c_str());
-      }
-      Py_DECREF(pyUserExcepts);
+        PyObject* pyUserExcepts = PyObject_GetAttrString(gThisModule, "UserExceptions");
+        std::string exception_type;
+        if (cl) exception_type = cl->GetName();
+        else {
+            int errorCode;
+            std::unique_ptr<char[]> demangled(TClassEdit::DemangleTypeIdName(typeid(e),errorCode));
+            if (errorCode) exception_type = typeid(e).name();
+            else exception_type = demangled.get();
+        }
+        PyObject* pyexc = PyDict_GetItemString(pyUserExcepts, exception_type.c_str());
+        if (!pyexc) {
+            PyErr_Clear();
+            pyexc = PyDict_GetItemString(pyUserExcepts, ("std::"+exception_type).c_str());
+        }
+        Py_DECREF(pyUserExcepts);
 
-      if (pyexc) {
-         PyErr_Format(pyexc, "%s", e.what());
-      } else {
-         PyErr_Format(PyExc_Exception, "%s (C++ exception of type %s)", e.what(), exception_type.c_str());
-      }
-   */
+        if (pyexc) {
+            PyErr_Format(pyexc, "%s", e.what());
+        } else {
+            PyErr_Format(PyExc_Exception, "%s (C++ exception of type %s)", e.what(), exception_type.c_str());
+        }
+    */
 
-       PyErr_Format(PyExc_Exception, "%s (C++ exception)", e.what());
-       result = nullptr;
-   } catch (...) {
-       PyErr_SetString(PyExc_Exception, "unhandled, unknown C++ exception");
-       result = nullptr;
-   }
-   return result;
+        PyErr_Format(PyExc_Exception, "%s (C++ exception)", e.what());
+        result = nullptr;
+    } catch (...) {
+        PyErr_SetString(PyExc_Exception, "unhandled, unknown C++ exception");
+        result = nullptr;
+    }
+    return result;
 }
 
 //----------------------------------------------------------------------------
 inline PyObject* CPyCppyy::CPPMethod::CallSafe(
-        void* self, ptrdiff_t offset, CallContext* ctxt)
+    void* self, ptrdiff_t offset, CallContext* ctxt)
 {
 // Helper code to prevent some code duplication; this code embeds a "try/catch"
 // block that saves the stack for restoration in case of an otherwise fatal signal.
