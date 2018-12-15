@@ -89,19 +89,43 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
 
     // method declaration
         std::string retType = Cppyy::GetMethodResultType(method);
-        code << "  " << retType << " " << mtCppName;
+        code << "  " << retType << " " << mtCppName << "(";
 
-        // argument loop here ...
-             code << "() {\n";
+    // build out the signature with predictable formal names
+        Cppyy::TCppIndex_t nArgs = Cppyy::GetMethodNumArgs(method);
+        for (int i = 0; i < nArgs; ++i) {
+            if (i != 0) code << ", ";
+            code << Cppyy::GetMethodArgType(method, i) << " arg" << i;
+        }
+        code << ") {\n";
 
     // function body (TODO: if the method throws a C++ exception, the GIL will
     // not be released.)
-        code << "    static CPyCppyy::Converter* conv = CPyCppyy::CreateConverter(\"" << retType << "\");\n"
-                "    " << retType << " ret{};\n"
-                "    PyGILState_STATE state = PyGILState_Ensure();\n"
-                "    PyObject* val = PyObject_CallMethod(m_self, (char*)\"" << mtCppName << "\", NULL);\n"
-                "    if (val) conv->ToMemory(val, &ret);\n"
-                "    else PyErr_Print();\n"       // should throw TPyException instead
+        code << "    static std::unique_ptr<CPyCppyy::Converter> retconv{CPyCppyy::CreateConverter(\"" << retType << "\")};\n";
+        for (int i = 0; i < nArgs; ++i) {
+            code << "    static std::unique_ptr<CPyCppyy::Converter> arg" << i
+                         << "conv{CPyCppyy::CreateConverter(\"" << Cppyy::GetMethodArgType(method, i) << "\")};\n";
+        }
+        code << "    " << retType << " ret{};\n"
+                "    PyGILState_STATE state = PyGILState_Ensure();\n";
+
+        // build argument tuple if needed
+        for (int i = 0; i < nArgs; ++i) {
+             code << "    PyObject* pyarg" << i << " = arg" << i << "conv->FromMemory(&arg" << i << ");\n";
+        }
+#if PY_VERSION_HEX < 0x03000000
+        code << "    PyObject* mtPyName = PyString_FromString(\"" << mtCppName << "\");\n" // TODO: intern?
+#else
+        code << "    PyObject* mtPyName = PyUnicode_FromString(\"" << mtCppName << "\");\n"
+#endif
+                "    PyObject* val = PyObject_CallMethodObjArgs(m_self, mtPyName";
+        for (int i = 0; i < nArgs; ++i)
+             code << ", pyarg" << i;
+        code << ", NULL);\n    Py_DECREF(mtPyName);\n";
+        for (int i = 0; i < nArgs; ++i)
+             code << "    Py_DECREF(pyarg" << i << ");\n";
+        code << "    if (val) { retconv->ToMemory(val, &ret); Py_DECREF(val); }\n"
+                "    else PyErr_Print();\n"   // should throw TPyException
                 "    PyGILState_Release(state);\n"
                 "    return ret;\n"
                 "  }\n";
