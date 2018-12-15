@@ -393,7 +393,7 @@ void* GetCPPInstanceAddress(PyObject*, PyObject* args)
 
     // this is an address of an address (i.e. &myobj, with myobj of type MyObj*)
     // note that pyobject->fObject may be null
-        return (void*)&pyobj->fObject;
+        return (void*)pyobj->fObject;
     }
 
     PyErr_SetString(PyExc_ValueError, "invalid argument for addressof()");
@@ -406,7 +406,7 @@ PyObject* addressof(PyObject* pyobj, PyObject* args)
 // Return object proxy address as a value (cppyy-style), or the same for an array.
     void* addr = GetCPPInstanceAddress(pyobj, args);
     if (addr)
-        return PyLong_FromLong(*(ptrdiff_t*)addr);
+        return PyLong_FromLong((ptrdiff_t)addr);
     else if (!PyErr_Occurred()) {
         return PyLong_FromLong(0);
     } else if (PyTuple_Size(args)) {
