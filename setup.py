@@ -83,7 +83,7 @@ if has_wheel:
 
 setup(
     name='CPyCppyy',
-    version='1.3.7',
+    version='1.4.0',
     description='Cling-based Python-C++ bindings for CPython',
     long_description=long_description,
 
@@ -117,7 +117,7 @@ setup(
     ],
 
     setup_requires=['wheel'],
-    install_requires=['cppyy-backend>=1.3'],
+    install_requires=['cppyy-backend>=1.5'],
 
     keywords='C++ bindings data science',
 
