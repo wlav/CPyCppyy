@@ -112,7 +112,7 @@ PyObject* PyStyleIndex(PyObject* self, PyObject* index)
         Py_INCREF(index);
         pyindex = index;
     } else
-        pyindex = PyLong_FromLong(size+idx);
+        pyindex = PyLong_FromSsize_t(size+idx);
 
     return pyindex;
 }
@@ -385,7 +385,7 @@ static PyObject* vectoriter_iternext(vectoriterobject* vi) {
         void* location = (void*)((ptrdiff_t)vi->vi_data + vi->vi_stride * vi->vi_pos);
         result = vi->vi_converter->FromMemory(location);
     } else {
-        PyObject* pyindex = PyLong_FromLong(vi->vi_pos);
+        PyObject* pyindex = PyLong_FromSsize_t(vi->vi_pos);
         result = CallPyObjMethod((PyObject*)vi->vi_vector, "_getitem__unchecked", pyindex);
         Py_DECREF(pyindex);
     }
@@ -973,7 +973,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
             const std::string& vtype = Cppyy::ResolveName(name+"::value_type");
             size_t typesz = Cppyy::SizeOf(vtype);
             if (typesz) {
-                PyObject* pyvalue_size = PyLong_FromLong(typesz);
+                PyObject* pyvalue_size = PyLong_FromSsize_t(typesz);
                 PyObject_SetAttrString(pyclass, "value_size", pyvalue_size);
                 Py_DECREF(pyvalue_size);
 

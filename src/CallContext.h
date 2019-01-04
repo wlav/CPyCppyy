@@ -19,6 +19,7 @@ struct Parameter {
         Int_t          fInt;
         UInt_t         fUInt;
         Long_t         fLong;
+        intptr_t       fIntPtr;
         ULong_t        fULong;
         Long64_t       fLongLong;
         ULong64_t      fULongLong;

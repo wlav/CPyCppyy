@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <stddef.h>
+#include <stdint.h>
 
 // import/export (after precommondefs.h from PyPy)
 #ifdef _MSC_VER
@@ -17,12 +18,12 @@
 
 namespace Cppyy {
 
-    typedef ptrdiff_t   TCppScope_t;
+    typedef size_t      TCppScope_t;
     typedef TCppScope_t TCppType_t;
     typedef void*       TCppObject_t;
-    typedef ptrdiff_t   TCppMethod_t;
+    typedef intptr_t    TCppMethod_t;
 
-    typedef ptrdiff_t   TCppIndex_t;
+    typedef size_t      TCppIndex_t;
     typedef void*       TCppFuncAddr_t;
 
 // direct interpreter access -------------------------------------------------
@@ -210,7 +211,7 @@ namespace Cppyy {
     RPY_EXPORT
     std::string GetDatamemberType(TCppScope_t scope, TCppIndex_t idata);
     RPY_EXPORT
-    ptrdiff_t   GetDatamemberOffset(TCppScope_t scope, TCppIndex_t idata);
+    intptr_t    GetDatamemberOffset(TCppScope_t scope, TCppIndex_t idata);
     RPY_EXPORT
     TCppIndex_t GetDatamemberIndex(TCppScope_t scope, const std::string& name);
 

@@ -827,7 +827,7 @@ bool CPyCppyy::VoidArrayConverter::GetAddressSpecialCase(PyObject* pyobject, voi
 
 // (2): allow integer zero to act as a null pointer (C NULL), no deriveds
     if (PyInt_CheckExact(pyobject) || PyLong_CheckExact(pyobject)) {
-        long val = (long)PyLong_AsLong(pyobject);
+        intptr_t val = (intptr_t)PyLong_AsLongLong(pyobject);
         if (val == 0l) {
             address = (void*)val;
             return true;
@@ -1132,7 +1132,7 @@ bool CPyCppyy::InstancePtrConverter::SetArg(
     // calculate offset between formal and actual arguments
         para.fValue.fVoidp = pyobj->GetObject();
         if (pyobj->ObjectIsA() != fClass) {
-            para.fValue.fLong += Cppyy::GetBaseOffset(
+            para.fValue.fIntPtr += Cppyy::GetBaseOffset(
                 pyobj->ObjectIsA(), fClass, para.fValue.fVoidp, 1 /* up-cast */);
         }
 
@@ -1203,7 +1203,7 @@ bool CPyCppyy::InstanceConverter::SetArg(
             return false;
 
         if (pyobj->ObjectIsA() != fClass) {
-            para.fValue.fLong += Cppyy::GetBaseOffset(
+            para.fValue.fIntPtr += Cppyy::GetBaseOffset(
                 pyobj->ObjectIsA(), fClass, para.fValue.fVoidp, 1 /* up-cast */);
         }
 
@@ -1231,7 +1231,7 @@ bool CPyCppyy::InstanceRefConverter::SetArg(
     // calculate offset between formal and actual arguments
         para.fValue.fVoidp = pyobj->GetObject();
         if (pyobj->ObjectIsA() != fClass) {
-            para.fValue.fLong += Cppyy::GetBaseOffset(
+            para.fValue.fIntPtr += Cppyy::GetBaseOffset(
                 pyobj->ObjectIsA(), fClass, para.fValue.fVoidp, 1 /* up-cast */);
         }
 
@@ -1536,7 +1536,7 @@ bool CPyCppyy::SmartPtrConverter::SetArg(
     // calculate offset between formal and actual arguments
         para.fValue.fVoidp = pyobj->fObject;
         if (pyobj->fSmartPtrType != fSmartPtrType) {
-            para.fValue.fLong += Cppyy::GetBaseOffset(
+            para.fValue.fIntPtr += Cppyy::GetBaseOffset(
                 pyobj->fSmartPtrType, fSmartPtrType, para.fValue.fVoidp, 1 /* up-cast */);
         }
 
@@ -1550,7 +1550,7 @@ bool CPyCppyy::SmartPtrConverter::SetArg(
     // calculate offset between formal and actual arguments
         para.fValue.fVoidp = pyobj->GetObject();
         if (pyobj->ObjectIsA() != fSmartPtrType) {
-            para.fValue.fLong += Cppyy::GetBaseOffset(
+            para.fValue.fIntPtr += Cppyy::GetBaseOffset(
                 pyobj->ObjectIsA(), fSmartPtrType, para.fValue.fVoidp, 1 /* up-cast */);
         }
 

@@ -58,7 +58,7 @@ inline PyObject* CPyCppyy::CPPMethod::CallFast(
     PyObject* result = nullptr;
 
     try {       // C++ try block
-        result = fExecutor->Execute(fMethod, (Cppyy::TCppObject_t)((Long_t)self+offset), ctxt);
+        result = fExecutor->Execute(fMethod, (Cppyy::TCppObject_t)((intptr_t)self+offset), ctxt);
     } catch (TPyException&) {
         result = nullptr;           // error already set
     } catch (std::exception& e) {
@@ -321,7 +321,7 @@ int CPyCppyy::CPPMethod::GetPriority()
     // prefer more derived classes
         Cppyy::TCppScope_t scope = Cppyy::GetScope(TypeManip::clean_type(aname));
         if (scope)
-            priority += Cppyy::GetNumBases(scope);
+            priority += (int)Cppyy::GetNumBases(scope);
     }
 
 // add a small penalty to prefer non-const methods over const ones for

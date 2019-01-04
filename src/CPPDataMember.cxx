@@ -44,7 +44,7 @@ static PyObject* pp_get(CPPDataMember* pyprop, CPPInstance* pyobj, PyObject* kls
 
 // normal getter access
     void* address = pyprop->GetAddress(pyobj);
-    if (!address || (ptrdiff_t)address == -1 /* Cling error */)
+    if (!address || (intptr_t)address == -1 /* Cling error */)
         return nullptr;
 
 // for fixed size arrays
@@ -53,7 +53,7 @@ static PyObject* pp_get(CPPDataMember* pyprop, CPPInstance* pyobj, PyObject* kls
         ptr = &address;
 
 // non-initialized or public data accesses through class (e.g. by help())
-    if (!ptr || (ptrdiff_t)ptr == -1 /* Cling error */) {
+    if (!ptr || (intptr_t)ptr == -1 /* Cling error */) {
         Py_INCREF(pyprop);
         return (PyObject*)pyprop;
     }
@@ -113,7 +113,7 @@ static int pp_set(CPPDataMember* pyprop, CPPInstance* pyobj, PyObject* value)
         }
     }
 
-    ptrdiff_t address = (ptrdiff_t)pyprop->GetAddress(pyobj);
+    intptr_t address = (intptr_t)pyprop->GetAddress(pyobj);
     if (!address || address == -1 /* Cling error */)
         return errret;
 
@@ -261,7 +261,7 @@ void CPyCppyy::CPPDataMember::Set(Cppyy::TCppScope_t scope, const std::string& n
 {
     fEnclosingScope = scope;
     fName           = CPyCppyy_PyUnicode_FromString(name.c_str());
-    fOffset         = (ptrdiff_t)address;
+    fOffset         = (intptr_t)address;
     fProperty       = (kIsStaticData | kIsConstData | kIsEnumData /* true, but may chance */);
     fConverter      = CreateConverter("internal_enum_type_t");
 }
@@ -297,5 +297,5 @@ void* CPyCppyy::CPPDataMember::GetAddress(CPPInstance* pyobj)
     if (pyobj->ObjectIsA() != fEnclosingScope)
         offset = Cppyy::GetBaseOffset(pyobj->ObjectIsA(), fEnclosingScope, obj, 1 /* up-cast */);
 
-    return (void*)((ptrdiff_t)obj + offset + fOffset);
+    return (void*)((intptr_t)obj + offset + fOffset);
 }

@@ -749,10 +749,10 @@ PyObject* CPyCppyy::BindCppObject(Cppyy::TCppObject_t address,
     if (clActual && klass != clActual) {
         auto pci = gPinnedTypes.find(klass);
         if (pci == gPinnedTypes.end()) {
-            ptrdiff_t offset = Cppyy::GetBaseOffset(
+            intptr_t offset = Cppyy::GetBaseOffset(
                 clActual, klass, address, -1 /* down-cast */, true /* report errors */);
             if (offset != -1) {   // may fail if clActual not fully defined
-                address = (void*)((Long_t)address + offset);
+                address = (void*)((intptr_t)address + offset);
                 klass = clActual;
             }
         }

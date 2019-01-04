@@ -186,7 +186,7 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
                     PyErr_Warn(PyExc_RuntimeWarning,
                         (char*)"no python-side overrides supported");
                 }
-            } else if (sz == -1)
+            } else if (sz == (Py_ssize_t)-1)
                 PyErr_Clear();
         }
     }
@@ -251,7 +251,7 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
         // tickle lazy lookup of data members
             if (!attr) {
                 Cppyy::TCppIndex_t dmi = Cppyy::GetDatamemberIndex(scope, name);
-                if (0 <= dmi) attr = (PyObject*)CPPDataMember_New(scope, dmi);
+                if (dmi != (Cppyy::TCppIndex_t)-1) attr = (PyObject*)CPPDataMember_New(scope, dmi);
             }
         }
 

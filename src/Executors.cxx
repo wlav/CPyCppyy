@@ -717,7 +717,7 @@ PyObject* CPyCppyy::InstanceArrayExecutor::Execute(
 {
 // execute <method> with argument <self, ctxt>, construct TupleOfInstances from
 // return value
-    long dims[] = {1, fArraySize};
+    long dims[] = {1, (long)fArraySize};
     return BindCppObjectArray((void*)GILCallR(method, self, ctxt), fClass, dims);
 }
 

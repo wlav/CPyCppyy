@@ -22,7 +22,7 @@ public:
 
 public:                 // public, as the python C-API works with C structs
     PyObject_HEAD
-    ptrdiff_t          fOffset;
+    intptr_t           fOffset;
     Long_t             fProperty;
     Converter*         fConverter;
     Cppyy::TCppScope_t fEnclosingScope;

@@ -406,7 +406,7 @@ PyObject* addressof(PyObject* pyobj, PyObject* args)
 // Return object proxy address as a value (cppyy-style), or the same for an array.
     void* addr = GetCPPInstanceAddress(pyobj, args);
     if (addr)
-        return PyLong_FromLong((ptrdiff_t)addr);
+        return PyLong_FromLongLong((intptr_t)addr);
     else if (!PyErr_Occurred()) {
         return PyLong_FromLong(0);
     } else if (PyTuple_Size(args)) {
@@ -415,7 +415,7 @@ PyObject* addressof(PyObject* pyobj, PyObject* args)
         if (arg0 == gNullPtrObject || (PyInt_Check(arg0) && PyInt_AsLong(arg0) == 0))
             return PyLong_FromLong(0);
         Utility::GetBuffer(arg0, '*', 1, addr, false);
-        if (addr) return PyLong_FromLong((Long_t)addr);
+        if (addr) return PyLong_FromLongLong((intptr_t)addr);
     }
 
 // error message
@@ -434,7 +434,7 @@ PyObject* AsCObject(PyObject* dummy, PyObject* args)
 // Return object proxy as an opaque CObject.
     void* addr = GetCPPInstanceAddress(dummy, args);
     if (addr)
-        return CPyCppyy_PyCapsule_New((void*)(*(Long_t*)addr), nullptr, nullptr);
+        return CPyCppyy_PyCapsule_New((void*)(*(intptr_t*)addr), nullptr, nullptr);
 
     return nullptr;
 }
