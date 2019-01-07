@@ -34,7 +34,7 @@ try:
 except KeyError:
     root_install = None
 
-if 'win' in sys.platform:
+if 'win32' in sys.platform:
     link_libraries = ['libcppyy_backend']
     import cppyy_backend
     link_dirs = [os.path.join(os.path.dirname(cppyy_backend.__file__), 'lib')]
