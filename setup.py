@@ -62,10 +62,10 @@ class my_build_extension(_build_ext):
                    ['-Wno-bad-function-cast']    # clang for same
             elif 'g++' in self.compiler.compiler_cxx[0]:
                 ext.extra_compile_args += \
-                   ['-Wno-cast-function-type']   # g++ >8.2, complaint of CPyFunction cast
+                   ['-Wno-cast-function-type',   # g++ >8.2, complaint of CPyFunction cast
+                    '-Wno-unknown-warning']         # since clang/g++ don't have the same options
             ext.extra_compile_args += \
-                ['-Wno-register',                # C++17, Python headers
-                 '-Wno-unknown-warning']         # since clang/g++ don't have the same options
+                ['-Wno-register']                # C++17, Python headers
         if 'linux' in sys.platform:
             ext.extra_link_args += ['-Wl,-Bsymbolic-functions']
         return _build_ext.build_extension(self, ext)
