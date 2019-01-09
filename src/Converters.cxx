@@ -1029,7 +1029,31 @@ bool CPyCppyy::name##Converter::ToMemory(PyObject* value, void* address)     \
 
 CPPYY_IMPL_STRING_AS_PRIMITIVE_CONVERTER(STLString, std::string, c_str, size)
 #if __cplusplus > 201402L
-CPPYY_IMPL_STRING_AS_PRIMITIVE_CONVERTER(STLStringView, std::string_view, data, size)
+CPPYY_IMPL_STRING_AS_PRIMITIVE_CONVERTER(STLStringViewBase, std::string_view, data, size)
+bool CPyCppyy::STLStringViewConverter::SetArg(
+    PyObject* pyobject, Parameter& para, CallContext* ctxt)
+{
+    if (this->STLStringViewBaseConverter::SetArg(pyobject, para, ctxt))
+        return true;
+
+    if (!CPPInstance_Check(pyobject))
+        return false;
+
+    static Cppyy::TCppScope_t sStringID = Cppyy::GetScope("std::string");
+    CPPInstance* pyobj = (CPPInstance*)pyobject;
+    if (pyobj->ObjectIsA() == sStringID) {
+        void* ptr = pyobj->GetObject();
+        if (!ptr)
+            return false;
+
+        fBuffer = *((std::string*)ptr);
+        para.fValue.fVoidp = &fBuffer;
+        para.fTypeCode = 'V';
+        return true;
+    }
+
+    return false;
+}
 #endif
 
 CPyCppyy::STLWStringConverter::STLWStringConverter(bool keepControl) :
@@ -1909,7 +1933,9 @@ public:
         gf["std::string_view"] =            (cf_t)+[](long) { return new STLStringViewConverter{}; };
         gf["string_view"] =                 (cf_t)+[](long) { return new STLStringViewConverter{}; };
         gf[STRINGVIEW] =                    (cf_t)+[](long) { return new STLStringViewConverter{}; };
-        gf["experimental::" STRINGVIEW] =   (cf_t)+[](long) { return new STLStringViewConverter{}; };
+        gf["std::string_view&"] =           (cf_t)+[](long) { return new STLStringViewConverter{}; };
+        gf["const string_view&"] =          (cf_t)+[](long) { return new STLStringViewConverter{}; };
+        gf["const " STRINGVIEW "&"] =       (cf_t)+[](long) { return new STLStringViewConverter{}; };
 #endif
         gf["std::wstring"] =                (cf_t)+[](long) { return new STLWStringConverter{}; };
         gf[WSTRING] =                       (cf_t)+[](long) { return new STLWStringConverter{}; };
