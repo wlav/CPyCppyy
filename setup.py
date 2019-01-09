@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os, sys, glob, subprocess
+import codecs, glob, os, sys, subprocess
 from setuptools import setup, find_packages, Extension
 from distutils.command.build_ext import build_ext as _build_ext
 try:
@@ -8,11 +8,10 @@ try:
     has_wheel = True
 except ImportError:
     has_wheel = False
-from codecs import open
 
 
 here = os.path.abspath(os.path.dirname(__file__))
-with open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
+with codecs.open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
 _is_manylinux = None
@@ -83,7 +82,7 @@ if has_wheel:
 
 setup(
     name='CPyCppyy',
-    version='1.4.0',
+    version='1.4.1',
     description='Cling-based Python-C++ bindings for CPython',
     long_description=long_description,
 
