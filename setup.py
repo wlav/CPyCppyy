@@ -2,6 +2,7 @@
 
 import codecs, glob, os, sys, subprocess
 from setuptools import setup, find_packages, Extension
+from setuptools.command.bdist_egg import bdist_egg as _bdist_egg
 from distutils.command.build_ext import build_ext as _build_ext
 try:
     from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
@@ -78,6 +79,13 @@ if has_wheel:
             if is_manylinux():
                 return _bdist_wheel.run(self, *args)
     cmdclass['bdist_wheel'] = my_bdist_wheel
+
+# same for bdist_egg as for bdist_wheel (see above)
+class my_bdist_egg(_bdist_egg):
+    def run(self, *args):
+        if is_manylinux():
+            return _bdist_egg.run(self, *args)
+cmdclass['bdist_egg'] = my_bdist_egg
 
 
 setup(
