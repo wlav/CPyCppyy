@@ -1,8 +1,8 @@
-#!/usr/bin/env python
-
 import codecs, glob, os, sys, subprocess
 from setuptools import setup, find_packages, Extension
-from setuptools.command.bdist_egg import bdist_egg as _bdist_egg
+from distutils import log
+
+from setuptools.dist import Distribution
 from distutils.command.build_ext import build_ext as _build_ext
 try:
     from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
@@ -11,10 +11,17 @@ except ImportError:
     has_wheel = False
 
 
+requirements = ['cppyy-backend>=1.5.0']
+setup_requirements = ['wheel']+requirements
+
 here = os.path.abspath(os.path.dirname(__file__))
 with codecs.open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
+
+#
+# platform-dependent helpers
+#
 _is_manylinux = None
 def is_manylinux():
     global _is_manylinux
@@ -29,22 +36,17 @@ def is_manylinux():
             pass
     return _is_manylinux
 
-try:
-    root_install = os.environ["ROOTSYS"]
-except KeyError:
-    root_install = None
-
-if 'win32' in sys.platform:
-    link_libraries = ['libcppyy_backend']
-    import cppyy_backend
-    link_dirs = [os.path.join(os.path.dirname(cppyy_backend.__file__), 'lib')]
-else:
-    link_libraries = None
-    link_dirs = None
+def _get_linker_options():
+    if 'win32' in sys.platform:
+        link_libraries = ['libcppyy_backend']
+        import cppyy_backend
+        link_dirs = [os.path.join(os.path.dirname(cppyy_backend.__file__), 'lib')]
+    else:
+        link_libraries = None
+        link_dirs = None
+    return link_libraries, link_dirs
 
 def _get_config_exec():
-    if root_install:
-        return ['root-config']
     return ['python', '-m', 'cppyy_backend._cling_config']
 
 def get_cflags():
@@ -53,6 +55,10 @@ def get_cflags():
     cli_arg = subprocess.check_output(config_exec_args)
     return cli_arg.decode("utf-8").strip()
 
+
+#
+# customized commands
+#
 class my_build_extension(_build_ext):
     def build_extension(self, ext):
         ext.extra_compile_args += ['-O2']+get_cflags().split()
@@ -70,27 +76,37 @@ class my_build_extension(_build_ext):
             ext.extra_link_args += ['-Wl,-Bsymbolic-functions']
         return _build_ext.build_extension(self, ext)
 
-cmdclass = { 'build_ext': my_build_extension }
-if has_wheel:
-    class my_bdist_wheel(_bdist_wheel):
-        def run(self, *args):
-         # wheels do not respect dependencies; make this a no-op, unless it is
-         # explicit building for manylinux
-            if is_manylinux():
-                return _bdist_wheel.run(self, *args)
-    cmdclass['bdist_wheel'] = my_bdist_wheel
 
-# same for bdist_egg as for bdist_wheel (see above)
-class my_bdist_egg(_bdist_egg):
-    def run(self, *args):
-        if is_manylinux():
-            return _bdist_egg.run(self, *args)
-cmdclass['bdist_egg'] = my_bdist_egg
+cmdclass = {
+    'build_ext': my_build_extension }
+
+
+#
+# customized distribition to disable binaries
+#
+class MyDistribution(Distribution):
+    def run_commands(self):
+        # pip does not resolve dependencies before building binaries, so unless
+        # packages are installed one-by-one, on old install is used or the build
+        # will simply fail hard. The following is not completely quiet, but at
+        # least a lot less conspicuous.
+        if not is_manylinux():
+            disabled = set((
+                'bdist_wheel', 'bdist_egg', 'bdist_wininst', 'bdist_rpm'))
+            for cmd in self.commands:
+                if not cmd in disabled:
+                    self.run_command(cmd)
+                else:
+                    log.info('%s is disabled', cmd)
+                    cmd_obj = self.get_command_obj(cmd)
+                    cmd_obj.get_outputs = lambda: None
+        else:
+            return Distribution.run_commands(self)
 
 
 setup(
     name='CPyCppyy',
-    version='1.4.1',
+    version='1.5.0',
     description='Cling-based Python-C++ bindings for CPython',
     long_description=long_description,
 
@@ -123,16 +139,19 @@ setup(
         'Natural Language :: English'
     ],
 
-    setup_requires=['wheel'],
-    install_requires=['cppyy-backend>=1.5'],
+    setup_requires=setup_requirements,
+    install_requires=requirements,
 
     keywords='C++ bindings data science',
-
-    cmdclass = cmdclass,
 
     ext_modules=[Extension('libcppyy',
         sources=glob.glob('src/*.cxx'),
         include_dirs=['include'],
         libraries=link_libraries,
         library_dirs=link_dirs)],
+
+    cmdclass=cmdclass,
+    distclass=MyDistribution,
+
+    zip_safe=False,
 )
