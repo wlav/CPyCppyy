@@ -11,7 +11,7 @@ except ImportError:
     has_wheel = False
 
 
-requirements = ['cppyy-backend>=1.5.0']
+requirements = ['cppyy-cling', 'cppyy-backend>=1.5.0']
 setup_requirements = ['wheel']+requirements
 
 here = os.path.abspath(os.path.dirname(__file__))
@@ -36,15 +36,16 @@ def is_manylinux():
             pass
     return _is_manylinux
 
-def _get_linker_options():
+def _get_link_libraries():
     if 'win32' in sys.platform:
-        link_libraries = ['libcppyy_backend']
+        return ['libcppyy_backend']
+    return []
+
+def _get_link_dirs():
+    if 'win32' in sys.platform:
         import cppyy_backend
         link_dirs = [os.path.join(os.path.dirname(cppyy_backend.__file__), 'lib')]
-    else:
-        link_libraries = None
-        link_dirs = None
-    return link_libraries, link_dirs
+    return []
 
 def _get_config_exec():
     return ['python', '-m', 'cppyy_backend._cling_config']
@@ -147,8 +148,8 @@ setup(
     ext_modules=[Extension('libcppyy',
         sources=glob.glob('src/*.cxx'),
         include_dirs=['include'],
-        libraries=link_libraries,
-        library_dirs=link_dirs)],
+        libraries=_get_link_libraries(),
+        library_dirs=_get_link_dirs())],
 
     cmdclass=cmdclass,
     distclass=MyDistribution,
