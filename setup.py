@@ -42,7 +42,7 @@ def _get_link_dirs():
     if 'win32' in sys.platform:
         try:
             import cppyy_backend
-            link_dirs = [os.path.join(os.path.dirname(cppyy_backend.__file__), 'lib')]
+            return [os.path.join(os.path.dirname(cppyy_backend.__file__), 'lib')]
         except ImportError:       # happens during egg_info and other non-build/install commands
             pass
     return []
