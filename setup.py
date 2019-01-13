@@ -11,8 +11,10 @@ except ImportError:
     has_wheel = False
 
 
-requirements = ['cppyy-cling', 'cppyy-backend>=1.5.0']
-setup_requirements = ['wheel']+requirements
+requirements = ['cppyy-cling', 'cppyy-backend>=1.6.0']
+setup_requirements = ['wheel']
+if 'build' in sys.argv or 'install' in sys.argv:
+    setup_requirements += requirements
 
 here = os.path.abspath(os.path.dirname(__file__))
 with codecs.open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
@@ -38,8 +40,11 @@ def _get_link_libraries():
 
 def _get_link_dirs():
     if 'win32' in sys.platform:
-        import cppyy_backend
-        link_dirs = [os.path.join(os.path.dirname(cppyy_backend.__file__), 'lib')]
+        try:
+            import cppyy_backend
+            link_dirs = [os.path.join(os.path.dirname(cppyy_backend.__file__), 'lib')]
+        except ImportError:       # happens during egg_info and other non-build/install commands
+            pass
     return []
 
 def _get_config_exec():
