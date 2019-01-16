@@ -155,7 +155,7 @@ ULong64_t CPyCppyy::PyLongOrInt_AsULong64(PyObject* pyobject)
 
 //----------------------------------------------------------------------------
 bool CPyCppyy::Utility::AddToClass(
-     PyObject* pyclass, const char* label, PyCFunction cfunc, int flags)
+    PyObject* pyclass, const char* label, PyCFunction cfunc, int flags)
 {
 // Add the given function to the class under name 'label'.
 
@@ -278,8 +278,8 @@ bool CPyCppyy::Utility::AddUsingToClass(PyObject* pyclass, const char* method)
 }
 
 //----------------------------------------------------------------------------
-bool CPyCppyy::Utility::AddBinaryOperator(
-        PyObject* left, PyObject* right, const char* op, const char* label, const char* alt)
+bool CPyCppyy::Utility::AddBinaryOperator(PyObject* left, PyObject* right, const char* op,
+    const char* label, const char* alt, Cppyy::TCppScope_t scope)
 {
 // Install the named operator (op) into the left object's class if such a function
 // exists as a global overload; a label must be given if the operator is not in
@@ -294,15 +294,15 @@ bool CPyCppyy::Utility::AddBinaryOperator(
     std::string lcname = ClassName(left);
     PyObject* pyclass = PyObject_GetAttr(left, PyStrings::gClass);
 
-    bool result = AddBinaryOperator(pyclass, lcname, rcname, op, label, alt);
+    bool result = AddBinaryOperator(pyclass, lcname, rcname, op, label, alt, scope);
 
     Py_DECREF(pyclass);
     return result;
 }
 
 //----------------------------------------------------------------------------
-bool CPyCppyy::Utility::AddBinaryOperator(
-       PyObject* pyclass, const char* op, const char* label, const char* alt)
+bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const char* op,
+    const char* label, const char* alt, Cppyy::TCppScope_t scope)
 {
 // Install binary operator op in pyclass, working on two instances of pyclass.
     std::string cname;
@@ -314,13 +314,14 @@ bool CPyCppyy::Utility::AddBinaryOperator(
         Py_DECREF(pyname);
     }
 
-    return AddBinaryOperator(pyclass, cname, cname, op, label, alt);
+    return AddBinaryOperator(pyclass, cname, cname, op, label, alt, scope);
 }
 
 //----------------------------------------------------------------------------
 static inline
 Cppyy::TCppMethod_t FindAndAddOperator(const std::string& lcname, const std::string& rcname,
-        const char* op, Cppyy::TCppScope_t scope = Cppyy::gGlobalScope) {
+    const char* op, Cppyy::TCppScope_t scope = Cppyy::gGlobalScope)
+{
 // Helper to find a function with matching signature in 'funcs'.
     std::string opname = "operator";
     opname += op;
@@ -334,7 +335,7 @@ Cppyy::TCppMethod_t FindAndAddOperator(const std::string& lcname, const std::str
 }
 
 bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& lcname,
-        const std::string& rcname, const char* op, const char* label, const char* alt)
+    const std::string& rcname, const char* op, const char* label, const char* alt, Cppyy::TCppScope_t scope)
 {
 // Find a global function with a matching signature and install the result on pyclass;
 // in addition, __gnu_cxx, std::__1, and __cppyy_internal are searched pro-actively (as
@@ -345,11 +346,17 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& 
 
     PyCallable* pyfunc = 0;
 
-    const std::string& nsname = TypeManip::extract_namespace(lcname);
-    Cppyy::TCppScope_t lcscope = Cppyy::GetScope(nsname);
-    if (lcscope) {
-        Cppyy::TCppMethod_t func = FindAndAddOperator(lcname, rcname, op, lcscope);
-        if (func) pyfunc = new CPPFunction(lcscope, func);
+    const std::string& lnsname = TypeManip::extract_namespace(lcname);
+    if (!scope) scope = Cppyy::GetScope(lnsname);
+    if (scope) {
+        Cppyy::TCppMethod_t func = FindAndAddOperator(lcname, rcname, op, scope);
+        if (func) pyfunc = new CPPFunction(scope, func);
+    }
+
+    if (!pyfunc && scope != Cppyy::gGlobalScope) {
+    // search in global scope
+        Cppyy::TCppMethod_t func = FindAndAddOperator(lcname, rcname, op);
+        if (func) pyfunc = new CPPFunction(Cppyy::gGlobalScope, func);
     }
 
     if (!pyfunc) {

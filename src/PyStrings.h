@@ -35,6 +35,9 @@ namespace PyStrings {
     extern PyObject* gMul;
     extern PyObject* gDiv;
 
+    extern PyObject* gLShift;
+    extern PyObject* gLShiftC;
+
     extern PyObject* gAt;
     extern PyObject* gBegin;
     extern PyObject* gEnd;

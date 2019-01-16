@@ -32,6 +32,9 @@ PyObject* CPyCppyy::PyStrings::gSub              = nullptr;
 PyObject* CPyCppyy::PyStrings::gMul              = nullptr;
 PyObject* CPyCppyy::PyStrings::gDiv              = nullptr;
 
+PyObject* CPyCppyy::PyStrings::gLShift           = nullptr;
+PyObject* CPyCppyy::PyStrings::gLShiftC          = nullptr;
+
 PyObject* CPyCppyy::PyStrings::gAt               = nullptr;
 PyObject* CPyCppyy::PyStrings::gBegin            = nullptr;
 PyObject* CPyCppyy::PyStrings::gEnd              = nullptr;
@@ -81,6 +84,9 @@ bool CPyCppyy::CreatePyStrings() {
     CPPYY_INITIALIZE_STRING(gMul,            __mul__);
     CPPYY_INITIALIZE_STRING(gDiv,            CPPYY__div__);
 
+    CPPYY_INITIALIZE_STRING(gLShift,         __lshift__);
+    CPPYY_INITIALIZE_STRING(gLShiftC,        __lshiftc__);
+
     CPPYY_INITIALIZE_STRING(gAt,             at);
     CPPYY_INITIALIZE_STRING(gBegin,          begin);
     CPPYY_INITIALIZE_STRING(gEnd,            end);
@@ -125,6 +131,9 @@ PyObject* CPyCppyy::DestroyPyStrings() {
     Py_DECREF(PyStrings::gSub);         PyStrings::gSub         = nullptr;
     Py_DECREF(PyStrings::gMul);         PyStrings::gMul         = nullptr;
     Py_DECREF(PyStrings::gDiv);         PyStrings::gDiv         = nullptr;
+
+    Py_DECREF(PyStrings::gLShift);      PyStrings::gLShift      = nullptr;
+    Py_DECREF(PyStrings::gLShiftC);     PyStrings::gLShiftC     = nullptr;
 
     Py_DECREF(PyStrings::gAt);          PyStrings::gAt          = nullptr;
     Py_DECREF(PyStrings::gBegin);       PyStrings::gBegin       = nullptr;
