@@ -76,6 +76,9 @@ size_t FetchError(std::vector<PyError_t>&);
 void SetDetailedException(
     std::vector<PyError_t>& errors /* clears */, PyObject* topmsg /* steals ref */, PyObject* defexc);
 
+// setup Python API for callbacks
+bool IncludePython();
+
 } // namespace Utility
 
 } // namespace CPyCppyy

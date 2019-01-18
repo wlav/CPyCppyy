@@ -2,13 +2,13 @@
 #include "CPyCppyy.h"
 #include "Dispatcher.h"
 #include "CPPScope.h"
+#include "Utility.h"
 
 // Standard
 #include <sstream>
 
 
 //----------------------------------------------------------------------------
-static bool includesDone = false;
 bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
 {
 // Scan all methods in dct and where it overloads base methods in klass, create
@@ -16,41 +16,7 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
     if (Cppyy::IsNamespace(klass->fCppType) || !PyDict_Check(dct))
         return false;
 
-    if (!includesDone) {
-        bool okay = Cppyy::Compile("#ifdef _WIN32\n"
-            "#pragma warning (disable : 4275)\n"
-            "#pragma warning (disable : 4251)\n"
-            "#pragma warning (disable : 4800)\n"
-            "#endif\n"
-            "#if defined(linux)\n"
-            "#include <stdio.h>\n"
-            "#ifdef _POSIX_C_SOURCE\n"
-            "#undef _POSIX_C_SOURCE\n"
-            "#endif\n"
-            "#ifdef _FILE_OFFSET_BITS\n"
-            "#undef _FILE_OFFSET_BITS\n"
-            "#endif\n"
-            "#ifdef _XOPEN_SOURCE\n"
-            "#undef _XOPEN_SOURCE\n"
-            "#endif\n"
-            "#endif\n"
-            "#include \"Python.h\"\n"
-            "namespace CPyCppyy {\n"
-       // the following really should live in a header ...
-            "struct Parameter; struct CallContext;\n"
-            "class Converter {\n"
-            "public:\n"
-            "   virtual ~Converter() {}\n"
-            "   virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) = 0;\n"
-            "   virtual PyObject* FromMemory(void* address);\n"
-            "   virtual bool ToMemory(PyObject* value, void* address);\n"
-            "};\n"
-            "Converter* CreateConverter(const std::string& fullType, long* dims = nullptr);\n"
-            "}\n");
-        includesDone = okay;
-    }
-
-    if (!includesDone)
+    if (!Utility::IncludePython())
         return false;
 
     const std::string& baseName       = Cppyy::GetFinalName(klass->fCppType);

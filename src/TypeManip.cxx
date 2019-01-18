@@ -131,3 +131,38 @@ std::string CPyCppyy::TypeManip::extract_namespace(const std::string& name)
 // no namespace; assume outer scope
     return "";
 }
+
+//----------------------------------------------------------------------------
+std::vector<std::string> CPyCppyy::TypeManip::extract_arg_types(const std::string& sig)
+{
+// break out the argument types from the signature string
+    std::vector<std::string> result;
+
+    if (sig.empty() || sig == "()")
+        return result;
+
+    int tpl_open = 0;
+    std::string::size_type start = 1;
+    for (std::string::size_type pos = 1; pos < sig.size()-1; ++pos) {
+        std::string::value_type c = sig[pos];
+
+    // count '<' and '>' to be able to skip template contents
+        if (c == '>')
+            ++tpl_open;
+        else if (c == '<')
+            --tpl_open;
+
+    // collect type name up to ',' or end ')'
+        else if (tpl_open == 0 && c == ',') {
+        // found the extend of the scope ... done
+            result.push_back(sig.substr(start, pos-start));
+            start = pos+1;
+        }
+    }
+
+// add last type
+    result.push_back(sig.substr(start, sig.size()-1-start));
+
+    return result;
+}
+

@@ -1505,28 +1505,99 @@ bool CPyCppyy::PyObjectConverter::ToMemory(PyObject* value, void* address)
 
 
 //- function pointer converter -----------------------------------------------
+static unsigned int sWrapperCounter = 0;
+static std::map<std::pair<std::string, std::string>, std::string> sWrapperCache;
+
 bool CPyCppyy::FunctionPointerConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* /*ctxt*/)
 {
-    if (!CPPOverload_Check(pyobject))
-        return false;
+    if (CPPOverload_Check(pyobject)) {
+        CPPOverload* ol = (CPPOverload*)pyobject;
+        if (!ol->fMethodInfo || ol->fMethodInfo->fMethods.empty())
+            return false;
 
-    CPPOverload* ol = (CPPOverload*)pyobject;
-    if (!ol->fMethodInfo || ol->fMethodInfo->fMethods.empty())
-        return false;
-
-// find the overload with matching signature
-    for (auto& m : ol->fMethodInfo->fMethods) {
-        PyObject* sig = m->GetSignature(false);
-        bool found = fSignature == CPyCppyy_PyUnicode_AsString(sig);
-        Py_DECREF(sig);
-        if (found) {
-            para.fValue.fVoidp = (void*)m->GetFunctionAddress();
-            if (!para.fValue.fVoidp)
-                return false;
-            para.fTypeCode = 'p';
-            return true;
+    // find the overload with matching signature
+        for (auto& m : ol->fMethodInfo->fMethods) {
+            PyObject* sig = m->GetSignature(false);
+            bool found = fSignature == CPyCppyy_PyUnicode_AsString(sig);
+            Py_DECREF(sig);
+            if (found) {
+                para.fValue.fVoidp = (void*)m->GetFunctionAddress();
+                if (!para.fValue.fVoidp)
+                    return false;
+                para.fTypeCode = 'p';
+                return true;
+            }
         }
+    } else if (PyCallable_Check(pyobject)) {
+    // generic python callable: create a C++ wrapper function
+        auto key = std::make_pair(fRetType, fSignature);
+        auto existing = sWrapperCache.find(key);
+        if (existing == sWrapperCache.end()) {
+            if (!Utility::IncludePython())
+                return false;
+
+        // extract argument types
+            const std::vector<std::string>& argtypes = TypeManip::extract_arg_types(fSignature);
+            int nArgs = (int)argtypes.size();
+
+        // wrapper name
+            std::ostringstream wname;
+            wname << "fptr_wrap" << ++sWrapperCounter;
+
+       // build wrapper function code
+            std::ostringstream code;
+            code << "namespace __cppyy_internal {\n"
+                 << fRetType << " " << wname.str() << "(";
+            for (int i = 0; i < nArgs; ++i) {
+                code << argtypes[i] << " arg" << i;
+                if (i != nArgs-1) code << ", ";
+            }
+            code << ") {\n  static std::unique_ptr<CPyCppyy::Converter> retconv{CPyCppyy::CreateConverter(\"" << fRetType << "\")};\n";
+            for (int i = 0; i < nArgs; ++i) {
+                code << "  static std::unique_ptr<CPyCppyy::Converter> arg" << i
+                        << "conv{CPyCppyy::CreateConverter(\"" << argtypes[i] << "\")};\n";
+            }
+            code << "  " << fRetType << " ret{};\n"
+                    "  PyGILState_STATE state = PyGILState_Ensure();\n";
+
+        // build argument tuple if needed
+            for (int i = 0; i < nArgs; ++i)
+                code << "  PyObject* pyarg" << i << " = arg" << i << "conv->FromMemory(&arg" << i << ");\n";
+
+        // function call itself
+            code << "  static PyObject* ref = PyWeakref_NewRef((PyObject*)" << (void*)pyobject << ", nullptr);\n"
+                    "  PyObject* callable = PyWeakref_GetObject(ref);\n"
+                    "  if (callable) {\n"
+                    "    PyObject* val = PyObject_CallFunctionObjArgs(callable";
+            for (int i = 0; i < nArgs; ++i)
+                code << ", pyarg" << i;
+            code << ", NULL);\n";
+
+        // handle return value
+            for (int i = 0; i < nArgs; ++i)
+                code << "    Py_DECREF(pyarg" << i << ");\n";
+            code << "    if (val) { retconv->ToMemory(val, &ret); Py_DECREF(val); }\n"
+                    "    else PyErr_Print();\n"   // should throw TPyException
+                    "  }\n  PyGILState_Release(state);\n"
+                    "  return ret;\n"
+                    "}\n}";
+
+            if (!Cppyy::Compile(code.str()))
+                return false;
+
+            sWrapperCache[key] = wname.str();
+            existing = sWrapperCache.find(key);
+        }
+
+    // TOOD: is there no easier way?
+        Cppyy::TCppScope_t scope = Cppyy::GetScope("__cppyy_internal");
+        const auto& idx = Cppyy::GetMethodIndicesFromName(scope, existing->second);
+
+    // now pass the pointer to the wrapper function
+        para.fValue.fVoidp = Cppyy::GetFunctionAddress(Cppyy::GetMethod(scope, idx[0]));
+        para.fTypeCode = 'p';
+        return true;
     }
 
     return false;
@@ -1801,9 +1872,10 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long
                (resolvedType.find("::*)") != std::string::npos)) {
     // this is a function function pointer
     // TODO: find better way of finding the type
-    // TODO: a converter that generates wrappers as appropriate
+        auto pos1 = resolvedType.find("(");
         auto pos2 = resolvedType.find("*)");
-        result = new FunctionPointerConverter(resolvedType.substr(pos2+2));
+        result = new FunctionPointerConverter(
+            resolvedType.substr(0, pos1), resolvedType.substr(pos2+2));
     }
 
     if (!result && cpd == "&&")                       // unhandled moves

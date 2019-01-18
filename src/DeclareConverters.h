@@ -285,12 +285,14 @@ public:
 // function pointers
 class FunctionPointerConverter : public Converter {
 public:
-    FunctionPointerConverter(const std::string& sig) : fSignature(sig) {}
+    FunctionPointerConverter(const std::string& ret, const std::string& sig) :
+        fRetType(ret), fSignature(sig) {}
 
 public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
 
 protected:
+    std::string fRetType;
     std::string fSignature;
 };
 
