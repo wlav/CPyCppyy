@@ -38,6 +38,7 @@ public:                 // public, as the python C-API works with C structs
     PyObject* fPyClass;
     CPPOverload* fNonTemplated;   // holder for non-template overloads
     CPPOverload* fTemplated;      // holder for templated overloads
+    PyObject* fWeakrefList;
 
     TP_DispatchMap_t fDispatchMap;
 

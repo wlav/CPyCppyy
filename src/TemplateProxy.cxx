@@ -137,6 +137,7 @@ static TemplateProxy* tpp_new(PyTypeObject*, PyObject*, PyObject*)
     pytmpl->fSelf         = nullptr;
     pytmpl->fNonTemplated = nullptr;
     pytmpl->fTemplated    = nullptr;
+    pytmpl->fWeakrefList  = nullptr;
 
     PyObject_GC_Track(pytmpl);
     return pytmpl;
@@ -161,6 +162,8 @@ static int tpp_clear(TemplateProxy* pytmpl)
 static void tpp_dealloc(TemplateProxy* pytmpl)
 {
 // Destroy the given template method proxy.
+    if (pytmpl->fWeakrefList)
+        PyObject_ClearWeakRefs((PyObject*)pytmpl);
     PyObject_GC_UnTrack(pytmpl);
     tpp_clear(pytmpl);
     pytmpl->fDispatchMap.~TP_DispatchMap_t();
@@ -465,7 +468,7 @@ PyTypeObject TemplateProxy_Type = {
    (traverseproc)tpp_traverse,// tp_traverse
    (inquiry)tpp_clear,        // tp_clear
    0,                         // tp_richcompare
-   0,                         // tp_weaklistoffset
+   offsetof(TemplateProxy, fWeakrefList),        // tp_weaklistoffset
    0,                         // tp_iter
    0,                         // tp_iternext
    0,                         // tp_methods
