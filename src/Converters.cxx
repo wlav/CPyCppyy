@@ -1506,11 +1506,37 @@ bool CPyCppyy::PyObjectConverter::ToMemory(PyObject* value, void* address)
 
 //- function pointer converter -----------------------------------------------
 static unsigned int sWrapperCounter = 0;
-static std::map<std::pair<std::string, std::string>, std::string> sWrapperCache;
+// cache mapping signature/return type to python callable and corresponding wrapper
+typedef std::pair<std::string, std::string> RetSigKey_t;
+static std::map<RetSigKey_t, std::vector<void*>> sWrapperFree;
+static std::map<RetSigKey_t, std::map<PyObject*, void*>> sWrapperLookup;
+static std::map<PyObject*, std::pair<void*, RetSigKey_t>> sWrapperWeakRefs;
+static std::map<void*, PyObject**> sWrapperReference;
+
+static PyObject* WrapperCacheEraser(PyObject*, PyObject* pyref)
+{
+    auto ipos = sWrapperWeakRefs.find(pyref);
+    if (ipos != sWrapperWeakRefs.end()) {
+    // disable this callback and store for possible re-use
+        void* wpraddress = ipos->second.first;
+        *sWrapperReference[wpraddress] = nullptr;
+        sWrapperFree[ipos->second.second].push_back(wpraddress);
+    }
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+static PyMethodDef gWrapperCacheEraserMethodDef = {
+    const_cast<char*>("interal_WrapperCacheEraser"),
+    (PyCFunction)WrapperCacheEraser,
+    METH_O, nullptr
+};
 
 bool CPyCppyy::FunctionPointerConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* /*ctxt*/)
 {
+    static PyObject* sWrapperCacheEraser = PyCFunction_New(&gWrapperCacheEraserMethodDef, nullptr);
+
     if (CPPOverload_Check(pyobject)) {
         CPPOverload* ol = (CPPOverload*)pyobject;
         if (!ol->fMethodInfo || ol->fMethodInfo->fMethods.empty())
@@ -1531,9 +1557,31 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
         }
     } else if (PyCallable_Check(pyobject)) {
     // generic python callable: create a C++ wrapper function
+        void* wpraddress = nullptr;
+
+    // re-use existing wrapper if possible
         auto key = std::make_pair(fRetType, fSignature);
-        auto existing = sWrapperCache.find(key);
-        if (existing == sWrapperCache.end()) {
+        const auto& lookup = sWrapperLookup.find(key);
+        if (lookup != sWrapperLookup.end()) {
+            const auto& existing = lookup->second.find(pyobject);
+            if (existing != lookup->second.end() && *sWrapperReference[existing->second] == pyobject)
+                wpraddress = existing->second;
+        }
+
+     // check for a pre-existing, unused, wrapper if not found
+        if (!wpraddress) {
+           const auto& freewrap = sWrapperFree.find(key);
+           if (freewrap != sWrapperFree.end() && !freewrap->second.empty()) {
+               wpraddress = freewrap->second.back();
+               freewrap->second.pop_back();
+               *sWrapperReference[wpraddress] = pyobject;
+               PyObject* wref = PyWeakref_NewRef(pyobject, sWrapperCacheEraser);
+               sWrapperWeakRefs[wref] = std::make_pair(wpraddress, key);
+           }
+        }
+
+     // create wrapper if no re-use possible
+        if (!wpraddress) {
             if (!Utility::IncludePython())
                 return false;
 
@@ -1565,11 +1613,14 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
             for (int i = 0; i < nArgs; ++i)
                 code << "  PyObject* pyarg" << i << " = arg" << i << "conv->FromMemory(&arg" << i << ");\n";
 
+        // create a referencable pointer
+            PyObject** ref = new PyObject*{pyobject};
+
         // function call itself
-            code << "  static PyObject* ref = PyWeakref_NewRef((PyObject*)" << (void*)pyobject << ", nullptr);\n"
-                    "  PyObject* callable = PyWeakref_GetObject(ref);\n"
-                    "  if (callable) {\n"
-                    "    PyObject* val = PyObject_CallFunctionObjArgs(callable";
+            code << "  static PyObject** ref = (PyObject**)" << (void*)ref << ";\n"
+                    "  PyObject* pycall = (PyObject*)*ref;\n"
+                    "  if (pycall) {\n"
+                    "    PyObject* val = PyObject_CallFunctionObjArgs(pycall";
             for (int i = 0; i < nArgs; ++i)
                 code << ", pyarg" << i;
             code << ", NULL);\n";
@@ -1586,18 +1637,24 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
             if (!Cppyy::Compile(code.str()))
                 return false;
 
-            sWrapperCache[key] = wname.str();
-            existing = sWrapperCache.find(key);
+        // TODO: is there no easier way?
+            Cppyy::TCppScope_t scope = Cppyy::GetScope("__cppyy_internal");
+            const auto& idx = Cppyy::GetMethodIndicesFromName(scope, wname.str());
+            wpraddress = Cppyy::GetFunctionAddress(Cppyy::GetMethod(scope, idx[0]));
+            sWrapperReference[wpraddress] = ref;
+
+        // cache the new wrapper
+            sWrapperLookup[key][pyobject] = wpraddress;
+            PyObject* wref = PyWeakref_NewRef(pyobject, sWrapperCacheEraser);
+            sWrapperWeakRefs[wref] = std::make_pair(wpraddress, key);
         }
 
-    // TOOD: is there no easier way?
-        Cppyy::TCppScope_t scope = Cppyy::GetScope("__cppyy_internal");
-        const auto& idx = Cppyy::GetMethodIndicesFromName(scope, existing->second);
-
     // now pass the pointer to the wrapper function
-        para.fValue.fVoidp = Cppyy::GetFunctionAddress(Cppyy::GetMethod(scope, idx[0]));
-        para.fTypeCode = 'p';
-        return true;
+        if (wpraddress) {
+            para.fValue.fVoidp = wpraddress;
+            para.fTypeCode = 'p';
+            return true;
+        }
     }
 
     return false;
