@@ -1618,20 +1618,20 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
             PyObject** ref = new PyObject*{pyobject};
 
         // function call itself
-            code << "  static PyObject** ref = (PyObject**)" << (void*)ref << ";\n"
-                    "  PyObject* pycall = (PyObject*)*ref;\n"
-                    "  if (pycall) {\n"
-                    "    PyObject* val = PyObject_CallFunctionObjArgs(pycall";
+            code << "  PyObject** ref = (PyObject**)" << (void*)ref << ";\n"
+                    "  PyObject* pyresult = nullptr;\n"
+                    "  if (*ref) pyresult = PyObject_CallFunctionObjArgs(*ref";
             for (int i = 0; i < nArgs; ++i)
                 code << ", pyarg" << i;
-            code << ", NULL);\n";
+            code << ", NULL);\n"
+                    "  else PyErr_SetString(PyExc_TypeError, \"callable was deleted\");\n";
 
         // handle return value
             for (int i = 0; i < nArgs; ++i)
-                code << "    Py_DECREF(pyarg" << i << ");\n";
-            code << "    if (val) { retconv->ToMemory(val, &ret); Py_DECREF(val); }\n"
-                    "    else { PyGILState_Release(state); throw CPyCppyy::TPyException{}; }\n"
-                    "  }\n  PyGILState_Release(state);\n"
+                code << "  Py_DECREF(pyarg" << i << ");\n";
+            code << "  if (pyresult) { retconv->ToMemory(pyresult, &ret); Py_DECREF(pyresult); }\n"
+                    "  else { PyGILState_Release(state); throw CPyCppyy::TPyException{}; }\n"
+                    "  PyGILState_Release(state);\n"
                     "  return ret;\n"
                     "}\n}";
 
