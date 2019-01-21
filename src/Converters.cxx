@@ -1814,6 +1814,7 @@ bool CPyCppyy::NotImplementedConverter::SetArg(PyObject*, Parameter&, CallContex
 
 
 //- factories ----------------------------------------------------------------
+RPY_EXPORT
 CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long* dims)
 {
 // The matching of the fulltype to a converter factory goes through up to five levels:
