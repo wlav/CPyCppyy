@@ -218,9 +218,11 @@ static PyObject* op_str(CPPInstance* cppinst)
     PyObject* lshift = PyObject_GetAttr(pyobj, PyStrings::gLShift);
     bool bound_method = (bool)lshift;
     if (!lshift) {
+        PyErr_Clear();
         PyObject* pyclass = (PyObject*)Py_TYPE(pyobj);
         lshift = PyObject_GetAttr(pyclass, PyStrings::gLShiftC);
         if (!lshift) {
+            PyErr_Clear();
         // attempt lazy install of global operator<<(ostream&)
             std::string rcname = Utility::ClassName(pyobj);
             Cppyy::TCppScope_t rnsID = Cppyy::GetScope(TypeManip::extract_namespace(rcname));
@@ -250,11 +252,10 @@ static PyObject* op_str(CPPInstance* cppinst)
         if (res) {
             Py_DECREF(res);
             return CPyCppyy_PyUnicode_FromString(s.str().c_str());
-        } else
-            PyErr_Print();
+        }
+        PyErr_Clear();
     }
  
-    PyErr_Clear();
     return op_repr(cppinst);
 }
 
