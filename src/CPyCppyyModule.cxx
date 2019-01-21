@@ -368,14 +368,10 @@ void* GetCPPInstanceAddress(PyObject*, PyObject* args)
         // locate property proxy for offset info
             CPPDataMember* pyprop = nullptr;
 
-            PyObject* pyclass = PyObject_GetAttr((PyObject*)pyobj, PyStrings::gClass);
-
-            if (pyclass) {
-                PyObject* dict = PyObject_GetAttr(pyclass, PyStrings::gDict);
-                pyprop = (CPPDataMember*)PyObject_GetItem(dict, pyname);
-                Py_DECREF(dict);
-            }
-            Py_XDECREF(pyclass);
+            PyObject* pyclass = (PyObject*)Py_TYPE((PyObject*)pyobj);
+            PyObject* dict = PyObject_GetAttr(pyclass, PyStrings::gDict);
+            pyprop = (CPPDataMember*)PyObject_GetItem(dict, pyname);
+            Py_DECREF(dict);
 
             if (CPPDataMember_Check(pyprop)) {
             // this is an address of a value (i.e. &myobj->prop)

@@ -292,11 +292,9 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* left, PyObject* right, const
 // retrieve the class names to match the signature of any found global functions
     std::string rcname = ClassName(right);
     std::string lcname = ClassName(left);
-    PyObject* pyclass = PyObject_GetAttr(left, PyStrings::gClass);
-
+    PyObject* pyclass = (PyObject*)Py_TYPE(left);
     bool result = AddBinaryOperator(pyclass, lcname, rcname, op, label, alt, scope);
 
-    Py_DECREF(pyclass);
     return result;
 }
 
@@ -703,19 +701,14 @@ std::string CPyCppyy::Utility::ClassName(PyObject* pyobj)
 {
 // Retrieve the class name from the given Python instance.
     std::string clname = "<unknown>";
-    PyObject* pyclass = PyObject_GetAttr(pyobj, PyStrings::gClass);
-    if (pyclass) {
-        PyObject* pyname = PyObject_GetAttr(pyclass, PyStrings::gCppName);
-        if (!pyname) pyname = PyObject_GetAttr(pyclass, PyStrings::gName);
-        if (pyname) {
-            clname = CPyCppyy_PyUnicode_AsString(pyname);
-            Py_DECREF(pyname);
-        } else
-            PyErr_Clear();
-        Py_DECREF(pyclass);
+    PyObject* pyclass = (PyObject*)Py_TYPE(pyobj);
+    PyObject* pyname = PyObject_GetAttr(pyclass, PyStrings::gCppName);
+    if (!pyname) pyname = PyObject_GetAttr(pyclass, PyStrings::gName);
+    if (pyname) {
+        clname = CPyCppyy_PyUnicode_AsString(pyname);
+        Py_DECREF(pyname);
     } else
         PyErr_Clear();
-
     return clname;
 }
 

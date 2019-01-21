@@ -466,9 +466,8 @@ PyObject* VectorGetItem(CPPInstance* self, PySliceObject* index)
             return nullptr;
         }
 
-        PyObject* pyclass = PyObject_GetAttr((PyObject*)self, PyStrings::gClass);
+        PyObject* pyclass = (PyObject*)Py_TYPE((PyObject*)self);
         PyObject* nseq = PyObject_CallObject(pyclass, nullptr);
-        Py_DECREF(pyclass);
 
         Py_ssize_t start, stop, step;
         PySlice_GetIndices((CPyCppyy_PySliceCast)index, PyObject_Length((PyObject*)self), &start, &stop, &step);
@@ -504,9 +503,8 @@ PyObject* VectorBoolGetItem(CPPInstance* self, PyObject* idx)
     }
 
     if (PySlice_Check(idx)) {
-        PyObject* pyclass = PyObject_GetAttr((PyObject*)self, PyStrings::gClass);
+        PyObject* pyclass = (PyObject*)Py_TYPE((PyObject*)self);
         PyObject* nseq = PyObject_CallObject(pyclass, nullptr);
-        Py_DECREF(pyclass);
 
         Py_ssize_t start, stop, step;
         PySlice_GetIndices((CPyCppyy_PySliceCast)idx, PyObject_Length((PyObject*)self), &start, &stop, &step);

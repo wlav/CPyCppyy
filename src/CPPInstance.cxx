@@ -218,7 +218,7 @@ static PyObject* op_str(CPPInstance* cppinst)
     PyObject* lshift = PyObject_GetAttr(pyobj, PyStrings::gLShift);
     bool bound_method = (bool)lshift;
     if (!lshift) {
-        PyObject* pyclass = PyObject_GetAttr(pyobj, PyStrings::gClass);
+        PyObject* pyclass = (PyObject*)Py_TYPE(pyobj);
         lshift = PyObject_GetAttr(pyclass, PyStrings::gLShiftC);
         if (!lshift) {
         // attempt lazy install of global operator<<(ostream&)
@@ -235,7 +235,6 @@ static PyObject* op_str(CPPInstance* cppinst)
             Py_DECREF(lshift);
             lshift = nullptr;
         }
-        Py_DECREF(pyclass);
         bound_method = false;
     }
 
