@@ -1576,7 +1576,8 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
                freewrap->second.pop_back();
                *sWrapperReference[wpraddress] = pyobject;
                PyObject* wref = PyWeakref_NewRef(pyobject, sWrapperCacheEraser);
-               sWrapperWeakRefs[wref] = std::make_pair(wpraddress, key);
+               if (wref) sWrapperWeakRefs[wref] = std::make_pair(wpraddress, key);
+               else PyErr_Clear();     // happens for builtins which don't need this
            }
         }
 
@@ -1646,7 +1647,8 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
         // cache the new wrapper
             sWrapperLookup[key][pyobject] = wpraddress;
             PyObject* wref = PyWeakref_NewRef(pyobject, sWrapperCacheEraser);
-            sWrapperWeakRefs[wref] = std::make_pair(wpraddress, key);
+            if (wref) sWrapperWeakRefs[wref] = std::make_pair(wpraddress, key);
+            else PyErr_Clear();     // happens for builtins which don't need this
         }
 
     // now pass the pointer to the wrapper function
