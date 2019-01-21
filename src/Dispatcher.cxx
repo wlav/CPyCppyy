@@ -75,7 +75,7 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
         code << "    " << retType << " ret{};\n"
                 "    PyGILState_STATE state = PyGILState_Ensure();\n";
 
-        // build argument tuple if needed
+    // build argument tuple if needed
         for (Cppyy::TCppIndex_t i = 0; i < nArgs; ++i) {
              code << "    PyObject* pyarg" << i << " = arg" << i << "conv->FromMemory(&arg" << i << ");\n";
         }
@@ -84,16 +84,18 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
 #else
         code << "    PyObject* mtPyName = PyUnicode_FromString(\"" << mtCppName << "\");\n"
 #endif
-                "    PyObject* val = PyObject_CallMethodObjArgs(m_self, mtPyName";
+                "    PyObject* pyresult = PyObject_CallMethodObjArgs(m_self, mtPyName";
         for (Cppyy::TCppIndex_t i = 0; i < nArgs; ++i)
              code << ", pyarg" << i;
         code << ", NULL);\n    Py_DECREF(mtPyName);\n";
+
+    // handle return value
         for (Cppyy::TCppIndex_t i = 0; i < nArgs; ++i)
              code << "    Py_DECREF(pyarg" << i << ");\n";
-        code << "    if (val) { retconv->ToMemory(val, &ret); Py_DECREF(val); }\n"
-                "    else PyErr_Print();\n"   // should throw TPyException
-                "    PyGILState_Release(state);\n"
-                "    return ret;\n"
+        code << "  if (pyresult) { retconv->ToMemory(pyresult, &ret); Py_DECREF(pyresult); }\n"
+                "  else { PyGILState_Release(state); throw CPyCppyy::TPyException{}; }\n"
+                "  PyGILState_Release(state);\n"
+                "  return ret;\n"
                 "  }\n";
     }
 
