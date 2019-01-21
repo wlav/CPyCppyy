@@ -9,6 +9,7 @@
 #include "MemoryRegulator.h"
 #include "ProxyWrappers.h"
 #include "PyStrings.h"
+#include "TemplateProxy.h"
 #include "TupleOfInstances.h"
 #include "TypeManip.h"
 #include "Utility.h"
@@ -1549,13 +1550,34 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
             Py_DECREF(sig);
             if (found) {
                 para.fValue.fVoidp = (void*)m->GetFunctionAddress();
-                if (!para.fValue.fVoidp)
-                    return false;
+                if (para.fValue.fVoidp) {
+                    para.fTypeCode = 'p';
+                    return true;
+                }
+                break;  // fall-through, with calling through Python
+            }
+        }
+    }
+
+    if (TemplateProxy_Check(pyobject)) {
+    // get the actual underlying template matching the signature
+        TemplateProxy* pytmpl = (TemplateProxy*)pyobject;
+        std::string fullname = CPyCppyy_PyUnicode_AsString(pytmpl->fCppName);
+        if (pytmpl->fTemplateArgs)
+            fullname += CPyCppyy_PyUnicode_AsString(pytmpl->fTemplateArgs);
+        Cppyy::TCppScope_t scope = ((CPPClass*)pytmpl->fPyClass)->fCppType;
+        Cppyy::TCppMethod_t cppmeth = Cppyy::GetMethodTemplate(scope, fullname, fSignature);
+        if (cppmeth) {
+            para.fValue.fVoidp = (void*)Cppyy::GetFunctionAddress(cppmeth);
+            if (para.fValue.fVoidp) {
                 para.fTypeCode = 'p';
                 return true;
             }
         }
-    } else if (PyCallable_Check(pyobject)) {
+        // fall-through, with calling through Python
+    }
+
+    if (PyCallable_Check(pyobject)) {
     // generic python callable: create a C++ wrapper function
         void* wpraddress = nullptr;
 
