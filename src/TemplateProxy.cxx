@@ -166,6 +166,8 @@ static void tpp_dealloc(TemplateProxy* pytmpl)
         PyObject_ClearWeakRefs((PyObject*)pytmpl);
     PyObject_GC_UnTrack(pytmpl);
     tpp_clear(pytmpl);
+    for (const auto& p : pytmpl->fDispatchMap)
+        Py_DECREF(p.second);
     pytmpl->fDispatchMap.~TP_DispatchMap_t();
     PyObject_GC_Del(pytmpl);
 }
@@ -248,6 +250,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
             break;
         }
     }
+
     if (ol != nullptr) {
         PyObject* result = nullptr;
         if (!pytmpl->fSelf) {
@@ -278,7 +281,8 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
             pymeth = PyObject_GetAttr(pytmpl->fSelf ? pytmpl->fSelf : pytmpl->fPyClass, pyfullname);
             Py_DECREF(pyfullname);
             PyObject* result = CPPOverload_Type.tp_call(pymeth, args, kwds);
-            Py_DECREF(pymeth);
+            if (result) pytmpl->fDispatchMap.push_back(std::make_pair(sighash, (CPPOverload*)pymeth));
+            else Py_DECREF(pymeth);
             return result;
         } else {
             Py_DECREF(pyfullname);
@@ -296,6 +300,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
     PyObject* result = CPPOverload_Type.tp_call(pymeth, args, kwds);
     Py_DECREF(pymeth); pymeth = nullptr;
     if (result) {
+        Py_INCREF(pytmpl->fNonTemplated);
         pytmpl->fDispatchMap.push_back(std::make_pair(sighash, pytmpl->fNonTemplated));
         return result;
     }
@@ -311,6 +316,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
     result = CPPOverload_Type.tp_call(pymeth, args, kwds);
     Py_DECREF(pymeth); pymeth = nullptr;
     if (result) {
+        Py_INCREF(pytmpl->fTemplated);
         pytmpl->fDispatchMap.push_back(std::make_pair(sighash, pytmpl->fTemplated));
         return result;
     }
@@ -328,6 +334,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
         result = CPPOverload_Type.tp_call(pymeth, args, kwds);
         Py_DECREF(pymeth);
         if (result) {
+            Py_INCREF(pytmpl->fTemplated);
             pytmpl->fDispatchMap.push_back(std::make_pair(sighash, pytmpl->fTemplated));
             return result;
         }
