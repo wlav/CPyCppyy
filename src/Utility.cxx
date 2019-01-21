@@ -817,7 +817,13 @@ bool CPyCppyy::Utility::IncludePython()
             "  virtual bool ToMemory(PyObject* value, void* address);\n"
             "};\n"
             "Converter* CreateConverter(const std::string& fullType, long* dims = nullptr);\n"
-            "}\n");
+       // and this lives in a header, but isn't accessible ...
+            "class TPyException : public std::exception {\n"
+            "public:\n"
+            "    TPyException();\n"
+            "    virtual ~TPyException() noexcept;\n"
+            "    virtual const char* what() const noexcept;\n"
+            "};}\n");
         includesDone = okay;
     }
 

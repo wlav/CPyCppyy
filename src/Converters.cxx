@@ -1630,7 +1630,7 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
             for (int i = 0; i < nArgs; ++i)
                 code << "    Py_DECREF(pyarg" << i << ");\n";
             code << "    if (val) { retconv->ToMemory(val, &ret); Py_DECREF(val); }\n"
-                    "    else PyErr_Print();\n"   // should throw TPyException
+                    "    else { PyGILState_Release(state); throw CPyCppyy::TPyException{}; }\n"
                     "  }\n  PyGILState_Release(state);\n"
                     "  return ret;\n"
                     "}\n}";
