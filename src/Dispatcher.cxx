@@ -67,10 +67,10 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
 
     // function body (TODO: if the method throws a C++ exception, the GIL will
     // not be released.)
-        code << "    static std::unique_ptr<CPyCppyy::Converter> retconv{CPyCppyy::CreateConverter(\"" << retType << "\")};\n";
+        code << "    static std::unique_ptr<CPyCppyy::Converter> retconv{(CPyCppyy::Converter*)cppyy_create_converter(\"" << retType << "\", nullptr)};\n";
         for (Cppyy::TCppIndex_t i = 0; i < nArgs; ++i) {
             code << "    static std::unique_ptr<CPyCppyy::Converter> arg" << i
-                         << "conv{CPyCppyy::CreateConverter(\"" << Cppyy::GetMethodArgType(method, i) << "\")};\n";
+                         << "conv{(CPyCppyy::Converter*)cppyy_create_converter(\"" << Cppyy::GetMethodArgType(method, i) << "\", nullptr)};\n";
         }
         code << "    " << retType << " ret{};\n"
                 "    PyGILState_STATE state = PyGILState_Ensure();\n";

@@ -21,7 +21,6 @@ public:
 };
 
 // create converter from fully qualified type
-RPY_EXPORT
 Converter* CreateConverter(const std::string& fullType, long* dims = nullptr);
 
 

@@ -1,6 +1,7 @@
 // Bindings
 #include "CPyCppyy.h"
 #include "CallContext.h"
+#include "Converters.h"
 #include "CPPDataMember.h"
 #include "CPPInstance.h"
 #include "CPPOverload.h"
@@ -655,6 +656,13 @@ PyObject* Cast(PyObject*, PyObject* args)
                                obj->fFlags & CPPInstance::kIsReference);
 }
 
+
+//----------------------------------------------------------------------------
+void* create_converter(const char* type_name, long* dims)
+{
+    return (void*)CreateConverter(type_name, dims);
+}
+
 } // unnamed namespace
 
 
@@ -836,6 +844,9 @@ extern "C" void initlibcppyy()
 
 // create the memory regulator
     static MemoryRegulator s_memory_regulator;
+
+// setup the converter creator callback
+    cppyy_set_converter_creator(create_converter);
 
 #if PY_VERSION_HEX >= 0x03000000
     Py_INCREF(gThisModule);
