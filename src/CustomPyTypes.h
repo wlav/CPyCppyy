@@ -54,6 +54,20 @@ inline bool CustomInstanceMethod_CheckExact(T* object)
 
 PyObject* CustomInstanceMethod_New(PyObject* func, PyObject* self, PyObject* pyclass);
 
+//- custom iterator for high performance std::vector iteration ---------------
+class Converter;
+typedef struct {
+    PyObject_HEAD
+    PyObject*                vi_vector;
+    void*                    vi_data;
+    CPyCppyy::Converter*     vi_converter;
+    Py_ssize_t               vi_pos;
+    Py_ssize_t               vi_len;
+    Py_ssize_t               vi_stride;
+} vectoriterobject;
+
+extern PyTypeObject VectorIter_Type;
+
 } // namespace CPyCppyy
 
 #endif // !CPYCPPYY_CUSTOMPYTYPES_H

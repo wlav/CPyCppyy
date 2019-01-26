@@ -825,6 +825,10 @@ extern "C" void initlibcppyy()
     if (PyType_Ready(&LowLevelView_Type) < 0)
         CPYCPPYY_INIT_ERROR;
 
+// custom iterators
+    if (PyType_Ready(&VectorIter_Type) < 0)
+        CPYCPPYY_INIT_ERROR;
+
 // inject identifiable nullptr
     gNullPtrObject = (PyObject*)&_CPyCppyy_NullPtrStruct;
     Py_INCREF(gNullPtrObject);

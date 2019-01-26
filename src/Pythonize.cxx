@@ -4,6 +4,7 @@
 #include "Converters.h"
 #include "CPPInstance.h"
 #include "CPPOverload.h"
+#include "CustomPyTypes.h"
 #include "LowLevelViews.h"
 #include "ProxyWrappers.h"
 #include "PyCallable.h"
@@ -354,74 +355,6 @@ PyObject* VectorData(PyObject* self, PyObject*)
 
 
 //-----------------------------------------------------------------------------
-typedef struct {
-    PyObject_HEAD
-    PyObject*                vi_vector;
-    void*                    vi_data;
-    CPyCppyy::Converter*     vi_converter;
-    Py_ssize_t               vi_pos;
-    Py_ssize_t               vi_len;
-    Py_ssize_t               vi_stride;
-} vectoriterobject;
-
-static void vectoriter_dealloc(vectoriterobject* vi) {
-    Py_XDECREF(vi->vi_vector);
-    delete vi->vi_converter;
-    PyObject_GC_Del(vi);
-}
-
-static int vectoriter_traverse(vectoriterobject* vi, visitproc visit, void* arg) {
-    Py_VISIT(vi->vi_vector);
-    return 0;
-}
-
-static PyObject* vectoriter_iternext(vectoriterobject* vi) {
-    if (vi->vi_pos >= vi->vi_len)
-        return nullptr;
-
-    PyObject* result = nullptr;
-
-    if (vi->vi_data && vi->vi_converter) {
-        void* location = (void*)((ptrdiff_t)vi->vi_data + vi->vi_stride * vi->vi_pos);
-        result = vi->vi_converter->FromMemory(location);
-    } else {
-        PyObject* pyindex = PyLong_FromSsize_t(vi->vi_pos);
-        result = CallPyObjMethod((PyObject*)vi->vi_vector, "_getitem__unchecked", pyindex);
-        Py_DECREF(pyindex);
-    }
-
-    vi->vi_pos += 1;
-    return result;
-}
-
-
-// TODO: where is PyType_Ready called on this one? Is it needed, given that it's internal?
-PyTypeObject VectorIter_Type = {
-    PyVarObject_HEAD_INIT(&PyType_Type, 0)
-    (char*)"cppyy.vectoriter",    // tp_name
-    sizeof(vectoriterobject),     // tp_basicsize
-    0,
-    (destructor)vectoriter_dealloc,         // tp_dealloc
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    Py_TPFLAGS_DEFAULT |
-        Py_TPFLAGS_HAVE_GC,       // tp_flags
-    0,
-    (traverseproc)vectoriter_traverse,      // tp_traverse
-    0, 0, 0,
-    PyObject_SelfIter,            // tp_iter
-    (iternextfunc)vectoriter_iternext,      // tp_iternext
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-#if PY_VERSION_HEX >= 0x02030000
-    , 0                           // tp_del
-#endif
-#if PY_VERSION_HEX >= 0x02060000
-    , 0                           // tp_version_tag
-#endif
-#if PY_VERSION_HEX >= 0x03040000
-    , 0                           // tp_finalize
-#endif
-};
-
 static PyObject* vector_iter(PyObject* v) {
     vectoriterobject* vi = PyObject_GC_New(vectoriterobject, &VectorIter_Type);
     if (!vi) return nullptr;
@@ -572,7 +505,7 @@ PyObject* VectorBoolSetItem(CPPInstance* self, PyObject* args)
 //- map behavior as primitives ------------------------------------------------
 PyObject* MapContains(PyObject* self, PyObject* obj)
 {
-// Implement python's __contains__ for std::map<>s.
+// Implement python's __contains__ for std::map<>s
     PyObject* result = nullptr;
 
     PyObject* iter = CallPyObjMethod(self, "find", obj);
@@ -600,7 +533,7 @@ PyObject* MapContains(PyObject* self, PyObject* obj)
 //- STL container iterator support --------------------------------------------
 PyObject* StlSequenceIter(PyObject* self)
 {
-// Implement python's __iter__ for std::iterator<>s.
+// Implement python's __iter__ for std::iterator<>s
     PyObject* iter = CallPyObjMethod(self, "begin");
     if (iter) {
         PyObject* end = CallPyObjMethod(self, "end");

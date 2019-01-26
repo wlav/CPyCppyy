@@ -16,6 +16,7 @@ PyObject* CPyCppyy::PyStrings::gEmptyString      = nullptr;
 PyObject* CPyCppyy::PyStrings::gEq               = nullptr;
 PyObject* CPyCppyy::PyStrings::gFollow           = nullptr;
 PyObject* CPyCppyy::PyStrings::gGetItem          = nullptr;
+PyObject* CPyCppyy::PyStrings::gGetNoCheck       = nullptr;
 PyObject* CPyCppyy::PyStrings::gInit             = nullptr;
 PyObject* CPyCppyy::PyStrings::gIter             = nullptr;
 PyObject* CPyCppyy::PyStrings::gLen              = nullptr;
@@ -67,6 +68,7 @@ bool CPyCppyy::CreatePyStrings() {
     CPPYY_INITIALIZE_STRING(gEq,             __eq__);
     CPPYY_INITIALIZE_STRING(gFollow,         __follow__);
     CPPYY_INITIALIZE_STRING(gGetItem,        __getitem__);
+    CPPYY_INITIALIZE_STRING(gGetNoCheck,     _getitem__unchecked);
     CPPYY_INITIALIZE_STRING(gInit,           __init__);
     CPPYY_INITIALIZE_STRING(gIter,           __iter__);
     CPPYY_INITIALIZE_STRING(gLen,            __len__);
@@ -114,6 +116,7 @@ PyObject* CPyCppyy::DestroyPyStrings() {
     Py_DECREF(PyStrings::gEq);          PyStrings::gEq          = nullptr;
     Py_DECREF(PyStrings::gFollow);      PyStrings::gFollow      = nullptr;
     Py_DECREF(PyStrings::gGetItem);     PyStrings::gGetItem     = nullptr;
+    Py_DECREF(PyStrings::gGetNoCheck);  PyStrings::gGetNoCheck  = nullptr;
     Py_DECREF(PyStrings::gInit);        PyStrings::gInit        = nullptr;
     Py_DECREF(PyStrings::gIter);        PyStrings::gIter        = nullptr;
     Py_DECREF(PyStrings::gLen);         PyStrings::gLen         = nullptr;

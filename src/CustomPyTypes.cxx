@@ -1,6 +1,8 @@
 // Bindings
 #include "CPyCppyy.h"
 #include "CustomPyTypes.h"
+#include "Converters.h"
+#include "PyStrings.h"
 
 #if PY_VERSION_HEX >= 0x03000000
 // TODO: this will break functionality
@@ -14,50 +16,13 @@ namespace CPyCppyy {
 PyTypeObject RefFloat_Type = {     // python float is a C/C++ double
     PyVarObject_HEAD_INIT(&PyType_Type, 0)
     (char*)"cppyy.Double",         // tp_name
-    0,                             // tp_basicsize
-    0,                             // tp_itemsize
-    0,                             // tp_dealloc
-    0,                             // tp_print
-    0,                             // tp_getattr
-    0,                             // tp_setattr
-    0,                             // tp_compare
-    0,                             // tp_repr
-    0,                             // tp_as_number
-    0,                             // tp_as_sequence
-    0,                             // tp_as_mapping
-    0,                             // tp_hash
-    0,                             // tp_call
-    0,                             // tp_str
-    0,                             // tp_getattro
-    0,                             // tp_setattro
-    0,                             // tp_as_buffer
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_CHECKTYPES |
         Py_TPFLAGS_BASETYPE,       // tp_flags
     (char*)"CPyCppyy float object for pass by reference",   // tp_doc
-    0,                             // tp_traverse
-    0,                             // tp_clear
-    0,                             // tp_richcompare
-    0,                             // tp_weaklistoffset
-    0,                             // tp_iter
-    0,                             // tp_iternext
-    0,                             // tp_methods
-    0,                             // tp_members
-    0,                             // tp_getset
+    0, 0, 0, 0, 0, 0, 0, 0, 0,
     &PyFloat_Type,                 // tp_base
-    0,                             // tp_dict
-    0,                             // tp_descr_get
-    0,                             // tp_descr_set
-    0,                             // tp_dictoffset
-    0,                             // tp_init
-    0,                             // tp_alloc
-    0,                             // tp_new
-    0,                             // tp_free
-    0,                             // tp_is_gc
-    0,                             // tp_bases
-    0,                             // tp_mro
-    0,                             // tp_cache
-    0,                             // tp_subclasses
-    0                              // tp_weaklist
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 #if PY_VERSION_HEX >= 0x02030000
     , 0                            // tp_del
 #endif
@@ -73,50 +38,13 @@ PyTypeObject RefFloat_Type = {     // python float is a C/C++ double
 PyTypeObject RefInt_Type = {       // python int is a C/C++ long
     PyVarObject_HEAD_INIT(&PyType_Type, 0)
     (char*)"cppyy.Long",           // tp_name
-    0,                             // tp_basicsize
-    0,                             // tp_itemsize
-    0,                             // tp_dealloc
-    0,                             // tp_print
-    0,                             // tp_getattr
-    0,                             // tp_setattr
-    0,                             // tp_compare
-    0,                             // tp_repr
-    0,                             // tp_as_number
-    0,                             // tp_as_sequence
-    0,                             // tp_as_mapping
-    0,                             // tp_hash
-    0,                             // tp_call
-    0,                             // tp_str
-    0,                             // tp_getattro
-    0,                             // tp_setattro
-    0,                             // tp_as_buffer
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_CHECKTYPES |
         Py_TPFLAGS_BASETYPE,       // tp_flags
     (char*)"CPyCppyy long object for pass by reference",    // tp_doc
-    0,                             // tp_traverse
-    0,                             // tp_clear
-    0,                             // tp_richcompare
-    0,                             // tp_weaklistoffset
-    0,                             // tp_iter
-    0,                             // tp_iternext
-    0,                             // tp_methods
-    0,                             // tp_members
-    0,                             // tp_getset
+    0, 0, 0, 0, 0, 0, 0, 0, 0,
     &PyInt_Type,                   // tp_base
-    0,                             // tp_dict
-    0,                             // tp_descr_get
-    0,                             // tp_descr_set
-    0,                             // tp_dictoffset
-    0,                             // tp_init
-    0,                             // tp_alloc
-    0,                             // tp_new
-    0,                             // tp_free
-    0,                             // tp_is_gc
-    0,                             // tp_bases
-    0,                             // tp_mro
-    0,                             // tp_cache
-    0,                             // tp_subclasses
-    0                              // tp_weaklist
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 #if PY_VERSION_HEX >= 0x02030000
     , 0                            // tp_del
 #endif
@@ -269,50 +197,19 @@ static PyObject* im_descr_get(PyObject* meth, PyObject* obj, PyObject* pyclass)
 PyTypeObject CustomInstanceMethod_Type = {
     PyVarObject_HEAD_INIT(&PyType_Type, 0)
     (char*)"cppyy.InstanceMethod", // tp_name
-    0,                             // tp_basicsize
-    0,                             // tp_itemsize
+    0, 0,
     (destructor)im_dealloc,        // tp_dealloc
-    0,                             // tp_print
-    0,                             // tp_getattr
-    0,                             // tp_setattr
-    0,                             // tp_compare
-    0,                             // tp_repr
-    0,                             // tp_as_number
-    0,                             // tp_as_sequence
-    0,                             // tp_as_mapping
-    0,                             // tp_hash
+    0, 0, 0, 0, 0, 0, 0, 0, 0,
     im_call,                       // tp_call
-    0,                             // tp_str
-    0,                             // tp_getattro
-    0,                             // tp_setattro
-    0,                             // tp_as_buffer
+    0, 0, 0, 0,
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_CHECKTYPES |
         Py_TPFLAGS_BASETYPE,       // tp_flags
     (char*)"CPyCppyy custom instance method (internal)",    // tp_doc
-    0,                             // tp_traverse
-    0,                             // tp_clear
-    0,                             // tp_richcompare
-    0,                             // tp_weaklistoffset
-    0,                             // tp_iter
-    0,                             // tp_iternext
-    0,                             // tp_methods
-    0,                             // tp_members
-    0,                             // tp_getset
+    0, 0, 0, 0, 0, 0, 0, 0, 0,
     &PyMethod_Type,                // tp_base
-    0,                             // tp_dict
+    0,
     im_descr_get,                  // tp_descr_get
-    0,                             // tp_descr_set
-    0,                             // tp_dictoffset
-    0,                             // tp_init
-    0,                             // tp_alloc
-    0,                             // tp_new
-    0,                             // tp_free
-    0,                             // tp_is_gc
-    0,                             // tp_bases
-    0,                             // tp_mro
-    0,                             // tp_cache
-    0,                             // tp_subclasses
-    0                              // tp_weaklist
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 #if PY_VERSION_HEX >= 0x02030000
     , 0                            // tp_del
 #endif
@@ -321,6 +218,64 @@ PyTypeObject CustomInstanceMethod_Type = {
 #endif
 #if PY_VERSION_HEX >= 0x03040000
     , 0                            // tp_finalize
+#endif
+};
+
+
+//= CPyCppyy custom iterator for performance =================================
+static void vectoriter_dealloc(vectoriterobject* vi) {
+    Py_XDECREF(vi->vi_vector);
+    delete vi->vi_converter;
+    PyObject_GC_Del(vi);
+}
+
+static int vectoriter_traverse(vectoriterobject* vi, visitproc visit, void* arg) {
+    Py_VISIT(vi->vi_vector);
+    return 0;
+}
+
+static PyObject* vectoriter_iternext(vectoriterobject* vi) {
+    if (vi->vi_pos >= vi->vi_len)
+        return nullptr;
+
+    PyObject* result = nullptr;
+
+    if (vi->vi_data && vi->vi_converter) {
+        void* location = (void*)((ptrdiff_t)vi->vi_data + vi->vi_stride * vi->vi_pos);
+        result = vi->vi_converter->FromMemory(location);
+    } else {
+        PyObject* pyindex = PyLong_FromSsize_t(vi->vi_pos);
+        result = PyObject_CallMethodObjArgs((PyObject*)vi->vi_vector, PyStrings::gGetNoCheck, pyindex, nullptr);
+        Py_DECREF(pyindex);
+    }
+
+    vi->vi_pos += 1;
+    return result;
+}
+
+PyTypeObject VectorIter_Type = {
+    PyVarObject_HEAD_INIT(&PyType_Type, 0)
+    (char*)"cppyy.vectoriter",    // tp_name
+    sizeof(vectoriterobject),     // tp_basicsize
+    0,
+    (destructor)vectoriter_dealloc,         // tp_dealloc
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    Py_TPFLAGS_DEFAULT |
+        Py_TPFLAGS_HAVE_GC,       // tp_flags
+    0,
+    (traverseproc)vectoriter_traverse,      // tp_traverse
+    0, 0, 0,
+    PyObject_SelfIter,            // tp_iter
+    (iternextfunc)vectoriter_iternext,      // tp_iternext
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+#if PY_VERSION_HEX >= 0x02030000
+    , 0                           // tp_del
+#endif
+#if PY_VERSION_HEX >= 0x02060000
+    , 0                           // tp_version_tag
+#endif
+#if PY_VERSION_HEX >= 0x03040000
+    , 0                           // tp_finalize
 #endif
 };
 
