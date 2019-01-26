@@ -44,6 +44,9 @@ PyObject* CPyCppyy::PyStrings::gSize             = nullptr;
 PyObject* CPyCppyy::PyStrings::gTemplate         = nullptr;
 PyObject* CPyCppyy::PyStrings::gVectorAt         = nullptr;
 
+PyObject* CPyCppyy::PyStrings::gCppReal          = nullptr;
+PyObject* CPyCppyy::PyStrings::gCppImag          = nullptr;
+
 PyObject* CPyCppyy::PyStrings::gThisModule       = nullptr;
 
 
@@ -96,6 +99,9 @@ bool CPyCppyy::CreatePyStrings() {
     CPPYY_INITIALIZE_STRING(gTemplate,       Template);
     CPPYY_INITIALIZE_STRING(gVectorAt,       _vector__at);
 
+    CPPYY_INITIALIZE_STRING(gCppReal,        __cpp_real);
+    CPPYY_INITIALIZE_STRING(gCppImag,        __cpp_imag);
+
     CPPYY_INITIALIZE_STRING(gThisModule,     cppyy);
 
     return true;
@@ -143,6 +149,9 @@ PyObject* CPyCppyy::DestroyPyStrings() {
     Py_DECREF(PyStrings::gSize);        PyStrings::gSize        = nullptr;
     Py_DECREF(PyStrings::gTemplate);    PyStrings::gTemplate    = nullptr;
     Py_DECREF(PyStrings::gVectorAt);    PyStrings::gVectorAt    = nullptr;
+
+    Py_DECREF(PyStrings::gCppReal);     PyStrings::gCppReal     = nullptr;
+    Py_DECREF(PyStrings::gCppImag);     PyStrings::gCppImag     = nullptr;
 
     Py_DECREF(PyStrings::gThisModule);  PyStrings::gThisModule  = nullptr;
 

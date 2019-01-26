@@ -47,6 +47,9 @@ namespace PyStrings {
     extern PyObject* gTemplate;
     extern PyObject* gVectorAt;
 
+    extern PyObject* gCppReal;
+    extern PyObject* gCppImag;
+
     extern PyObject* gThisModule;
 
 } // namespace PyStrings
