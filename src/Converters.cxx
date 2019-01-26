@@ -1624,10 +1624,10 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
                 code << argtypes[i] << " arg" << i;
                 if (i != nArgs-1) code << ", ";
             }
-            code << ") {\n  static std::unique_ptr<CPyCppyy::Converter> retconv{(CPyCppyy::Converter*)cppyy_create_converter(\"" << fRetType << "\", nullptr)};\n";
+            code << ") {\n  static std::unique_ptr<CPyCppyy::Converter> retconv{CPyCppyy::CreateConverter(\"" << fRetType << "\")};\n";
             for (int i = 0; i < nArgs; ++i) {
                 code << "  static std::unique_ptr<CPyCppyy::Converter> arg" << i
-                        << "conv{(CPyCppyy::Converter*)cppyy_create_converter(\"" << argtypes[i] << "\", nullptr)};\n";
+                        << "conv{CPyCppyy::CreateConverter(\"" << argtypes[i] << "\")};\n";
             }
             code << "  " << fRetType << " ret{};\n"
                     "  PyGILState_STATE state = PyGILState_Ensure();\n";
@@ -1836,6 +1836,7 @@ bool CPyCppyy::NotImplementedConverter::SetArg(PyObject*, Parameter&, CallContex
 
 
 //- factories ----------------------------------------------------------------
+RPY_EXPORT
 CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long* dims)
 {
 // The matching of the fulltype to a converter factory goes through up to five levels:
