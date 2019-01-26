@@ -256,4 +256,12 @@ inline Py_ssize_t PyNumber_AsSsize_t(PyObject* obj, PyObject*) {
 // C++ version of the cppyy API
 #include "Cppyy.h"
 
+// export macros for our own API
+// import/export (after precommondefs.h from PyPy)
+#ifdef _MSC_VER
+#define CPYCPPYY_EXPORT extern __declspec(dllexport)
+#else
+#define CPYCPPYY_EXPORT extern
+#endif
+
 #endif // !CPYCPPYY_CPYCPPYY_H
