@@ -286,6 +286,10 @@ PyObject* CPyCppyy::name##RefExecutor::Execute(                              \
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt) \
 {                                                                            \
     type* ref = (type*)GILCallR(method, self, ctxt);                         \
+    if (!ref) { /* can happen if wrapper compilation fails */                \
+        PyErr_SetString(PyExc_ReferenceError, "attempt to access a null-pointer");\
+        return nullptr;                                                      \
+    }                                                                        \
     if (!fAssignable)                                                        \
         return F1((stype)*ref);                                              \
     else {                                                                   \
