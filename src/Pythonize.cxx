@@ -360,7 +360,7 @@ static PyObject* vector_iter(PyObject* v) {
     if (!vi) return nullptr;
 
     Py_INCREF(v);
-    vi->vi_vector = v;
+    vi->ii_container = v;
 
     PyObject* pyvalue_type = PyObject_GetAttrString((PyObject*)Py_TYPE(v), "value_type");
     PyObject* pyvalue_size = PyObject_GetAttrString((PyObject*)Py_TYPE(v), "value_size");
@@ -383,8 +383,8 @@ static PyObject* vector_iter(PyObject* v) {
     Py_XDECREF(pyvalue_size);
     Py_XDECREF(pyvalue_type);
 
-    vi->vi_len = vi->vi_pos = 0;
-    vi->vi_len = PySequence_Size(v);
+    vi->ii_pos = 0;
+    vi->ii_len = PySequence_Size(v);
 
     PyObject_GC_Track(vi);
     return (PyObject*)vi;
@@ -547,7 +547,24 @@ PyObject* StlSequenceIter(PyObject* self)
     return iter;
 }
 
+//- generic iterator support over a sequence with operator[] and size ---------
+//-----------------------------------------------------------------------------
+static PyObject* index_iter(PyObject* c) {
+    indexiterobject* ii = PyObject_GC_New(indexiterobject, &IndexIter_Type);
+    if (!ii) return nullptr;
+
+    Py_INCREF(c);
+    ii->ii_container = c;
+    ii->ii_pos = 0;
+    ii->ii_len = PySequence_Size(c);
+
+    PyObject_GC_Track(ii);
+    return (PyObject*)ii;
+}
+
+
 //- safe indexing for STL-like vector w/o iterator dictionaries ---------------
+/* replaced by indexiterobject iteration, but may still have some future use ...
 PyObject* CheckedGetItem(PyObject* self, PyObject* obj)
 {
 // Implement a generic python __getitem__ for STL-like classes that are missing the
@@ -572,7 +589,7 @@ PyObject* CheckedGetItem(PyObject* self, PyObject* obj)
         PyErr_SetString( PyExc_IndexError, "index out of range" );
 
     return nullptr;
-}
+}*/
 
 //- pair as sequence to allow tuple unpacking --------------------------------
 PyObject* PairUnpack(PyObject* self, PyObject* pyindex)
@@ -840,18 +857,24 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
     if (HasAttrDirect(pyclass, PyStrings::gSize))
         Utility::AddToClass(pyclass, "__len__", "size");
 
-    if (!IsTemplatedSTLClass(name, "vector")) {       // vector is dealt with below
+    if (!IsTemplatedSTLClass(name, "vector")  &&      // vector is dealt with below
+           !((PyTypeObject*)pyclass)->tp_iter) {
         if (HasAttrDirect(pyclass, PyStrings::gBegin) && HasAttrDirect(pyclass, PyStrings::gEnd)) {
             if (Cppyy::GetScope(name+"::iterator") || Cppyy::GetScope(name+"::const_iterator")) {
             // iterator protocol fully implemented, so use it (TODO: check return type, rather than
             // the existence of these typedefs? I.e. what's the "full protocol"?)
                 ((PyTypeObject*)pyclass)->tp_iter = (getiterfunc)StlSequenceIter;
                 Utility::AddToClass(pyclass, "__iter__", (PyCFunction)StlSequenceIter, METH_NOARGS);
-            } else if (HasAttrDirect(pyclass, PyStrings::gGetItem) && HasAttrDirect(pyclass, PyStrings::gLen)) {
-            // only partial implementation of the protocol, but checked getitem should od
-                Utility::AddToClass(pyclass, "_getitem__unchecked", "__getitem__");
-                Utility::AddToClass(pyclass, "__getitem__", (PyCFunction)CheckedGetItem, METH_O);
             }
+        }
+        if (!((PyTypeObject*)pyclass)->tp_iter &&     // no iterator resolved
+                HasAttrDirect(pyclass, PyStrings::gGetItem) && HasAttrDirect(pyclass, PyStrings::gLen)) {
+        // Python will iterate over __getitem__ using integers, but C++ operator[] will never raise
+        // a StopIteration. A checked getitem (raising IndexError if beyond size()) works in some
+        // cases but would mess up if operator[] is meant to implement an associative container. So,
+        // this has to be implemented as an interator protocol.
+            ((PyTypeObject*)pyclass)->tp_iter = (getiterfunc)index_iter;
+            Utility::AddToClass(pyclass, "__iter__", (PyCFunction)index_iter, METH_NOARGS);
         }
     }
 
@@ -900,7 +923,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         // vector-optimized iterator protocol
             ((PyTypeObject*)pyclass)->tp_iter      = (getiterfunc)vector_iter;
 
-       // helpers for iteration
+        // helpers for iteration
             const std::string& vtype = Cppyy::ResolveName(name+"::value_type");
             size_t typesz = Cppyy::SizeOf(vtype);
             if (typesz) {

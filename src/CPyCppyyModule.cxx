@@ -826,6 +826,9 @@ extern "C" void initlibcppyy()
         CPYCPPYY_INIT_ERROR;
 
 // custom iterators
+    if (PyType_Ready(&IndexIter_Type) < 0)
+        CPYCPPYY_INIT_ERROR;
+
     if (PyType_Ready(&VectorIter_Type) < 0)
         CPYCPPYY_INIT_ERROR;
 
