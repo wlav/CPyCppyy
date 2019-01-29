@@ -405,7 +405,7 @@ PyObject* CPyCppyy::UCharAsIntConverter::FromMemory(void* address)
 
 //----------------------------------------------------------------------------
 bool CPyCppyy::WCharConverter::SetArg(
-    PyObject* pyobject, Parameter& para, CallContext* ctxt)
+    PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)
 {
 // convert <pyobject> to C++ <wchar_t>, set arg for call
     if (!PyUnicode_Check(pyobject) || PyUnicode_GET_SIZE(pyobject) != 1) {
