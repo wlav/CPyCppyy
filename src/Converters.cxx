@@ -1684,6 +1684,17 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
     return false;
 }
 
+PyObject* CPyCppyy::FunctionPointerConverter::FromMemory(void* address)
+{
+    PyErr_SetString(PyExc_NotImplementedError, "not implemented");
+    return nullptr;
+}
+
+bool CPyCppyy::FunctionPointerConverter::ToMemory(PyObject* value, void* address)
+{
+    return false;
+}
+
 
 //- smart pointer converters -------------------------------------------------
 bool CPyCppyy::SmartPtrConverter::SetArg(
@@ -1960,8 +1971,14 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long
             resolvedType.substr(0, pos1), resolvedType.substr(pos2+2));
     }
 
-    if (!result && cpd == "&&")                       // unhandled moves
+    if (!result && cpd == "&&") {
+    // for builting, can use const-ref for r-ref
+        h = gConvFactories.find("const " + realType + "&");
+        if (h != gConvFactories.end())
+            return (h->second)(size);
+    // else, unhandled moves
         result = new NotImplementedConverter();
+    }
 
     if (!result && h != gConvFactories.end())
     // converter factory available, use it to create converter
@@ -1970,7 +1987,7 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long
         if (cpd != "") {
             result = new VoidArrayConverter();        // "user knows best"
         } else {
-            result = new VoidConverter();             // fails on use
+            result = new NotImplementedConverter();   // fails on use
         }
     }
 

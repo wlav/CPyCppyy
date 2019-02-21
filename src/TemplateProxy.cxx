@@ -275,10 +275,26 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
         PyCallable* meth = pytmpl->Instantiate(CPyCppyy_PyUnicode_AsString(pyfullname), args);
         if (meth) {
         // store overload
-            PyObject* pymeth = (PyObject*)CPPOverload_New(CPyCppyy_PyUnicode_AsString(pyfullname), meth);
-            PyObject_SetAttr(pytmpl->fPyClass, pyfullname, pymeth);
-            Py_DECREF(pymeth);
-            pymeth = PyObject_GetAttr(pytmpl->fSelf ? pytmpl->fSelf : pytmpl->fPyClass, pyfullname);
+            PyObject* dct = PyObject_GetAttr(pytmpl->fPyClass, PyStrings::gDict);
+            if (dct) {
+                PyObject* attr = PyObject_GetItem(dct, pyfullname);
+                Py_DECREF(dct);
+                if (CPPOverload_Check(attr)) {
+                    ((CPPOverload*)attr)->AddMethod(meth);
+                    meth = nullptr;
+                } else
+                    PyErr_Clear();
+                Py_XDECREF(attr);
+            }
+
+            if (meth) { // meaning, wasn't stored
+                PyObject* pymeth = (PyObject*)CPPOverload_New(CPyCppyy_PyUnicode_AsString(pyfullname), meth);
+                PyObject_SetAttr(pytmpl->fPyClass, pyfullname, pymeth);
+                Py_DECREF(pymeth);
+            }
+
+        // retrieve fresh (for boundedness) and call
+            PyObject* pymeth = PyObject_GetAttr(pytmpl->fSelf ? pytmpl->fSelf : pytmpl->fPyClass, pyfullname);
             Py_DECREF(pyfullname);
             PyObject* result = CPPOverload_Type.tp_call(pymeth, args, kwds);
             if (result) pytmpl->fDispatchMap.push_back(std::make_pair(sighash, (CPPOverload*)pymeth));
