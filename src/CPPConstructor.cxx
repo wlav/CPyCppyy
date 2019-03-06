@@ -96,7 +96,7 @@ PyObject* CPyCppyy::CPPConstructor::Call(
     // TODO: consistent up or down cast ...
         MemoryRegulator::RegisterPyObject(self, (Cppyy::TCppObject_t)address);
 
-   // done with self
+    // done with self
         Py_DECREF(self);
 
         Py_RETURN_NONE;                     // by definition
@@ -106,8 +106,8 @@ PyObject* CPyCppyy::CPPConstructor::Call(
         PyErr_SetString(PyExc_TypeError, const_cast<char*>(
             (Cppyy::GetScopedFinalName(GetScope()) + " constructor failed").c_str()));
 
-// do not throw an exception, '0' might trigger the overload handler to choose a
-// different constructor, which if all fails will throw an exception
+// do not throw an exception, nullptr might trigger the overload handler to
+// choose a different constructor, which if all fails will throw an exception
     return nullptr;
 }
 

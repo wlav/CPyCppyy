@@ -525,7 +525,10 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
             if (tc && PyCallable_Check(tc)) {
                 PyObject* nt = PyObject_CallFunction(tc, (char*)"ss", name.c_str(), scName.c_str());
                 if (nt) {
-                    if (parent) PyObject_SetAttrString(parent, (char*)name.c_str(), nt);
+                    if (parent) {
+                        PyObject_SetAttrString(parent, (char*)name.c_str(), nt);
+                        Py_DECREF(parent);
+                    }
                     return nt;
                 }
                 PyErr_Clear();
@@ -541,7 +544,10 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
 // locate class by ID, if possible, to prevent parsing scopes/templates anew
     PyObject* pyscope = GetScopeProxy(klass);
     if (pyscope) {
-        if (parent) PyObject_SetAttrString(parent, (char*)scope_name.c_str(), pyscope);
+        if (parent) {
+            PyObject_SetAttrString(parent, (char*)scope_name.c_str(), pyscope);
+            Py_XDECREF(parent);
+        }
         return pyscope;
     }
 
@@ -592,7 +598,9 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
         // Special case: parent found is not one of ours (it's e.g. a pure Python module), so
         // continuing would fail badly. One final lookup, then out of here ...
             std::string unscoped = scope_name.substr(last, std::string::npos);
-            return PyObject_GetAttrString(parent, unscoped.c_str());
+            PyObject* ret = PyObject_GetAttrString(parent, unscoped.c_str());
+            Py_DECREF(parent);
+            return ret;
         }
     }
 
@@ -636,6 +644,10 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
         }
     }
 
+// done with parent and actual
+    Py_DECREF(parent);
+    Py_DECREF(pyactual);
+
 // give up, if not constructed
     if (!pyclass)
         return nullptr;
@@ -649,9 +661,6 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& scope_name, PyObject* pa
 
 // store a ref from cppyy scope id to new python class
     gPyClasses[klass] = PyWeakref_NewRef(pyclass, nullptr);
-
-    Py_DECREF(pyactual);
-    Py_DECREF(parent);
 
     if (!Cppyy::IsNamespace(klass)) {
     // add python-style features to classes

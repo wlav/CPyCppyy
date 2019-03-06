@@ -1500,6 +1500,7 @@ bool CPyCppyy::PyObjectConverter::ToMemory(PyObject* value, void* address)
 {
 // no conversion needed, write <value> at <address>
     Py_INCREF(value);
+    Py_XDECREF(*((PyObject**)address));
     *((PyObject**)address) = value;
     return true;
 }
@@ -1524,8 +1525,7 @@ static PyObject* WrapperCacheEraser(PyObject*, PyObject* pyref)
         sWrapperFree[ipos->second.second].push_back(wpraddress);
     }
 
-    Py_INCREF(Py_None);
-    return Py_None;
+    Py_RETURN_NONE;
 }
 static PyMethodDef gWrapperCacheEraserMethodDef = {
     const_cast<char*>("interal_WrapperCacheEraser"),

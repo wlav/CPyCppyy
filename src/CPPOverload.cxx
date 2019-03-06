@@ -46,8 +46,8 @@ public:
             PyErr_SetString(PyExc_TypeError, "parameter must be callable");
             return;
         }
+        Py_INCREF(callable);
         fCallable = callable;
-        Py_INCREF(fCallable);
     }
 
     virtual ~TPythonCallback() {

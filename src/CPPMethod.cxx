@@ -445,8 +445,8 @@ PyObject* CPyCppyy::CPPMethod::PreProcessArgs(
              (Cppyy::IsSubtype(pyobj->ObjectIsA(), fScope)))) { // matching types
 
         // reset self
+            Py_INCREF(pyobj);      // corresponding Py_DECREF is in CPPOverload
             self = pyobj;
-            Py_INCREF(self);       // corresponding Py_DECREF is in CPPOverload
 
         // offset args by 1 (new ref)
             return PyTuple_GetSlice(args, 1, PyTuple_GET_SIZE(args));
