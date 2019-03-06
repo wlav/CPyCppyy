@@ -114,7 +114,7 @@ bool CPyCppyy::MemoryRegulator::RecursiveRemove(
 
     CPPClass* pyclass = (CPPClass*)pyscope;
     if (!pyclass->fCppObjects)     // table may have been deleted on shutdown
-        return false;
+        return false;              // TODO: should decref anyway?
 
 // see whether we're tracking this object
     CppToPyMap_t* cppobjs = pyclass->fCppObjects;
@@ -124,7 +124,7 @@ bool CPyCppyy::MemoryRegulator::RecursiveRemove(
     // get the tracked object and cleanup weak reference
         CPPInstance* pyobj = (CPPInstance*)PyWeakref_GetObject(ppo->second);
         Py_DECREF(ppo->second);
-        if (!pyobj) {
+        if ((PyObject*)pyobj == Py_None) {
             cppobjs->erase(ppo);
             Py_DECREF(pyscope);
             return false;
