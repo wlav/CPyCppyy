@@ -326,6 +326,7 @@ PyObject* VectorInit(PyObject* self, PyObject* args)
         Py_DECREF(realInit);
         return result;
     }
+
     return nullptr;
 }
 
