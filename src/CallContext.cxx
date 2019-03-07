@@ -15,9 +15,13 @@ namespace CPyCppyy {
 //-----------------------------------------------------------------------------
 void CPyCppyy::CallContext::AddTemporary(PyObject* pyobj) {
     if (pyobj) {
-        Temporary** tmp = &fTemps;
-        while (*tmp) *tmp = (*tmp)->fNext;
-        *tmp = new Temporary{pyobj, nullptr};
+        if (!fTemps)
+            fTemps = new Temporary{pyobj, nullptr};
+        else {
+            Temporary* tmp = fTemps;
+            while (tmp->fNext) tmp = tmp->fNext;
+            tmp->fNext  = new Temporary{pyobj, nullptr};
+        }
     }
 }
 
