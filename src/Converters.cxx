@@ -1658,8 +1658,11 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
                 code << "  static std::unique_ptr<CPyCppyy::Converter> arg" << i
                         << "conv{CPyCppyy::CreateConverter(\"" << argtypes[i] << "\")};\n";
             }
-            code << "  " << fRetType << " ret{};\n"
-                    "  PyGILState_STATE state = PyGILState_Ensure();\n";
+            auto isVoid = (fRetType == "void");
+            if (!isVoid) {
+               code << "  " << fRetType << " ret{};\n";
+            }
+            code << "  PyGILState_STATE state = PyGILState_Ensure();\n";
 
         // build argument tuple if needed
             for (int i = 0; i < nArgs; ++i)
@@ -1680,11 +1683,16 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
         // handle return value
             for (int i = 0; i < nArgs; ++i)
                 code << "  Py_DECREF(pyarg" << i << ");\n";
-            code << "  if (pyresult) { retconv->ToMemory(pyresult, &ret); Py_DECREF(pyresult); }\n"
-                    "  else { PyGILState_Release(state); throw CPyCppyy::TPyException{}; }\n"
-                    "  PyGILState_Release(state);\n"
-                    "  return ret;\n"
-                    "}\n}";
+            if (isVoid) {
+                code << "  PyGILState_Release(state);\n"
+                        "  if (!pyresult) { throw CPyCppyy::TPyException{}; }\n";
+            } else {
+                code << "  if (pyresult) { retconv->ToMemory(pyresult, &ret); Py_DECREF(pyresult); }\n"
+                        "  else { PyGILState_Release(state); throw CPyCppyy::TPyException{}; }\n"
+                        "  PyGILState_Release(state);\n"
+                        "  return ret;\n";
+            }
+            code << "}\n}";
 
             if (!Cppyy::Compile(code.str()))
                 return false;
