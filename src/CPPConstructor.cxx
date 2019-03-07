@@ -28,7 +28,7 @@ PyObject* CPyCppyy::CPPConstructor::GetDocString()
 
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::CPPConstructor::Call(
-        CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt)
+    CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt)
 {
 // preliminary check in case keywords are accidently used (they are ignored otherwise)
     if (kwds && PyDict_Size(kwds)) {
@@ -52,14 +52,14 @@ PyObject* CPyCppyy::CPPConstructor::Call(
 
 // perform the call, nullptr 'this' makes the other side allocate the memory
     Cppyy::TCppScope_t disp = self->ObjectIsA();
-    Cppyy::TCppMethod_t tmpMethod = GetMethod();
+    Cppyy::TCppMethod_t curMethod = GetMethod();
     if (GetScope() != disp) {
     // happens for Python derived types, which have a dispatcher inserted that
     // is not otherwise user-visible: temporarily reset fMethod
     // TODO: these lookups are slow and need caching
         const std::string& dispName = Cppyy::GetFinalName(disp);
     // select proper overload based on signature match
-        const std::string& sig = Cppyy::GetMethodSignature(GetMethod(), false);
+        const std::string& sig = curMethod ? Cppyy::GetMethodSignature(curMethod, false) : "()";
         Cppyy::TCppMethod_t method = (Cppyy::TCppMethod_t)0;
         const auto& v = Cppyy::GetMethodIndicesFromName(disp, dispName);
         for (auto idx : v) {
@@ -69,12 +69,18 @@ PyObject* CPyCppyy::CPPConstructor::Call(
                 break;
             }
         }
+
         if (method) SetMethod(method);
+        else {
+            PyErr_Format(PyExc_TypeError, "no constructor available for \'%s\'",
+                Cppyy::GetScopedFinalName(this->GetScope()).c_str());
+            return nullptr;
+        }
     }
     ptrdiff_t address = (ptrdiff_t)this->Execute(nullptr, 0, ctxt);
-    if (GetMethod() != tmpMethod) {
+    if (GetMethod() != curMethod) {
     // restore the original constructor
-        SetMethod(tmpMethod);
+        SetMethod(curMethod);
 
     // set m_self (TODO: get this from the compiler in case of some
     // unorthodox padding or if the inheritance hierarchy extends back
@@ -114,9 +120,14 @@ PyObject* CPyCppyy::CPPConstructor::Call(
 
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::CPPAbstractClassConstructor::Call(
-        CPPInstance*&, PyObject*, PyObject*, CallContext*)
+    CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt)
 {
 // do not allow instantiation of abstract classes
+    if (GetScope() != self->ObjectIsA()) {
+    // happens if a dispatcher is inserted; allow constructor call
+        return CPPConstructor::Call(self, args, kwds, ctxt);
+    }
+
     PyErr_Format(PyExc_TypeError, "cannot instantiate abstract class \'%s\'",
         Cppyy::GetScopedFinalName(this->GetScope()).c_str());
     return nullptr;
@@ -124,7 +135,7 @@ PyObject* CPyCppyy::CPPAbstractClassConstructor::Call(
 
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::CPPNamespaceConstructor::Call(
-        CPPInstance*&, PyObject*, PyObject*, CallContext*)
+    CPPInstance*&, PyObject*, PyObject*, CallContext*)
 {
 // do not allow instantiation of namespaces
     PyErr_Format(PyExc_TypeError, "cannot instantiate namespace \'%s\'",
