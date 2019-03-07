@@ -85,7 +85,8 @@ PyObject* CPyCppyy::CPPConstructor::Call(
     // set m_self (TODO: get this from the compiler in case of some
     // unorthodox padding or if the inheritance hierarchy extends back
     // into C++ land)
-        *((void**)(address + Cppyy::SizeOf(GetScope()))) = self;
+        if (address)
+            *((void**)(address + Cppyy::SizeOf(GetScope()))) = self;
     }
 
 // done with filtered args

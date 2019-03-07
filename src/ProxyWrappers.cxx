@@ -225,12 +225,15 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
         PyCallable* pycall = nullptr;
         if (Cppyy::IsStaticMethod(method))  // class method
             pycall = new CPPClassMethod(scope, method);
-         else if (isNamespace)               // free function
+        else if (isNamespace)               // free function
             pycall = new CPPFunction(scope, method);
-         else if (isConstructor && !isAbstract) { // ctor
-            pycall = new CPPConstructor(scope, method);
+        else if (isConstructor) {           // ctor
             mtName = "__init__";
             hasConstructor = true;
+            if (!isAbstract)
+                pycall = new CPPConstructor(scope, method);
+            else
+                pycall = new CPPAbstractClassConstructor(scope, method);
         } else                               // member function
             pycall = new CPPMethod(scope, method);
 
