@@ -1240,30 +1240,59 @@ bool CPyCppyy::InstanceConverter::SetArg(
 }
 
 //----------------------------------------------------------------------------
+static bool sEnableImplicitConversions = true;   // deeply ugly :(
 bool CPyCppyy::InstanceRefConverter::SetArg(
-        PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)
+    PyObject* pyobject, Parameter& para, CallContext* ctxt)
 {
 // convert <pyobject> to C++ instance&, set arg for call
-    if (!CPPInstance_Check(pyobject))
-        return false;
-    CPPInstance* pyobj = (CPPInstance*)pyobject;
+    if (CPPInstance_Check(pyobject)) {
+        CPPInstance* pyobj = (CPPInstance*)pyobject;
 
-// reject moves
-    if (pyobj->fFlags & CPPInstance::kIsRValue)
-        return false;
+    // reject moves
+        if (pyobj->fFlags & CPPInstance::kIsRValue)
+            return false;
 
-    if (pyobj->ObjectIsA() && Cppyy::IsSubtype(pyobj->ObjectIsA(), fClass)) {
-    // calculate offset between formal and actual arguments
-        para.fValue.fVoidp = pyobj->GetObject();
-        if (pyobj->ObjectIsA() != fClass) {
-            para.fValue.fIntPtr += Cppyy::GetBaseOffset(
-                pyobj->ObjectIsA(), fClass, para.fValue.fVoidp, 1 /* up-cast */);
+        if (pyobj->ObjectIsA() && Cppyy::IsSubtype(pyobj->ObjectIsA(), fClass)) {
+        // calculate offset between formal and actual arguments
+            para.fValue.fVoidp = pyobj->GetObject();
+            if (pyobj->ObjectIsA() != fClass) {
+                para.fValue.fIntPtr += Cppyy::GetBaseOffset(
+                    pyobj->ObjectIsA(), fClass, para.fValue.fVoidp, 1 /* up-cast */);
+            }
+
+            para.fTypeCode = 'V';
+            return true;
         }
-
-       para.fTypeCode = 'V';
-       return true;
     }
 
+    if (!fIsConst || !sEnableImplicitConversions)     // no implicit conversion possible
+        return false;
+
+// if allowed, use implicit conversion, otherwise indicate availability
+    if (!AllowImplicit(ctxt)) {
+        ctxt->fFlags |= CallContext::kHaveImplicit;
+        return false;
+    }
+
+// exercise implicit conversion
+    PyObject* pyscope = CreateScopeProxy(fClass);
+    if (!CPPScope_Check(pyscope)) {
+        Py_XDECREF(pyscope);
+        return false;
+    }
+
+    sEnableImplicitConversions = false;
+    CPPInstance* pytmp = (CPPInstance*)PyObject_CallFunctionObjArgs(pyscope, pyobject, NULL);
+    sEnableImplicitConversions = true;
+    Py_DECREF(pyscope);
+    if (pytmp) {
+        ctxt->AddTemporary((PyObject*)pytmp);
+        para.fValue.fVoidp = pytmp->GetObject();
+        para.fTypeCode = 'V';
+        return true;
+    }
+
+    PyErr_Clear();
     return false;
 }
 
@@ -1953,7 +1982,7 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long
             else if (cpd == "*" && size <= 0)
                 result = new InstancePtrConverter(klass, control);
             else if (cpd == "&")
-                result = new InstanceRefConverter(klass);
+                result = new InstanceRefConverter(klass, isConst);
             else if (cpd == "&&")
                 result = new InstanceMoveConverter(klass);
             else if (cpd == "[]" || size > 0)

@@ -12,6 +12,26 @@ namespace CPyCppyy {
 
 } // namespace CPyCppyy
 
+//-----------------------------------------------------------------------------
+void CPyCppyy::CallContext::AddTemporary(PyObject* pyobj) {
+    if (pyobj) {
+        Temporary** tmp = &fTemps;
+        while (*tmp) *tmp = (*tmp)->fNext;
+        *tmp = new Temporary{pyobj, nullptr};
+    }
+}
+
+//-----------------------------------------------------------------------------
+void CPyCppyy::CallContext::Cleanup() {
+    Temporary* tmp = fTemps;
+    while (tmp) {
+        Py_DECREF(tmp->fPyObject);
+        Temporary* tmp2 = tmp->fNext;
+        delete tmp;
+        tmp = tmp2;
+    }
+    fTemps = nullptr;
+}
 
 //-----------------------------------------------------------------------------
 bool CPyCppyy::CallContext::SetMemoryPolicy(ECallFlags e)
