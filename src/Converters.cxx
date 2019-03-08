@@ -1653,12 +1653,15 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
                 code << argtypes[i] << " arg" << i;
                 if (i != nArgs-1) code << ", ";
             }
-            code << ") {\n  static std::unique_ptr<CPyCppyy::Converter> retconv{CPyCppyy::CreateConverter(\"" << fRetType << "\")};\n";
+            code << ") {\n";
+            auto isVoid = (fRetType == "void");
+            if (!isVoid) {
+                code << "  static std::unique_ptr<CPyCppyy::Converter> retconv{CPyCppyy::CreateConverter(\"" << fRetType << "\")};\n";
+            }
             for (int i = 0; i < nArgs; ++i) {
                 code << "  static std::unique_ptr<CPyCppyy::Converter> arg" << i
                         << "conv{CPyCppyy::CreateConverter(\"" << argtypes[i] << "\")};\n";
             }
-            auto isVoid = (fRetType == "void");
             if (!isVoid) {
                code << "  " << fRetType << " ret{};\n";
             }
