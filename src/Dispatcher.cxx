@@ -25,11 +25,12 @@ static inline void InjectMethod(Cppyy::TCppMethod_t method, const std::string& m
         if (i != 0) code << ", ";
         code << Cppyy::GetMethodArgType(method, i) << " arg" << i;
     }
-    code << ") {\n";
+    code << ") ";
+    if (Cppyy::IsConstMethod(method)) code << "const ";
 
 // function body (TODO: if the method throws a C++ exception, the GIL will
 // not be released.)
-    code << "    static std::unique_ptr<CPyCppyy::Converter> retconv{CPyCppyy::CreateConverter(\"" << retType << "\")};\n";
+    code << "{\n    static std::unique_ptr<CPyCppyy::Converter> retconv{CPyCppyy::CreateConverter(\"" << retType << "\")};\n";
     for (Cppyy::TCppIndex_t i = 0; i < nArgs; ++i) {
         code << "    static std::unique_ptr<CPyCppyy::Converter> arg" << i
                      << "conv{CPyCppyy::CreateConverter(\"" << Cppyy::GetMethodArgType(method, i) << "\")};\n";
