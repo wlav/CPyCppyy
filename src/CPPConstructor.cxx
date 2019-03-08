@@ -129,7 +129,8 @@ PyObject* CPyCppyy::CPPAbstractClassConstructor::Call(
         return CPPConstructor::Call(self, args, kwds, ctxt);
     }
 
-    PyErr_Format(PyExc_TypeError, "cannot instantiate abstract class \'%s\'",
+    PyErr_Format(PyExc_TypeError, "cannot instantiate abstract class \'%s\'"
+            " (from derived classes, use super() instead)",
         Cppyy::GetScopedFinalName(this->GetScope()).c_str());
     return nullptr;
 }
