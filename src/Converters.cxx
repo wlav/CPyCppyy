@@ -60,6 +60,7 @@ const size_t MOVE_REFCOUNT_CUTOFF = 2;
 struct CPyCppyy_tagCDataObject { // non-public (but so far very stable)
     PyObject_HEAD
     char* b_ptr;
+    int  b_needsfree;
 };
 
 static inline PyTypeObject* GetCTypesType(const char* name) {
@@ -386,6 +387,23 @@ bool CPyCppyy::IntRefConverter::SetArg(
 #endif
     return false;
 }
+
+//----------------------------------------------------------------------------
+#define CPPYY_IMPL_REFCONVERTER_FROM_MEMORY(name, c_type)                    \
+PyObject* CPyCppyy::name##RefConverter::FromMemory(void* ptr)                \
+{                                                                            \
+/* convert a reference to int to Python through ctypes pointer object */     \
+/* TODO: this keeps a refcount to the type (see also above */                \
+    static PyTypeObject* ctypes_type = GetCTypesType(#c_type);               \
+    PyObject* ref = ctypes_type->tp_new(ctypes_type, nullptr, nullptr);      \
+    ((CPyCppyy_tagCDataObject*)ref)->b_ptr = (char*)ptr;                     \
+    ((CPyCppyy_tagCDataObject*)ref)->b_needsfree = 0;                        \
+    return ref;                                                              \
+}
+
+CPPYY_IMPL_REFCONVERTER_FROM_MEMORY(Int, c_int);
+CPPYY_IMPL_REFCONVERTER_FROM_MEMORY(Long, c_long);
+CPPYY_IMPL_REFCONVERTER_FROM_MEMORY(Double, c_double);
 
 //----------------------------------------------------------------------------
 // convert <pyobject> to C++ bool, allow int/long -> bool, set arg for call
