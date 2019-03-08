@@ -124,7 +124,7 @@ PyObject* CPyCppyy::CPPAbstractClassConstructor::Call(
     CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt)
 {
 // do not allow instantiation of abstract classes
-    if (GetScope() != self->ObjectIsA()) {
+    if (self && GetScope() != self->ObjectIsA()) {
     // happens if a dispatcher is inserted; allow constructor call
         return CPPConstructor::Call(self, args, kwds, ctxt);
     }
