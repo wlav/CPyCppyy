@@ -1719,7 +1719,7 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
                 return false;
 
         // TODO: is there no easier way?
-            Cppyy::TCppScope_t scope = Cppyy::GetScope("__cppyy_internal");
+            static Cppyy::TCppScope_t scope = Cppyy::GetScope("__cppyy_internal");
             const auto& idx = Cppyy::GetMethodIndicesFromName(scope, wname.str());
             wpraddress = Cppyy::GetFunctionAddress(Cppyy::GetMethod(scope, idx[0]));
             sWrapperReference[wpraddress] = ref;
@@ -1742,15 +1742,49 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
     return false;
 }
 
+static std::map<void*, std::string> sFuncWrapperLookup;
+static const char* FPCFM_ERRMSG = "conversion to std::function failed";
 PyObject* CPyCppyy::FunctionPointerConverter::FromMemory(void* address)
 {
-    PyErr_SetString(PyExc_NotImplementedError, "not implemented");
-    return nullptr;
-}
+// A function pointer in clang is represented by a Type, not a FunctionDecl and it's
+// not possible to get the latter from the former: the backend will need to support
+// both. Since that is far in the future, we'll use a std::function instead.
+    static int func_count = 0;
 
-bool CPyCppyy::FunctionPointerConverter::ToMemory(PyObject* value, void* address)
-{
-    return false;
+    if (!(address && *(void**)address)) {
+        PyErr_SetString(PyExc_TypeError, FPCFM_ERRMSG);
+        return nullptr;
+    }
+
+    void* faddr = *(void**)address;
+    auto cached = sFuncWrapperLookup.find(faddr);
+    if (cached == sFuncWrapperLookup.end()) {
+        std::ostringstream fname;
+        fname << "ptr2func" << ++func_count;
+
+        std::ostringstream code;
+        code << "namespace __cppyy_internal {\n  std::function<"
+             << fRetType << fSignature << "> " << fname.str()
+             << " = (" << fRetType << "(*)" << fSignature << ")" << faddr
+             << ";\n}";
+
+        if (!Cppyy::Compile(code.str())) {
+            PyErr_SetString(PyExc_TypeError, FPCFM_ERRMSG);
+            return nullptr;
+        }
+
+     // cache the new wrapper (TODO: does it make sense to use weakrefs on the data
+     // member?
+        sFuncWrapperLookup[faddr] = fname.str();
+        cached = sFuncWrapperLookup.find(faddr);
+    }
+
+    static Cppyy::TCppScope_t scope = Cppyy::GetScope("__cppyy_internal");
+    PyObject* pyscope = CreateScopeProxy(scope);
+    PyObject* func = PyObject_GetAttrString(pyscope, cached->second.c_str());
+    Py_DECREF(pyscope);
+
+    return func;
 }
 
 
