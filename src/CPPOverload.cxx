@@ -19,6 +19,7 @@
 
 // Standard
 #include <algorithm>
+#include <sstream>
 #include <vector>
 
 
@@ -604,6 +605,15 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
     return nullptr;
 }
 
+//----------------------------------------------------------------------------
+static PyObject* mp_str(CPPOverload* cppinst)
+{
+// Print a description that includes the C++ name
+     std::ostringstream s;
+     s << "<C++ overload \"" << cppinst->fMethodInfo->fName << "\" at " << (void*)cppinst << ">";
+     return CPyCppyy_PyUnicode_FromString(s.str().c_str());
+}
+
 //-----------------------------------------------------------------------------
 static CPPOverload* mp_descrget(CPPOverload* pymeth, CPPInstance* pyobj, PyObject*)
 {
@@ -798,7 +808,7 @@ PyTypeObject CPPOverload_Type = {
     0,                             // tp_as_mapping
     (hashfunc)mp_hash,             // tp_hash
     (ternaryfunc)mp_call,          // tp_call
-    0,                             // tp_str
+    (reprfunc)mp_str,              // tp_str
     0,                             // tp_getattro
     0,                             // tp_setattro
     0,                             // tp_as_buffer
