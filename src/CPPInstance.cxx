@@ -34,7 +34,7 @@ void CPyCppyy::op_dealloc_nofree(CPPInstance* pyobj) {
     Cppyy::TCppType_t klass = isSmartPtr ? pyobj->fSmartPtrType : pyobj->ObjectIsA();
 
     if (!(pyobj->fFlags & CPPInstance::kIsReference))
-        MemoryRegulator::UnregisterPyObject(pyobj, klass);
+        MemoryRegulator::UnregisterPyObject(pyobj->GetObject(), klass);
 
     if (pyobj->fFlags & CPPInstance::kIsValue) {
         void* addr = isSmartPtr ? pyobj->fObject : pyobj->GetObject();

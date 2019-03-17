@@ -120,6 +120,10 @@ namespace Cppyy {
     CPPYY_IMPORT
     void GetAllCppNames(TCppScope_t scope, std::set<std::string>& cppnames);
 
+// namespace reflection information ------------------------------------------
+    CPPYY_IMPORT
+    std::vector<TCppScope_t> GetUsingNamespaces(TCppScope_t);
+
 // class reflection information ----------------------------------------------
     CPPYY_IMPORT
     std::string GetFinalName(TCppType_t type);
