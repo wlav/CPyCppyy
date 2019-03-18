@@ -467,9 +467,9 @@ std::string CPyCppyy::Utility::ConstructTemplateArgs(PyObject* pyname, PyObject*
             return "";
         }
 
-    // add a comma, as needed
+    // add a comma, as needed (no space as internally, final names don't have them)
         if (i != nArgs-1)
-            tmpl_name << ", ";
+            tmpl_name << ",";
     }
 
 // close template name
