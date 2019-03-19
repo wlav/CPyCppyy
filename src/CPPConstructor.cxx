@@ -59,7 +59,8 @@ PyObject* CPyCppyy::CPPConstructor::Call(
     // TODO: these lookups are slow and need caching
         const std::string& dispName = Cppyy::GetFinalName(disp);
     // select proper overload based on signature match
-        const std::string& sig = curMethod ? Cppyy::GetMethodSignature(curMethod, false) : "()";
+        const std::string& sig =
+            (curMethod && PyTuple_GET_SIZE(args)) ? Cppyy::GetMethodSignature(curMethod, false, PyTuple_GET_SIZE(args)) : "()";
         Cppyy::TCppMethod_t method = (Cppyy::TCppMethod_t)0;
         const auto& v = Cppyy::GetMethodIndicesFromName(disp, dispName);
         for (auto idx : v) {
