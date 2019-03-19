@@ -35,8 +35,9 @@ static inline void InjectMethod(Cppyy::TCppMethod_t method, const std::string& m
         code << "    static std::unique_ptr<CPyCppyy::Converter> arg" << i
                      << "conv{CPyCppyy::CreateConverter(\"" << Cppyy::GetMethodArgType(method, i) << "\")};\n";
     }
-    code << "    " << retType << " ret{};\n"
-            "    PyGILState_STATE state = PyGILState_Ensure();\n";
+    bool isVoid = (retType == "void");
+    if (!isVoid) code << "    " << retType << " ret{};\n";
+    code << "    PyGILState_STATE state = PyGILState_Ensure();\n";
 
 // build argument tuple if needed
     for (Cppyy::TCppIndex_t i = 0; i < nArgs; ++i)
@@ -54,11 +55,11 @@ static inline void InjectMethod(Cppyy::TCppMethod_t method, const std::string& m
 // handle return value
     for (Cppyy::TCppIndex_t i = 0; i < nArgs; ++i)
          code << "    Py_DECREF(pyarg" << i << ");\n";
-    code << "  if (pyresult) { retconv->ToMemory(pyresult, &ret); Py_DECREF(pyresult); }\n"
+    code << "  if (pyresult) { " << (isVoid ? "" : "retconv->ToMemory(pyresult, &ret); ") << "Py_DECREF(pyresult); }\n"
             "  else { PyGILState_Release(state); throw CPyCppyy::TPyException{}; }\n"
             "  PyGILState_Release(state);\n"
-            "  return ret;\n"
-            "  }\n";
+            "  return";
+    code << (isVoid ? ";\n  }\n" : " ret;\n  }\n");
 }
 
 //----------------------------------------------------------------------------
