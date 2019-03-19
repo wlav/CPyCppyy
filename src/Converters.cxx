@@ -1704,16 +1704,12 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
         // handle return value
             for (int i = 0; i < nArgs; ++i)
                 code << "  Py_DECREF(pyarg" << i << ");\n";
-            if (isVoid) {
-                code << "  PyGILState_Release(state);\n"
-                        "  if (!pyresult) { throw CPyCppyy::TPyException{}; }\n";
-            } else {
-                code << "  if (pyresult) { retconv->ToMemory(pyresult, &ret); Py_DECREF(pyresult); }\n"
-                        "  else { PyGILState_Release(state); throw CPyCppyy::TPyException{}; }\n"
-                        "  PyGILState_Release(state);\n"
-                        "  return ret;\n";
-            }
-            code << "}\n}";
+
+            code << "  if (pyresult) { " << (isVoid ? "" : "retconv->ToMemory(pyresult, &ret); ") << "Py_DECREF(pyresult); }\n"
+                    "  else { PyGILState_Release(state); throw CPyCppyy::TPyException{}; }\n"
+                    "  PyGILState_Release(state);\n"
+                    "  return";
+            code << (isVoid ? ";\n  }}" : " ret;\n  }}");
 
             if (!Cppyy::Compile(code.str()))
                 return false;
