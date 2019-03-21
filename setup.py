@@ -56,12 +56,6 @@ def get_cflags():
     cli_arg = subprocess.check_output(config_exec_args)
     return cli_arg.decode("utf-8").strip()
 
-if 'win32' in sys.platform:
-    extra_link_args=['/EXPORT:_Init_thread_abort', '/EXPORT:_Init_thread_epoch',
-         '/EXPORT:_Init_thread_footer', '/EXPORT:_Init_thread_header', '/EXPORT:_tls_index']
-else:
-    extra_link_args=[]
-
 
 #
 # customized commands
@@ -81,6 +75,9 @@ class my_build_extension(_build_ext):
                 ['-Wno-register']                # C++17, Python headers
         if 'linux' in sys.platform:
             ext.extra_link_args += ['-Wl,-Bsymbolic-functions']
+        elif 'win32' in sys.platform:
+            ext.extra_link_args += ['/EXPORT:_Init_thread_abort', '/EXPORT:_Init_thread_epoch',
+                '/EXPORT:_Init_thread_footer', '/EXPORT:_Init_thread_header', '/EXPORT:_tls_index']
         return _build_ext.build_extension(self, ext)
 
 
@@ -155,8 +152,7 @@ setup(
         sources=glob.glob('src/*.cxx'),
         include_dirs=['include'],
         libraries=_get_link_libraries(),
-        library_dirs=_get_link_dirs(),
-        extra_link_args=extra_link_args)],
+        library_dirs=_get_link_dirs())],
 
     cmdclass=cmdclass,
     distclass=MyDistribution,
