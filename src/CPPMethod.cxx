@@ -101,6 +101,16 @@ inline PyObject* CPyCppyy::CPPMethod::CallFast(
         PyErr_SetString(PyExc_Exception, "unhandled, unknown C++ exception");
         result = nullptr;
     }
+
+// TODO: covers the TPyException throw case, which does not seem to work on Windows, so
+// instead leaves the error be
+#ifdef _WIN32
+    if (PyErr_Occurred()) {
+        Py_XDECREF(result);
+        result = nullptr;
+    }
+#endif
+
     return result;
 }
 
