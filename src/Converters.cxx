@@ -1767,7 +1767,7 @@ PyObject* CPyCppyy::FunctionPointerConverter::FromMemory(void* address)
         std::ostringstream code;
         code << "namespace __cppyy_internal {\n  std::function<"
              << fRetType << fSignature << "> " << fname.str()
-             << " = (" << fRetType << "(*)" << fSignature << ")" << faddr
+             << " = (" << fRetType << "(*)" << fSignature << ")" << (intptr_t)faddr
              << ";\n}";
 
         if (!Cppyy::Compile(code.str())) {
