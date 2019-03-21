@@ -56,6 +56,12 @@ def get_cflags():
     cli_arg = subprocess.check_output(config_exec_args)
     return cli_arg.decode("utf-8").strip()
 
+if 'win32' in sys.platform:
+    extra_link_args=['/EXPORT:_Init_thread_abort', '/EXPORT:_Init_thread_epoch',
+         '/EXPORT:_Init_thread_footer', '/EXPORT:_Init_thread_header', '/EXPORT:_tls_index']
+else:
+    extra_link_args=[]
+
 
 #
 # customized commands
@@ -107,7 +113,7 @@ class MyDistribution(Distribution):
 
 setup(
     name='CPyCppyy',
-    version='1.6.2',
+    version='1.6.3',
     description='Cling-based Python-C++ bindings for CPython',
     long_description=long_description,
 
@@ -149,7 +155,8 @@ setup(
         sources=glob.glob('src/*.cxx'),
         include_dirs=['include'],
         libraries=_get_link_libraries(),
-        library_dirs=_get_link_dirs())],
+        library_dirs=_get_link_dirs(),
+        extra_link_args=extra_link_args)],
 
     cmdclass=cmdclass,
     distclass=MyDistribution,
