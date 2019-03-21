@@ -56,12 +56,12 @@ static inline void InjectMethod(Cppyy::TCppMethod_t method, const std::string& m
     for (Cppyy::TCppIndex_t i = 0; i < nArgs; ++i)
          code << "    Py_DECREF(pyarg" << i << ");\n";
     code << "  if (pyresult) { " << (isVoid ? "" : "retconv->ToMemory(pyresult, &ret); ") << "Py_DECREF(pyresult); }\n"
-            "  else { PyGILState_Release(state);"
+            "  else {"
 // TODO: On Windows, throwing a C++ exception here makes the code hang
 #ifdef WIN32
             "  PyErr_Print(); }\n"
 #else
-            "  throw CPyCppyy::TPyException{}; }\n"
+            "  PyGILState_Release(state); throw CPyCppyy::TPyException{}; }\n"
 #endif
             "  PyGILState_Release(state);\n"
             "  return";
