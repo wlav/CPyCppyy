@@ -1709,7 +1709,7 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
                     "  else { PyGILState_Release(state); throw CPyCppyy::TPyException{}; }\n"
                     "  PyGILState_Release(state);\n"
                     "  return";
-            code << (isVoid ? ";\n  }}" : " ret;\n  }}");
+            code << (isVoid ? ";\n}}" : " ret;\n}}");
 
             if (!Cppyy::Compile(code.str()))
                 return false;
