@@ -33,7 +33,7 @@ static PyObject* meta_alloc(PyTypeObject* meta, Py_ssize_t nitems)
 //----------------------------------------------------------------------------
 static void meta_dealloc(CPPScope* scope)
 {
-    if (scope->fFlags & CPPScope::kIsNamespace) {
+    if ((scope->fFlags & CPPScope::kIsNamespace) && scope->fImp.fUsing) {
         for (auto pyobj : *scope->fImp.fUsing) Py_DECREF(pyobj);
         delete scope->fImp.fUsing; scope->fImp.fUsing = nullptr;
     } else {
@@ -319,6 +319,8 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
                 PyObject* pyuscope = CreateScopeProxy(Cppyy::GetScopedFinalName(uid));
                 if (pyuscope) {
                     klass->fImp.fUsing->push_back(PyWeakref_NewRef(pyuscope, nullptr));
+                // the namespace may not otherwise be held, so tie the lifetimes
+                    PyObject_SetAttr(pyclass, pyname, pyuscope);
                     Py_DECREF(pyuscope);
                 }
             }
@@ -330,7 +332,6 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
             PyObject* pyuscope = PyWeakref_GetObject(pyref);
             if (pyuscope) {
                 attr = PyObject_GetAttr(pyuscope, pyname);
-                Py_DECREF(pyuscope);
                 if (attr) break;
             }
         }
