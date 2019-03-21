@@ -10,7 +10,7 @@ namespace CPyCppyy {
 struct Parameter;
 struct CallContext;
 
-class Converter {
+class CPYCPPYY_CLASS_EXPORT Converter {
 public:
     virtual ~Converter() {}
 

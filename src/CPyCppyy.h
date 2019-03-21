@@ -261,9 +261,11 @@ inline Py_ssize_t PyNumber_AsSsize_t(PyObject* obj, PyObject*) {
 #ifdef _MSC_VER
 #define CPYCPPYY_EXPORT extern __declspec(dllexport)
 #define CPYCPPYY_IMPORT extern __declspec(dllimport)
+#define CPYCPPYY_CLASS_EXPORT __declspec(dllexport)
 #else
 #define CPYCPPYY_EXPORT extern
 #define CPYCPPYY_IMPORT extern
+#define CPYCPPYY_CLASS_EXPORT
 #endif
 
 #endif // !CPYCPPYY_CPYCPPYY_H

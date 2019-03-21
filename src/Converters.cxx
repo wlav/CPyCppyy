@@ -1674,10 +1674,10 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
             code << ") {\n";
             auto isVoid = (fRetType == "void");
             if (!isVoid) {
-                code << "  static std::unique_ptr<CPyCppyy::Converter> retconv{CPyCppyy::CreateConverter(\"" << fRetType << "\")};\n";
+                code << "  CPYCPPYY_STATIC std::unique_ptr<CPyCppyy::Converter> retconv{CPyCppyy::CreateConverter(\"" << fRetType << "\")};\n";
             }
             for (int i = 0; i < nArgs; ++i) {
-                code << "  static std::unique_ptr<CPyCppyy::Converter> arg" << i
+                code << "  CPYCPPYY_STATIC std::unique_ptr<CPyCppyy::Converter> arg" << i
                         << "conv{CPyCppyy::CreateConverter(\"" << argtypes[i] << "\")};\n";
             }
             if (!isVoid) {
@@ -1693,7 +1693,7 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
             PyObject** ref = new PyObject*{pyobject};
 
         // function call itself
-            code << "  PyObject** ref = (PyObject**)" << (void*)ref << ";\n"
+            code << "  PyObject** ref = (PyObject**)" << (intptr_t)ref << ";\n"
                     "  PyObject* pyresult = nullptr;\n"
                     "  if (*ref) pyresult = PyObject_CallFunctionObjArgs(*ref";
             for (int i = 0; i < nArgs; ++i)
