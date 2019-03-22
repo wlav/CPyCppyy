@@ -8,13 +8,18 @@
 
 //- helpers ------------------------------------------------------------------
 static inline
+bool is_varchar(char c) {
+    return isalnum((int)c) || c == '_';
+}
+
+static inline
 std::string::size_type find_qualifier_index(const std::string& name)
 {
 // Find the first location that is not part of the class name proper.
     std::string::size_type i = name.size() - 1;
     for ( ; 0 < i; --i) {
         std::string::value_type c = name[i];
-        if (isalnum((int)c) || c == '>')
+        if (is_varchar(c) || c == '>')
             break;
     }
 
@@ -25,7 +30,20 @@ static inline void erase_const(std::string& name)
 {
 // Find and remove all occurrence of 'const'.
     std::string::size_type spos = std::string::npos;
-    while ((spos = name.find("const") ) != std::string::npos) {
+    std::string::size_type start = 0;
+    while ((spos = name.find("const", start)) != std::string::npos) {
+    // make sure not to erase 'const' as part of the name: if it is
+    // connected, before or after, to a variable name, then keep it
+        std::string::size_type after = spos+5;
+        if (after < name.size() && is_varchar(name[after])) {
+            start = after;
+            continue;
+        } else if (after == name.size()) {
+            std::string::size_type before = spos-1;
+            if (0 <= before && is_varchar(name[before]))
+                break;
+        }
+
         std::string::size_type i = 5;
         while (name[spos+i] == ' ') ++i;
         name.swap(name.erase(spos, i));
