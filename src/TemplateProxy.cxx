@@ -294,9 +294,25 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
             }
 
         // retrieve fresh (for boundedness) and call
-            PyObject* pymeth = PyObject_GetAttr(pytmpl->fSelf ? pytmpl->fSelf : pytmpl->fPyClass, pyfullname);
+            bool isNS = (((CPPScope*)pytmpl->fPyClass)->fFlags & CPPScope::kIsNamespace);
+            PyObject* pymeth = PyObject_GetAttr((pytmpl->fSelf && !isNS) ? pytmpl->fSelf : pytmpl->fPyClass, pyfullname);
             Py_DECREF(pyfullname);
-            PyObject* result = CPPOverload_Type.tp_call(pymeth, args, kwds);
+
+            PyObject* result;
+            if (isNS && pytmpl->fSelf) {
+            // this is a global method added a posteriori to the class
+                 Py_ssize_t sz = PyTuple_GET_SIZE(args);
+                 PyObject* newArgs = PyTuple_New(sz+1);
+                 for (int i = 0; i < sz; ++i) {
+                     PyObject* item = PyTuple_GET_ITEM(args, i);
+                     Py_INCREF(item);
+                     PyTuple_SET_ITEM(newArgs, i+1, item);
+                 }
+                 PyTuple_SET_ITEM(newArgs, 0, (PyObject*)pytmpl->fSelf);
+                 result = CPPOverload_Type.tp_call(pymeth, newArgs, kwds);
+                 Py_DECREF(args);
+            } else
+                 result = CPPOverload_Type.tp_call(pymeth, args, kwds);
             if (result) pytmpl->fDispatchMap.push_back(std::make_pair(sighash, (CPPOverload*)pymeth));
             else Py_DECREF(pymeth);
             return result;
@@ -422,8 +438,10 @@ static PyObject* tpp_subscript(TemplateProxy* pytmpl, PyObject* args)
     PyObject* dct = PyObject_GetAttr(pytmpl->fPyClass, PyStrings::gDict);
     bool hasTmpl = dct ? false : (bool)PyDict_GetItem(dct, pyfullname);
     Py_XDECREF(dct);
-    if (hasTmpl)      // overloads stop here, as there is an explicit match
-         pymeth = PyObject_GetAttr(pytmpl->fSelf ? pytmpl->fSelf : pytmpl->fPyClass, pyfullname);
+    if (hasTmpl) {    // overloads stop here, as there is an explicit match
+         bool use_self = pytmpl->fSelf && !(((CPPScope*)pytmpl->fPyClass)->fFlags & CPPScope::kIsNamespace);
+         pymeth = PyObject_GetAttr(use_self ? pytmpl->fSelf : pytmpl->fPyClass, pyfullname);
+    }
     Py_DECREF(pyfullname);
 
 // if found, return the overload, otherwise return fresh
