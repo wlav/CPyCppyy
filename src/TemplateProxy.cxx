@@ -310,7 +310,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
                  }
                  PyTuple_SET_ITEM(newArgs, 0, (PyObject*)pytmpl->fSelf);
                  result = CPPOverload_Type.tp_call(pymeth, newArgs, kwds);
-                 Py_DECREF(args);
+                 Py_DECREF(newArgs);
             } else
                  result = CPPOverload_Type.tp_call(pymeth, args, kwds);
             if (result) pytmpl->fDispatchMap.push_back(std::make_pair(sighash, (CPPOverload*)pymeth));
