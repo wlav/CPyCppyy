@@ -1083,10 +1083,8 @@ bool CPyCppyy::STLWStringConverter::SetArg(
 {
     if (PyUnicode_Check(pyobject)) {
         Py_ssize_t len = PyUnicode_GET_SIZE(pyobject);
-        wchar_t* buf = new wchar_t[len+1];
-        CPyCppyy_PyUnicode_AsWideChar(pyobject, buf, len);
-        fBuffer = std::wstring(buf, len);
-        delete[] buf;
+        fBuffer.resize(len);
+        CPyCppyy_PyUnicode_AsWideChar(pyobject, &fBuffer[0], len);
         para.fValue.fVoidp = &fBuffer;
         para.fTypeCode = 'V';
         return true;
