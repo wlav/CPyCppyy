@@ -226,58 +226,6 @@ bool CPyCppyy::Utility::AddToClass(PyObject* pyclass, const char* label, PyCalla
 }
 
 //----------------------------------------------------------------------------
-bool CPyCppyy::Utility::AddUsingToClass(PyObject* pyclass, const char* method)
-{
-// Helper to add base class methods to the derived class one (this covers the
-// 'using' cases, which the dictionary does not provide).
-    CPPOverload* derivedMethod =
-        (CPPOverload*)PyObject_GetAttrString(pyclass, const_cast<char*>(method));
-    if (!CPPOverload_Check(derivedMethod)) {
-        Py_XDECREF(derivedMethod);
-        return false;
-    }
-
-    PyObject* mro = PyObject_GetAttr(pyclass, PyStrings::gMRO);
-    if (!mro || ! PyTuple_Check(mro)) {
-        Py_XDECREF(mro);
-        Py_DECREF(derivedMethod);
-        return false;
-    }
-
-    CPPOverload* baseMethod = 0;
-    for (int i = 1; i < PyTuple_GET_SIZE(mro); ++i) {
-        baseMethod = (CPPOverload*)PyObject_GetAttrString(
-            PyTuple_GET_ITEM(mro, i), const_cast<char*>(method));
-
-        if (!baseMethod) {
-            PyErr_Clear();
-            continue;
-        }
-
-        if (CPPOverload_Check(baseMethod))
-            break;
-
-        Py_DECREF(baseMethod);
-        baseMethod = 0;
-    }
-
-    Py_DECREF(mro);
-
-    if (!CPPOverload_Check(baseMethod)) {
-        Py_XDECREF(baseMethod);
-        Py_DECREF(derivedMethod);
-        return false;
-    }
-
-    derivedMethod->AddMethod(baseMethod);
-
-    Py_DECREF(baseMethod);
-    Py_DECREF(derivedMethod);
-
-    return true;
-}
-
-//----------------------------------------------------------------------------
 bool CPyCppyy::Utility::AddBinaryOperator(PyObject* left, PyObject* right, const char* op,
     const char* label, const char* alt, Cppyy::TCppScope_t scope)
 {

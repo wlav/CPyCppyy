@@ -26,8 +26,6 @@ bool AddToClass(PyObject* pyclass, const char* label, PyCFunction cfunc,
 bool AddToClass(PyObject* pyclass, const char* label, const char* func);
 bool AddToClass(PyObject* pyclass, const char* label, PyCallable* pyfunc);
 
-bool AddUsingToClass(PyObject* pyclass, const char* method);
-
 // helpers for dynamically constructing binary operators
 bool AddBinaryOperator(PyObject* left, PyObject* right, const char* op,
     const char* label, const char* alt_label = nullptr, Cppyy::TCppScope_t scope = 0);
