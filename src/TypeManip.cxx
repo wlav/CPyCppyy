@@ -85,7 +85,6 @@ std::string CPyCppyy::TypeManip::remove_const(const std::string& cppname)
     return clean_name;
 }
 
-
 //----------------------------------------------------------------------------
 std::string CPyCppyy::TypeManip::clean_type(
     const std::string& cppname, bool template_strip, bool const_strip)
@@ -109,6 +108,30 @@ std::string CPyCppyy::TypeManip::clean_type(
             name = remove_const(name);
     }
     return name;
+}
+
+//----------------------------------------------------------------------------
+std::string CPyCppyy::TypeManip::template_base(const std::string& cppname)
+{
+// If this is a template, return the underlying template name w/o arguments
+    if (cppname.empty() || cppname.back() != '>')
+        return cppname;
+
+    int tpl_open = 0;
+    for (std::string::size_type pos = cppname.size()-1; 0 < pos; --pos) {
+        std::string::value_type c = cppname[pos];
+
+    // count '<' and '>' to be able to skip template contents
+        if (c == '>')
+            ++tpl_open;
+        else if (c == '<')
+            --tpl_open;
+
+        if (tpl_open == 0)
+            return cppname.substr(0, pos);
+    }
+
+    return cppname;
 }
 
 //----------------------------------------------------------------------------

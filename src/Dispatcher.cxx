@@ -3,6 +3,7 @@
 #include "Dispatcher.h"
 #include "CPPScope.h"
 #include "PyStrings.h"
+#include "TypeManip.h"
 #include "Utility.h"
 
 // Standard
@@ -80,14 +81,14 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
     if (!Utility::IncludePython())
         return false;
 
-    const std::string& baseName       = Cppyy::GetFinalName(klass->fCppType);
+    const std::string& baseName       = TypeManip::template_base(Cppyy::GetFinalName(klass->fCppType));
     const std::string& baseNameScoped = Cppyy::GetScopedFinalName(klass->fCppType);
 
 // once classes can be extended, should consider re-use; for now, since derived
 // python classes can differ in what they override, simply use different shims
     static int counter = 0;
     std::ostringstream osname;
-    osname << baseName << ++counter;
+    osname << "Dispatcher" << ++counter;
     const std::string& derivedName = osname.str();
 
 // generate proxy class with the relevant method dispatchers
