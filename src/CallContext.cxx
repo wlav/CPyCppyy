@@ -20,7 +20,7 @@ void CPyCppyy::CallContext::AddTemporary(PyObject* pyobj) {
         else {
             Temporary* tmp = fTemps;
             while (tmp->fNext) tmp = tmp->fNext;
-            tmp->fNext  = new Temporary{pyobj, nullptr};
+            tmp->fNext = new Temporary{pyobj, nullptr};
         }
     }
 }
