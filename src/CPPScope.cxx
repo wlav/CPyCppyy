@@ -33,9 +33,11 @@ static PyObject* meta_alloc(PyTypeObject* meta, Py_ssize_t nitems)
 //----------------------------------------------------------------------------
 static void meta_dealloc(CPPScope* scope)
 {
-    if ((scope->fFlags & CPPScope::kIsNamespace) && scope->fImp.fUsing) {
-        for (auto pyobj : *scope->fImp.fUsing) Py_DECREF(pyobj);
-        delete scope->fImp.fUsing; scope->fImp.fUsing = nullptr;
+    if (scope->fFlags & CPPScope::kIsNamespace) {
+        if (scope->fImp.fUsing) {
+            for (auto pyobj : *scope->fImp.fUsing) Py_DECREF(pyobj);
+            delete scope->fImp.fUsing; scope->fImp.fUsing = nullptr;
+        }
     } else {
         for (auto& pp : *scope->fImp.fCppObjects) Py_DECREF(pp.second);
         delete scope->fImp.fCppObjects; scope->fImp.fCppObjects = nullptr;
