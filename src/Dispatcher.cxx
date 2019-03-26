@@ -41,8 +41,9 @@ static inline void InjectMethod(Cppyy::TCppMethod_t method, const std::string& m
     code << "    PyGILState_STATE state = PyGILState_Ensure();\n";
 
 // build argument tuple if needed
-    for (Cppyy::TCppIndex_t i = 0; i < nArgs; ++i)
+    for (Cppyy::TCppIndex_t i = 0; i < nArgs; ++i) {
          code << "    PyObject* pyarg" << i << " = arg" << i << "conv->FromMemory((void*)&arg" << i << ");\n";
+    }
 #if PY_VERSION_HEX < 0x03000000
     code << "    PyObject* mtPyName = PyString_FromString(\"" << mtCppName << "\");\n" // TODO: intern?
 #else
@@ -57,7 +58,7 @@ static inline void InjectMethod(Cppyy::TCppMethod_t method, const std::string& m
     for (Cppyy::TCppIndex_t i = 0; i < nArgs; ++i)
          code << "    Py_DECREF(pyarg" << i << ");\n";
     code << "  if (pyresult) { " << (isVoid ? "" : "retconv->ToMemory(pyresult, &ret); ") << "Py_DECREF(pyresult); }\n"
-            "  else {"
+            "  if (PyErr_Occurred()) {"     // error may be due to converter failing
 // TODO: On Windows, throwing a C++ exception here makes the code hang; leave
 // the error be which allows at least one layer of propagation
 #ifdef _WIN32

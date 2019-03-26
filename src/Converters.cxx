@@ -1704,7 +1704,7 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
                 code << "  Py_DECREF(pyarg" << i << ");\n";
 
             code << "  if (pyresult) { " << (isVoid ? "" : "retconv->ToMemory(pyresult, &ret); ") << "Py_DECREF(pyresult); }\n"
-                    "  else {"
+                    "  if (PyErr_Occurred()) {"       // error may be due to converter failing
 // TODO: On Windows, throwing a C++ exception here makes the code hang; leave
 // the error be which allows at least one layer of propagation
 #ifdef _WIN32
