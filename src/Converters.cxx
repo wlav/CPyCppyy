@@ -230,7 +230,7 @@ static inline int ExtractChar(PyObject* pyobject, const char* tname, int low, in
 }
 
 //----------------------------------------------------------------------------
-#define CPPYY_IMPL_BASIC_CONST_REF_CONVERTER(name, type, F1)                 \
+#define CPPYY_IMPL_BASIC_CONST_REF_CONVERTER(name, type, c_type, F1)         \
 bool CPyCppyy::Const##name##RefConverter::SetArg(                            \
     PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)            \
 {                                                                            \
@@ -241,10 +241,21 @@ bool CPyCppyy::Const##name##RefConverter::SetArg(                            \
     para.fRef = &para.fValue.f##name;                                        \
     para.fTypeCode = 'r';                                                    \
     return true;                                                             \
+}                                                                            \
+                                                                             \
+PyObject* CPyCppyy::Const##name##RefConverter::FromMemory(void* ptr)         \
+{                                                                            \
+/* convert a reference to int to Python through ctypes pointer object */     \
+/* TODO: this keeps a refcount to the type (see also below */                \
+    static PyTypeObject* ctypes_type = GetCTypesType(#c_type);               \
+    PyObject* ref = ctypes_type->tp_new(ctypes_type, nullptr, nullptr);      \
+    ((CPyCppyy_tagCDataObject*)ref)->b_ptr = (char*)ptr;                     \
+    ((CPyCppyy_tagCDataObject*)ref)->b_needsfree = 0;                        \
+    return ref;                                                              \
 }
 
 //----------------------------------------------------------------------------
-#define CPPYY_IMPL_BASIC_CONST_CHAR_REF_CONVERTER(name, type, low, high)     \
+#define CPPYY_IMPL_BASIC_CONST_CHAR_REF_CONVERTER(name, type, c_type, low, high)\
 bool CPyCppyy::Const##name##RefConverter::SetArg(                            \
     PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)            \
 {                                                                            \
@@ -255,6 +266,17 @@ bool CPyCppyy::Const##name##RefConverter::SetArg(                            \
     para.fValue.fLong = val;                                                 \
     para.fTypeCode = 'l';                                                    \
     return true;                                                             \
+}                                                                            \
+                                                                             \
+PyObject* CPyCppyy::Const##name##RefConverter::FromMemory(void* ptr)         \
+{                                                                            \
+/* convert a reference to int to Python through ctypes pointer object */     \
+/* TODO: this keeps a refcount to the type (see also below */                \
+    static PyTypeObject* ctypes_type = GetCTypesType(#c_type);               \
+    PyObject* ref = ctypes_type->tp_new(ctypes_type, nullptr, nullptr);      \
+    ((CPyCppyy_tagCDataObject*)ref)->b_ptr = (char*)ptr;                     \
+    ((CPyCppyy_tagCDataObject*)ref)->b_needsfree = 0;                        \
+    return ref;                                                              \
 }
 
 //----------------------------------------------------------------------------
@@ -337,18 +359,18 @@ bool CPyCppyy::LongRefConverter::SetArg(
 }
 
 //----------------------------------------------------------------------------
-CPPYY_IMPL_BASIC_CONST_CHAR_REF_CONVERTER(Char,  char,          CHAR_MIN,  CHAR_MAX)
-CPPYY_IMPL_BASIC_CONST_CHAR_REF_CONVERTER(UChar, unsigned char,        0, UCHAR_MAX)
+CPPYY_IMPL_BASIC_CONST_CHAR_REF_CONVERTER(Char,  char,          c_char,  CHAR_MIN,  CHAR_MAX)
+CPPYY_IMPL_BASIC_CONST_CHAR_REF_CONVERTER(UChar, unsigned char, c_uchar,        0, UCHAR_MAX)
 
-CPPYY_IMPL_BASIC_CONST_REF_CONVERTER(Bool,      bool,    CPyCppyy_PyLong_AsBool)
-CPPYY_IMPL_BASIC_CONST_REF_CONVERTER(Short,     short,   CPyCppyy_PyLong_AsShort)
-CPPYY_IMPL_BASIC_CONST_REF_CONVERTER(UShort,    unsigned short, CPyCppyy_PyLong_AsUShort)
-CPPYY_IMPL_BASIC_CONST_REF_CONVERTER(Int,       Int_t,     CPyCppyy_PyLong_AsStrictInt)
-CPPYY_IMPL_BASIC_CONST_REF_CONVERTER(UInt,      UInt_t,    PyLongOrInt_AsULong)
-CPPYY_IMPL_BASIC_CONST_REF_CONVERTER(Long,      Long_t,    CPyCppyy_PyLong_AsStrictLong)
-CPPYY_IMPL_BASIC_CONST_REF_CONVERTER(ULong,     ULong_t,   PyLongOrInt_AsULong)
-CPPYY_IMPL_BASIC_CONST_REF_CONVERTER(LongLong,  Long64_t,  PyLong_AsLongLong)
-CPPYY_IMPL_BASIC_CONST_REF_CONVERTER(ULongLong, ULong64_t, PyLongOrInt_AsULong64)
+CPPYY_IMPL_BASIC_CONST_REF_CONVERTER(Bool,      bool,           c_bool,      CPyCppyy_PyLong_AsBool)
+CPPYY_IMPL_BASIC_CONST_REF_CONVERTER(Short,     short,          c_short,     CPyCppyy_PyLong_AsShort)
+CPPYY_IMPL_BASIC_CONST_REF_CONVERTER(UShort,    unsigned short, c_ushort,    CPyCppyy_PyLong_AsUShort)
+CPPYY_IMPL_BASIC_CONST_REF_CONVERTER(Int,       int,            c_int,       CPyCppyy_PyLong_AsStrictInt)
+CPPYY_IMPL_BASIC_CONST_REF_CONVERTER(UInt,      unsigned int,   c_uint,      PyLongOrInt_AsULong)
+CPPYY_IMPL_BASIC_CONST_REF_CONVERTER(Long,      long,           c_long,      CPyCppyy_PyLong_AsStrictLong)
+CPPYY_IMPL_BASIC_CONST_REF_CONVERTER(ULong,     unsigned long,  c_ulong,     PyLongOrInt_AsULong)
+CPPYY_IMPL_BASIC_CONST_REF_CONVERTER(LongLong,  Long64_t,       c_longlong,  PyLong_AsLongLong)
+CPPYY_IMPL_BASIC_CONST_REF_CONVERTER(ULongLong, ULong64_t,      c_ulonglong, PyLongOrInt_AsULong64)
 
 //----------------------------------------------------------------------------
 bool CPyCppyy::IntRefConverter::SetArg(
@@ -587,9 +609,9 @@ bool CPyCppyy::DoubleRefConverter::SetArg(
 }
 
 //----------------------------------------------------------------------------
-CPPYY_IMPL_BASIC_CONST_REF_CONVERTER(Float,      float,      PyFloat_AsDouble)
-CPPYY_IMPL_BASIC_CONST_REF_CONVERTER(Double,     double,     PyFloat_AsDouble)
-CPPYY_IMPL_BASIC_CONST_REF_CONVERTER(LongDouble, LongDouble_t, PyFloat_AsDouble)
+CPPYY_IMPL_BASIC_CONST_REF_CONVERTER(Float,      float,        c_float,      PyFloat_AsDouble)
+CPPYY_IMPL_BASIC_CONST_REF_CONVERTER(Double,     double,       c_double,     PyFloat_AsDouble)
+CPPYY_IMPL_BASIC_CONST_REF_CONVERTER(LongDouble, LongDouble_t, c_longdouble, PyFloat_AsDouble)
 
 //----------------------------------------------------------------------------
 bool CPyCppyy::VoidConverter::SetArg(PyObject*, Parameter&, CallContext*)

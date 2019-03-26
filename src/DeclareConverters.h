@@ -24,6 +24,7 @@ public:                                                                      \
 class Const##name##RefConverter : public Converter {                         \
 public:                                                                      \
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);      \
+    virtual PyObject* FromMemory(void*);                                     \
 }
 
 
@@ -37,6 +38,7 @@ public:                                                                      \
 class Const##name##RefConverter : public Converter {                         \
 public:                                                                      \
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);      \
+    virtual PyObject* FromMemory(void*);                                     \
 }
 
 #define CPPYY_DECLARE_REF_CONVERTER(name)                                    \
