@@ -160,7 +160,7 @@ bool CPyCppyy::CPPMethod::InitExecutor_(Executor*& executor, CallContext* /* ctx
 {
 // install executor conform to the return type
     executor = CreateExecutor(
-        (bool)fMethod == true ? Cppyy::ResolveName(Cppyy::GetMethodResultType(fMethod))\
+        (bool)fMethod == true ? Cppyy::GetMethodResultType(fMethod) \
                               : Cppyy::GetScopedFinalName(fScope));
 
     if (!executor)
