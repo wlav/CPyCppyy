@@ -1669,40 +1669,55 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
                 code << argtypes[i] << " arg" << i;
                 if (i != nArgs-1) code << ", ";
             }
+
+       // return value and argument type converters
             code << ") {\n";
             auto isVoid = (fRetType == "void");
-            if (!isVoid) {
+            if (!isVoid)
                 code << "  CPYCPPYY_STATIC std::unique_ptr<CPyCppyy::Converter> retconv{CPyCppyy::CreateConverter(\"" << fRetType << "\")};\n";
+            if (nArgs) {
+                code << "  CPYCPPYY_STATIC std::vector<std::unique_ptr<CPyCppyy::Converter>> argcvs;\n"
+                     << "  if (argcvs.empty()) {\n"
+                     << "    argcvs.reserve(" << nArgs << ");\n";
+                for (int i = 0; i < nArgs; ++i)
+                     code << "    argcvs.emplace_back(CPyCppyy::CreateConverter(\"" << argtypes[i] << "\"));\n";
+                code << "  }\n";
             }
-            for (int i = 0; i < nArgs; ++i) {
-                code << "  CPYCPPYY_STATIC std::unique_ptr<CPyCppyy::Converter> arg" << i
-                        << "conv{CPyCppyy::CreateConverter(\"" << argtypes[i] << "\")};\n";
-            }
-            if (!isVoid) {
+
+        // declare return value (TODO: this does not work for most non-builtin values)
+            if (!isVoid)
                code << "  " << fRetType << " ret{};\n";
-            }
+
+        // acquire GIL
             code << "  PyGILState_STATE state = PyGILState_Ensure();\n";
 
         // build argument tuple if needed
-            for (int i = 0; i < nArgs; ++i)
-                code << "  PyObject* pyarg" << i << " = arg" << i << "conv->FromMemory((void*)&arg" << i << ");\n";
+            code << "    std::vector<PyObject*> pyargs;\n";
+            if (nArgs) {
+                code << "    pyargs.reserve(" << nArgs << ");\n";
+                for (int i = 0; i < nArgs; ++i) {
+                    code << "    pyargs.emplace_back(argcvs[" << i << "]->FromMemory((void*)&arg" << i << "));\n"
+                         << "    if (!pyargs.back()) {\n"
+                         << "      for (auto pyarg : pyargs) Py_XDECREF(pyarg);\n"
+                         << "      PyGILState_Release(state); throw CPyCppyy::TPyException{};\n"
+                         << "    }\n";
+                }
+            }
 
         // create a referencable pointer
             PyObject** ref = new PyObject*{pyobject};
 
-        // function call itself
+        // function call itself and cleanup
             code << "  PyObject** ref = (PyObject**)" << (intptr_t)ref << ";\n"
                     "  PyObject* pyresult = nullptr;\n"
                     "  if (*ref) pyresult = PyObject_CallFunctionObjArgs(*ref";
             for (int i = 0; i < nArgs; ++i)
-                code << ", pyarg" << i;
+                code << ", pyargs[" << i << "]";
             code << ", NULL);\n"
-                    "  else PyErr_SetString(PyExc_TypeError, \"callable was deleted\");\n";
+                    "  else PyErr_SetString(PyExc_TypeError, \"callable was deleted\");\n"
+                 << "  for (auto pyarg : pyargs) Py_DECREF(pyarg);\n";
 
         // handle return value
-            for (int i = 0; i < nArgs; ++i)
-                code << "  Py_DECREF(pyarg" << i << ");\n";
-
             code << "  if (pyresult) { " << (isVoid ? "" : "retconv->ToMemory(pyresult, &ret); ") << "Py_DECREF(pyresult); }\n"
                     "  if (PyErr_Occurred()) {"       // error may be due to converter failing
 // TODO: On Windows, throwing a C++ exception here makes the code hang; leave
@@ -1716,6 +1731,7 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
                     "  return";
             code << (isVoid ? ";\n}}" : " ret;\n}}");
 
+        // finally, compile the code
             if (!Cppyy::Compile(code.str()))
                 return false;
 
