@@ -1881,7 +1881,11 @@ bool CPyCppyy::InitializerListConverter::SetArg(
     return false;
 #else
 // convert the given argument to an initializer list temporary
-    if (!PySequence_Check(pyobject))
+    if (!PySequence_Check(pyobject) || CPyCppyy_PyUnicode_Check(pyobject)
+#if PY_VERSION_HEX >= 0x03000000
+        || PyBytes_Check(pyobject)
+#endif
+        )
         return false;
 
     void* buf;
