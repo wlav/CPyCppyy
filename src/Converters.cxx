@@ -236,7 +236,7 @@ bool CPyCppyy::Const##name##RefConverter::SetArg(                            \
 {                                                                            \
     type val = (type)F1(pyobject);                                           \
     if (val == (type)-1 && PyErr_Occurred())                                 \
-       return false;                                                         \
+        return false;                                                        \
     para.fValue.f##name = val;                                               \
     para.fRef = &para.fValue.f##name;                                        \
     para.fTypeCode = 'r';                                                    \
@@ -1685,7 +1685,7 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
 
         // build argument tuple if needed
             for (int i = 0; i < nArgs; ++i)
-                code << "  PyObject* pyarg" << i << " = arg" << i << "conv->FromMemory(&arg" << i << ");\n";
+                code << "  PyObject* pyarg" << i << " = arg" << i << "conv->FromMemory((void*)&arg" << i << ");\n";
 
         // create a referencable pointer
             PyObject** ref = new PyObject*{pyobject};

@@ -42,7 +42,7 @@ static inline void InjectMethod(Cppyy::TCppMethod_t method, const std::string& m
 
 // build argument tuple if needed
     for (Cppyy::TCppIndex_t i = 0; i < nArgs; ++i)
-         code << "    PyObject* pyarg" << i << " = arg" << i << "conv->FromMemory(&arg" << i << ");\n";
+         code << "    PyObject* pyarg" << i << " = arg" << i << "conv->FromMemory((void*)&arg" << i << ");\n";
 #if PY_VERSION_HEX < 0x03000000
     code << "    PyObject* mtPyName = PyString_FromString(\"" << mtCppName << "\");\n" // TODO: intern?
 #else
