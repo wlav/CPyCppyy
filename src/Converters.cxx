@@ -1685,73 +1685,34 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
 
        // build wrapper function code
             std::ostringstream code;
-            code << "namespace __cppyy_internal {\n"
+            code << "namespace __cppyy_internal {\n  "
                  << fRetType << " " << wname.str() << "(";
             for (int i = 0; i < nArgs; ++i) {
                 code << argtypes[i] << " arg" << i;
                 if (i != nArgs-1) code << ", ";
             }
-
-       // return value and argument type converters
             code << ") {\n";
-            auto isVoid = (fRetType == "void");
-            if (!isVoid)
-                code << "  CPYCPPYY_STATIC std::unique_ptr<CPyCppyy::Converter> retconv{CPyCppyy::CreateConverter(\"" << fRetType << "\")};\n";
-            if (nArgs) {
-                code << "  CPYCPPYY_STATIC std::vector<std::unique_ptr<CPyCppyy::Converter>> argcvs;\n"
-                     << "  if (argcvs.empty()) {\n"
-                     << "    argcvs.reserve(" << nArgs << ");\n";
-                for (int i = 0; i < nArgs; ++i)
-                     code << "    argcvs.emplace_back(CPyCppyy::CreateConverter(\"" << argtypes[i] << "\"));\n";
-                code << "  }\n";
-            }
 
-        // declare return value (TODO: this does not work for most non-builtin values)
-            if (!isVoid)
-               code << "  " << fRetType << " ret{};\n";
-
-        // acquire GIL
-            code << "  PyGILState_STATE state = PyGILState_Ensure();\n";
-
-        // build argument tuple if needed
-            code << "    std::vector<PyObject*> pyargs;\n";
-            if (nArgs) {
-                code << "    pyargs.reserve(" << nArgs << ");\n";
-                for (int i = 0; i < nArgs; ++i) {
-                    code << "    pyargs.emplace_back(argcvs[" << i << "]->FromMemory((void*)&arg" << i << "));\n"
-                         << "    if (!pyargs.back()) {\n"
-                         << "      for (auto pyarg : pyargs) Py_XDECREF(pyarg);\n"
-                         << "      PyGILState_Release(state); throw CPyCppyy::TPyException{};\n"
-                         << "    }\n";
-                }
-            }
+        // start function body
+            Utility::ConstructCallbackPreamble(fRetType, argtypes, code);
 
         // create a referencable pointer
             PyObject** ref = new PyObject*{pyobject};
 
         // function call itself and cleanup
-            code << "  PyObject** ref = (PyObject**)" << (intptr_t)ref << ";\n"
-                    "  PyObject* pyresult = nullptr;\n"
-                    "  if (*ref) pyresult = PyObject_CallFunctionObjArgs(*ref";
+            code << "    PyObject** ref = (PyObject**)" << (intptr_t)ref << ";\n"
+                    "    PyObject* pyresult = nullptr;\n"
+                    "    if (*ref) pyresult = PyObject_CallFunctionObjArgs(*ref";
             for (int i = 0; i < nArgs; ++i)
                 code << ", pyargs[" << i << "]";
             code << ", NULL);\n"
-                    "  else PyErr_SetString(PyExc_TypeError, \"callable was deleted\");\n"
-                 << "  for (auto pyarg : pyargs) Py_DECREF(pyarg);\n";
+                    "    else PyErr_SetString(PyExc_TypeError, \"callable was deleted\");\n";
 
-        // handle return value
-            code << "  if (pyresult) { " << (isVoid ? "" : "retconv->ToMemory(pyresult, &ret); ") << "Py_DECREF(pyresult); }\n"
-                    "  if (PyErr_Occurred()) {"       // error may be due to converter failing
-// TODO: On Windows, throwing a C++ exception here makes the code hang; leave
-// the error be which allows at least one layer of propagation
-#ifdef _WIN32
-                    " /* do nothing */ }\n"
-#else
-                    " PyGILState_Release(state); throw CPyCppyy::TPyException{}; }\n"
-#endif
-                    "  PyGILState_Release(state);\n"
-                    "  return";
-            code << (isVoid ? ";\n}}" : " ret;\n}}");
+        // close
+            Utility::ConstructCallbackReturn(fRetType == "void", nArgs, code);
+
+        // end of namespace
+            code << "}";
 
         // finally, compile the code
             if (!Cppyy::Compile(code.str()))

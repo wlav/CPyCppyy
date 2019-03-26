@@ -22,50 +22,20 @@ static inline void InjectMethod(Cppyy::TCppMethod_t method, const std::string& m
 
 // build out the signature with predictable formal names
     Cppyy::TCppIndex_t nArgs = Cppyy::GetMethodNumArgs(method);
+    std::vector<std::string> argtypes; argtypes.reserve(nArgs);
     for (Cppyy::TCppIndex_t i = 0; i < nArgs; ++i) {
+        argtypes.push_back(Cppyy::GetMethodArgType(method, i));
         if (i != 0) code << ", ";
-        code << Cppyy::GetMethodArgType(method, i) << " arg" << i;
+        code << argtypes.back() << " arg" << i;
     }
     code << ") ";
     if (Cppyy::IsConstMethod(method)) code << "const ";
-
-// function body (TODO: if the method throws a C++ exception, the GIL will not be released)
-
-    bool isVoid = (retType == "void");
-
-// return value and argument type converters
     code << "{\n";
-    if (!isVoid)
-        code << "    CPYCPPYY_STATIC std::unique_ptr<CPyCppyy::Converter> retconv{CPyCppyy::CreateConverter(\"" << retType << "\")};\n";
-    if (nArgs) {
-        code << "    CPYCPPYY_STATIC std::vector<std::unique_ptr<CPyCppyy::Converter>> argcvs;\n"
-             << "    if (argcvs.empty()) {\n"
-             << "      argcvs.reserve(" << nArgs << ");\n";
-        for (Cppyy::TCppIndex_t i = 0; i < nArgs; ++i)
-             code << "      argcvs.emplace_back(CPyCppyy::CreateConverter(\"" << Cppyy::GetMethodArgType(method, i) << "\"));\n";
-        code << "    }\n";
-    }
 
-// declare return value (TODO: this does not work for most non-builtin values)
-    if (!isVoid) code << "    " << retType << " ret{};\n";
+// start function body
+    Utility::ConstructCallbackPreamble(retType, argtypes, code);
 
-// acquire GIL
-    code << "    PyGILState_STATE state = PyGILState_Ensure();\n";
-
-// build argument tuple if needed
-    code << "    std::vector<PyObject*> pyargs;\n";
-    if (nArgs) {
-        code << "    pyargs.reserve(" << nArgs << ");\n";
-        for (Cppyy::TCppIndex_t i = 0; i < nArgs; ++i) {
-            code << "    pyargs.emplace_back(argcvs[" << i << "]->FromMemory((void*)&arg" << i << "));\n"
-                 << "    if (!pyargs.back()) {\n"
-                 << "      for (auto pyarg : pyargs) Py_XDECREF(pyarg);\n"
-                 << "      PyGILState_Release(state); throw CPyCppyy::TPyException{};\n"
-                 << "    }\n";
-        }
-    }
-
-// perform actual method call and cleanup
+// perform actual method call
 #if PY_VERSION_HEX < 0x03000000
     code << "    PyObject* mtPyName = PyString_FromString(\"" << mtCppName << "\");\n" // TODO: intern?
 #else
@@ -74,22 +44,10 @@ static inline void InjectMethod(Cppyy::TCppMethod_t method, const std::string& m
             "    PyObject* pyresult = PyObject_CallMethodObjArgs(m_self, mtPyName";
     for (Cppyy::TCppIndex_t i = 0; i < nArgs; ++i)
         code << ", pyargs[" << i << "]";
-    code << ", NULL);\n    Py_DECREF(mtPyName);\n"
-         << "    for (auto pyarg : pyargs) Py_DECREF(pyarg);\n";
+    code << ", NULL);\n    Py_DECREF(mtPyName);\n";
 
-// handle return value
-    code << "    if (pyresult) { " << (isVoid ? "" : "retconv->ToMemory(pyresult, &ret); ") << "Py_DECREF(pyresult); }\n"
-            "    if (PyErr_Occurred()) {"     // error may be due to converter failing
-// TODO: On Windows, throwing a C++ exception here makes the code hang; leave
-// the error be which allows at least one layer of propagation
-#ifdef _WIN32
-            " /* do nothing */ }\n"
-#else
-            " PyGILState_Release(state); throw CPyCppyy::TPyException{}; }\n"
-#endif
-            "    PyGILState_Release(state);\n"
-            "    return";
-    code << (isVoid ? ";\n  }\n" : " ret;\n  }\n");
+// close
+    Utility::ConstructCallbackReturn(retType == "void", nArgs, code);
 }
 
 //----------------------------------------------------------------------------

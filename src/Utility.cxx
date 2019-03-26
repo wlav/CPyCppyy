@@ -427,6 +427,71 @@ std::string CPyCppyy::Utility::ConstructTemplateArgs(PyObject* pyname, PyObject*
 }
 
 //----------------------------------------------------------------------------
+void CPyCppyy::Utility::ConstructCallbackPreamble(const std::string& retType,
+    const std::vector<std::string>& argtypes, std::ostringstream& code)
+{
+// Generate function setup to be used in callbacks (wrappers and overrides).
+    int nArgs = (int)argtypes.size();
+
+// return value and argument type converters
+    bool isVoid = (retType == "void");
+    if (!isVoid)
+        code << "    CPYCPPYY_STATIC std::unique_ptr<CPyCppyy::Converter> retconv{CPyCppyy::CreateConverter(\""
+             << retType << "\")};\n";
+    if (nArgs) {
+        code << "    CPYCPPYY_STATIC std::vector<std::unique_ptr<CPyCppyy::Converter>> argcvs;\n"
+             << "    if (argcvs.empty()) {\n"
+             << "      argcvs.reserve(" << nArgs << ");\n";
+        for (int i = 0; i < nArgs; ++i)
+            code << "      argcvs.emplace_back(CPyCppyy::CreateConverter(\"" << argtypes[i] << "\"));\n";
+        code << "    }\n";
+    }
+
+// declare return value (TODO: this does not work for most non-builtin values)
+    if (!isVoid)
+        code << "    " << retType << " ret{};\n";
+
+// acquire GIL
+    code << "    PyGILState_STATE state = PyGILState_Ensure();\n";
+
+// build argument tuple if needed
+    if (nArgs) {
+        code << "    std::vector<PyObject*> pyargs;\n";
+        code << "    pyargs.reserve(" << nArgs << ");\n"
+             << "    try {\n";
+        for (int i = 0; i < nArgs; ++i) {
+            code << "      pyargs.emplace_back(argcvs[" << i << "]->FromMemory((void*)&arg" << i << "));\n"
+                 << "      if (!pyargs.back()) throw " << i << ";\n";
+        }
+        code << "    } catch(int) {\n"
+             << "      for (auto pyarg : pyargs) Py_XDECREF(pyarg);\n"
+             << "      PyGILState_Release(state); throw CPyCppyy::TPyException{};\n"
+             << "    }\n";
+    }
+}
+
+void CPyCppyy::Utility::ConstructCallbackReturn(bool isVoid, int nArgs, std::ostringstream& code)
+{
+// Generate code for return value conversion and error handling.
+    if (nArgs)
+        code << "    for (auto pyarg : pyargs) Py_DECREF(pyarg);\n";
+    code << "    bool cOk = (bool)pyresult;\n"
+            "    if (pyresult) { " << (isVoid ? "" : "cOk = retconv->ToMemory(pyresult, &ret); ")
+                                   << "Py_DECREF(pyresult); }\n"
+            "    if (!cOk) {"     // assume error set when converter failed
+// TODO: On Windows, throwing a C++ exception here makes the code hang; leave
+// the error be which allows at least one layer of propagation
+#ifdef _WIN32
+            " /* do nothing */ }\n"
+#else
+            " PyGILState_Release(state); throw CPyCppyy::TPyException{}; }\n"
+#endif
+            "    PyGILState_Release(state);\n"
+            "    return";
+    code << (isVoid ? ";\n  }\n" : " ret;\n  }\n");
+}
+
+//----------------------------------------------------------------------------
 bool CPyCppyy::Utility::InitProxy(PyObject* module, PyTypeObject* pytype, const char* name)
 {
 // Initialize a proxy class for use by python, and add it to the module.
