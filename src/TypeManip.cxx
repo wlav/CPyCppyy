@@ -39,8 +39,7 @@ static inline void erase_const(std::string& name)
             start = after;
             continue;
         } else if (after == name.size()) {
-            std::string::size_type before = spos-1;
-            if (0 <= before && is_varchar(name[before]))
+            if (spos > 0 && is_varchar(name[spos - 1]))
                 break;
         }
 
