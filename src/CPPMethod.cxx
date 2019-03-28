@@ -6,9 +6,10 @@
 #include "Executors.h"
 #include "ProxyWrappers.h"
 #include "PyStrings.h"
-#include "TPyException.h"
 #include "TypeManip.h"
 #include "Utility.h"
+
+#include "CPyCppyy/TPyException.h"
 
 // Standard
 #include <assert.h>

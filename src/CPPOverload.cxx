@@ -13,9 +13,10 @@
 #include "CPPOverload.h"
 #include "CPPInstance.h"
 #include "CallContext.h"
-#include "TPyException.h"
 #include "PyStrings.h"
 #include "Utility.h"
+
+#include "CPyCppyy/TPyException.h"
 
 // Standard
 #include <algorithm>

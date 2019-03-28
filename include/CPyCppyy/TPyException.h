@@ -29,6 +29,9 @@
 // Standard
 #include <exception>
 
+// Bindings
+#include "CPyCppyy/CommonDefs.h"
+
 
 namespace CPyCppyy {
 
