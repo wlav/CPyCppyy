@@ -349,7 +349,7 @@ PyObject* MakeCppTemplateClass(PyObject*, PyObject* args)
 
 // build "< type, type, ... >" part of class name (modifies pyname)
     const std::string& tmpl_name =
-        Utility::ConstructTemplateArgs(PyTuple_GET_ITEM(args, 0), args, nullptr, 1);
+        Utility::ConstructTemplateArgs(PyTuple_GET_ITEM(args, 0), args, nullptr, Utility::kNone, 1);
     if (!tmpl_name.size())
         return nullptr;
 

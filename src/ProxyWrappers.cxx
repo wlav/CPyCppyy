@@ -262,7 +262,7 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
         const std::string mtCppName = Cppyy::GetTemplatedMethodName(scope, imeth);
         // TODO: figure out number of arguments to distinguish operators (problem is
         // that it's not known until instantiation, so perhaps add both 0 and 1?)
-        std::string mtName = Utility::MapOperatorName(mtCppName, 0);
+        std::string mtName = Cppyy::IsTemplatedConstructor(scope, imeth) ? "__init__" : Utility::MapOperatorName(mtCppName, 0);
         sync_templates(pyclass, mtCppName, mtName);
     }
 

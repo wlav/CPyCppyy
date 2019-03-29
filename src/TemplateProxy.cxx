@@ -47,7 +47,7 @@ void TemplateProxy::AddTemplate(PyCallable* pc)
 }
 
 //----------------------------------------------------------------------------
-PyCallable* TemplateProxy::Instantiate(const std::string& fullname, PyObject* args)
+PyCallable* TemplateProxy::Instantiate(const std::string& fullname, PyObject* args, Utility::ArgPreference pref)
 {
 // Instantiate (and cache) templated methods, return method if any
     std::string proto = "";
@@ -95,7 +95,7 @@ PyCallable* TemplateProxy::Instantiate(const std::string& fullname, PyObject* ar
             Py_XDECREF(pytc);
         }
 
-        const std::string& name_v1 = Utility::ConstructTemplateArgs(nullptr, tpArgs, args, 0);
+        const std::string& name_v1 = Utility::ConstructTemplateArgs(nullptr, tpArgs, args, pref);
         Py_DECREF(tpArgs);
         if (name_v1.size())
             proto = name_v1.substr(1, name_v1.size()-2);
@@ -272,7 +272,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
     // instantiate explicitly
         PyObject* pyfullname = CPyCppyy_PyUnicode_FromString(CPyCppyy_PyUnicode_AsString(pytmpl->fCppName));
         CPyCppyy_PyUnicode_Append(&pyfullname, pytmpl->fTemplateArgs);
-        PyCallable* meth = pytmpl->Instantiate(CPyCppyy_PyUnicode_AsString(pyfullname), args);
+        PyCallable* meth = pytmpl->Instantiate(CPyCppyy_PyUnicode_AsString(pyfullname), args, Utility::kNone);
         if (meth) {
         // store overload
             PyObject* dct = PyObject_GetAttr(pytmpl->fPyClass, PyStrings::gDict);
@@ -358,17 +358,21 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
     PyErr_Clear();
 
 // case 4: auto-instantiation from types of arguments
-    PyCallable* meth = pytmpl->Instantiate(CPyCppyy_PyUnicode_AsString(pytmpl->fCppName), args);
-    if (meth) {
-    // re-retrieve the cached method to bind it, then call it
-        PyObject* pymeth = CPPOverload_Type.tp_descr_get(
-            (PyObject*)pytmpl->fTemplated, pytmpl->fSelf, (PyObject*)&CPPOverload_Type);
-        result = CPPOverload_Type.tp_call(pymeth, args, kwds);
-        Py_DECREF(pymeth);
-        if (result) {
-            Py_INCREF(pytmpl->fTemplated);
-            pytmpl->fDispatchMap.push_back(std::make_pair(sighash, pytmpl->fTemplated));
-            return result;
+    for (int i = 0; i < 2; ++i) {
+        PyCallable* meth = pytmpl->Instantiate(CPyCppyy_PyUnicode_AsString(pytmpl->fCppName), args,
+            i == 0 ? Utility::kReference : Utility::kPointer);
+        if (meth) {
+        // re-retrieve the cached method to bind it, then call it
+            PyObject* pymeth = CPPOverload_Type.tp_descr_get(
+                (PyObject*)pytmpl->fTemplated, pytmpl->fSelf, (PyObject*)&CPPOverload_Type);
+            result = CPPOverload_Type.tp_call(pymeth, args, kwds);
+            Py_DECREF(pymeth);
+            if (result) {
+                Py_INCREF(pytmpl->fTemplated);
+                pytmpl->fDispatchMap.push_back(std::make_pair(sighash, pytmpl->fTemplated));
+                return result;
+            } else
+                PyErr_Clear();
         }
     }
 
@@ -430,7 +434,7 @@ static PyObject* tpp_subscript(TemplateProxy* pytmpl, PyObject* args)
 
 // construct full, explicit name of function
     PyObject* pyfullname = CPyCppyy_PyUnicode_FromString(CPyCppyy_PyUnicode_AsString(pytmpl->fCppName));
-    PyObject* tmpl_args = CPyCppyy_PyUnicode_FromString(Utility::ConstructTemplateArgs(nullptr, newArgs, nullptr, 0).c_str());
+    PyObject* tmpl_args = CPyCppyy_PyUnicode_FromString(Utility::ConstructTemplateArgs(nullptr, newArgs).c_str());
     Py_DECREF(newArgs);
     CPyCppyy_PyUnicode_Append(&pyfullname, tmpl_args);
 

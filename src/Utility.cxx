@@ -360,7 +360,8 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& 
 }
 
 //----------------------------------------------------------------------------
-std::string CPyCppyy::Utility::ConstructTemplateArgs(PyObject* pyname, PyObject* tpArgs, PyObject* args, int argoff)
+std::string CPyCppyy::Utility::ConstructTemplateArgs(
+    PyObject* pyname, PyObject* tpArgs, PyObject* args, ArgPreference pref, int argoff)
 {
 // Helper to construct the "<type, type, ...>" part of a templated name (either
 // for a class or method lookup
@@ -383,7 +384,7 @@ std::string CPyCppyy::Utility::ConstructTemplateArgs(PyObject* pyname, PyObject*
                 if (CPPInstance_Check(pyobj)) {
                     if (pyobj->fFlags & CPPInstance::kIsRValue)
                         tmpl_name << "&&";
-                    else if (pyobj->fFlags & CPPInstance::kIsReference)
+                    else if ((pyobj->fFlags & CPPInstance::kIsReference) || pref == kPointer)
                         tmpl_name << '*';
                     else
                         tmpl_name << '&';
