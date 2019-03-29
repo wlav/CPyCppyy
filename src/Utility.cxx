@@ -386,7 +386,7 @@ std::string CPyCppyy::Utility::ConstructTemplateArgs(
                         tmpl_name << "&&";
                     else if ((pyobj->fFlags & CPPInstance::kIsReference) || pref == kPointer)
                         tmpl_name << '*';
-                    else
+                    else if (pref != kValue)
                         tmpl_name << '&';
                 }
             }
