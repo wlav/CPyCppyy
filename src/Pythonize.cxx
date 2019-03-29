@@ -276,7 +276,7 @@ PyObject* VectorInit(PyObject* self, PyObject* args)
 // for arrays, which can be passed wholesale.
     if (PyTuple_GET_SIZE(args) == 1 && PySequence_Check(PyTuple_GET_ITEM(args, 0)) && \
             !Py_TYPE(PyTuple_GET_ITEM(args, 0))->tp_as_buffer) {
-        PyObject* mname = CPyCppyy_PyUnicode_FromString("__real_init__");
+        PyObject* mname = CPyCppyy_PyUnicode_FromString("__real_init");
         PyObject* result = PyObject_CallMethodObjArgs(self, mname, nullptr);
         Py_DECREF(mname);
         if (!result)
@@ -320,7 +320,7 @@ PyObject* VectorInit(PyObject* self, PyObject* args)
         return result;
     }
 
-    PyObject* realInit = PyObject_GetAttrString(self, "__real_init__");
+    PyObject* realInit = PyObject_GetAttrString(self, "__real_init");
     if (realInit) {
         PyObject* result = PyObject_Call(realInit, args, nullptr);
         Py_DECREF(realInit);
@@ -624,6 +624,23 @@ PyObject* ReturnTwo(CPPInstance*, PyObject*) {
     return PyInt_FromLong(2);
 }
 
+
+//- shared_ptr behavior --------------------------------------------------------
+PyObject* SharedPtrInit(PyObject* self, PyObject* args)
+{
+// since the shared pointer will take ownership, we need to relinquish it
+    PyObject* realInit = PyObject_GetAttrString(self, "__real_init");
+    if (realInit) {
+        PyObject* result = PyObject_Call(realInit, args, nullptr);
+        Py_DECREF(realInit);
+        if (result && PyTuple_GET_SIZE(args) == 1 && CPPInstance_Check(PyTuple_GET_ITEM(args, 0)))
+            PyObject_SetAttrString(PyTuple_GET_ITEM(args, 0), "__python_owns__", Py_False);
+        return result;
+    }
+    return nullptr;
+}
+
+
 //- string behavior as primitives --------------------------------------------
 #if PY_VERSION_HEX >= 0x03000000
 // TODO: this is wrong, b/c it doesn't order
@@ -912,7 +929,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
             Utility::AddToClass(pyclass, "__setitem__", (PyCFunction)VectorBoolSetItem);
         } else {
         // constructor that takes python collections
-            Utility::AddToClass(pyclass, "__real_init__", "__init__");
+            Utility::AddToClass(pyclass, "__real_init", "__init__");
             Utility::AddToClass(pyclass, "__init__", (PyCFunction)VectorInit);
 
         // data with size
@@ -950,6 +967,11 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
     else if (IsTemplatedSTLClass(name, "pair")) {
         Utility::AddToClass(pyclass, "__getitem__", (PyCFunction)PairUnpack, METH_O);
         Utility::AddToClass(pyclass, "__len__", (PyCFunction)ReturnTwo, METH_NOARGS);
+    }
+
+    if (IsTemplatedSTLClass(name, "shared_ptr")) {
+        Utility::AddToClass(pyclass, "__real_init", "__init__");
+        Utility::AddToClass(pyclass, "__init__", (PyCFunction)SharedPtrInit);
     }
 
     else if (name.find("iterator") != std::string::npos) {
