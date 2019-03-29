@@ -585,7 +585,6 @@ bool CPyCppyy::ComplexDConverter::ToMemory(PyObject* value, void* address)
     return this->InstanceConverter::ToMemory(value, address);
 }
 
-
 //----------------------------------------------------------------------------
 bool CPyCppyy::DoubleRefConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)
@@ -1835,6 +1834,13 @@ bool CPyCppyy::SmartPtrConverter::SetArg(
 
     // set pointer (may be null) and declare success
         para.fTypeCode = typeCode;
+        return true;
+    }
+
+// final option, try mapping pointer types held (TODO: do not allow for non-const ref)
+    if (pyobj->fSmartPtrType && Cppyy::IsSubtype(pyobj->ObjectIsA(), fRawPtrType)) {
+        para.fValue.fVoidp = ((CPPInstance*)pyobject)->fObject;
+        para.fTypeCode = 'V';
         return true;
     }
 
