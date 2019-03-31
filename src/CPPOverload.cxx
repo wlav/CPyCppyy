@@ -16,8 +16,6 @@
 #include "PyStrings.h"
 #include "Utility.h"
 
-#include "CPyCppyy/TPyException.h"
-
 // Standard
 #include <algorithm>
 #include <sstream>
