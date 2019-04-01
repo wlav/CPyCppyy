@@ -76,6 +76,7 @@ class my_build_extension(_build_ext):
         if 'linux' in sys.platform:
             ext.extra_link_args += ['-Wl,-Bsymbolic-functions']
         elif 'win32' in sys.platform:
+            ext.extra_compile_args += ['/GR', '/EHsc-']    # note '/EHsc' hardwired by distutils :(
             ext.extra_link_args += ['/EXPORT:_Init_thread_abort', '/EXPORT:_Init_thread_epoch',
                 '/EXPORT:_Init_thread_footer', '/EXPORT:_Init_thread_header', '/EXPORT:_tls_index']
         return _build_ext.build_extension(self, ext)
