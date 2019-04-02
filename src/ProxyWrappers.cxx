@@ -5,11 +5,11 @@
 #include "CPPConstructor.h"
 #include "CPPDataMember.h"
 #include "CPPFunction.h"
+#include "CPPGetSetItem.h"
 #include "CPPInstance.h"
 #include "CPPMethod.h"
 #include "CPPOverload.h"
 #include "CPPScope.h"
-#include "CPPSetItem.h"
 #include "MemoryRegulator.h"
 #include "PyStrings.h"
 #include "Pythonize.h"
@@ -172,7 +172,7 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
         std::string mtCppName = Cppyy::GetMethodName(method);
 
     // special case trackers
-        bool setupSetItem = false;
+        int setupGetSetItem = 0; // 0 == no setup, 1 == __setitem__ only, 2 == __getitem__
         bool isConstructor = Cppyy::IsConstructor(method);
         bool isTemplate = isConstructor ? false : Cppyy::IsMethodTemplate(scope, imeth);
 
@@ -190,11 +190,12 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
     // operator[]/() returning a reference type will be used for __setitem__
         if (mtName == "__call__" || mtName == "__getitem__") {
             const std::string& qual_return = Cppyy::ResolveName(Cppyy::GetMethodResultType(method));
-            if (qual_return.find("const", 0, 5) == std::string::npos) {
-                const std::string& cpd = Utility::Compound(qual_return);
-                if (!cpd.empty() && cpd[cpd.size()- 1] == '&') {
-                    setupSetItem = true;
-                }
+            const std::string& cpd = Utility::Compound(qual_return);
+            if (!cpd.empty() && cpd[cpd.size()- 1] == '&') {
+                if (qual_return.find("const", 0, 5) == std::string::npos)
+                    setupGetSetItem |= 0x01;
+                else if (mtName != "__getitem__")
+                    setupGetSetItem |= 0x10;
             }
         }
 
@@ -243,10 +244,15 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
         md.push_back(pycall);
 
     // special case for operator[]/() that returns by ref, use for getitem/call and setitem
-        if (setupSetItem) {
+        if (setupGetSetItem & 0x01) {
             Callables_t& setitem = (*(cache.insert(
                 std::make_pair(std::string("__setitem__"), Callables_t())).first)).second;
             setitem.push_back(new CPPSetItem(scope, method));
+        }
+        if (setupGetSetItem & 0x10) {
+            Callables_t& getitem = (*(cache.insert(
+                std::make_pair(std::string("__getitem__"), Callables_t())).first)).second;
+            getitem.push_back(new CPPGetItem(scope, method));
         }
 
         if (isTemplate) {
