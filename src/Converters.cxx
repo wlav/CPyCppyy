@@ -1334,6 +1334,12 @@ bool CPyCppyy::InstanceRefConverter::SetArg(
 }
 
 //----------------------------------------------------------------------------
+PyObject* CPyCppyy::InstanceRefConverter::FromMemory(void* address)
+{
+    return BindCppObjectNoCast((Cppyy::TCppObject_t)address, fClass);
+}
+
+//----------------------------------------------------------------------------
 bool CPyCppyy::InstanceMoveConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* ctxt)
 {

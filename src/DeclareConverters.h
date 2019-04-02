@@ -169,6 +169,7 @@ public:
 
 public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
+    virtual PyObject* FromMemory(void* address);
 
 protected:
     Cppyy::TCppType_t fClass;
