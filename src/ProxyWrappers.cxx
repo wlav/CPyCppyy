@@ -152,6 +152,7 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
     bool isNamespace = Cppyy::IsNamespace(scope);
     bool isAbstract  = Cppyy::IsAbstract(scope);
     bool hasConstructor = false;
+    Cppyy::TCppMethod_t potGetItem = (Cppyy::TCppMethod_t)0;
 
 // load all public methods and data members
     typedef std::vector<PyCallable*> Callables_t;
@@ -172,7 +173,7 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
         std::string mtCppName = Cppyy::GetMethodName(method);
 
     // special case trackers
-        int setupGetSetItem = 0; // 0 == no setup, 1 == __setitem__ only, 2 == __getitem__
+        bool setupSetItem = false;
         bool isConstructor = Cppyy::IsConstructor(method);
         bool isTemplate = isConstructor ? false : Cppyy::IsMethodTemplate(scope, imeth);
 
@@ -188,14 +189,17 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
         std::string mtName = Utility::MapOperatorName(mtCppName, Cppyy::GetMethodNumArgs(method));
 
     // operator[]/() returning a reference type will be used for __setitem__
-        if (mtName == "__call__" || mtName == "__getitem__") {
+        bool isCall = mtName == "__call__";
+        if (isCall || mtName == "__getitem__") {
             const std::string& qual_return = Cppyy::ResolveName(Cppyy::GetMethodResultType(method));
             const std::string& cpd = Utility::Compound(qual_return);
-            if (!cpd.empty() && cpd[cpd.size()- 1] == '&') {
-                if (qual_return.find("const", 0, 5) == std::string::npos)
-                    setupGetSetItem |= 0x01;
-                else if (mtName != "__getitem__")
-                    setupGetSetItem |= 0x10;
+            if (!cpd.empty() && cpd[cpd.size()- 1] == '&' && \
+                    qual_return.find("const", 0, 5) == std::string::npos) {
+                if (isCall && !potGetItem) potGetItem = method;
+                setupSetItem = true;     // will add methods as overloads
+            } else if (isCall) {
+            // not a non-const by-ref return, thus better __getitem__ candidate
+                potGetItem = method;
             }
         }
 
@@ -244,15 +248,10 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
         md.push_back(pycall);
 
     // special case for operator[]/() that returns by ref, use for getitem/call and setitem
-        if (setupGetSetItem & 0x01) {
+        if (setupSetItem) {
             Callables_t& setitem = (*(cache.insert(
                 std::make_pair(std::string("__setitem__"), Callables_t())).first)).second;
             setitem.push_back(new CPPSetItem(scope, method));
-        }
-        if (setupGetSetItem & 0x10) {
-            Callables_t& getitem = (*(cache.insert(
-                std::make_pair(std::string("__getitem__"), Callables_t())).first)).second;
-            getitem.push_back(new CPPGetItem(scope, method));
         }
 
         if (isTemplate) {
@@ -282,6 +281,13 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
         else
             defctor = new CPPConstructor(scope, (Cppyy::TCppMethod_t)0);
         cache["__init__"].push_back(defctor);
+    }
+
+// map __call__ to __getitem__ if also mapped to __setitem__
+    if (potGetItem) {
+        Callables_t& getitem = (*(cache.insert(
+           std::make_pair(std::string("__getitem__"), Callables_t())).first)).second;
+        getitem.push_back(new CPPGetItem(scope, potGetItem));
     }
 
 // add the methods to the class dictionary
