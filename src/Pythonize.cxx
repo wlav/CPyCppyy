@@ -273,10 +273,15 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 {
 // using initializer_list is possible, but error-prone; since it's so common for
 // std::vector, this implements construction from python iterables directly, except
-// for arrays, which can be passed wholesale.
+// for arrays, which can be passed wholesale, and strings, which shouldn't be used
+    if (PyTuple_GET_SIZE(args) == 1 &&                              \
+            (CPyCppyy_PyUnicode_Check(PyTuple_GET_ITEM(args, 0)) || \
+             PyBytes_Check(PyTuple_GET_ITEM(args, 0)))) {
+        PyErr_SetString(PyExc_TypeError, "can not convert string to vector");
+        return 0;
+    }
+
     if (PyTuple_GET_SIZE(args) == 1 && PySequence_Check(PyTuple_GET_ITEM(args, 0)) && \
-            !CPyCppyy_PyUnicode_Check(PyTuple_GET_ITEM(args, 0)) && \
-            !PyBytes_Check(PyTuple_GET_ITEM(args, 0)) && \
             !Py_TYPE(PyTuple_GET_ITEM(args, 0))->tp_as_buffer) {
         PyObject* mname = CPyCppyy_PyUnicode_FromString("__real_init");
         PyObject* result = PyObject_CallMethodObjArgs(self, mname, nullptr);
