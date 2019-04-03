@@ -397,9 +397,11 @@ std::string CPyCppyy::Utility::ConstructTemplateArgs(
         } else if (PyObject_HasAttr(tn, PyStrings::gName)) {
             PyObject* tpName = PyObject_GetAttr(tn, PyStrings::gName);
 
-        // special case for strings
+        // special case for strings; and floats (Python-speak for double) if from argument
             if (strcmp(CPyCppyy_PyUnicode_AsString(tpName), "str") == 0)
                 tmpl_name << "std::string";
+            else if (args && strcmp(CPyCppyy_PyUnicode_AsString(tpName), "float") == 0)
+                tmpl_name << "double";
             else
                 tmpl_name << CPyCppyy_PyUnicode_AsString(tpName);
             Py_DECREF(tpName);
