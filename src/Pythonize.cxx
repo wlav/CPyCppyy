@@ -275,6 +275,8 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 // std::vector, this implements construction from python iterables directly, except
 // for arrays, which can be passed wholesale.
     if (PyTuple_GET_SIZE(args) == 1 && PySequence_Check(PyTuple_GET_ITEM(args, 0)) && \
+            !CPyCppyy_PyUnicode_Check(PyTuple_GET_ITEM(args, 0)) && \
+            !PyBytes_Check(PyTuple_GET_ITEM(args, 0)) && \
             !Py_TYPE(PyTuple_GET_ITEM(args, 0))->tp_as_buffer) {
         PyObject* mname = CPyCppyy_PyUnicode_FromString("__real_init");
         PyObject* result = PyObject_CallMethodObjArgs(self, mname, nullptr);
