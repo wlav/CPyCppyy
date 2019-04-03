@@ -501,19 +501,6 @@ bool CPyCppyy::CPPMethod::ConvertAndSetArgs(PyObject* args, CallContext* ctxt)
         }
     }
 
-    if (!isOK && HaveImplicit(ctxt)) {
-    // try second round, but this time allowing for implicit conversions
-        isOK = true;
-        ctxt->fFlags |= CallContext::kAllowImplicit;
-        for (int i = 0; i < (int)argc; ++i) {
-            if (!fConverters[i]->SetArg(PyTuple_GET_ITEM(args, i), cppArgs[i], ctxt)) {
-                SetPyError_(CPyCppyy_PyUnicode_FromFormat("could not convert argument %d", i+1));
-                isOK = false;
-                break;
-            }
-        }
-    }
-
     return isOK;
 }
 

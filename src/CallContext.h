@@ -46,11 +46,12 @@ struct CallContext {
         kIsConstructor  =    4,   // if method is a C++ constructor
         kHaveImplicit   =    8,   // indicate that implicit converters are available
         kAllowImplicit  =   16,   // indicate that implicit coversions are allowed
-        kUseHeuristics  =   32,   // if method applies heuristics memory policy
-        kUseStrict      =   64,   // if method applies strict memory policy
-        kReleaseGIL     =  128,   // if method should release the GIL
-        kFast           =  256,   // if method should NOT handle signals
-        kSafe           =  512    // if method should return on signals
+        kNoImplicit     =   32,   // disable implicit to prevent recursion
+        kUseHeuristics  =   64,   // if method applies heuristics memory policy
+        kUseStrict      =  128,   // if method applies strict memory policy
+        kReleaseGIL     =  256,   // if method should release the GIL
+        kFast           =  512,   // if method should NOT handle signals
+        kSafe           = 1024    // if method should return on signals
     };
 
 // memory handling
@@ -99,11 +100,11 @@ inline bool IsConstructor(uint64_t flags) {
 }
 
 inline bool HaveImplicit(CallContext* ctxt) {
-    return ctxt ? (ctxt->fFlags & CallContext::kHaveImplicit) : false;
+    return ctxt ? (!(ctxt->fFlags & CallContext::kNoImplicit) && (ctxt->fFlags & CallContext::kHaveImplicit)) : false;
 }
 
 inline bool AllowImplicit(CallContext* ctxt) {
-    return ctxt ? (ctxt->fFlags & CallContext::kAllowImplicit) : false;
+    return ctxt ? (!(ctxt->fFlags & CallContext::kNoImplicit) && (ctxt->fFlags & CallContext::kAllowImplicit)) : false;
 }
 
 inline bool ReleasesGIL(CallContext* ctxt) {

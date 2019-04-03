@@ -269,7 +269,7 @@ PyObject* GenObjectIsNotEqual(PyObject* self, PyObject* obj)
 
 
 //- vector behavior as primitives ----------------------------------------------
-PyObject* VectorInit(PyObject* self, PyObject* args)
+PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 {
 // using initializer_list is possible, but error-prone; since it's so common for
 // std::vector, this implements construction from python iterables directly, except
@@ -626,7 +626,7 @@ PyObject* ReturnTwo(CPPInstance*, PyObject*) {
 
 
 //- shared_ptr behavior --------------------------------------------------------
-PyObject* SharedPtrInit(PyObject* self, PyObject* args)
+PyObject* SharedPtrInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 {
 // since the shared pointer will take ownership, we need to relinquish it
     PyObject* realInit = PyObject_GetAttrString(self, "__real_init");
@@ -930,7 +930,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         } else {
         // constructor that takes python collections
             Utility::AddToClass(pyclass, "__real_init", "__init__");
-            Utility::AddToClass(pyclass, "__init__", (PyCFunction)VectorInit);
+            Utility::AddToClass(pyclass, "__init__", (PyCFunction)VectorInit, METH_VARARGS | METH_KEYWORDS);
 
         // data with size
             Utility::AddToClass(pyclass, "__real_data", "data");
@@ -971,7 +971,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
 
     if (IsTemplatedSTLClass(name, "shared_ptr")) {
         Utility::AddToClass(pyclass, "__real_init", "__init__");
-        Utility::AddToClass(pyclass, "__init__", (PyCFunction)SharedPtrInit);
+        Utility::AddToClass(pyclass, "__init__", (PyCFunction)SharedPtrInit, METH_VARARGS | METH_KEYWORDS);
     }
 
     else if (name.find("iterator") != std::string::npos) {

@@ -537,8 +537,18 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
     if (!ctxt.fFlags) ctxt.fFlags |= CallContext::sMemoryPolicy;
     ctxt.fFlags |= (mflags & CallContext::kReleaseGIL);
 
+// magic variable to prevent recursion passed by keyword?
+    if (kwds && PyDict_Check(kwds)) {
+        if (PyDict_DelItem(kwds, PyStrings::gNoImplicit) == 0) {
+            ctxt.fFlags |= CallContext::kNoImplicit;
+            if (!PyDict_Size(kwds)) kwds = nullptr;
+        } else
+           PyErr_Clear();
+    }
+
 // simple case
     if (nMethods == 1) {
+        ctxt.fFlags |= CallContext::kAllowImplicit;   // no two rounds needed
         PyObject* result = methods[0]->Call(pymeth->fSelf, args, kwds, &ctxt);
         return HandleReturn(pymeth, oldSelf, result);
     }
@@ -572,27 +582,41 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
     }
 
     std::vector<Utility::PyError_t> errors;
-    for (CPPOverload::Methods_t::size_type i = 0; i < nMethods; ++i) {
-        PyObject* result = methods[i]->Call(pymeth->fSelf, args, kwds, &ctxt);
+    for (int stage = 0; stage < 2; ++stage) {
+        for (CPPOverload::Methods_t::size_type i = 0; i < nMethods; ++i) {
+            PyObject* result = methods[i]->Call(pymeth->fSelf, args, kwds, &ctxt);
 
-        if (result != 0) {
-        // success: update the dispatch map for subsequent calls
-            dispatchMap.push_back(std::make_pair(sighash, methods[i]));
-            if (!errors.empty())
-                std::for_each(errors.begin(), errors.end(), Utility::PyError_t::Clear);
-            return HandleReturn(pymeth, oldSelf, result);
+            if (result != 0) {
+            // success: update the dispatch map for subsequent calls
+                dispatchMap.push_back(std::make_pair(sighash, methods[i]));
+                if (!errors.empty())
+                    std::for_each(errors.begin(), errors.end(), Utility::PyError_t::Clear);
+                return HandleReturn(pymeth, oldSelf, result);
+            }
+
+        // else failure ..
+            if (stage != 0) {
+                PyErr_Clear();    // first stage errors should be more informative
+                continue;
+            }
+
+        // collect error message/trace (automatically clears exception, too)
+            if (!PyErr_Occurred()) {
+            // this should not happen; set an error to prevent core dump and report
+                PyObject* sig = methods[i]->GetPrototype();
+                PyErr_Format(PyExc_SystemError, "%s =>\n    %s",
+                    CPyCppyy_PyUnicode_AsString(sig), (char*)"nullptr result without error in mp_call");
+                Py_DECREF(sig);
+            }
+            Utility::FetchError(errors);
+            ResetCallState(pymeth->fSelf, oldSelf, false);
         }
 
-    // failure: collect error message/trace (automatically clears exception, too)
-        if (!PyErr_Occurred()) {
-        // this should not happen; set an error to prevent core dump and report
-            PyObject* sig = methods[i]->GetPrototype();
-            PyErr_Format(PyExc_SystemError, "%s =>\n    %s",
-                CPyCppyy_PyUnicode_AsString(sig), (char*)"nullptr result without error in mp_call");
-            Py_DECREF(sig);
-        }
-        Utility::FetchError(errors);
-        ResetCallState(pymeth->fSelf, oldSelf, false);
+    // only move forward if implicit conversions are available
+        if (!HaveImplicit(&ctxt))
+            break;
+
+        ctxt.fFlags |= CallContext::kAllowImplicit;
     }
 
 // first summarize, then add details

@@ -52,6 +52,8 @@ namespace PyStrings {
 
     extern PyObject* gThisModule;
 
+    extern PyObject* gNoImplicit;
+
 } // namespace PyStrings
 
 bool CreatePyStrings();
