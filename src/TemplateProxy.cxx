@@ -266,13 +266,22 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
         PyErr_Clear();
     }
 
+// do not mix template instantiations with implicit conversions
+    if (!kwds) {
+        kwds = PyDict_New();
+    } else {
+        Py_INCREF(kwds);
+    }
+
 // case 1: explicit template previously selected through subscript
 
     if (pytmpl->fTemplateArgs) {
     // instantiate explicitly
-        PyObject* pyfullname = CPyCppyy_PyUnicode_FromString(CPyCppyy_PyUnicode_AsString(pytmpl->fCppName));
+        PyObject* pyfullname = CPyCppyy_PyUnicode_FromString(
+            CPyCppyy_PyUnicode_AsString(pytmpl->fCppName));
         CPyCppyy_PyUnicode_Append(&pyfullname, pytmpl->fTemplateArgs);
-        PyCallable* meth = pytmpl->Instantiate(CPyCppyy_PyUnicode_AsString(pyfullname), args, Utility::kNone);
+        PyCallable* meth = pytmpl->Instantiate(
+            CPyCppyy_PyUnicode_AsString(pyfullname), args, Utility::kNone);
         if (meth) {
         // store overload
             PyObject* dct = PyObject_GetAttr(pytmpl->fPyClass, PyStrings::gDict);
@@ -299,6 +308,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
             Py_DECREF(pyfullname);
 
             PyObject* result;
+            PyDict_SetItem(kwds, PyStrings::gNoImplicit, Py_True);
             if (isNS && pytmpl->fSelf) {
             // this is a global method added a posteriori to the class
                  Py_ssize_t sz = PyTuple_GET_SIZE(args);
@@ -313,8 +323,10 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
                  Py_DECREF(newArgs);
             } else
                  result = CPPOverload_Type.tp_call(pymeth, args, kwds);
-            if (result) pytmpl->fDispatchMap.push_back(std::make_pair(sighash, (CPPOverload*)pymeth));
-            else Py_DECREF(pymeth);
+            if (result) {
+                pytmpl->fDispatchMap.push_back(std::make_pair(sighash, (CPPOverload*)pymeth));
+            } else { Py_DECREF(pymeth); }
+            Py_DECREF(kwds);
             return result;
         } else {
             Py_DECREF(pyfullname);
@@ -329,11 +341,13 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
     PyObject* pymeth = CPPOverload_Type.tp_descr_get(
         (PyObject*)pytmpl->fNonTemplated, pytmpl->fSelf, (PyObject*)&CPPOverload_Type);
 // now call the method with the arguments (loops internally)
+    PyDict_SetItem(kwds, PyStrings::gNoImplicit, Py_True);
     PyObject* result = CPPOverload_Type.tp_call(pymeth, args, kwds);
     Py_DECREF(pymeth); pymeth = nullptr;
     if (result) {
         Py_INCREF(pytmpl->fNonTemplated);
         pytmpl->fDispatchMap.push_back(std::make_pair(sighash, pytmpl->fNonTemplated));
+        Py_DECREF(kwds);
         return result;
     }
 // TODO: collect error here, as the failure may be either an overload
@@ -345,11 +359,13 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
     pymeth = CPPOverload_Type.tp_descr_get(
         (PyObject*)pytmpl->fTemplated, pytmpl->fSelf, (PyObject*)&CPPOverload_Type);
 // now call the method with the arguments (loops internally)
+    PyDict_SetItem(kwds, PyStrings::gNoImplicit, Py_True);
     result = CPPOverload_Type.tp_call(pymeth, args, kwds);
     Py_DECREF(pymeth); pymeth = nullptr;
     if (result) {
         Py_INCREF(pytmpl->fTemplated);
         pytmpl->fDispatchMap.push_back(std::make_pair(sighash, pytmpl->fTemplated));
+        Py_DECREF(kwds);
         return result;
     }
 // TODO: collect error here, as the failure may be either an overload
@@ -361,16 +377,19 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
     for (auto pref : {Utility::kReference, Utility::kPointer, Utility::kValue}) {
         // TODO: no need to loop if there are no non-instance arguments; also, should any
         // failed lookup se removed?
-        PyCallable* meth = pytmpl->Instantiate(CPyCppyy_PyUnicode_AsString(pytmpl->fCppName), args, pref);
+        PyCallable* meth = pytmpl->Instantiate(
+            CPyCppyy_PyUnicode_AsString(pytmpl->fCppName), args, pref);
         if (meth) {
         // re-retrieve the cached method to bind it, then call it
             PyObject* pymeth = CPPOverload_Type.tp_descr_get(
                 (PyObject*)pytmpl->fTemplated, pytmpl->fSelf, (PyObject*)&CPPOverload_Type);
+            PyDict_SetItem(kwds, PyStrings::gNoImplicit, Py_True);
             result = CPPOverload_Type.tp_call(pymeth, args, kwds);
             Py_DECREF(pymeth);
             if (result) {
                 Py_INCREF(pytmpl->fTemplated);
                 pytmpl->fDispatchMap.push_back(std::make_pair(sighash, pytmpl->fTemplated));
+                Py_DECREF(kwds);
                 return result;
             } else
                 PyErr_Clear();
@@ -380,6 +399,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
 // moderately generic error message, but should be clear enough
     PyErr_Format(PyExc_TypeError, "cannot resolve method template call for \'%s\'",
         CPyCppyy_PyUnicode_AsString(pytmpl->fPyName));
+    Py_DECREF(kwds);
     return nullptr;
 }
 
