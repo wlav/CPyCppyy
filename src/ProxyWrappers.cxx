@@ -261,7 +261,7 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
         }
     }
 
-// add un-instantiated/non-overloaded templated methods (TODO: should this skip namespace?)
+// add proxies for un-instantiated/non-overloaded templated methods
     const Cppyy::TCppIndex_t nTemplMethods = isNamespace ? 0 : Cppyy::GetNumTemplatedMethods(scope);
     for (Cppyy::TCppIndex_t imeth = 0; imeth < nTemplMethods; ++imeth) {
         const std::string mtCppName = Cppyy::GetTemplatedMethodName(scope, imeth);
