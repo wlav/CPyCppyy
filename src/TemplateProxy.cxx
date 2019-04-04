@@ -83,7 +83,7 @@ PyCallable* TemplateProxy::Instantiate(const std::string& fullname, PyObject* ar
                     default:  ptrname = "void*";  // TODO: verify if this is right
                 }
                 if (ptrname) {
-                    PyObject* pyptrname = PyBytes_FromString(ptrname);
+                    PyObject* pyptrname = CPyCppyy_PyUnicode_FromString(ptrname);
                     PyTuple_SET_ITEM(tpArgs, i, pyptrname);
                 // string added, but not counted towards nStrings
                 } else {

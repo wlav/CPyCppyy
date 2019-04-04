@@ -418,7 +418,7 @@ PyObject* addressof(PyObject* pyobj, PyObject* args)
 // error message
     PyObject* str = PyObject_Str(pyobj);
     if (str && CPyCppyy_PyUnicode_Check(str))
-        PyErr_Format(PyExc_TypeError, "unknown object %s", PyBytes_AS_STRING(str));
+        PyErr_Format(PyExc_TypeError, "unknown object %s", CPyCppyy_PyUnicode_AsString(str));
     else
         PyErr_Format(PyExc_TypeError, "unknown object at %p", (void*)pyobj);
     Py_XDECREF(str);
