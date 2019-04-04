@@ -533,7 +533,7 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
     ctxt.fFlags |= (mflags & CallContext::kReleaseGIL);
 
 // magic variable to prevent recursion passed by keyword?
-    if (kwds && PyDict_Check(kwds)) {
+    if (kwds && PyDict_CheckExact(kwds) && PyDict_Size(kwds) != 0) {
         if (PyDict_DelItem(kwds, PyStrings::gNoImplicit) == 0) {
             ctxt.fFlags |= CallContext::kNoImplicit;
             if (!PyDict_Size(kwds)) kwds = nullptr;
