@@ -66,11 +66,16 @@ struct CallContext {
     static ECallFlags sSignalPolicy;
     static bool SetSignalPolicy(ECallFlags e);
 
-    Parameter* GetArgs(size_t sz = (size_t)-1) {
+    Parameter* GetArgs(size_t sz) {
         if (sz != (size_t)-1) fNArgs = sz;
         if (fNArgs <= SMALL_ARGS_N) return fArgs;
         if (!fArgsVec) fArgsVec = new std::vector<Parameter>();
         fArgsVec->resize(fNArgs);
+        return fArgsVec->data();
+    }
+
+    Parameter* GetArgs() {
+        if (fNArgs <= SMALL_ARGS_N) return fArgs;
         return fArgsVec->data();
     }
  

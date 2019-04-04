@@ -32,20 +32,18 @@ namespace {
 
     class GILControl {
     public:
-        GILControl(CPyCppyy::CallContext* ctxt) :
-                fSave(nullptr), fRelease(ReleasesGIL(ctxt)) {
+        GILControl(CPyCppyy::CallContext* ctxt) : fSave(nullptr) {
 #ifdef WITH_THREAD
-            if (fRelease) fSave = PyEval_SaveThread();
+            fSave = PyEval_SaveThread();
 #endif
         }
         ~GILControl() {
 #ifdef WITH_THREAD
-            if (fRelease) PyEval_RestoreThread(fSave);
+            PyEval_RestoreThread(fSave);
 #endif
         }
     private:
         PyThreadState* fSave;
-        bool fRelease;
     };
 
 } // unnamed namespace
@@ -54,6 +52,8 @@ namespace {
 static inline rtype GILCall##tcode(                                          \
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CPyCppyy::CallContext* ctxt)\
 {                                                                            \
+    if (!ReleasesGIL(ctxt))                                                  \
+        return Cppyy::Call##tcode(method, self, ctxt->GetSize(), ctxt->GetArgs());\
     GILControl gc(ctxt);                                                     \
     return Cppyy::Call##tcode(method, self, ctxt->GetSize(), ctxt->GetArgs());\
 }

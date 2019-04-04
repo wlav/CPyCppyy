@@ -658,8 +658,8 @@ static CPPOverload* mp_descrget(CPPOverload* pymeth, CPPInstance* pyobj, PyObjec
     *pymeth->fMethodInfo->fRefCount += 1;
     newPyMeth->fMethodInfo = pymeth->fMethodInfo;
 
-// new method is to be bound to current object (may be nullptr)
-    Py_XINCREF((PyObject*)pyobj);
+// new method is to be bound to current object
+    Py_INCREF((PyObject*)pyobj);
     newPyMeth->fSelf = pyobj;
 
     PyObject_GC_Track(newPyMeth);
