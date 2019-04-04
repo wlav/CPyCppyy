@@ -1888,6 +1888,13 @@ struct faux_initlist
     iterator  _M_array;
     size_type _M_len;
 };
+#elif defined (_MSC_VER)
+struct faux_initlist
+{
+     typedef char* iterator;
+     iterator _M_array; // ie. _First;
+     iterator _Last;
+};
 #else
 #define NO_KNOWN_INITIALIZER_LIST 1
 #endif
@@ -1914,16 +1921,24 @@ bool CPyCppyy::InitializerListConverter::SetArg(
     if (buf && buflen) {
     // dealing with an array here, pass on whole-sale
         fake = (faux_initlist*)malloc(sizeof(faux_initlist));
+	fake->_M_array = (faux_initlist::iterator)buf;
+#if defined (_LIBCPP_INITIALIZER_LIST) || defined(__GNUC__)
         fake->_M_len = (faux_initlist::size_type)buflen;
-        fake->_M_array = buf;
+#elif defined (_MSC_VER)
+        fake->_Last = fake->_M_array+buflen*fValueSize;
+#endif
     } else {
     // can only construct empty lists, so use a fake initializer list
         size_t len = (size_t)PySequence_Size(pyobject);
         fake = (faux_initlist*)malloc(sizeof(faux_initlist)+fValueSize*len);
-        fake->_M_len = (faux_initlist::size_type)len;
         fake->_M_array = (faux_initlist::iterator)((char*)fake+sizeof(faux_initlist));
-
+#if defined (_LIBCPP_INITIALIZER_LIST) || defined(__GNUC__)
+        fake->_M_len = (faux_initlist::size_type)len;
         for (faux_initlist::size_type i = 0; i < fake->_M_len; ++i) {
+#elif defined (_MSC_VER)
+        fake->_Last = fake->_M_array+len*fValueSize;
+        for (size_t i = 0; (fake->_M_array+i*fValueSize) != fake->_Last; ++i) {
+#endif
             PyObject* item = PySequence_GetItem(pyobject, i);
             bool convert_ok = false;
             if (item) {
