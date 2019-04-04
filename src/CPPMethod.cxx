@@ -319,6 +319,9 @@ int CPyCppyy::CPPMethod::GetPriority()
             else if (strstr(aname.c_str(), "bool"))
                 priority += 1;         // bool over int (does accept 1 and 0)
 
+        } else if (aname.find("initializer_list") != std::string::npos) {
+        // difficult conversion, push it way down
+            priority -= 2000;
         } else if (aname.rfind("&&", aname.size()-2) != std::string::npos) {
             priority += 100;
         } else if (!aname.empty() && !Cppyy::IsComplete(aname)) {
