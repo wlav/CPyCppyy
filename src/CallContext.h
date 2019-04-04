@@ -51,7 +51,8 @@ struct CallContext {
         kUseStrict      =  128,   // if method applies strict memory policy
         kReleaseGIL     =  256,   // if method should release the GIL
         kFast           =  512,   // if method should NOT handle signals
-        kSafe           = 1024    // if method should return on signals
+        kSafe           = 1024,   // if method should return on signals
+        kIsPseudoFunc   = 2048    // internal, used for introspection
     };
 
 // memory handling

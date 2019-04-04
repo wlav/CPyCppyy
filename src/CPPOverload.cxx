@@ -114,7 +114,7 @@ public:
 // helper to test whether a method is used in a pseudo-function modus
 static inline bool IsPseudoFunc(CPPOverload* pymeth)
 {
-    return (void*)pymeth == (void*)pymeth->fSelf;
+    return pymeth->fMethodInfo->fFlags & CallContext::kIsPseudoFunc;
 }
 
 // helper to sort on method priority
@@ -224,9 +224,9 @@ static PyObject* mp_meth_func(CPPOverload* pymeth, void*)
     *pymeth->fMethodInfo->fRefCount += 1;
     newPyMeth->fMethodInfo = pymeth->fMethodInfo;
 
-// new method is unbound, use of 'meth' is for keeping track whether this
-// proxy is used in the capacity of a method or a function
-    newPyMeth->fSelf = (CPPInstance*)newPyMeth;
+// new method is unbound, track whether this proxy is used in the capacity of a
+// method or a function (which normally is a CPPFunction)
+    newPyMeth->fMethodInfo->fFlags |= CallContext::kIsPseudoFunc;
 
     return (PyObject*)newPyMeth;
 }
@@ -517,11 +517,6 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
 {
 // Call the appropriate overload of this method.
 
-// if called through im_func pseudo-representation (this can be gamed if the
-// user really wants to ...)
-    if (IsPseudoFunc(pymeth))
-        pymeth->fSelf = nullptr;
-
     CPPInstance* oldSelf = pymeth->fSelf;
 
 // get local handles to proxy internals
@@ -690,9 +685,7 @@ static void mp_dealloc(CPPOverload* pymeth)
 // Deallocate memory held by method proxy object.
     PyObject_GC_UnTrack(pymeth);
 
-    if (!IsPseudoFunc(pymeth))
-        Py_CLEAR(pymeth->fSelf);
-    pymeth->fSelf = nullptr;
+    Py_CLEAR(pymeth->fSelf);
 
     if (--(*pymeth->fMethodInfo->fRefCount) <= 0) {
         delete pymeth->fMethodInfo;
@@ -720,7 +713,7 @@ static Py_ssize_t mp_hash(CPPOverload* pymeth)
 static int mp_traverse(CPPOverload* pymeth, visitproc visit, void* args)
 {
 // Garbage collector traverse of held python member objects.
-    if (pymeth->fSelf && ! IsPseudoFunc(pymeth))
+    if (pymeth->fSelf)
         return visit((PyObject*)pymeth->fSelf, args);
 
     return 0;
@@ -730,9 +723,7 @@ static int mp_traverse(CPPOverload* pymeth, visitproc visit, void* args)
 static int mp_clear(CPPOverload* pymeth)
 {
 // Garbage collector clear of held python member objects.
-    if (!IsPseudoFunc(pymeth))
-        Py_CLEAR(pymeth->fSelf);
-    pymeth->fSelf = nullptr;
+    Py_CLEAR(pymeth->fSelf);
 
     return 0;
 }
@@ -777,10 +768,11 @@ static PyObject* mp_overload(CPPOverload* pymeth, PyObject* sigarg)
             CPPOverload::Methods_t vec; vec.push_back(meth->Clone());
             newmeth->Set(pymeth->fMethodInfo->fName, vec);
 
-            if (pymeth->fSelf && !IsPseudoFunc(pymeth)) {
+            if (pymeth->fSelf) {
                 Py_INCREF(pymeth->fSelf);
                 newmeth->fSelf = pymeth->fSelf;
             }
+            newmeth->fMethodInfo->fFlags = pymeth->fMethodInfo->fFlags;
 
             Py_DECREF(sig1);
             return (PyObject*)newmeth;
