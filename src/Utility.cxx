@@ -534,7 +534,12 @@ Py_ssize_t CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, v
         Py_buffer bufinfo;
         memset(&bufinfo, 0, sizeof(Py_buffer));
         if (PyObject_GetBuffer(pyobject, &bufinfo, PyBUF_FORMAT) == 0) {
-            if (tc == '*' || strchr(bufinfo.format, tc)) {
+            if (tc == '*' || strchr(bufinfo.format, tc)
+#ifdef _WIN32
+            // ctypes is inconsistent in format on Windows; either way these types are the same size
+                || (tc == 'I' && strchr(bufinfo.format, 'L')) || (tc == 'i' && strchr(bufinfo.format, 'l'))
+#endif
+                    ) {
                 buf = bufinfo.buf;
                 if (buf && bufinfo.ndim == 0) {
                     PyBuffer_Release(&bufinfo);
