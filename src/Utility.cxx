@@ -618,7 +618,7 @@ Py_ssize_t CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, v
         }
 
         if (!buf) return 0;
-        return buflen;
+        return buflen/(size ? size : 1);
     }
 
     return 0;

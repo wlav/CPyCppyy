@@ -987,11 +987,11 @@ bool CPyCppyy::name##ArrayConverter::ToMemory(PyObject* value, void* address)\
     if (buflen == 0)                                                         \
         return false;                                                        \
     if (0 <= fSize) {                                                        \
-        if (fSize < buflen/(int)sizeof(type)) {                              \
+        if (fSize < buflen) {                                                \
             PyErr_SetString(PyExc_ValueError, "buffer too large for value"); \
             return false;                                                    \
         }                                                                    \
-        memcpy(*(type**)address, buf, 0 < buflen ? ((size_t)buflen) : sizeof(type));\
+        memcpy(*(type**)address, buf, (0 < buflen ? buflen : 1)*sizeof(type));\
     } else                                                                   \
         *(type**)address = (type*)buf;                                       \
     return true;                                                             \
