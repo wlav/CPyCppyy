@@ -545,7 +545,7 @@ Py_ssize_t CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, v
                     PyBuffer_Release(&bufinfo);
                     return bufinfo.len/bufinfo.itemsize;
                 } else if (buf && bufinfo.ndim == 1) {
-                    Py_ssize_t size1d = bufinfo.shape ? bufinfo.shape[0] : bufinfo.len;
+                    Py_ssize_t size1d = bufinfo.shape ? bufinfo.shape[0] : bufinfo.len/bufinfo.itemsize;
                     PyBuffer_Release(&bufinfo);
                     return size1d;
                 }
