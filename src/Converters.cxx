@@ -2161,6 +2161,7 @@ public:
         gf["const unsigned int&"] =         (cf_t)+[](long) { return new ConstUIntRefConverter{}; };
         gf["internal_enum_type_t"] =        (cf_t)+[](long) { return new IntConverter{}; };
         gf["internal_enum_type_t&"] =       (cf_t)+[](long) { return new IntRefConverter{}; };
+        gf["const internal_enum_type_t&"] = (cf_t)+[](long) { return new ConstIntRefConverter{}; };
         gf["long"] =                        (cf_t)+[](long) { return new LongConverter{}; };
         gf["long&"] =                       (cf_t)+[](long) { return new LongRefConverter{}; };
         gf["const long&"] =                 (cf_t)+[](long) { return new ConstLongRefConverter{}; };
