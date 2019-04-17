@@ -48,7 +48,7 @@ def _get_link_dirs():
     return []
 
 def _get_config_exec():
-    return ['python', '-m', 'cppyy_backend._cling_config']
+    return [sys.executable, '-m', 'cppyy_backend._cling_config']
 
 def get_cflags():
     config_exec_args = _get_config_exec()
