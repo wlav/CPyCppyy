@@ -30,33 +30,38 @@ namespace CPyCppyy {
 //- helpers ------------------------------------------------------------------
 namespace {
 
+#ifdef WITH_THREAD
     class GILControl {
     public:
-        GILControl(CPyCppyy::CallContext* ctxt) : fSave(nullptr) {
-#ifdef WITH_THREAD
-            fSave = PyEval_SaveThread();
-#endif
-        }
+        GILControl() : fSave(PyEval_SaveThread()) { }
         ~GILControl() {
-#ifdef WITH_THREAD
             PyEval_RestoreThread(fSave);
-#endif
         }
     private:
         PyThreadState* fSave;
     };
+#endif
 
 } // unnamed namespace
 
+#ifdef WITH_THREAD
 #define CPPYY_IMPL_GILCALL(rtype, tcode)                                     \
 static inline rtype GILCall##tcode(                                          \
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CPyCppyy::CallContext* ctxt)\
 {                                                                            \
     if (!ReleasesGIL(ctxt))                                                  \
         return Cppyy::Call##tcode(method, self, ctxt->GetSize(), ctxt->GetArgs());\
-    GILControl gc(ctxt);                                                     \
+    GILControl gc{};                                                         \
     return Cppyy::Call##tcode(method, self, ctxt->GetSize(), ctxt->GetArgs());\
 }
+#else
+#define CPPYY_IMPL_GILCALL(rtype, tcode)                                     \
+static inline rtype GILCall##tcode(                                          \
+    Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CPyCppyy::CallContext* ctxt)\
+{                                                                            \
+    return Cppyy::Call##tcode(method, self, ctxt->GetSize(), ctxt->GetArgs());\
+}
+#endif
 
 CPPYY_IMPL_GILCALL(void,          V)
 CPPYY_IMPL_GILCALL(unsigned char, B)
@@ -73,19 +78,27 @@ CPPYY_IMPL_GILCALL(void*,         R)
 static inline Cppyy::TCppObject_t GILCallO(Cppyy::TCppMethod_t method,
     Cppyy::TCppObject_t self, CPyCppyy::CallContext* ctxt, Cppyy::TCppType_t klass)
 {
+#ifdef WITH_THREAD
     if (!ReleasesGIL(ctxt))
+#endif
         return Cppyy::CallO(method, self, ctxt->GetSize(), ctxt->GetArgs(), klass);
-    GILControl gc(ctxt);
+#ifdef WITH_THREAD
+    GILControl gc{};
     return Cppyy::CallO(method, self, ctxt->GetSize(), ctxt->GetArgs(), klass);
+#endif
 }
 
 static inline Cppyy::TCppObject_t GILCallConstructor(
     Cppyy::TCppMethod_t method, Cppyy::TCppType_t klass, CPyCppyy::CallContext* ctxt)
 {
+#ifdef WITH_THREAD
     if (!ReleasesGIL(ctxt))
+#endif
         return Cppyy::CallConstructor(method, klass, ctxt->GetSize(), ctxt->GetArgs());
-    GILControl gc(ctxt);
+#ifdef WITH_THREAD
+    GILControl gc{};
     return Cppyy::CallConstructor(method, klass, ctxt->GetSize(), ctxt->GetArgs());
+#endif
 }
 
 static inline PyObject* CPyCppyy_PyUnicode_FromLong(long cl)
