@@ -14,6 +14,7 @@
 #include <new>
 #include <sstream>
 #include <utility>
+#include <sys/types.h>
 
 
 //- data _____________________________________________________________________
@@ -206,6 +207,22 @@ PyObject* CPyCppyy::IntExecutor::Execute(
 }
 
 //----------------------------------------------------------------------------
+PyObject* CPyCppyy::Int8Executor::Execute(
+    Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
+{
+// execute <method> with argument <self, ctxt>, construct python int return value
+    return PyInt_FromLong((int8_t)GILCallC(method, self, ctxt));
+}
+
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::UInt8Executor::Execute(
+    Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
+{
+// execute <method> with argument <self, ctxt>, construct python int return value
+    return PyInt_FromLong((uint8_t)GILCallB(method, self, ctxt));
+}
+
+//----------------------------------------------------------------------------
 PyObject* CPyCppyy::ShortExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
@@ -311,7 +328,9 @@ PyObject* CPyCppyy::name##RefExecutor::Execute(                              \
 CPPYY_IMPL_REFEXEC(Bool,   bool,   Long_t,   CPyCppyy_PyBool_FromLong,    PyLong_AsLong)
 CPPYY_IMPL_REFEXEC(Char,   char,   Long_t,   CPyCppyy_PyUnicode_FromLong, PyLong_AsLong)
 CPPYY_IMPL_REFEXEC(UChar,  unsigned char,  ULong_t,  CPyCppyy_PyUnicode_FromULong, PyLongOrInt_AsULong)
-CPPYY_IMPL_REFEXEC(Short,  short,  Long_t,   PyInt_FromLong,     PyLong_AsLong)
+CPPYY_IMPL_REFEXEC(Int8,   int8_t,  Long_t,  PyInt_FromLong, PyLong_AsLong)
+CPPYY_IMPL_REFEXEC(UInt8,  uint8_t, ULong_t, PyInt_FromLong, PyLongOrInt_AsULong)
+CPPYY_IMPL_REFEXEC(Short,  short,          Long_t,   PyInt_FromLong,     PyLong_AsLong)
 CPPYY_IMPL_REFEXEC(UShort, unsigned short, ULong_t,  PyInt_FromLong,     PyLongOrInt_AsULong)
 CPPYY_IMPL_REFEXEC(Int,    Int_t,    Long_t,   PyInt_FromLong,     PyLong_AsLong)
 CPPYY_IMPL_REFEXEC(UInt,   UInt_t,   ULong_t,  PyLong_FromUnsignedLong, PyLongOrInt_AsULong)
@@ -872,6 +891,10 @@ public:
         gf["const signed char&"] =          (ef_t)+[]() { return new CharConstRefExecutor{}; };
         gf["const unsigned char&"] =        (ef_t)+[]() { return new UCharConstRefExecutor{}; };
         gf["wchar_t"] =                     (ef_t)+[]() { return new WCharExecutor{}; };
+        gf["int8_t"] =                      (ef_t)+[]() { return new Int8Executor{}; };
+        gf["int8_t&"] =                     (ef_t)+[]() { return new Int8RefExecutor{}; };
+        gf["uint8_t"] =                     (ef_t)+[]() { return new UInt8Executor{}; };
+        gf["uint8_t&"] =                    (ef_t)+[]() { return new UInt8RefExecutor{}; };
         gf["short"] =                       (ef_t)+[]() { return new ShortExecutor{}; };
         gf["short&"] =                      (ef_t)+[]() { return new ShortRefExecutor{}; };
         gf["unsigned short"] =              (ef_t)+[]() { return new IntExecutor{}; };

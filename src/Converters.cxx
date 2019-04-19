@@ -91,6 +91,40 @@ static inline char CPyCppyy_PyUnicode_AsChar(PyObject* pyobject) {
     return (char)CPyCppyy_PyUnicode_AsString(pyobject)[0];
 }
 
+static inline uint8_t CPyCppyy_PyLong_AsUInt8(PyObject* pyobject)
+{
+// range-checking python integer to C++ uint8_t conversion (typically, an unsigned char)
+// prevent p2.7 silent conversions and do a range check
+    if (!(PyLong_Check(pyobject) || PyInt_Check(pyobject))) {
+        PyErr_SetString(PyExc_TypeError, "short int conversion expects an integer object");
+        return (uint8_t)-1;
+    }
+    long l = PyLong_AsLong(pyobject);
+    if (l < 0 || UCHAR_MAX < l) {
+        PyErr_Format(PyExc_ValueError, "integer %ld out of range for uint8_t", l);
+        return (uint8_t)-1;
+
+    }
+    return (uint8_t)l;
+}
+
+static inline int8_t CPyCppyy_PyLong_AsInt8(PyObject* pyobject)
+{
+// range-checking python integer to C++ int8_t conversion (typically, an signed char)
+// prevent p2.7 silent conversions and do a range check
+    if (!(PyLong_Check(pyobject) || PyInt_Check(pyobject))) {
+        PyErr_SetString(PyExc_TypeError, "short int conversion expects an integer object");
+        return (int8_t)-1;
+    }
+    long l = PyLong_AsLong(pyobject);
+    if (l < SCHAR_MIN || SCHAR_MAX < l) {
+        PyErr_Format(PyExc_ValueError, "integer %ld out of range for int8_t", l);
+        return (int8_t)-1;
+
+    }
+    return (int8_t)l;
+}
+
 static inline unsigned short CPyCppyy_PyLong_AsUShort(PyObject* pyobject)
 {
 // range-checking python integer to C++ unsigend short int conversion
@@ -481,6 +515,10 @@ bool CPyCppyy::WCharConverter::ToMemory(PyObject* value, void* address)
 }
 
 //----------------------------------------------------------------------------
+CPPYY_IMPL_BASIC_CONVERTER(
+    Int8,  int8_t,  long, PyInt_FromLong, CPyCppyy_PyLong_AsInt8,  'l')
+CPPYY_IMPL_BASIC_CONVERTER(
+    UInt8, uint8_t, long, PyInt_FromLong, CPyCppyy_PyLong_AsUInt8, 'l')
 CPPYY_IMPL_BASIC_CONVERTER(
     Short, short, long, PyInt_FromLong, CPyCppyy_PyLong_AsShort, 'l')
 CPPYY_IMPL_BASIC_CONVERTER(
@@ -2150,6 +2188,8 @@ public:
         gf["const unsigned char&"] =        (cf_t)+[](long) { return new ConstUCharRefConverter{}; };
         gf["UCharAsInt"] =                  (cf_t)+[](long) { return new UCharAsIntConverter{}; };
         gf["wchar_t"] =                     (cf_t)+[](long) { return new WCharConverter{}; };
+        gf["int8_t"] =                      (cf_t)+[](long) { return new Int8Converter{}; };
+        gf["uint8_t"] =                     (cf_t)+[](long) { return new UInt8Converter{}; };
         gf["short"] =                       (cf_t)+[](long) { return new ShortConverter{}; };
         gf["const short&"] =                (cf_t)+[](long) { return new ConstShortRefConverter{}; };
         gf["unsigned short"] =              (cf_t)+[](long) { return new UShortConverter{}; };
