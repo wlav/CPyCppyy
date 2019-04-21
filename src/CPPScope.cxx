@@ -4,6 +4,7 @@
 #include "CPPDataMember.h"
 #include "CPPFunction.h"
 #include "CPPOverload.h"
+#include "CustomPyTypes.h"
 #include "Dispatcher.h"
 #include "ProxyWrappers.h"
 #include "PyStrings.h"
@@ -267,6 +268,22 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
             if (!attr) {
                 Cppyy::TCppIndex_t dmi = Cppyy::GetDatamemberIndex(scope, name);
                 if (dmi != (Cppyy::TCppIndex_t)-1) attr = (PyObject*)CPPDataMember_New(scope, dmi);
+            }
+        }
+
+    // this may be a typedef that resolves to a sugared type
+        const std::string& lookup = Cppyy::GetScopedFinalName(klass->fCppType) + "::" + name;
+        const std::string& resolved = Cppyy::ResolveName(lookup);
+        if (resolved != lookup) {
+            const std::string& cpd = Utility::Compound(resolved);
+            if (cpd == "*") {
+                const std::string& clean = TypeManip::clean_type(resolved, false, true);
+                Cppyy::TCppType_t tcl = Cppyy::GetScope(clean);
+                if (tcl) {
+                    typedefpointertoclassobject* tpc = PyObject_GC_New(typedefpointertoclassobject, &TypedefPointerToClass_Type); 
+                    tpc->fType = tcl;
+                    attr = (PyObject*)tpc;
+                }
             }
         }
 
