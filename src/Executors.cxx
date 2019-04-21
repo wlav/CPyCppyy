@@ -893,8 +893,10 @@ public:
         gf["wchar_t"] =                     (ef_t)+[]() { return new WCharExecutor{}; };
         gf["int8_t"] =                      (ef_t)+[]() { return new Int8Executor{}; };
         gf["int8_t&"] =                     (ef_t)+[]() { return new Int8RefExecutor{}; };
+        gf["const int8_t&"] =               (ef_t)+[]() { return new Int8RefExecutor{}; };
         gf["uint8_t"] =                     (ef_t)+[]() { return new UInt8Executor{}; };
         gf["uint8_t&"] =                    (ef_t)+[]() { return new UInt8RefExecutor{}; };
+        gf["const uint8_t&"] =              (ef_t)+[]() { return new UInt8RefExecutor{}; };
         gf["short"] =                       (ef_t)+[]() { return new ShortExecutor{}; };
         gf["short&"] =                      (ef_t)+[]() { return new ShortRefExecutor{}; };
         gf["unsigned short"] =              (ef_t)+[]() { return new IntExecutor{}; };
