@@ -139,3 +139,13 @@ PyObject* CPyCppyy::CPPNamespaceConstructor::Call(
         Cppyy::GetScopedFinalName(this->GetScope()).c_str());
     return nullptr;
 }
+
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::CPPIncompleteClassConstructor::Call(
+    CPPInstance*&, PyObject*, PyObject*, CallContext*)
+{
+// do not allow instantiation of incomplete (forward declared) classes)
+    PyErr_Format(PyExc_TypeError, "cannot instantiate incomplete class \'%s\'",
+        Cppyy::GetScopedFinalName(this->GetScope()).c_str());
+    return nullptr;
+}

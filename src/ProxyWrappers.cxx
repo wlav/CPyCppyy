@@ -278,7 +278,10 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
             defctor = new CPPAbstractClassConstructor(scope, (Cppyy::TCppMethod_t)0);
         else if (isNamespace)
             defctor = new CPPNamespaceConstructor(scope, (Cppyy::TCppMethod_t)0);
-        else
+        else if (!Cppyy::IsComplete(Cppyy::GetScopedFinalName(scope))) {
+            ((CPPScope*)pyclass)->fFlags |= CPPScope::kIsInComplete;
+            defctor = new CPPIncompleteClassConstructor(scope, (Cppyy::TCppMethod_t)0);
+        } else
             defctor = new CPPConstructor(scope, (Cppyy::TCppMethod_t)0);
         cache["__init__"].push_back(defctor);
     }
@@ -647,7 +650,7 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& name, PyObject* parent)
         }
 
     // store a ref from cppyy scope id to new python class
-        if (pyscope) {
+        if (pyscope && !(((CPPScope*)pyscope)->fFlags & CPPScope::kIsInComplete)) {
             gPyClasses[klass] = PyWeakref_NewRef(pyscope, nullptr);
 
             if (!Cppyy::IsNamespace(klass)) {
@@ -671,8 +674,8 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& name, PyObject* parent)
         }
     }
 
-// store on parent if found/created
-    if (pyscope)
+// store on parent if found/created and complete
+    if (pyscope && !(((CPPScope*)pyscope)->fFlags & CPPScope::kIsInComplete))
         PyObject_SetAttrString(parent, const_cast<char*>(name.c_str()), pyscope);
     Py_DECREF(parent);
 
