@@ -335,11 +335,12 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
 
         // reload and reset weak refs
             for (auto uid : uv) {
-                PyObject* pyuscope = CreateScopeProxy(Cppyy::GetScopedFinalName(uid));
+                std::string uname = Cppyy::GetScopedFinalName(uid);
+                PyObject* pyuscope = CreateScopeProxy(uname);
                 if (pyuscope) {
                     klass->fImp.fUsing->push_back(PyWeakref_NewRef(pyuscope, nullptr));
                 // the namespace may not otherwise be held, so tie the lifetimes
-                    PyObject_SetAttr(pyclass, pyname, pyuscope);
+                    PyObject_SetAttrString(pyclass, ("__lifeline_"+uname).c_str(), pyuscope);
                     Py_DECREF(pyuscope);
                 }
             }
