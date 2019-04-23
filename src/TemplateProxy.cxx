@@ -376,7 +376,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
 // case 4: auto-instantiation from types of arguments
     for (auto pref : {Utility::kReference, Utility::kPointer, Utility::kValue}) {
         // TODO: no need to loop if there are no non-instance arguments; also, should any
-        // failed lookup se removed?
+        // failed lookup be removed?
         PyCallable* meth = pytmpl->Instantiate(
             CPyCppyy_PyUnicode_AsString(pytmpl->fCppName), args, pref);
         if (meth) {

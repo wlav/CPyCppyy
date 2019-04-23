@@ -315,7 +315,7 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
             Py_DECREF(method);
         }
 
-        Py_XDECREF(attr);         // could have be found in base class or non-existent
+        Py_XDECREF(attr);         // could have been found in base class or non-existent
     }
     Py_DECREF(dct);
 
@@ -623,7 +623,7 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& name, PyObject* parent)
         }
     }
 
-// use the module as a fake cope if no outer scope found
+// use the module as a fake scope if no outer scope found
     if (!parent) {
         Py_INCREF(gThisModule);
         parent = gThisModule;
