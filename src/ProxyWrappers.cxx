@@ -378,6 +378,7 @@ static PyObject* BuildCppClassBases(Cppyy::TCppType_t klass)
         const std::string& name = Cppyy::GetBaseName(klass, ibase);
         int decision = 2;
         Cppyy::TCppType_t tp = Cppyy::GetScope(name);
+        if (!tp) continue;   // means this base with not be available Python-side
         for (size_t ibase2 = 0; ibase2 < uqb.size(); ++ibase2) {
             if (uqb[ibase2] == name) {         // not unique ... skip
                 decision = 0;
