@@ -47,7 +47,8 @@ public:
     void AddOverload(CPPOverload* mp);
     void AddOverload(PyCallable* pc);
     void AddTemplate(PyCallable* pc);
-    PyCallable* Instantiate(const std::string& fullname, PyObject* tmplArgs, Utility::ArgPreference);
+    PyCallable* Instantiate(
+        const std::string& fullname, PyObject* tmplArgs, Utility::ArgPreference, int* pcnt = nullptr);
 
 private:                // private, as the python C-API will handle creation
     TemplateProxy() = delete;

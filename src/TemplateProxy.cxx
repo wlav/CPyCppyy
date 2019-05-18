@@ -10,6 +10,10 @@
 #include "PyStrings.h"
 #include "Utility.h"
 
+// Standard
+#include <algorithm>
+
+
 
 namespace CPyCppyy {
 
@@ -47,7 +51,8 @@ void TemplateProxy::AddTemplate(PyCallable* pc)
 }
 
 //----------------------------------------------------------------------------
-PyCallable* TemplateProxy::Instantiate(const std::string& fullname, PyObject* args, Utility::ArgPreference pref)
+PyCallable* TemplateProxy::Instantiate(
+    const std::string& fullname, PyObject* args, Utility::ArgPreference pref, int* pcnt)
 {
 // Instantiate (and cache) templated methods, return method if any
     std::string proto = "";
@@ -58,44 +63,78 @@ PyCallable* TemplateProxy::Instantiate(const std::string& fullname, PyObject* ar
         for (int i = 0; i < nArgs; ++i) {
             PyObject* itemi = PyTuple_GET_ITEM(args, i);
 
+            bool bArgSet = false;
+
         // special case for arrays
             PyObject* pytc = PyObject_GetAttr(itemi, PyStrings::gTypeCode);
-            if (!(pytc && CPyCppyy_PyUnicode_Check(pytc))) {
-            // normal case (not an array)
+            if (pytc) {
+                if (CPyCppyy_PyUnicode_Check(pytc)) {
+                // array, build up a pointer type
+                    char tc = ((char*)CPyCppyy_PyUnicode_AsString(pytc))[0];
+                    const char* ptrname = 0;
+                    switch (tc) {
+                        case 'b': ptrname = "char*";           break;
+                        case 'h': ptrname = "short*";          break;
+                        case 'H': ptrname = "unsigned short*"; break;
+                        case 'i': ptrname = "int*";            break;
+                        case 'I': ptrname = "unsigned int*";   break;
+                        case 'l': ptrname = "long*";           break;
+                        case 'L': ptrname = "unsigned long*";  break;
+                        case 'f': ptrname = "float*";          break;
+                        case 'd': ptrname = "double*";         break;
+                        default:  ptrname = "void*";  // TODO: verify if this is right
+                    }
+                    if (ptrname) {
+                        PyObject* pyptrname = CPyCppyy_PyUnicode_FromString(ptrname);
+                        PyTuple_SET_ITEM(tpArgs, i, pyptrname);
+                        bArgSet = true;
+                    // string added, but not counted towards nStrings
+                    }
+                }
+                Py_DECREF(pytc); pytc = nullptr;
+            } else
+                PyErr_Clear();
+
+        // if not arg set, try special case for ctypes
+            if (!bArgSet) pytc = PyObject_GetAttr(itemi, PyStrings::gCTypesType);
+
+            if (pytc) {
+                if (CPyCppyy_PyUnicode_Check(pytc)) {
+                    char tc = ((char*)CPyCppyy_PyUnicode_AsString(pytc))[0];
+                    const char* actname = 0;
+                    switch (tc) {
+                        case 'c': actname = "char&";           break;
+                        case 'h': actname = "short&";          break;
+                        case 'H': actname = "unsigned short&"; break;
+                        case 'i': actname = "int&";            break;
+                        case 'I': actname = "unsigned int&";   break;
+                        case 'l': actname = "long&";           break;
+                        case 'L': actname = "unsigned long&";  break;
+                        case 'f': actname = "float&";          break;
+                        case 'd': actname = "double&";         break;
+                        // no default, just let fail
+                    }
+                    if (actname) {
+                        PyObject* pyactname = CPyCppyy_PyUnicode_FromString(actname);
+                        PyTuple_SET_ITEM(tpArgs, i, pyactname);
+                        bArgSet = true;
+                    // string added, but not counted towards nStrings
+                   }
+                }
+                Py_XDECREF(pytc);
+            } else
+                 PyErr_Clear();
+
+            if (!bArgSet) {
+                // normal case (may well fail)
                 PyErr_Clear();
                 PyObject* tp = (PyObject*)Py_TYPE(itemi);
                 Py_INCREF(tp);
                 PyTuple_SET_ITEM(tpArgs, i, tp);
-            } else {
-            // array, build up a pointer type
-                char tc = ((char*)CPyCppyy_PyUnicode_AsString(pytc))[0];
-                const char* ptrname = 0;
-                switch (tc) {
-                    case 'b': ptrname = "char*";           break;
-                    case 'h': ptrname = "short*";          break;
-                    case 'H': ptrname = "unsigned short*"; break;
-                    case 'i': ptrname = "int*";            break;
-                    case 'I': ptrname = "unsigned int*";   break;
-                    case 'l': ptrname = "long*";           break;
-                    case 'L': ptrname = "unsigned long*";  break;
-                    case 'f': ptrname = "float*";          break;
-                    case 'd': ptrname = "double*";         break;
-                    default:  ptrname = "void*";  // TODO: verify if this is right
-                }
-                if (ptrname) {
-                    PyObject* pyptrname = CPyCppyy_PyUnicode_FromString(ptrname);
-                    PyTuple_SET_ITEM(tpArgs, i, pyptrname);
-                // string added, but not counted towards nStrings
-                } else {
-                // this should cleanly fail instantiation
-                    Py_INCREF(Py_None);
-                    PyTuple_SET_ITEM(tpArgs, i, Py_None);
-                }
             }
-            Py_XDECREF(pytc);
         }
 
-        const std::string& name_v1 = Utility::ConstructTemplateArgs(nullptr, tpArgs, args, pref);
+        const std::string& name_v1 = Utility::ConstructTemplateArgs(nullptr, tpArgs, args, pref, 0, pcnt);
         Py_DECREF(tpArgs);
         if (name_v1.size())
             proto = name_v1.substr(1, name_v1.size()-2);
@@ -121,6 +160,7 @@ PyCallable* TemplateProxy::Instantiate(const std::string& fullname, PyObject* ar
         return meth;
     }
 
+    PyErr_Format(PyExc_TypeError, "Failed to instantiate \"%s(%s)\"", fullname.c_str(), proto.c_str());
     return nullptr;
 }
 
@@ -238,6 +278,11 @@ static inline PyObject* CallMethodImp(TemplateProxy* pytmpl,
     return result;
 }
 
+#define TPPCALL_RETURN                                                       \
+{ if (!errors.empty())                                                       \
+      std::for_each(errors.begin(), errors.end(), Utility::PyError_t::Clear);\
+  return result; }
+
 static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
 {
 // Dispatcher to the actual member method, several uses possible; in order:
@@ -266,6 +311,9 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
 
 // TODO: should previously instantiated templates be considered first?
 
+// container for collecting errors
+    std::vector<Utility::PyError_t> errors;
+
 // short-cut through memoization map
     uint64_t sighash = HashSignature(args);
 
@@ -290,7 +338,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
         }
         if (result)
             return result;
-        PyErr_Clear();
+        Utility::FetchError(errors);
     }
 
 // do not mix template instantiations with implicit conversions
@@ -317,9 +365,9 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
             PyObject* result = CallMethodImp(pytmpl, pymeth, args, kwds, sighash);
             if (result) {
                 Py_DECREF(pyfullname);
-                return result;
+                TPPCALL_RETURN;
             }
-            PyErr_Clear();
+            Utility::FetchError(errors);
         } else {
             Py_XDECREF(pymeth);
         }
@@ -352,18 +400,19 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
 
         // retrieve fresh (for boundedness) and call
             pymeth = PyObject_GetAttr((pytmpl->fSelf && !isNS) ? pytmpl->fSelf : pytmpl->fPyClass, pyfullname);
-        }
+        } else
+            Utility::FetchError(errors);
         Py_DECREF(pyfullname);
 
     // attempt fresh instantiation
         if (pymeth) {
             PyObject* result = CallMethodImp(pytmpl, pymeth, args, kwds, sighash);
-            if (result) return result;
+            if (result) TPPCALL_RETURN;
+            Utility::FetchError(errors);
             pymeth = nullptr;
         }
 
     // debatable ... should this drop through?
-        PyErr_Clear();
     }
 
 // case 2: select known non-template overload
@@ -380,12 +429,9 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
         Py_INCREF(pytmpl->fNonTemplated);
         pytmpl->fDispatchMap.push_back(std::make_pair(sighash, pytmpl->fNonTemplated));
         Py_DECREF(kwds);
-        return result;
+        TPPCALL_RETURN;
     }
-// TODO: collect error here, as the failure may be either an overload
-// failure after which we should continue; or a real failure, which should
-// be reported.
-    PyErr_Clear();
+    Utility::FetchError(errors);
 
 // case 3: select known template overload
     pymeth = CPPOverload_Type.tp_descr_get(
@@ -398,19 +444,17 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
         Py_INCREF(pytmpl->fTemplated);
         pytmpl->fDispatchMap.push_back(std::make_pair(sighash, pytmpl->fTemplated));
         Py_DECREF(kwds);
-        return result;
+        TPPCALL_RETURN;
     }
-// TODO: collect error here, as the failure may be either an overload
-// failure after which we should continue; or a real failure, which should
-// be reported.
-    PyErr_Clear();
+    Utility::FetchError(errors);
 
 // case 4: auto-instantiation from types of arguments
     for (auto pref : {Utility::kReference, Utility::kPointer, Utility::kValue}) {
         // TODO: no need to loop if there are no non-instance arguments; also, should any
         // failed lookup be removed?
+        int pcnt = 0;
         PyCallable* meth = pytmpl->Instantiate(
-            CPyCppyy_PyUnicode_AsString(pytmpl->fCppName), args, pref);
+            CPyCppyy_PyUnicode_AsString(pytmpl->fCppName), args, pref, &pcnt);
         if (meth) {
         // re-retrieve the cached method to bind it, then call it
             PyObject* pymeth = CPPOverload_Type.tp_descr_get(
@@ -422,15 +466,23 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
                 Py_INCREF(pytmpl->fTemplated);
                 pytmpl->fDispatchMap.push_back(std::make_pair(sighash, pytmpl->fTemplated));
                 Py_DECREF(kwds);
-                return result;
+                TPPCALL_RETURN;
             } else
-                PyErr_Clear();
-        }
+                Utility::FetchError(errors);
+        } else
+            Utility::FetchError(errors);
+        if (!pcnt) break;         // preference never used; no point trying others
     }
 
-// moderately generic error message, but should be clear enough
-    PyErr_Format(PyExc_TypeError, "cannot resolve method template call for \'%s\'",
-        CPyCppyy_PyUnicode_AsString(pytmpl->fPyName));
+// error reporting is fraud, given the numerous steps taken, but more details seems better
+    if (!errors.empty()) {
+        PyObject* topmsg = CPyCppyy_PyUnicode_FromString("Template method resolution failed. Full details:");
+        Utility::SetDetailedException(errors, topmsg /* steals */, PyExc_TypeError /* default error */);
+    } else {
+        PyErr_Format(PyExc_TypeError, "cannot resolve method template call for \'%s\'",
+            CPyCppyy_PyUnicode_AsString(pytmpl->fPyName));
+    }
+
     Py_DECREF(kwds);
     return nullptr;
 }

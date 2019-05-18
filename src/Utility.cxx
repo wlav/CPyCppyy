@@ -361,7 +361,7 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& 
 
 //----------------------------------------------------------------------------
 std::string CPyCppyy::Utility::ConstructTemplateArgs(
-    PyObject* pyname, PyObject* tpArgs, PyObject* args, ArgPreference pref, int argoff)
+    PyObject* pyname, PyObject* tpArgs, PyObject* args, ArgPreference pref, int argoff, int* pcnt)
 {
 // Helper to construct the "<type, type, ...>" part of a templated name (either
 // for a class or method lookup
@@ -369,6 +369,8 @@ std::string CPyCppyy::Utility::ConstructTemplateArgs(
     if (pyname)
         tmpl_name << CPyCppyy_PyUnicode_AsString(pyname);
     tmpl_name << '<';
+
+    if (pcnt) *pcnt = 0;     // count number of times 'pref' is used
 
     Py_ssize_t nArgs = PyTuple_GET_SIZE(tpArgs);
     for (int i = argoff; i < nArgs; ++i) {
@@ -384,10 +386,13 @@ std::string CPyCppyy::Utility::ConstructTemplateArgs(
                 if (CPPInstance_Check(pyobj)) {
                     if (pyobj->fFlags & CPPInstance::kIsRValue)
                         tmpl_name << "&&";
-                    else if ((pyobj->fFlags & CPPInstance::kIsReference) || pref == kPointer)
-                        tmpl_name << '*';
-                    else if (pref != kValue)
-                        tmpl_name << '&';
+                    else {
+                        if (pcnt) *pcnt += 1;
+                        if ((pyobj->fFlags & CPPInstance::kIsReference) || pref == kPointer)
+                            tmpl_name << '*';
+                        else if (pref != kValue)
+                            tmpl_name << '&';
+                    }
                 }
             }
         } else if (PyObject_HasAttr(tn, PyStrings::gCppName)) {
