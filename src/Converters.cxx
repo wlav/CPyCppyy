@@ -2266,6 +2266,15 @@ public:
         gf["const char[]"] =                (cf_t)+[](long) { return new CStringConverter{}; };
         gf["char*"] =                       (cf_t)+[](long) { return new NonConstCStringConverter{}; };
         gf["wchar_t*"] =                    (cf_t)+[](long) { return new WCStringConverter{}; };
+// TODO: Figure out these char types (as well as char8_t coming in C++20) on all platforms; using wchar
+// isn't properly tested, but based on https://en.cppreference.com/w/cpp/language/types .
+#ifdef WIN32
+        gf["char16_t*"] =                   (cf_t)+[](long) { return new WCStringConverter{}; };
+        gf["char32_t*"] =                   (cf_t)+[](long) { return new NotImplementedConverter{}; };
+#else
+        gf["char16_t*"] =                   (cf_t)+[](long) { return new NotImplementedConverter{}; };
+        gf["char32_t*"] =                   (cf_t)+[](long) { return new WCStringConverter{}; };
+#endif
         gf["std::string"] =                 (cf_t)+[](long) { return new STLStringConverter{}; };
         gf["string"] =                      (cf_t)+[](long) { return new STLStringConverter{}; };
         gf["const std::string&"] =          (cf_t)+[](long) { return new STLStringConverter{}; };
