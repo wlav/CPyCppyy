@@ -14,7 +14,6 @@
 #include <algorithm>
 
 
-
 namespace CPyCppyy {
 
 //----------------------------------------------------------------------------
@@ -30,23 +29,46 @@ void TemplateProxy::Set(const std::string& cppname, const std::string& pyname, P
     std::vector<PyCallable*> dummy;
     fNonTemplated = CPPOverload_New(pyname, dummy);
     fTemplated    = CPPOverload_New(pyname, dummy);
+    fLowPriority  = nullptr;
     new (&fDispatchMap) TP_DispatchMap_t{};
 }
 
 //----------------------------------------------------------------------------
 void TemplateProxy::AddOverload(CPPOverload* mp) {
 // Store overloads of this templated method.
-    fNonTemplated->AddMethod(mp);
+    bool isGreedy = false;
+    for (auto pc : mp->fMethodInfo->fMethods) {
+        if (pc->IsGreedy()) {
+            isGreedy = true;
+            break;
+        }
+    }
+
+    if (isGreedy) {
+        if (!fLowPriority) {
+            std::vector<PyCallable*> dummy;
+            fLowPriority = CPPOverload_New(CPyCppyy_PyUnicode_AsString(fPyName), dummy);
+        }
+        fLowPriority->AddMethod(mp);
+    } else
+        fNonTemplated->AddMethod(mp);
 }
 
 void TemplateProxy::AddOverload(PyCallable* pc) {
 // Store overload of this templated method.
-    fNonTemplated->AddMethod(pc);
+    if (pc->IsGreedy()) {
+        if (!fLowPriority) {
+            std::vector<PyCallable*> dummy;
+            fLowPriority = CPPOverload_New(CPyCppyy_PyUnicode_AsString(fPyName), dummy);
+        }
+        fLowPriority->AddMethod(pc);
+    } else
+        fNonTemplated->AddMethod(pc);
 }
 
 void TemplateProxy::AddTemplate(PyCallable* pc)
 {
-// Store know template methods.
+// Store known template methods.
     fTemplated->AddMethod(pc);
 }
 
@@ -177,6 +199,7 @@ static TemplateProxy* tpp_new(PyTypeObject*, PyObject*, PyObject*)
     pytmpl->fSelf         = nullptr;
     pytmpl->fNonTemplated = nullptr;
     pytmpl->fTemplated    = nullptr;
+    pytmpl->fLowPriority  = nullptr;
     pytmpl->fWeakrefList  = nullptr;
 
     PyObject_GC_Track(pytmpl);
@@ -194,6 +217,7 @@ static int tpp_clear(TemplateProxy* pytmpl)
     Py_CLEAR(pytmpl->fSelf);
     Py_CLEAR(pytmpl->fNonTemplated);
     Py_CLEAR(pytmpl->fTemplated);
+    if (pytmpl->fLowPriority) Py_CLEAR(pytmpl->fLowPriority);
 
     return 0;
 }
@@ -228,6 +252,15 @@ static PyObject* tpp_doc(TemplateProxy* pytmpl, void*)
             doc = doc2;
         }
     }
+    if (pytmpl->fLowPriority) {
+        PyObject* doc2 = PyObject_GetAttrString((PyObject*)pytmpl->fLowPriority, "__doc__");
+        if (doc && doc2) {
+            CPyCppyy_PyUnicode_AppendAndDel(&doc, CPyCppyy_PyUnicode_FromString("\n"));
+            CPyCppyy_PyUnicode_AppendAndDel(&doc, doc2);
+        } else if (!doc && doc2) {
+            doc = doc2;
+        }
+    }
 
     if (doc)
         return doc;
@@ -246,6 +279,7 @@ static int tpp_traverse(TemplateProxy* pytmpl, visitproc visit, void* arg)
     Py_VISIT(pytmpl->fSelf);
     Py_VISIT(pytmpl->fNonTemplated);
     Py_VISIT(pytmpl->fTemplated);
+    if (pytmpl->fLowPriority) Py_VISIT(pytmpl->fLowPriority);
 
     return 0;
 }
@@ -307,6 +341,8 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
 // Note: explicit instantiation needs to use [] syntax:
 //
 //    obj.method[type<a0>, type<a1>, ...](a0, a1, ...)
+//
+// case 5: low priority methods, such as ones that take void* arguments
 //
 
 // TODO: should previously instantiated templates be considered first?
@@ -474,6 +510,25 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
         if (!pcnt) break;         // preference never used; no point trying others
     }
 
+// case 5: low priority methods, such as ones that take void* arguments
+
+    if (pytmpl->fLowPriority) {
+    // simply forward the call
+        PyObject* pymeth = CPPOverload_Type.tp_descr_get(
+            (PyObject*)pytmpl->fLowPriority, pytmpl->fSelf, (PyObject*)&CPPOverload_Type);
+    // now call the method with the arguments (loops internally)
+        PyDict_SetItem(kwds, PyStrings::gNoImplicit, Py_True);
+        PyObject* result = CPPOverload_Type.tp_call(pymeth, args, kwds);
+        Py_DECREF(pymeth); pymeth = nullptr;
+        if (result) {
+            Py_INCREF(pytmpl->fLowPriority);
+            pytmpl->fDispatchMap.push_back(std::make_pair(sighash, pytmpl->fLowPriority));
+            Py_DECREF(kwds);
+            TPPCALL_RETURN;
+        }
+        Utility::FetchError(errors);
+    }
+
 // error reporting is fraud, given the numerous steps taken, but more details seems better
     if (!errors.empty()) {
         PyObject* topmsg = CPyCppyy_PyUnicode_FromString("Template method resolution failed. Full details:");
@@ -517,6 +572,10 @@ static TemplateProxy* tpp_descrget(TemplateProxy* pytmpl, PyObject* pyobj, PyObj
 // copy templated method proxy pointer
     Py_INCREF(pytmpl->fTemplated);
     newPyTmpl->fTemplated = pytmpl->fTemplated;
+
+// copy low priority overloads proxy pointer
+    Py_XINCREF(pytmpl->fLowPriority);
+    newPyTmpl->fLowPriority = pytmpl->fLowPriority;
 
     return newPyTmpl;
 }

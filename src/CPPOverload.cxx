@@ -70,6 +70,7 @@ public:
     }
 
     virtual int GetPriority() { return 100; };
+    virtual bool IsGreedy() { return false; };
 
     virtual int GetMaxArgs() { return 100; };
     virtual PyObject* GetCoVarNames() { // TODO: pick these up from the callable

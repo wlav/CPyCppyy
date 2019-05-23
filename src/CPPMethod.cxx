@@ -347,6 +347,25 @@ int CPyCppyy::CPPMethod::GetPriority()
 }
 
 //----------------------------------------------------------------------------
+bool CPyCppyy::CPPMethod::IsGreedy()
+{
+// Methods will all void*-like arguments should be sorted after template
+// instanstations, so that they don't greedily take over pointers to object.
+// GetPriority() is too heavy-handed, as it will pull in all the argument
+// types, so use this cheaper check.
+    const size_t nArgs = Cppyy::GetMethodReqArgs(fMethod);
+    if (!nArgs) return false;
+
+    for (int iarg = 0; iarg < (int)nArgs; ++iarg) {
+        const std::string aname = Cppyy::GetMethodArgType(fMethod, iarg);
+        if (aname.find("void*") != 0)
+            return false;
+    }
+    return true;
+}
+
+
+//----------------------------------------------------------------------------
 int CPyCppyy::CPPMethod::GetMaxArgs()
 {
     return (int)Cppyy::GetMethodNumArgs(fMethod);

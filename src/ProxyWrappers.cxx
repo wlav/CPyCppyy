@@ -217,10 +217,11 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
                 const std::string& clName = Cppyy::GetFinalName(scope);
                 mtName = "_" + clName + "__" + mtName;
            }
-       }
+        }
 
     // template members; handled by adding a dispatcher to the class
-        if (isTemplate) {
+        bool storeOnTemplate = isTemplate ? true : (!isConstructor && Cppyy::ExistsMethodTemplate(scope, mtCppName));
+        if (storeOnTemplate) {
             sync_templates(pyclass, mtCppName, mtName);
         // continue processing to actually add the method so that the proxy can find
         // it on the class when called explicitly
@@ -254,9 +255,10 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
             setitem.push_back(new CPPSetItem(scope, method));
         }
 
-        if (isTemplate) {
+        if (storeOnTemplate) {
             PyObject* attr = PyObject_GetAttrString(pyclass, const_cast<char*>(mtName.c_str()));
-            ((TemplateProxy*)attr)->AddTemplate(pycall->Clone());
+            if (isTemplate) ((TemplateProxy*)attr)->AddTemplate(pycall->Clone());
+            else ((TemplateProxy*)attr)->AddOverload(pycall->Clone());
             Py_DECREF(attr);
         }
     }
