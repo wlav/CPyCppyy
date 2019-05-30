@@ -641,7 +641,11 @@ bool CPyCppyy::DoubleRefConverter::SetArg(
         return true;
     }
 
+#if PY_VERSION_HEX < 0x02050000
     PyErr_SetString(PyExc_TypeError, "use cppyy.Double for pass-by-ref of doubles");
+#else
+    PyErr_SetString(PyExc_TypeError, "use ctypes.c_double for pass-by-ref of doubles");
+#endif
     return false;
 }
 
