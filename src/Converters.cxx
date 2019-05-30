@@ -1825,7 +1825,7 @@ PyObject* CPyCppyy::FunctionPointerConverter::FromMemory(void* address)
         }
 
      // cache the new wrapper (TODO: does it make sense to use weakrefs on the data
-     // member?
+     // member?)
         sFuncWrapperLookup[faddr] = fname.str();
         cached = sFuncWrapperLookup.find(faddr);
     }
@@ -1836,6 +1836,48 @@ PyObject* CPyCppyy::FunctionPointerConverter::FromMemory(void* address)
     Py_DECREF(pyscope);
 
     return func;
+}
+
+
+//- std::function converter --------------------------------------------------
+bool CPyCppyy::StdFunctionConverter::SetArg(
+    PyObject* pyobject, Parameter& para, CallContext* ctxt)
+{
+// prefer normal "object" conversion
+    bool rf = ctxt->fFlags & CallContext::kNoImplicit;
+    ctxt->fFlags |= CallContext::kNoImplicit;
+    if (fConverter->SetArg(pyobject, para, ctxt)) {
+        if (!rf) ctxt->fFlags &= ~CallContext::kNoImplicit;
+        return true;
+    }
+
+    PyErr_Clear();
+
+// else create a wrapper function
+    if (this->FunctionPointerConverter::SetArg(pyobject, para, ctxt)) {
+    // retrieve the wrapper pointer and capture it in a temporary std::function,
+    // then try normal conversion a second time
+        PyObject* func = this->FunctionPointerConverter::FromMemory(&para.fValue.fVoidp);
+        if (func) {
+            Py_XDECREF(fFuncWrap); fFuncWrap = func;
+            bool result = fConverter->SetArg(fFuncWrap, para, ctxt);
+            if (!rf) ctxt->fFlags &= ~CallContext::kNoImplicit;
+            return result;
+        }
+    }
+
+    if (!rf) ctxt->fFlags &= ~CallContext::kNoImplicit;
+    return false;
+}
+
+PyObject* CPyCppyy::StdFunctionConverter::FromMemory(void* address)
+{
+    return fConverter->FromMemory(address);
+}
+
+bool CPyCppyy::StdFunctionConverter::ToMemory(PyObject* value, void* address)
+{
+    return fConverter->ToMemory(value, address);
 }
 
 
@@ -2015,6 +2057,31 @@ bool CPyCppyy::NotImplementedConverter::SetArg(PyObject*, Parameter&, CallContex
 }
 
 
+//- helper to refactor some code from CreateConverter ------------------------
+static inline CPyCppyy::Converter* selectInstanceCnv(
+    Cppyy::TCppScope_t klass, const std::string& cpd, long size, long* dims, bool isConst, bool control)
+{
+    using namespace CPyCppyy;
+    Converter* result = nullptr;
+
+    if (cpd == "**" || cpd == "*[]" || cpd == "&*")
+        result = new InstancePtrPtrConverter<false>(klass, control);
+    else if (cpd == "*&")
+        result = new InstancePtrPtrConverter<true>(klass, control);
+    else if (cpd == "*" && size <= 0)
+        result = new InstancePtrConverter(klass, control);
+    else if (cpd == "&")
+        result = new InstanceRefConverter(klass, isConst);
+    else if (cpd == "&&")
+        result = new InstanceMoveConverter(klass);
+    else if (cpd == "[]" || size > 0)
+        result = new InstanceArrayConverter(klass, dims, false);
+    else if (cpd == "")             // by value
+        result = new InstanceConverter(klass, true);
+
+    return result;
+}
+
 //- factories ----------------------------------------------------------------
 CPYCPPYY_EXPORT
 CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long* dims)
@@ -2095,6 +2162,29 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long
 //-- still nothing? use a generalized converter
     bool control = cpd == "&" || isConst;
 
+//-- special case: std::function
+    pos = resolvedType.find("function<");
+    if (pos == 0 /* no std:: */ || pos == 5 /* with std:: */ ||
+        pos == 6 /* const no std:: */ || pos == 11 /* const with std:: */ ) {
+
+    // get actual converter for normal passing
+        Converter* cnv = selectInstanceCnv(
+            Cppyy::GetScope(realType), cpd, size, dims, isConst, control);
+
+        if (cnv) {
+        // get the type of the underlying (TODO: use target_type?)
+            auto pos1 = resolvedType.find("(", pos+9);
+            auto pos2 = resolvedType.rfind(")");
+            if (pos1 != std::string::npos && pos2 != std::string::npos) {
+                auto sz1 = pos1-pos-9;
+                if (resolvedType[pos+9+sz1-1] == ' ') sz1 -= 1;
+
+                return new StdFunctionConverter(cnv,
+                    resolvedType.substr(pos+9, sz1), resolvedType.substr(pos1, pos2-pos1+1));
+            }
+        }
+    }
+
 // converters for known C++ classes and default (void*)
     Converter* result = nullptr;
     if (Cppyy::TCppScope_t klass = Cppyy::GetScope(realType)) {
@@ -2115,20 +2205,7 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long
                 result = new STLIteratorConverter();
             else
        // -- CLING WORKAROUND
-            if (cpd == "**" || cpd == "*[]" || cpd == "&*")
-                result = new InstancePtrPtrConverter<false>(klass, control);
-            else if (cpd == "*&")
-                result = new InstancePtrPtrConverter<true>(klass, control);
-            else if (cpd == "*" && size <= 0)
-                result = new InstancePtrConverter(klass, control);
-            else if (cpd == "&")
-                result = new InstanceRefConverter(klass, isConst);
-            else if (cpd == "&&")
-                result = new InstanceMoveConverter(klass);
-            else if (cpd == "[]" || size > 0)
-                result = new InstanceArrayConverter(klass, dims, false);
-            else if (cpd == "")             // by value
-                result = new InstanceConverter(klass, true);
+                result = selectInstanceCnv(klass, cpd, size, dims, isConst, control);
         }
     } else if (resolvedType.find("(*)") != std::string::npos ||
                (resolvedType.find("::*)") != std::string::npos)) {
