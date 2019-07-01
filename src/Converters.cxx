@@ -217,8 +217,20 @@ bool CPyCppyy::name##Converter::SetArg(                                      \
 {                                                                            \
 /* convert <pyobject> to C++ 'type', set arg for call */                     \
     type val = (type)F2(pyobject);                                           \
-    if (val == (type)-1 && PyErr_Occurred())                                 \
-        return false;                                                        \
+    if (val == (type)-1 && PyErr_Occurred()) {                               \
+        static PyTypeObject* ctypes_type = nullptr;                          \
+        if (!ctypes_type) {                                                  \
+            PyObject* pytype = 0, *pyvalue = 0, *pytrace = 0;                \
+            PyErr_Fetch(&pytype, &pyvalue, &pytrace);                        \
+            ctypes_type = GetCTypesType("c_"#type);                          \
+            PyErr_Restore(pytype, pyvalue, pytrace);                         \
+        }                                                                    \
+        if (Py_TYPE(pyobject) == ctypes_type) {                              \
+            PyErr_Clear();                                                   \
+            val = *((type*)((CPyCppyy_tagCDataObject*)pyobject)->b_ptr);     \
+        } else                                                               \
+            return false;                                                    \
+    }                                                                        \
     para.fValue.f##name = val;                                               \
     para.fTypeCode = tc;                                                     \
     return true;                                                             \
