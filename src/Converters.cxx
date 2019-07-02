@@ -193,6 +193,49 @@ static inline long CPyCppyy_PyLong_AsStrictLong(PyObject* pyobject)
 }
 
 
+//- helper for implicit conversions ------------------------------------------
+static inline bool ConvertImplicit(Cppyy::TCppType_t klass,
+    PyObject* pyobject, CPyCppyy::Parameter& para, CPyCppyy::CallContext* ctxt)
+{
+    using namespace CPyCppyy;
+
+    if (!AllowImplicit(ctxt)) {
+        ctxt->fFlags |= CallContext::kHaveImplicit;
+        return false;
+    }
+
+// exercise implicit conversion
+    PyObject* pyscope = CreateScopeProxy(klass);
+    if (!CPPScope_Check(pyscope)) {
+        Py_XDECREF(pyscope);
+        return false;
+    }
+
+// add a pseudo-keyword argument to prevent recursion
+    PyObject* kwds = PyDict_New();
+    PyDict_SetItem(kwds, PyStrings::gNoImplicit, Py_True);
+    PyObject* args = PyTuple_New(1);
+    Py_INCREF(pyobject); PyTuple_SET_ITEM(args, 0, pyobject);
+
+// call constructor of argument type to attempt implicit conversion
+    CPPInstance* pytmp = (CPPInstance*)PyObject_Call(pyscope, args, kwds);
+    Py_DECREF(args);
+    Py_DECREF(kwds);
+    Py_DECREF(pyscope);
+
+    if (pytmp) {
+    // implicit conversion succeeded!
+        ctxt->AddTemporary((PyObject*)pytmp);
+        para.fValue.fVoidp = pytmp->GetObject();
+        para.fTypeCode = 'V';
+        return true;
+    }
+
+    PyErr_Clear();
+    return false;
+}
+
+
 //- base converter implementation --------------------------------------------
 PyObject* CPyCppyy::Converter::FromMemory(void*)
 {
@@ -1305,7 +1348,7 @@ bool CPyCppyy::InstancePtrConverter::ToMemory(PyObject* value, void* address)
 
 //----------------------------------------------------------------------------
 bool CPyCppyy::InstanceConverter::SetArg(
-    PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)
+    PyObject* pyobject, Parameter& para, CallContext* ctxt)
 {
 // convert <pyobject> to C++ instance, set arg for call
     if (!CPPInstance_Check(pyobject))
@@ -1327,7 +1370,7 @@ bool CPyCppyy::InstanceConverter::SetArg(
         return true;
     }
 
-    return false;
+    return ConvertImplicit(fClass, pyobject, para, ctxt);
 }
 
 //----------------------------------------------------------------------------
@@ -1358,41 +1401,7 @@ bool CPyCppyy::InstanceRefConverter::SetArg(
     if (!fIsConst)      // no implicit conversion possible
         return false;
 
-// if allowed, use implicit conversion, otherwise indicate availability
-    if (!AllowImplicit(ctxt)) {
-        ctxt->fFlags |= CallContext::kHaveImplicit;
-        return false;
-    }
-
-// exercise implicit conversion
-    PyObject* pyscope = CreateScopeProxy(fClass);
-    if (!CPPScope_Check(pyscope)) {
-        Py_XDECREF(pyscope);
-        return false;
-    }
-
-// add a pseudo-keyword argument to prevent recursion
-    PyObject* kwds = PyDict_New();
-    PyDict_SetItem(kwds, PyStrings::gNoImplicit, Py_True);
-    PyObject* args = PyTuple_New(1);
-    Py_INCREF(pyobject); PyTuple_SET_ITEM(args, 0, pyobject);
-
-// call constructor of argument type to attempt implicit conversion
-    CPPInstance* pytmp = (CPPInstance*)PyObject_Call(pyscope, args, kwds);
-    Py_DECREF(args);
-    Py_DECREF(kwds);
-    Py_DECREF(pyscope);
-
-    if (pytmp) {
-    // implicit conversion succeeded!
-        ctxt->AddTemporary((PyObject*)pytmp);
-        para.fValue.fVoidp = pytmp->GetObject();
-        para.fTypeCode = 'V';
-        return true;
-    }
-
-    PyErr_Clear();
-    return false;
+    return ConvertImplicit(fClass, pyobject, para, ctxt);
 }
 
 //----------------------------------------------------------------------------
