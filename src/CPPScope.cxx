@@ -304,39 +304,43 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
         if (!attr) {
         // TODO: IsEnum should deal with the scope, using klass->GetListOfEnums()->FindObject()
             if (Cppyy::IsEnum(scope == Cppyy::gGlobalScope ? name : Cppyy::GetScopedFinalName(scope)+"::"+name)) {
-            // special case; enum types; for now, pretend int
-            // TODO: although fine for C++98, this isn't correct in C++11
-                 Cppyy::TCppEnum_t etype = Cppyy::GetEnum(scope, name);
+            // enum types (incl. named and class enums)
+                Cppyy::TCppEnum_t etype = Cppyy::GetEnum(scope, name);
+                if (etype) {
+                // collect the enum values
+                    Cppyy::TCppIndex_t ndata = Cppyy::GetNumEnumData(etype);
+                    PyObject* dct = PyDict_New();
+                    for (Cppyy::TCppIndex_t idata = 0; idata < ndata; ++idata) {
+                        PyObject* val = PyLong_FromLongLong(Cppyy::GetEnumDataValue(etype, idata));
+                        PyDict_SetItemString(dct, Cppyy::GetEnumDataName(etype, idata).c_str(), val);
+                        Py_DECREF(val);
+                    }
 
-            // collect the enum values
-                 Cppyy::TCppIndex_t ndata = Cppyy::GetNumEnumData(etype);
-                 PyObject* dct = PyDict_New();
-                 for (Cppyy::TCppIndex_t idata = 0; idata < ndata; ++idata) {
-                     PyObject* val = PyLong_FromLongLong(Cppyy::GetEnumDataValue(etype, idata));
-                     PyDict_SetItemString(dct, Cppyy::GetEnumDataName(etype, idata).c_str(), val);
-                     Py_DECREF(val);
-                 }
+                // add the __cppname__ for templates
+                    PyObject* cppname = nullptr;
+                    if (scope == Cppyy::gGlobalScope) {
+                        Py_INCREF(pyname);
+                        cppname = pyname;
+                    } else
+                        cppname = CPyCppyy_PyUnicode_FromString((Cppyy::GetScopedFinalName(scope)+"::"+name).c_str());
+                    PyDict_SetItem(dct, PyStrings::gCppName, cppname);
+                    Py_DECREF(cppname);
 
-            // add the __cppname__ for templates
-                 PyObject* cppname = nullptr;
-                 if (scope == Cppyy::gGlobalScope) {
-                     Py_INCREF(pyname);
-                     cppname = pyname;
-                 } else
-                     cppname = CPyCppyy_PyUnicode_FromString((Cppyy::GetScopedFinalName(scope)+"::"+name).c_str());
-                 PyDict_SetItem(dct, PyStrings::gCppName, cppname);
-                 Py_DECREF(cppname);
+                // create new type with labeled values in place
+                    PyObject* pybases = PyTuple_New(1);
+                    Py_INCREF(&PyInt_Type);
+                    PyTuple_SET_ITEM(pybases, 0, (PyObject*)&PyInt_Type);
+                    PyObject* args = Py_BuildValue((char*)"sOO", name.c_str(), pybases, dct);
+                    attr = Py_TYPE(&PyInt_Type)->tp_new(Py_TYPE(&PyInt_Type), args, nullptr);
+                    Py_DECREF(args);
+                    Py_DECREF(pybases);
+                    Py_DECREF(dct);
 
-            // create new type with labeled values in place
-                 PyObject* pybases = PyTuple_New(1);
-                 Py_INCREF(&PyInt_Type);
-                 PyTuple_SET_ITEM(pybases, 0, (PyObject*)&PyInt_Type);
-                 PyObject* args = Py_BuildValue((char*)"sOO", name.c_str(), pybases, dct);
-                 attr = Py_TYPE(&PyInt_Type)->tp_new(Py_TYPE(&PyInt_Type), args, nullptr);
-                 Py_DECREF(args);
-                 Py_DECREF(pybases);
-                 Py_DECREF(dct);
-
+                } else {
+                // presumably not a class enum; simply pretend int
+                    Py_INCREF(&PyInt_Type);
+                    attr = (PyObject*)&PyInt_Type;
+                }
             } else {
             // for completeness in error reporting
                 PyErr_Format(PyExc_TypeError, "\'%s\' is not a known C++ enum", name.c_str());
