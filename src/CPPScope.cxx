@@ -325,7 +325,7 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
                  } else
                      cppname = CPyCppyy_PyUnicode_FromString((Cppyy::GetScopedFinalName(scope)+"::"+name).c_str());
                  PyDict_SetItem(dct, PyStrings::gCppName, cppname);
-                 Py_DECREF(pyname);
+                 Py_DECREF(cppname);
 
             // create new type with labeled values in place
                  PyObject* pybases = PyTuple_New(1);
