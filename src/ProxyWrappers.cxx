@@ -102,19 +102,27 @@ void AddPropertyToClass(PyObject* pyclass,
     Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t idata)
 {
     CPyCppyy::CPPDataMember* property = CPyCppyy::CPPDataMember_New(scope, idata);
+    PyObject* pname = CPyCppyy_PyUnicode_FromString(const_cast<char*>(property->GetName().c_str()));
 
 // allow access at the instance level
-    PyObject_SetAttrString(pyclass,
-        const_cast<char*>(property->GetName().c_str()), (PyObject*)property);
+    PyType_Type.tp_setattro(pyclass, pname, (PyObject*)property);
 
 // allow access at the class level (always add after setting instance level)
-    if (Cppyy::IsStaticData(scope, idata)) {
-        PyObject_SetAttrString((PyObject*)Py_TYPE(pyclass),
-            const_cast<char*>(property->GetName().c_str()), (PyObject*)property);
-    }
+    if (Cppyy::IsStaticData(scope, idata))
+        PyType_Type.tp_setattro((PyObject*)Py_TYPE(pyclass), pname, (PyObject*)property);
 
-// done
+// cleanup
+    Py_DECREF(pname);
     Py_DECREF(property);
+}
+
+static inline
+void AddScopeToParent(PyObject* parent, const std::string& name, PyObject* newscope)
+{
+    PyObject* pyname = CPyCppyy_PyUnicode_FromString((char*)name.c_str());
+    if (CPPScope_Check(parent)) PyType_Type.tp_setattro(parent, pyname, newscope);
+    else PyObject_SetAttr(parent, pyname, newscope);
+    Py_DECREF(pyname);
 }
 
 } // namespace CPyCppyy
@@ -135,7 +143,7 @@ static inline void sync_templates(
             PyErr_Clear();
             TemplateProxy* pytmpl = TemplateProxy_New(mtCppName, mtName, pyclass);
             if (CPPOverload_Check(attr)) pytmpl->AddOverload((CPPOverload*)attr);
-            PyObject_SetAttr(pyclass, pyname, (PyObject*)pytmpl);
+            PyType_Type.tp_setattro(pyclass, pyname, (PyObject*)pytmpl);
             Py_DECREF(pytmpl);
         }
         Py_XDECREF(attr);
@@ -323,8 +331,9 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
             if (!attr) PyErr_Clear();
         // normal case, add a new method
             CPPOverload* method = CPPOverload_New(imd->first, imd->second);
-            PyObject_SetAttrString(
-                pyclass, const_cast<char*>(method->GetName().c_str()), (PyObject*)method);
+            PyObject* pymname = CPyCppyy_PyUnicode_FromString(const_cast<char*>(method->GetName().c_str()));
+            PyType_Type.tp_setattro(pyclass, pymname, (PyObject*)method);
+            Py_DECREF(pymname);
             Py_DECREF(method);
         }
 
@@ -536,7 +545,7 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& name, PyObject* parent)
         Py_DECREF(pytcl);
 
     // cache the result
-        PyObject_SetAttrString(parent ? parent : gThisModule, (char*)name.c_str(), pytemplate);
+        AddScopeToParent(parent ? parent : gThisModule, name, pytemplate);
 
     // done, next step should be a call into this template
         Py_XDECREF(parent);
@@ -552,7 +561,7 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& name, PyObject* parent)
                 PyObject* nt = PyObject_CallFunction(tc, (char*)"ss", name.c_str(), scName.c_str());
                 if (nt) {
                     if (parent) {
-                        PyObject_SetAttrString(parent, (char*)name.c_str(), nt);
+                        AddScopeToParent(parent, name, nt);
                         Py_DECREF(parent);
                     }
                     return nt;
@@ -571,8 +580,8 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& name, PyObject* parent)
     PyObject* pyscope = GetScopeProxy(klass);
     if (pyscope) {
         if (parent) {
-            PyObject_SetAttrString(parent, (char*)name.c_str(), pyscope);
-            Py_XDECREF(parent);
+            AddScopeToParent(parent, name, pyscope);
+            Py_DECREF(parent);
         }
         return pyscope;
     }
@@ -690,7 +699,7 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& name, PyObject* parent)
 
 // store on parent if found/created and complete
     if (pyscope && !(((CPPScope*)pyscope)->fFlags & CPPScope::kIsInComplete))
-        PyObject_SetAttrString(parent, const_cast<char*>(name.c_str()), pyscope);
+        AddScopeToParent(parent, name, pyscope);
     Py_DECREF(parent);
 
 // all done

@@ -351,11 +351,11 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
         if (attr) {
         // cache the result
             if (CPPDataMember_Check(attr)) {
-                PyObject_SetAttr((PyObject*)Py_TYPE(pyclass), pyname, attr);
+                PyType_Type.tp_setattro((PyObject*)Py_TYPE(pyclass), pyname, attr);
                 Py_DECREF(attr);
                 attr = PyType_Type.tp_getattro(pyclass, pyname);
             } else
-                PyObject_SetAttr(pyclass, pyname, attr);
+                PyType_Type.tp_setattro(pyclass, pyname, attr);
 
         } else {
             Utility::FetchError(errors);
@@ -379,7 +379,9 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
                 if (pyuscope) {
                     klass->fImp.fUsing->push_back(PyWeakref_NewRef(pyuscope, nullptr));
                 // the namespace may not otherwise be held, so tie the lifetimes
-                    PyObject_SetAttrString(pyclass, ("__lifeline_"+uname).c_str(), pyuscope);
+                    PyObject* llname = CPyCppyy_PyUnicode_FromString(("__lifeline_"+uname).c_str());
+                    PyType_Type.tp_setattro(pyclass, llname, pyuscope);
+                    Py_DECREF(llname);
                     Py_DECREF(pyuscope);
                 }
             }
@@ -414,6 +416,27 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
     }
 
     return attr;
+}
+
+//----------------------------------------------------------------------------
+static int meta_setattro(PyObject* pyclass, PyObject* pyname, PyObject* pyval)
+{
+// Global data and static data in namespaces is found lazily, thus if the first
+// use is setting of the global data by the user, it will not be reflected on
+// the C++ side, b/c there is no descriptor yet. This triggers the creation for
+// for such data as necessary. The many checks to narrow down the specific case
+// are needed to prevent unnecessary lookups and recursion.
+    if (((CPPScope*)pyclass)->fFlags & CPPScope::kIsNamespace) {
+    // skip if the given pyval is a descriptor already, or an unassignable class
+        if (!CPyCppyy::CPPDataMember_Check(pyval) && !CPyCppyy::CPPScope_Check(pyval)) {
+            std::string name = CPyCppyy_PyUnicode_AsString(pyname);
+            Cppyy::TCppIndex_t dmi = Cppyy::GetDatamemberIndex(((CPPScope*)pyclass)->fCppType, name);
+            if (dmi != (Cppyy::TCppIndex_t)-1)
+                meta_getattro(pyclass, pyname);       // triggers creation
+        }
+    }
+
+    return PyType_Type.tp_setattro(pyclass, pyname, pyval);
 }
 
 
@@ -493,7 +516,7 @@ PyTypeObject CPPScope_Type = {
     0,                             // tp_call
     0,                             // tp_str
     (getattrofunc)meta_getattro,   // tp_getattro
-    0,                             // tp_setattro
+    (setattrofunc)meta_setattro,   // tp_setattro
     0,                             // tp_as_buffer
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,     // tp_flags
     (char*)"CPyCppyy metatype (internal)",        // tp_doc

@@ -170,9 +170,11 @@ bool CPyCppyy::Utility::AddToClass(
     pdef->ml_doc   = nullptr;
 
     PyObject* func = PyCFunction_New(pdef, nullptr);
+    PyObject* name = CPyCppyy_PyUnicode_FromString(pdef->ml_name);
     PyObject* method = CustomInstanceMethod_New(func, nullptr, pyclass);
-    bool isOk = PyObject_SetAttrString(pyclass, pdef->ml_name, method) == 0;
+    bool isOk = PyType_Type.tp_setattro(pyclass, name, method) == 0;
     Py_DECREF(method);
+    Py_DECREF(name);
     Py_DECREF(func);
 
     if (PyErr_Occurred())
@@ -194,7 +196,9 @@ bool CPyCppyy::Utility::AddToClass(PyObject* pyclass, const char* label, const c
     if (!pyfunc)
         return false;
 
-    bool isOk = PyObject_SetAttrString(pyclass, const_cast<char*>(label), pyfunc) == 0;
+    PyObject* pylabel = CPyCppyy_PyUnicode_FromString(const_cast<char*>(label));
+    bool isOk = PyType_Type.tp_setattro(pyclass, pylabel, pyfunc) == 0;
+    Py_DECREF(pylabel);
 
     Py_DECREF(pyfunc);
     return isOk;
@@ -213,8 +217,9 @@ bool CPyCppyy::Utility::AddToClass(PyObject* pyclass, const char* label, PyCalla
             PyErr_Clear();
         Py_XDECREF((PyObject*)method);
         method = CPPOverload_New(label, pyfunc);
-        bool isOk = PyObject_SetAttrString(
-            pyclass, const_cast<char*>(label), (PyObject*)method) == 0;
+        PyObject* pylabel = CPyCppyy_PyUnicode_FromString(const_cast<char*>(label));
+        bool isOk = PyType_Type.tp_setattro(pyclass, pylabel, (PyObject*)method) == 0;
+        Py_DECREF(pylabel);
         Py_DECREF(method);
         return isOk;
     }

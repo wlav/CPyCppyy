@@ -430,7 +430,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
 
             if (meth) { // meaning, wasn't stored
                 PyObject* m = (PyObject*)CPPOverload_New(CPyCppyy_PyUnicode_AsString(pyfullname), meth->Clone());
-                PyObject_SetAttr(pytmpl->fPyClass, pyfullname, m);
+                PyType_Type.tp_setattro(pytmpl->fPyClass, pyfullname, m);
                 Py_DECREF(m);
             }
 

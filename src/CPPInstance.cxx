@@ -229,7 +229,7 @@ static PyObject* op_str(CPPInstance* cppinst)
                     pyclass, "std::ostream", rcname, "<<", "__lshiftc__", nullptr, rnsID)) {
                 lshift = PyObject_GetAttr(pyclass, PyStrings::gLShiftC);
             } else
-                PyObject_SetAttr(pyclass, PyStrings::gLShiftC, Py_None);
+                PyType_Type.tp_setattro(pyclass, PyStrings::gLShiftC, Py_None);
         } else if (lshift == Py_None) {
             Py_DECREF(lshift);
             lshift = nullptr;
