@@ -111,7 +111,7 @@ class MyDistribution(Distribution):
 
 setup(
     name='CPyCppyy',
-    version='1.8.2',
+    version='1.8.3',
     description='Cling-based Python-C++ bindings for CPython',
     long_description=long_description,
 
