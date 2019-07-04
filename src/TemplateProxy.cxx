@@ -457,8 +457,8 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
 // and thus already available
     PyObject* pymeth = CPPOverload_Type.tp_descr_get(
         (PyObject*)pytmpl->fNonTemplated, pytmpl->fSelf, (PyObject*)&CPPOverload_Type);
-// now call the method with the arguments (loops internally)
-    PyDict_SetItem(kwds, PyStrings::gNoImplicit, Py_True);
+// now call the method with the arguments (loops internally and implicit is okay as these
+// are not templated methods that should match exactly)
     PyObject* result = CPPOverload_Type.tp_call(pymeth, args, kwds);
     Py_DECREF(pymeth); pymeth = nullptr;
     if (result) {
