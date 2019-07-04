@@ -1130,6 +1130,19 @@ CPPYY_IMPL_ARRAY_CONVERTER (ComplexD, std::complex<double>, 'Z')
 
 
 //- converters for special cases ---------------------------------------------
+bool NullptrConverter::SetArg(PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)
+{
+// Only allow C++11 style nullptr to pass
+    if (pyobject == gNullPtrObject) {
+        para.fValue.fVoidp = nullptr;
+        para.fTypeCode = 'p';
+        return true;
+    }
+    return false;
+}
+
+
+//----------------------------------------------------------------------------
 #define CPPYY_IMPL_STRING_AS_PRIMITIVE_CONVERTER(name, type, F1, F2)         \
 CPyCppyy::name##Converter::name##Converter(bool keepControl) :               \
     InstancePtrConverter(Cppyy::GetScope(#type), keepControl) {}             \
@@ -1920,6 +1933,8 @@ bool CPyCppyy::SmartPtrConverter::SetArg(
     char typeCode = fIsRef ? 'p' : 'V';
 
     if (!CPPInstance_Check(pyobject)) {
+        // TODO: not sure how this is correct for pass-by-ref nor does it help with
+        // implicit conversions for pass-by-value
         if (fIsRef && GetAddressSpecialCase(pyobject, para.fValue.fVoidp)) {
             para.fTypeCode = typeCode;      // allow special cases such as nullptr
             return true;
@@ -2371,6 +2386,7 @@ public:
         gf["const ULong64_t&"] =            gf["const unsigned long long&"];
 
     // factories for special cases
+        gf["nullptr_t"] =                   (cf_t)+[](long) { return new NullptrConverter{}; };
         gf["const char*"] =                 (cf_t)+[](long) { return new CStringConverter{}; };
         gf["const char[]"] =                (cf_t)+[](long) { return new CStringConverter{}; };
         gf["char*"] =                       (cf_t)+[](long) { return new NonConstCStringConverter{}; };

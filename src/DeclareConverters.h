@@ -158,6 +158,11 @@ public:
 };
 
 // converters for special cases
+class NullptrConverter : public Converter {
+public:
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
+};
+
 class InstanceConverter : public StrictInstancePtrConverter {
 public:
     using StrictInstancePtrConverter::StrictInstancePtrConverter;
