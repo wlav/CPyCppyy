@@ -11,7 +11,7 @@ except ImportError:
     has_wheel = False
 
 
-requirements = ['cppyy-cling', 'cppyy-backend>=1.9.0']
+requirements = ['cppyy-cling>=6.18.0.0', 'cppyy-backend>=1.10.0']
 setup_requirements = ['wheel']
 if 'build' in sys.argv or 'install' in sys.argv:
     setup_requirements += requirements
@@ -111,7 +111,7 @@ class MyDistribution(Distribution):
 
 setup(
     name='CPyCppyy',
-    version='1.8.3',
+    version='1.9.0',
     description='Cling-based Python-C++ bindings for CPython',
     long_description=long_description,
 
