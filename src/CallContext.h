@@ -87,7 +87,7 @@ struct CallContext {
 
 public:
     uint64_t fFlags;
-        
+
 private:
 // payload
     Parameter fArgs[SMALL_ARGS_N];
