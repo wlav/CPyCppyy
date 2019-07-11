@@ -553,6 +553,11 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& name, PyObject* parent)
     }
 
     if (!(bool)klass) {
+    // could be an enum, which are treated seperately in CPPScope (TODO: maybe they
+    // should be handled here instead anyway??)
+        if (Cppyy::IsEnum(lookup))
+            return nullptr;
+
     // final possibility is a typedef of a builtin; these are mapped on the python side
         std::string resolved = Cppyy::ResolveName(lookup);
         if (gPyTypeMap) {
