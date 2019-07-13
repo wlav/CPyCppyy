@@ -370,57 +370,74 @@ std::string CPyCppyy::Utility::ConstructTemplateArgs(
 {
 // Helper to construct the "<type, type, ...>" part of a templated name (either
 // for a class or method lookup
-    std::stringstream tmpl_name;
+    bool justOne = !PyTuple_CheckExact(tpArgs);
+
+// Note: directly appending to string is a lot faster than stringstream
+    std::string tmpl_name;
+    tmpl_name.reserve(128);
     if (pyname)
-        tmpl_name << CPyCppyy_PyUnicode_AsString(pyname);
-    tmpl_name << '<';
+        tmpl_name.append(CPyCppyy_PyUnicode_AsString(pyname));
+    tmpl_name.push_back('<');
 
     if (pcnt) *pcnt = 0;     // count number of times 'pref' is used
 
-    Py_ssize_t nArgs = PyTuple_GET_SIZE(tpArgs);
+    Py_ssize_t nArgs = justOne ? 1 : PyTuple_GET_SIZE(tpArgs);
     for (int i = argoff; i < nArgs; ++i) {
     // add type as string to name
-        PyObject* tn = PyTuple_GET_ITEM(tpArgs, i);
+        PyObject* tn = justOne ? tpArgs : PyTuple_GET_ITEM(tpArgs, i);
         if (CPyCppyy_PyUnicode_Check(tn)) {
-            tmpl_name << CPyCppyy_PyUnicode_AsString(tn);
+            tmpl_name.append(CPyCppyy_PyUnicode_AsString(tn));
+    // some commmon numeric types (separated out for performance: checking for
+    // __cppname__ and/or __name__ is rather expensive)
+        } else if (tn == (PyObject*)&PyInt_Type) {
+            tmpl_name.append("int");
+#if PY_VERSION_HEX < 0x03000000
+        } else if (tn == (PyObject*)&PyLong_Type) {
+            tmpl_name.append("long");
+#endif
+        } else if (!args && tn == (PyObject*)&PyFloat_Type) {   // if args handled below
+            tmpl_name.append("float");
+#if PY_VERSION_HEX < 0x03000000
+        } else if (tn == (PyObject*)&PyString_Type) {
+#else
+        } else if (tn == (PyObject*)&PyUnicode_Type) {
+#endif
+            tmpl_name.append("std::string");
         } else if (CPPScope_Check(tn)) {
-            tmpl_name << Cppyy::GetScopedFinalName(((CPPClass*)tn)->fCppType);
+            tmpl_name.append(Cppyy::GetScopedFinalName(((CPPClass*)tn)->fCppType));
             if (args) {
             // try to specialize the type match for the given object
                 CPPInstance* pyobj = (CPPInstance*)PyTuple_GET_ITEM(args, i);
                 if (CPPInstance_Check(pyobj)) {
                     if (pyobj->fFlags & CPPInstance::kIsRValue)
-                        tmpl_name << "&&";
+                        tmpl_name.append("&&");
                     else {
                         if (pcnt) *pcnt += 1;
                         if ((pyobj->fFlags & CPPInstance::kIsReference) || pref == kPointer)
-                            tmpl_name << '*';
+                            tmpl_name.push_back('*');
                         else if (pref != kValue)
-                            tmpl_name << '&';
+                            tmpl_name.push_back('&');
                     }
                 }
             }
         } else if (PyObject_HasAttr(tn, PyStrings::gCppName)) {
             PyObject* tpName = PyObject_GetAttr(tn, PyStrings::gCppName);
-            tmpl_name << CPyCppyy_PyUnicode_AsString(tpName);
+            tmpl_name.append(CPyCppyy_PyUnicode_AsString(tpName));
             Py_DECREF(tpName);
         } else if (PyObject_HasAttr(tn, PyStrings::gName)) {
             PyObject* tpName = PyObject_GetAttr(tn, PyStrings::gName);
-
-        // special case for strings; and floats (Python-speak for double) if from argument
-            if (strcmp(CPyCppyy_PyUnicode_AsString(tpName), "str") == 0)
-                tmpl_name << "std::string";
-            else if (args && strcmp(CPyCppyy_PyUnicode_AsString(tpName), "float") == 0)
-                tmpl_name << "double";
+        // special case for floats (Python-speak for double) if from argument (only)
+            if (args && strcmp(CPyCppyy_PyUnicode_AsString(tpName), "float") == 0)
+                tmpl_name.append("double");
             else
-                tmpl_name << CPyCppyy_PyUnicode_AsString(tpName);
+                tmpl_name.append(CPyCppyy_PyUnicode_AsString(tpName));
             Py_DECREF(tpName);
         } else if (PyInt_Check(tn) || PyLong_Check(tn) || PyFloat_Check(tn)) {
         // last ditch attempt, works for things like int values; since this is a
         // source of errors otherwise, it is limited to specific types and not
         // generally used (str(obj) can print anything ...)
             PyObject* pystr = PyObject_Str(tn);
-            tmpl_name << CPyCppyy_PyUnicode_AsString(pystr);
+            tmpl_name.append(CPyCppyy_PyUnicode_AsString(pystr));
             Py_DECREF(pystr);
         } else {
             PyErr_SetString(PyExc_SyntaxError,
@@ -430,13 +447,13 @@ std::string CPyCppyy::Utility::ConstructTemplateArgs(
 
     // add a comma, as needed (no space as internally, final names don't have them)
         if (i != nArgs-1)
-            tmpl_name << ",";
+            tmpl_name.push_back(',');
     }
 
 // close template name
-    tmpl_name << '>';
+    tmpl_name.push_back('>');
 
-    return tmpl_name.str();
+    return tmpl_name;
 }
 
 //----------------------------------------------------------------------------

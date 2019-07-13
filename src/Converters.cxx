@@ -1725,10 +1725,10 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
     if (TemplateProxy_Check(pyobject)) {
     // get the actual underlying template matching the signature
         TemplateProxy* pytmpl = (TemplateProxy*)pyobject;
-        std::string fullname = CPyCppyy_PyUnicode_AsString(pytmpl->fCppName);
+        std::string fullname = CPyCppyy_PyUnicode_AsString(pytmpl->fTI->fCppName);
         if (pytmpl->fTemplateArgs)
             fullname += CPyCppyy_PyUnicode_AsString(pytmpl->fTemplateArgs);
-        Cppyy::TCppScope_t scope = ((CPPClass*)pytmpl->fPyClass)->fCppType;
+        Cppyy::TCppScope_t scope = ((CPPClass*)pytmpl->fTI->fPyClass)->fCppType;
         Cppyy::TCppMethod_t cppmeth = Cppyy::GetMethodTemplate(scope, fullname, fSignature);
         if (cppmeth) {
             para.fValue.fVoidp = (void*)Cppyy::GetFunctionAddress(cppmeth);
