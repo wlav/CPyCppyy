@@ -135,20 +135,18 @@ static inline void sync_templates(
     PyObject* pyclass, const std::string& mtCppName, const std::string& mtName)
 {
     PyObject* dct = PyObject_GetAttr(pyclass, PyStrings::gDict);
-    if (dct) {
-        PyObject* pyname = CPyCppyy_PyUnicode_FromString(const_cast<char*>(mtName.c_str()));
-        PyObject* attr = PyObject_GetItem(dct, pyname);
-        Py_DECREF(dct);
-        if (!TemplateProxy_Check(attr)) {
-            PyErr_Clear();
-            TemplateProxy* pytmpl = TemplateProxy_New(mtCppName, mtName, pyclass);
-            if (CPPOverload_Check(attr)) pytmpl->AddOverload((CPPOverload*)attr);
-            PyType_Type.tp_setattro(pyclass, pyname, (PyObject*)pytmpl);
-            Py_DECREF(pytmpl);
-        }
-        Py_XDECREF(attr);
-        Py_DECREF(pyname);
+    PyObject* pyname = CPyCppyy_PyUnicode_FromString(const_cast<char*>(mtName.c_str()));
+    PyObject* attr = PyObject_GetItem(dct, pyname);
+    if (!attr) PyErr_Clear();
+    Py_DECREF(dct);
+    if (!TemplateProxy_Check(attr)) {
+        TemplateProxy* pytmpl = TemplateProxy_New(mtCppName, mtName, pyclass);
+        if (CPPOverload_Check(attr)) pytmpl->MergeOverload((CPPOverload*&)attr);
+        PyType_Type.tp_setattro(pyclass, pyname, (PyObject*)pytmpl);
+        Py_DECREF(pytmpl);
     }
+    Py_XDECREF(attr);
+    Py_DECREF(pyname);
 }
 
 static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
@@ -228,7 +226,8 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
         }
 
     // template members; handled by adding a dispatcher to the class
-        bool storeOnTemplate = isTemplate ? true : (!isConstructor && Cppyy::ExistsMethodTemplate(scope, mtCppName));
+        bool storeOnTemplate =
+            isTemplate ? true : (!isConstructor && Cppyy::ExistsMethodTemplate(scope, mtCppName));
         if (storeOnTemplate) {
             sync_templates(pyclass, mtCppName, mtName);
         // continue processing to actually add the method so that the proxy can find
@@ -251,23 +250,25 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
         } else                               // member function
             pycall = new CPPMethod(scope, method);
 
-    // lookup method dispatcher and store method
-        Callables_t& md = (*(cache.insert(
-            std::make_pair(mtName, Callables_t())).first)).second;
-        md.push_back(pycall);
-
-    // special case for operator[]/() that returns by ref, use for getitem/call and setitem
-        if (setupSetItem) {
-            Callables_t& setitem = (*(cache.insert(
-                std::make_pair(std::string("__setitem__"), Callables_t())).first)).second;
-            setitem.push_back(new CPPSetItem(scope, method));
-        }
-
         if (storeOnTemplate) {
+        // template proxy was already created in sync_templates call above, so
+        // add only here, not to the cache of collected methods
             PyObject* attr = PyObject_GetAttrString(pyclass, const_cast<char*>(mtName.c_str()));
-            if (isTemplate) ((TemplateProxy*)attr)->AddTemplate(pycall->Clone());
-            else ((TemplateProxy*)attr)->AddOverload(pycall->Clone());
+            if (isTemplate) ((TemplateProxy*)attr)->AdoptTemplate(pycall->Clone());
+            else ((TemplateProxy*)attr)->AdoptMethod(pycall->Clone());
             Py_DECREF(attr);
+        } else {
+        // lookup method dispatcher and store method
+            Callables_t& md = (*(cache.insert(
+                std::make_pair(mtName, Callables_t())).first)).second;
+            md.push_back(pycall);
+
+        // special case for operator[]/() that returns by ref, use for getitem/call and setitem
+            if (setupSetItem) {
+                Callables_t& setitem = (*(cache.insert(
+                    std::make_pair(std::string("__setitem__"), Callables_t())).first)).second;
+                setitem.push_back(new CPPSetItem(scope, method));
+            }
         }
     }
 
@@ -325,8 +326,8 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
         Py_DECREF(pyname);
         if (TemplateProxy_Check(attr)) {
         // template exists, supply it with the non-templated method overloads
-            for (Callables_t::iterator cit = imd->second.begin(); cit != imd->second.end(); ++cit)
-                ((TemplateProxy*)attr)->AddOverload(*cit);
+            for (auto cit : imd->second)
+                ((TemplateProxy*)attr)->AdoptMethod(cit);
         } else {
             if (!attr) PyErr_Clear();
         // normal case, add a new method

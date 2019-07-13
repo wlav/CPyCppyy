@@ -224,7 +224,7 @@ bool CPyCppyy::Utility::AddToClass(PyObject* pyclass, const char* label, PyCalla
         return isOk;
     }
 
-    method->AddMethod(pyfunc);
+    method->AdoptMethod(pyfunc);
 
     Py_DECREF(method);
     return true;

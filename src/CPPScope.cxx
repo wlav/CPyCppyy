@@ -24,6 +24,51 @@ namespace CPyCppyy {
 
 extern PyTypeObject CPPInstance_Type;
 
+//- helpers ------------------------------------------------------------------
+static inline PyObject* add_template(PyObject* pyclass,
+    const std::string& name, std::vector<PyCallable*>* overloads = nullptr)
+{
+// If templated, the user-facing function must be the template proxy, but the
+// specific lookup must be the current overload, if already found.
+    TemplateProxy* pytmpl = nullptr;
+
+    const std::string& ncl = TypeManip::clean_type(name);
+    if (ncl != name) {
+        PyObject* pyncl = CPyCppyy_PyUnicode_FromString(ncl.c_str());
+        pytmpl = (TemplateProxy*)PyType_Type.tp_getattro((PyObject*)Py_TYPE(pyclass), pyncl);
+        if (!pytmpl) {
+            PyErr_Clear();
+            pytmpl = TemplateProxy_New(ncl, ncl, pyclass);
+        // cache the template on its clean name
+            PyType_Type.tp_setattro((PyObject*)Py_TYPE(pyclass), pyncl, (PyObject*)pytmpl);
+        }
+        Py_DECREF(pyncl);
+    }
+
+    if (pytmpl) {
+        if (!TemplateProxy_CheckExact((PyObject*)pytmpl)) {
+            Py_DECREF(pytmpl);
+            return nullptr;
+        }
+    } else
+        pytmpl = TemplateProxy_New(ncl, ncl, pyclass);
+
+    if (overloads) {
+    // adopt the new overloads
+        if (ncl != name)
+            for (auto clb : *overloads) pytmpl->AdoptTemplate(clb);
+        else
+            for (auto clb : *overloads) pytmpl->AdoptMethod(clb);
+    }
+
+    if (ncl == name)
+        return (PyObject*)pytmpl;
+
+    Py_DECREF(pytmpl);
+    return nullptr;       // so that caller caches the method on full name
+}
+
+
 //= CPyCppyy type proxy construction/destruction =============================
 static PyObject* meta_alloc(PyTypeObject* meta, Py_ssize_t nitems)
 {
@@ -253,15 +298,11 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
             // Note: can't re-use Utility::AddClass here, as there's the risk of
             // a recursive call. Simply add method directly, as we're guaranteed
             // that it doesn't exist yet.
-                attr = (PyObject*)CPPOverload_New(name, overloads);
+                if (Cppyy::ExistsMethodTemplate(scope, name))
+                    attr = add_template(pyclass, name, &overloads);
 
-            // If both templated and not, the templated one needs to be user-facing
-            // in order to expose the instantiation mechanims.
-                if (Cppyy::ExistsMethodTemplate(scope, name)) {
-                    TemplateProxy* pytmpl = TemplateProxy_New(name, name, pyclass);
-                    pytmpl->AddOverload((CPPOverload*)attr);
-                    attr = (PyObject*)pytmpl;
-                }
+                if (!attr)    // add_template can fail if the method can not be added
+                    attr = (PyObject*)CPPOverload_New(name, overloads);
             }
 
         // tickle lazy lookup of data members
@@ -281,7 +322,8 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
                     const std::string& clean = TypeManip::clean_type(resolved, false, true);
                     Cppyy::TCppType_t tcl = Cppyy::GetScope(clean);
                     if (tcl) {
-                        typedefpointertoclassobject* tpc = PyObject_GC_New(typedefpointertoclassobject, &TypedefPointerToClass_Type);
+                        typedefpointertoclassobject* tpc =
+                            PyObject_GC_New(typedefpointertoclassobject, &TypedefPointerToClass_Type);
                         tpc->fType = tcl;
                         attr = (PyObject*)tpc;
                     }
@@ -291,9 +333,9 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
 
     // function templates that have not been instantiated
         if (!attr) {
-            if (Cppyy::ExistsMethodTemplate(scope, name)) {
-                attr = (PyObject*)TemplateProxy_New(name, name, pyclass);
-            } else {
+            if (Cppyy::ExistsMethodTemplate(scope, name))
+                attr = add_template(pyclass, name);
+            else {
             // for completeness in error reporting
                 PyErr_Format(PyExc_TypeError, "\'%s\' is not a known C++ template", name.c_str());
                 Utility::FetchError(errors);

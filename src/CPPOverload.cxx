@@ -795,7 +795,7 @@ static PyObject* mp_overload(CPPOverload* pymeth, PyObject* sigarg)
 static PyObject* mp_add_overload(CPPOverload* pymeth, PyObject* new_overload)
 {
     TPythonCallback* cb = new TPythonCallback(new_overload);
-    pymeth->AddMethod(cb);
+    pymeth->AdoptMethod(cb);
     Py_RETURN_NONE;
 }
 
@@ -890,7 +890,7 @@ void CPyCppyy::CPPOverload::Set(const std::string& name, std::vector<PyCallable*
 }
 
 //-----------------------------------------------------------------------------
-void CPyCppyy::CPPOverload::AddMethod(PyCallable* pc)
+void CPyCppyy::CPPOverload::AdoptMethod(PyCallable* pc)
 {
 // Fill in the data of a freshly created method proxy.
     fMethodInfo->fMethods.push_back(pc);
@@ -898,12 +898,17 @@ void CPyCppyy::CPPOverload::AddMethod(PyCallable* pc)
 }
 
 //-----------------------------------------------------------------------------
-void CPyCppyy::CPPOverload::AddMethod(CPPOverload* meth)
+void CPyCppyy::CPPOverload::MergeOverload(CPPOverload*& meth)
 {
+    if (!HasMethods()) // if fresh method being filled: also copy flags
+        fMethodInfo->fFlags = meth->fMethodInfo->fFlags;
     fMethodInfo->fMethods.insert(fMethodInfo->fMethods.end(),
         meth->fMethodInfo->fMethods.begin(), meth->fMethodInfo->fMethods.end());
     fMethodInfo->fFlags &= ~CallContext::kIsSorted;
+    meth->fMethodInfo->fDispatchMap.clear();
     meth->fMethodInfo->fMethods.clear();
+    Py_DECREF(meth);
+    meth = this;
 }
 
 //-----------------------------------------------------------------------------

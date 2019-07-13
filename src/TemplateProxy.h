@@ -45,11 +45,11 @@ public:                 // public, as the python C-API works with C structs
     TP_DispatchMap_t fDispatchMap;
 
 public:
-    void AddOverload(CPPOverload* mp);
-    void AddOverload(PyCallable* pc);
-    void AddTemplate(PyCallable* pc);
-    PyCallable* Instantiate(
-        const std::string& fullname, PyObject* tmplArgs, Utility::ArgPreference, int* pcnt = nullptr);
+    void MergeOverload(CPPOverload*& mp);
+    void AdoptMethod(PyCallable* pc);
+    void AdoptTemplate(PyCallable* pc);
+    PyObject* Instantiate(const std::string& fname,
+        PyObject* tmplArgs, Utility::ArgPreference, int* pcnt = nullptr);
 
 private:                // private, as the python C-API will handle creation
     TemplateProxy() = delete;
