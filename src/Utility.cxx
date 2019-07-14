@@ -395,8 +395,9 @@ std::string CPyCppyy::Utility::ConstructTemplateArgs(
         } else if (tn == (PyObject*)&PyLong_Type) {
             tmpl_name.append("long");
 #endif
-        } else if (!args && tn == (PyObject*)&PyFloat_Type) {   // if args handled below
-            tmpl_name.append("float");
+        } else if (tn == (PyObject*)&PyFloat_Type) {
+        // special case for floats (Python-speak for double) if from argument (only)
+            tmpl_name.append(args ? "double" : "float");
 #if PY_VERSION_HEX < 0x03000000
         } else if (tn == (PyObject*)&PyString_Type) {
 #else
@@ -426,11 +427,7 @@ std::string CPyCppyy::Utility::ConstructTemplateArgs(
             Py_DECREF(tpName);
         } else if (PyObject_HasAttr(tn, PyStrings::gName)) {
             PyObject* tpName = PyObject_GetAttr(tn, PyStrings::gName);
-        // special case for floats (Python-speak for double) if from argument (only)
-            if (args && strcmp(CPyCppyy_PyUnicode_AsString(tpName), "float") == 0)
-                tmpl_name.append("double");
-            else
-                tmpl_name.append(CPyCppyy_PyUnicode_AsString(tpName));
+            tmpl_name.append(CPyCppyy_PyUnicode_AsString(tpName));
             Py_DECREF(tpName);
         } else if (PyInt_Check(tn) || PyLong_Check(tn) || PyFloat_Check(tn)) {
         // last ditch attempt, works for things like int values; since this is a
