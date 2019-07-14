@@ -292,60 +292,83 @@ PyObject* CPyCppyy::CPPMethod::GetPrototype(bool fa)
 //----------------------------------------------------------------------------
 int CPyCppyy::CPPMethod::GetPriority()
 {
-// Method priorities exist (in lieu of true overloading) there to prevent
-// void* or <unknown>* from usurping otherwise valid calls. TODO: extend this
-// to favour classes that are not bases.
+// To help with overload selection, methods are given a priority based on the
+// affinity of Python and C++ types. Priority only matters for methods that have
+// an equal number of arguments and types that are possible substitutes (the
+// normal selection mechanisms would simply distinguish them otherwise).
+
+// The following types are ordered, in favor (variants implicit):
+//
+//  bool >> long >> int >> short
+//  double >> long double >> float
+//  const char* >> char
+//
+// Further, all integer types are preferred over floating point b/c int to float
+// is allowed implicitly, float to int is not.
+//
+// Special cases that are disliked include void*, initializer_list, and
+// unknown/incomplete types. Finally, moves aer preferred over references.
+// TODO: extend this to favour classes that are not bases.
+// TODO: profile this method (it's expensive, but should be called too often)
+
     int priority = 0;
 
     const size_t nArgs = Cppyy::GetMethodNumArgs(fMethod);
     for (int iarg = 0; iarg < (int)nArgs; ++iarg) {
         const std::string aname = Cppyy::GetMethodArgType(fMethod, iarg);
 
-    // the following numbers are made up and may cause problems in specific
-    // situations: use <obj>.<meth>.disp() for choice of exact dispatch
         if (Cppyy::IsBuiltin(aname)) {
-        // happens for builtin types (and namespaces, but those can never be an
-        // argument), NOT for unknown classes as that concept no longer exists
-        // TODO: the number below work, but there's no science behind them. Need
-        // to figure out some ordering in context of the other overloads.
-            if (strstr(aname.c_str(), "void*"))
-            // TODO: figure out in general all void* converters
-                priority -= 10000;     // void*/void** shouldn't be too greedy
+        // integer types
+            if (strstr(aname.c_str(), "bool"))
+                priority += 100;       // bool over int (does accept 1 and 0)
+            else if (strstr(aname.c_str(), "long long"))
+                priority +=   5;       // will very likely fit
+            else if (strstr(aname.c_str(), "long"))
+                priority +=  10;       // most affine integer type
+            // no need to compare with int; leave at zero
+            else if (strstr(aname.c_str(), "short"))
+                priority += -20;       // not really relevant as a type
+
+        // floating point types (note all numbers lower than integer types)
             else if (strstr(aname.c_str(), "float"))
-                priority -= 1000;      // double preferred (no float in python)
+                priority += -100;      // not really relevant as a type
             else if (strstr(aname.c_str(), "long double"))
-                priority -= 100;       // id, but better than float
+                priority +=  -90;      // fits double with least loss of precision
             else if (strstr(aname.c_str(), "double"))
-                priority -= 10;        // char, int, long can't convert float,
-                                       // but vv. works, so prefer the int types
-            else if (strstr(aname.c_str(), "char"))
-                priority -= 3;         // as to prefer const char*
-            else if (strstr(aname.c_str(), "bool"))
-                priority += 1;         // bool over int (does accept 1 and 0)
+                priority +=  -80;      // most affine floating point type
 
-        } else if (aname.find("initializer_list") != std::string::npos) {
-        // difficult conversion, push it way down
-            priority -= 2000;
-        } else if (aname.rfind("&&", aname.size()-2) != std::string::npos) {
-            priority += 100;
-        } else if (!aname.empty() && !Cppyy::IsComplete(aname)) {
-        // class is known, but no dictionary available, 2 more cases: * and &
-            if (aname[ aname.size() - 1 ] == '&')
-                priority -= 1000000;
-            else
-                priority -= 100000; // prefer pointer passing over reference
+        // string/char types
+            else if (strstr(aname.c_str(), "char") && aname[aname.size()-1] != '*')
+                priority += -10;       // prefer (const) char* over char
+
+        // oddball
+            else if (strstr(aname.c_str(), "void*"))
+                priority -= 1000;      // void*/void** shouldn't be too greedy
+
+        } else {
+        // a couple of special cases as explained above
+            if (aname.find("initializer_list") != std::string::npos) {
+                priority += -1000;     // difficult/expensive conversion
+            } else if (aname.rfind("&&", aname.size()-2) != std::string::npos) {
+                priority +=   100;     // prefer moves over other ref/ptr
+            } else if (!aname.empty() && !Cppyy::IsComplete(aname)) {
+            // class is known, but no dictionary available, 2 more cases: * and &
+                if (aname[aname.size() - 1] == '&')
+                    priority += -5000;
+                else
+                    priority += -2000; // prefer pointer passing over reference
+            }
+
+        // prefer more derived classes
+            Cppyy::TCppScope_t scope = Cppyy::GetScope(TypeManip::clean_type(aname, false));
+            if (scope)
+                priority += (int)Cppyy::GetNumBases(scope);
         }
-
-    // prefer more derived classes
-        Cppyy::TCppScope_t scope = Cppyy::GetScope(TypeManip::clean_type(aname));
-        if (scope)
-            priority += (int)Cppyy::GetNumBases(scope);
     }
 
-// add a small penalty to prefer non-const methods over const ones for
-// getitem/setitem
+// add a small penalty to prefer non-const methods over const ones for get/setitem
     if (Cppyy::IsConstMethod(fMethod) && Cppyy::GetMethodName(fMethod) == "operator[]")
-        priority -= 1;
+        priority += -1;
 
     return priority;
 }
