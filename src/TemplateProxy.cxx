@@ -356,9 +356,26 @@ static PyObject* tpp_repr(TemplateProxy* pytmpl)
 
 
 //= CPyCppyy template proxy callable behavior ================================
-static inline std::string targs2str(TemplateProxy* pytmpl) {
+static inline std::string targs2str(TemplateProxy* pytmpl)
+{
     if (!pytmpl || !pytmpl->fTemplateArgs) return "";
     return CPyCppyy_PyUnicode_AsString(pytmpl->fTemplateArgs);
+}
+
+static inline void UpdateDispatchMap(TemplateProxy* pytmpl, bool use_targs, uint64_t sighash, CPPOverload* pymeth)
+{
+// memoize a method in the dispatch map after successful call; replace old if need be (may be
+// with the same CPPOverload, just with more methods)
+    bool bInserted = false;
+    auto& v = pytmpl->fTI->fDispatchMap[use_targs ? targs2str(pytmpl) : ""];
+    for (auto& p : v) {
+        if (p.first == sighash) {
+            Py_DECREF(p.second);
+            p.second = pymeth;
+            bInserted = true;
+        }
+    }
+    if (!bInserted) v.push_back(std::make_pair(sighash, pymeth));
 }
 
 static inline PyObject* CallMethodImp(TemplateProxy* pytmpl,
@@ -387,7 +404,7 @@ static inline PyObject* CallMethodImp(TemplateProxy* pytmpl,
 
     if (result) {
         Py_XDECREF(((CPPOverload*)pymeth)->fSelf); ((CPPOverload*)pymeth)->fSelf = nullptr;    // unbind
-        pytmpl->fTI->fDispatchMap[targs2str(pytmpl)].push_back(std::make_pair(sighash, (CPPOverload*)pymeth));
+        UpdateDispatchMap(pytmpl, true, sighash, (CPPOverload*)pymeth);
         Py_DECREF(kwds);
     } else Py_DECREF(pymeth);
 
@@ -516,7 +533,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
         Py_DECREF(pymeth);
         if (result) {
             Py_INCREF(pytmpl->fTI->fNonTemplated);
-            pytmpl->fTI->fDispatchMap[""].push_back(std::make_pair(sighash, pytmpl->fTI->fNonTemplated));
+            UpdateDispatchMap(pytmpl, false, sighash, pytmpl->fTI->fNonTemplated);
             Py_DECREF(kwds);
             TPPCALL_RETURN;
         }
@@ -534,7 +551,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
         Py_DECREF(pymeth);
         if (result) {
             Py_INCREF(pytmpl->fTI->fTemplated);
-            pytmpl->fTI->fDispatchMap[targs2str(pytmpl)].push_back(std::make_pair(sighash, pytmpl->fTI->fTemplated));
+            UpdateDispatchMap(pytmpl, true, sighash, pytmpl->fTI->fTemplated);
             Py_DECREF(kwds);
             TPPCALL_RETURN;
         }
@@ -568,7 +585,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
         Py_DECREF(pymeth);
         if (result) {
             Py_INCREF(pytmpl->fTI->fLowPriority);
-            pytmpl->fTI->fDispatchMap[""].push_back( std::make_pair(sighash, pytmpl->fTI->fLowPriority));
+            UpdateDispatchMap(pytmpl, false, sighash, pytmpl->fTI->fLowPriority);
             Py_DECREF(kwds);
             TPPCALL_RETURN;
         }

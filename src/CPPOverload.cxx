@@ -556,15 +556,15 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
 
 // look for known signatures ...
     auto& dispatchMap = pymeth->fMethodInfo->fDispatchMap;
-    PyCallable* pc = nullptr;
+    PyCallable* memoized_pc = nullptr;
     for (const auto& p : dispatchMap) {
         if (p.first == sighash) {
-            pc = p.second;
+            memoized_pc = p.second;
             break;
         }
     }
-    if (pc != nullptr) {
-        PyObject* result = pc->Call(pymeth->fSelf, args, kwds, &ctxt);
+    if (memoized_pc) {
+        PyObject* result = memoized_pc->Call(pymeth->fSelf, args, kwds, &ctxt);
         result = HandleReturn(pymeth, oldSelf, result);
 
         if (result != 0)
@@ -587,7 +587,20 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
 
             if (result != 0) {
             // success: update the dispatch map for subsequent calls
-                dispatchMap.push_back(std::make_pair(sighash, methods[i]));
+                if (!memoized_pc)
+                    dispatchMap.push_back(std::make_pair(sighash, methods[i]));
+                else {
+                // debatable: apparently there are two methods that map onto the same sighash
+                // and preferring the latest may result in "ping pong."
+                    for (auto& p : dispatchMap) {
+                        if (p.first == sighash) {
+                            p.second = methods[i];
+                            break;
+                        }
+                    }
+                }
+
+            // clear collected errors
                 if (!errors.empty())
                     std::for_each(errors.begin(), errors.end(), Utility::PyError_t::Clear);
                 return HandleReturn(pymeth, oldSelf, result);
