@@ -306,6 +306,8 @@ int CPyCppyy::CPPMethod::GetPriority()
         if (Cppyy::IsBuiltin(aname)) {
         // happens for builtin types (and namespaces, but those can never be an
         // argument), NOT for unknown classes as that concept no longer exists
+        // TODO: the number below work, but there's no science behind them. Need
+        // to figure out some ordering in context of the other overloads.
             if (strstr(aname.c_str(), "void*"))
             // TODO: figure out in general all void* converters
                 priority -= 10000;     // void*/void** shouldn't be too greedy
@@ -316,6 +318,8 @@ int CPyCppyy::CPPMethod::GetPriority()
             else if (strstr(aname.c_str(), "double"))
                 priority -= 10;        // char, int, long can't convert float,
                                        // but vv. works, so prefer the int types
+            else if (strstr(aname.c_str(), "char"))
+                priority -= 3;         // as to prefer const char*
             else if (strstr(aname.c_str(), "bool"))
                 priority += 1;         // bool over int (does accept 1 and 0)
 
