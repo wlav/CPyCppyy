@@ -305,6 +305,16 @@ static void tpp_dealloc(TemplateProxy* pytmpl)
 }
 
 //----------------------------------------------------------------------------
+static int tpp_traverse(TemplateProxy* pytmpl, visitproc visit, void* arg)
+{
+// Garbage collector traverse of held python member objects.
+    Py_VISIT(pytmpl->fSelf);
+    Py_VISIT(pytmpl->fTemplateArgs);
+
+    return 0;
+}
+
+//----------------------------------------------------------------------------
 static PyObject* tpp_doc(TemplateProxy* pytmpl, void*)
 {
 // Forward to method proxies to doc all overloads
@@ -337,14 +347,13 @@ static PyObject* tpp_doc(TemplateProxy* pytmpl, void*)
 }
 
 //----------------------------------------------------------------------------
-static int tpp_traverse(TemplateProxy* pytmpl, visitproc visit, void* arg)
+static PyObject* tpp_repr(TemplateProxy* pytmpl)
 {
-// Garbage collector traverse of held python member objects.
-    Py_VISIT(pytmpl->fSelf);
-    Py_VISIT(pytmpl->fTemplateArgs);
-
-    return 0;
+// Simply return the doc string as that's the most useful info (this will appear
+// on clsses on calling help()).
+     return tpp_doc(pytmpl, nullptr);
 }
+
 
 //= CPyCppyy template proxy callable behavior ================================
 static inline std::string targs2str(TemplateProxy* pytmpl) {
@@ -648,7 +657,7 @@ PyTypeObject TemplateProxy_Type = {
    0,                         // tp_getattr
    0,                         // tp_setattr
    0,                         // tp_compare
-   0,                         // tp_repr
+   (reprfunc)tpp_repr,        // tp_repr
    0,                         // tp_as_number
    0,                         // tp_as_sequence
    &tpp_as_mapping,           // tp_as_mapping
