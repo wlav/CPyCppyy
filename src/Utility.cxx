@@ -277,11 +277,23 @@ CPyCppyy::PyCallable* BuildOperator(const std::string& lcname, const std::string
     std::string opname = "operator";
     opname += op;
 
+    bool isReverse = false;
     Cppyy::TCppIndex_t idx = Cppyy::GetGlobalOperator(scope, lcname, rcname, opname);
-    if (idx == (Cppyy::TCppIndex_t)-1)
-        return nullptr;
+    if (idx == (Cppyy::TCppIndex_t)-1) {
+        if (op[1] == '\0' && (op[0] == '*' || op[0] == '+')) { // TODO: bit operators?
+        // these are associative operators, so try reverse
+            isReverse = true;
+            idx = Cppyy::GetGlobalOperator(scope, rcname, lcname, opname);
+        }
 
-    return new CPyCppyy::CPPFunction(scope, Cppyy::GetMethod(scope, idx));
+        if (idx == (Cppyy::TCppIndex_t)-1)
+            return nullptr;
+    }
+
+    Cppyy::TCppMethod_t meth = Cppyy::GetMethod(scope, idx);
+    if (!isReverse)
+        return new CPyCppyy::CPPFunction(scope, meth);
+    return new CPyCppyy::CPPReverseBinary(scope, meth);
 }
 
 bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& lcname,

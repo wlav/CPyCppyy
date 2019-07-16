@@ -287,7 +287,24 @@ static PyGetSetDef op_getset[] = {
 
 
 //= CPyCppyy type number stubs to allow dynamic overrides =====================
+#define CPYCPPYY_STUB_BODY(name, op, pystring)                                \
+/* place holder to lazily install __name__ if a global overload is available */\
+    if (!Utility::AddBinaryOperator(                                          \
+            left, right, #op, "__"#name"__", "__r"#name"__")) {               \
+        Py_INCREF(Py_NotImplemented);                                         \
+        return Py_NotImplemented;                                             \
+    }                                                                         \
+                                                                              \
+/* redo the call, which will now go to the newly installed method */          \
+    return PyObject_CallMethodObjArgs(left, pystring, right, nullptr);
+
 #define CPYCPPYY_STUB(name, op, pystring)                                     \
+static PyObject* op_##name##_stub(PyObject* left, PyObject* right)            \
+{                                                                             \
+    CPYCPPYY_STUB_BODY(name, op, pystring)                                    \
+}
+
+#define CPYCPPYY_ASSOCIATIVE_STUB(name, op, pystring)                         \
 static PyObject* op_##name##_stub(PyObject* left, PyObject* right)            \
 {                                                                             \
     if (!CPPInstance_Check(left)) {                                           \
@@ -298,20 +315,12 @@ static PyObject* op_##name##_stub(PyObject* left, PyObject* right)            \
             return Py_NotImplemented;                                         \
         }                                                                     \
     }                                                                         \
-/* place holder to lazily install __name__ if a global overload is available */\
-    if (!Utility::AddBinaryOperator(                                          \
-            left, right, #op, "__"#name"__", "__r"#name"__")) {               \
-        Py_INCREF(Py_NotImplemented);                                         \
-        return Py_NotImplemented;                                             \
-    }                                                                         \
-                                                                              \
-/* redo the call, which will now go to the newly installed method */          \
-    return PyObject_CallMethodObjArgs(left, pystring, right, nullptr);        \
+    CPYCPPYY_STUB_BODY(name, op, pystring)                                    \
 }
 
-CPYCPPYY_STUB(add, +, PyStrings::gAdd)
+CPYCPPYY_ASSOCIATIVE_STUB(add, +, PyStrings::gAdd)
 CPYCPPYY_STUB(sub, -, PyStrings::gSub)
-CPYCPPYY_STUB(mul, *, PyStrings::gMul)
+CPYCPPYY_ASSOCIATIVE_STUB(mul, *, PyStrings::gMul)
 CPYCPPYY_STUB(div, /, PyStrings::gDiv)
 
 //-----------------------------------------------------------------------------
