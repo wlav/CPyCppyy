@@ -1,5 +1,7 @@
 // Bindings
 #include "CPyCppyy.h"
+#include "CPyCppyy/PyObjectPtr.h"
+
 #include "CPPConstructor.h"
 #include "CPPInstance.h"
 #include "Executors.h"
@@ -77,11 +79,12 @@ PyObject* CPyCppyy::CPPConstructor::Call(
     // restore the original constructor
         SetMethod(curMethod);
 
-    // set m_self (TODO: get this from the compiler in case of some
-    // unorthodox padding or if the inheritance hierarchy extends back
-    // into C++ land)
-        if (address)
-            *((void**)(address + Cppyy::SizeOf(GetScope()))) = self;
+    // set m_self (TODO: get this from the compiler in case of some unorthodox padding
+    // or if the inheritance hierarchy extends back into C++ land)
+        if (address) {
+            ptrdiff_t self_address = address + Cppyy::SizeOf(GetScope());
+            new ((void*)self_address) PyObjectPtr{(PyObject*)self, true};
+        }
     }
 
 // done with filtered args

@@ -77,11 +77,8 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
 // start class declaration
     code << "namespace __cppyy_internal {\n"
          << "class " << derivedName << " : public ::" << baseNameScoped << " {\n"
-            "  PyObject* m_self;\n"
+            "  CPyCppyy::PyObjectPtr m_self;\n"
             "public:\n";
-
-// constructors are simply inherited
-    code << "  using " << baseName << "::" << baseName << ";\n";
 
 // methods: first collect all callables, then get overrides from base class, for
 // those that are still missing, search the hierarchy
@@ -97,9 +94,24 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
         PyErr_Clear();
 
 // simple case: methods from current class
+    bool has_default = false;
+    bool has_cctor = false;
+    bool has_constructors = false;
     const Cppyy::TCppIndex_t nMethods = Cppyy::GetNumMethods(klass->fCppType);
     for (Cppyy::TCppIndex_t imeth = 0; imeth < nMethods; ++imeth) {
         Cppyy::TCppMethod_t method = Cppyy::GetMethod(klass->fCppType, imeth);
+
+        if (Cppyy::IsConstructor(method)) {
+            has_constructors = true;
+            Cppyy::TCppIndex_t nreq = Cppyy::GetMethodReqArgs(method);
+            if (nreq == 0)
+                has_default = true;
+            else if (nreq == 1) {
+                if (TypeManip::clean_type(Cppyy::GetMethodArgType(method, 0), false) == baseNameScoped)
+                    has_cctor = true;
+            }
+            continue;
+        }
 
         std::string mtCppName = Cppyy::GetMethodName(method);
         PyObject* key = CPyCppyy_PyUnicode_FromString(mtCppName.c_str());
@@ -140,6 +152,24 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
         }
     }
     Py_DECREF(clbs);
+
+// constructors: most are simply inherited, for use by the Python derived class
+    code << "  using " << baseName << "::" << baseName << ";\n";
+
+// for working with C++ templates, additional constructors are needed to make
+// sure the python object is properly carried, but they can only be generated
+// if the base class supports them
+    if (has_default || !has_constructors)
+        code << "  " << derivedName << "() {}\n"
+             << "  " << derivedName << "(PyObject* pyobj) : m_self(pyobj) {}\n";
+    if (has_default || has_cctor || !has_constructors) {
+        code << "  " << derivedName << "(const " << derivedName << "& other) : ";
+        if (has_cctor)
+            code << baseName << "(other), ";
+        code << "m_self(other.m_self) {}\n";
+    }
+
+// destructor: default is fine
 
 // finish class declaration
     code << "};\n}";

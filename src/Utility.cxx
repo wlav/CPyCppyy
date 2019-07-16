@@ -866,7 +866,8 @@ bool CPyCppyy::Utility::IncludePython()
             "#define CPYCPPYY_STATIC static\n"
             "#define CPYCPPYY_CLASS_IMPORT\n"
             "#endif\n"
-       // the following really should live in a header ...
+
+        // the following really should live in a header ...
             "namespace CPyCppyy {\n"
             "struct Parameter; struct CallContext;\n"
             "class CPYCPPYY_CLASS_IMPORT Converter {\n"
@@ -877,16 +878,12 @@ bool CPyCppyy::Utility::IncludePython()
             "  virtual bool ToMemory(PyObject* value, void* address);\n"
             "};\n"
             "CPYCPPYY_IMPORT Converter* CreateConverter(const std::string& fullType, long* dims = nullptr);\n"
-       // and this lives in a header, but isn't accessible ...
-            "#ifndef CPYCPPYY_TPyException\n"
-            "class CPYCPPYY_CLASS_IMPORT TPyException : public std::exception {\n"
-            "public:\n"
-            "    TPyException();\n"
-            "    virtual ~TPyException() noexcept;\n"
-            "    virtual const char* what() const noexcept;\n"
-            "};\n"
-            "#endif\n"
-            "}\n");
+            "}\n"
+
+        // utilities from the CPyCppyy public API
+            "#include \"CPyCppyy/PyObjectPtr.h\"\n"
+            "#include \"CPyCppyy/TPyException.h\"\n"
+            );
         includesDone = okay;
     }
 

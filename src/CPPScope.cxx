@@ -238,6 +238,9 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
                 if (!InsertDispatcher(result, dct)) {
                     PyErr_Warn(PyExc_RuntimeWarning,
                         (char*)"no python-side overrides supported");
+                } else {
+                    if (PyObject_SetAttrString((PyObject*)result, "__cpp_cross__", Py_True) == -1)
+                        PyErr_Clear();
                 }
             } else if (sz == (Py_ssize_t)-1)
                 PyErr_Clear();
