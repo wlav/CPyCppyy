@@ -270,7 +270,7 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const char* op,
 
 //----------------------------------------------------------------------------
 static inline
-Cppyy::TCppMethod_t FindAndAddOperator(const std::string& lcname, const std::string& rcname,
+CPyCppyy::PyCallable* BuildOperator(const std::string& lcname, const std::string& rcname,
     const char* op, Cppyy::TCppScope_t scope = Cppyy::gGlobalScope)
 {
 // Helper to find a function with matching signature in 'funcs'.
@@ -279,9 +279,9 @@ Cppyy::TCppMethod_t FindAndAddOperator(const std::string& lcname, const std::str
 
     Cppyy::TCppIndex_t idx = Cppyy::GetGlobalOperator(scope, lcname, rcname, opname);
     if (idx == (Cppyy::TCppIndex_t)-1)
-        return (Cppyy::TCppMethod_t)0;
+        return nullptr;
 
-    return Cppyy::GetMethod(scope, idx);
+    return new CPyCppyy::CPPFunction(scope, Cppyy::GetMethod(scope, idx));
 }
 
 bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& lcname,
@@ -298,16 +298,11 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& 
 
     const std::string& lnsname = TypeManip::extract_namespace(lcname);
     if (!scope) scope = Cppyy::GetScope(lnsname);
-    if (scope) {
-        Cppyy::TCppMethod_t func = FindAndAddOperator(lcname, rcname, op, scope);
-        if (func) pyfunc = new CPPFunction(scope, func);
-    }
+    if (scope)
+        pyfunc = BuildOperator(lcname, rcname, op, scope);
 
-    if (!pyfunc && scope != Cppyy::gGlobalScope) {
-    // search in global scope
-        Cppyy::TCppMethod_t func = FindAndAddOperator(lcname, rcname, op);
-        if (func) pyfunc = new CPPFunction(Cppyy::gGlobalScope, func);
-    }
+    if (!pyfunc && scope != Cppyy::gGlobalScope)      // search in global scope anyway
+        pyfunc = BuildOperator(lcname, rcname, op);
 
     if (!pyfunc) {
     // For GNU on clang, search the internal __gnu_cxx namespace for binary operators (is
@@ -315,10 +310,8 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& 
     // TODO: only look in __gnu_cxx for iterators (and more generally: do lookups in the
     //       namespace where the class is defined
         static Cppyy::TCppScope_t gnucxx = Cppyy::GetScope("__gnu_cxx");
-        if (gnucxx) {
-            Cppyy::TCppMethod_t func = FindAndAddOperator(lcname, rcname, op, gnucxx);
-            if (func) pyfunc = new CPPFunction(gnucxx, func);
-         }
+        if (gnucxx)
+            pyfunc = BuildOperator(lcname, rcname, op, gnucxx);
     }
 
     if (!pyfunc) {
@@ -331,8 +324,7 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& 
  && lcname.find("__wrap_iter") == std::string::npos   // wrapper call does not compile
 #endif
         ) {
-            Cppyy::TCppMethod_t func = FindAndAddOperator(lcname, rcname, op, std__1);
-            if (func) pyfunc = new CPPFunction(std__1, func);
+            pyfunc = BuildOperator(lcname, rcname, op, std__1);
         }
     }
 
