@@ -277,8 +277,7 @@ Cppyy::TCppMethod_t FindAndAddOperator(const std::string& lcname, const std::str
     std::string opname = "operator";
     opname += op;
 
-    Cppyy::TCppIndex_t idx = Cppyy::GetGlobalOperator(
-        scope, Cppyy::GetScope(lcname), Cppyy::GetScope(rcname), opname);
+    Cppyy::TCppIndex_t idx = Cppyy::GetGlobalOperator(scope, lcname, rcname, opname);
     if (idx == (Cppyy::TCppIndex_t)-1)
         return (Cppyy::TCppMethod_t)0;
 
