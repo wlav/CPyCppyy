@@ -292,33 +292,79 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 
         PyObject* ll = PyTuple_GET_ITEM(args, 0);
         Py_ssize_t sz = PySequence_Size(ll);
+        if (!sz)
+            return result;
+
         PyObject* res = PyObject_CallMethod(self, (char*)"reserve", (char*)"n", sz);
         Py_DECREF(res);
 
         bool fill_ok = true;
-        PyObject* pb_call = PyObject_GetAttrString(self, (char*)"push_back");
-        if (pb_call) {
-            PyObject* pb_args = PyTuple_New(1);
-            for (Py_ssize_t i = 0; i < sz; ++i) {
-                PyObject* item = PySequence_GetItem(ll, i);
-                if (item) {
-                    PyTuple_SET_ITEM(pb_args, 0, item);
-                    PyObject* pbres = PyObject_CallObject(pb_call, pb_args);
-                    Py_DECREF(item);
-                    if (!pbres) {
+
+    // two main options: a list of lists (or tuples), or a list of objects; the former
+    // are emplace_back'ed, the latter push_back'ed
+        PyObject* fi = PySequence_GetItem(ll, 0);
+        if (PyTuple_CheckExact(fi) || PyList_CheckExact(fi)) {
+        // use emplace_back to construct the vector entries one by one
+            PyObject* eb_call = PyObject_GetAttrString(self, (char*)"emplace_back");
+            if (eb_call) {
+                PyObject* eb_args;
+                for (Py_ssize_t i = 0; i < sz; ++i) {
+                    PyObject* item = PySequence_GetItem(ll, i);
+                    if (item) {
+                        if (PyTuple_CheckExact(item)) {
+                            Py_INCREF(item);
+                            eb_args = item;
+                        } else {     // must be list
+                            Py_ssize_t isz = PyList_GET_SIZE(item);
+                            eb_args = PyTuple_New(isz);
+                            for (Py_ssize_t j = 0; j < isz; ++j) {
+                                PyObject* iarg = PyList_GET_ITEM(item, j);
+                                Py_INCREF(iarg);
+                                PyTuple_SET_ITEM(eb_args, j, iarg);
+                            }
+                        }
+                        PyObject* ebres = PyObject_CallObject(eb_call, eb_args);
+                        Py_DECREF(item);
+                        Py_DECREF(eb_args);
+                        if (!ebres) {
+                            fill_ok = false;
+                            break;
+                        }
+                        Py_DECREF(ebres);
+                    } else {
                         fill_ok = false;
                         break;
                     }
-                    Py_DECREF(pbres);
-                } else {
-                    fill_ok = false;
-                    break;
                 }
+                Py_DECREF(eb_call);
             }
-            PyTuple_SET_ITEM(pb_args, 0, nullptr);
-            Py_DECREF(pb_args);
+        } else {
+        // use push_back to add the vector entries one by one
+            PyObject* pb_call = PyObject_GetAttrString(self, (char*)"push_back");
+            if (pb_call) {
+                PyObject* pb_args = PyTuple_New(1);
+                for (Py_ssize_t i = 0; i < sz; ++i) {
+                    PyObject* item = PySequence_GetItem(ll, i);
+                    if (item) {
+                        PyTuple_SET_ITEM(pb_args, 0, item);
+                        PyObject* pbres = PyObject_CallObject(pb_call, pb_args);
+                        Py_DECREF(item);
+                        if (!pbres) {
+                            fill_ok = false;
+                            break;
+                        }
+                        Py_DECREF(pbres);
+                    } else {
+                        fill_ok = false;
+                        break;
+                    }
+                }
+                PyTuple_SET_ITEM(pb_args, 0, nullptr);
+                Py_DECREF(pb_args);
+                Py_DECREF(pb_call);
+            }
         }
-        Py_DECREF(pb_call);
+        Py_DECREF(fi);
 
         if (!fill_ok) {
             Py_DECREF(result);
