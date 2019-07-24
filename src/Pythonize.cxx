@@ -314,7 +314,7 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
                         if (PyTuple_CheckExact(item)) {
                             Py_INCREF(item);
                             eb_args = item;
-                        } else {     // must be list
+                        } else if (PyList_CheckExact(item)) {
                             Py_ssize_t isz = PyList_GET_SIZE(item);
                             eb_args = PyTuple_New(isz);
                             for (Py_ssize_t j = 0; j < isz; ++j) {
@@ -322,6 +322,11 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
                                 Py_INCREF(iarg);
                                 PyTuple_SET_ITEM(eb_args, j, iarg);
                             }
+                        } else {
+                            Py_DECREF(item);
+                            PyErr_Format(PyExc_TypeError, "argument %d is not a tuple or list", (int)i);
+                            fill_ok = false;
+                            break;
                         }
                         PyObject* ebres = PyObject_CallObject(eb_call, eb_args);
                         Py_DECREF(item);
