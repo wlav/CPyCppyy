@@ -1475,10 +1475,10 @@ bool CPyCppyy::InstancePtrPtrConverter<ISREFERENCE>::SetArg(
             pyobj->CppOwns();
 
     // set pointer (may be null) and declare success
-        if (pyobj->fFlags & CPPInstance::kIsReference)
-            para.fValue.fVoidp = pyobj->fObject; // already a ptr to object
+        if (pyobj->fFlags & CPPInstance::kIsReference) // already a ptr to object?
+            para.fValue.fVoidp = pyobj->GetObjectRaw();
         else
-            para.fValue.fVoidp = &pyobj->fObject;
+            para.fValue.fVoidp = &pyobj->GetObjectRaw();
         para.fTypeCode = ISREFERENCE ? 'V' : 'p';
         return true;
     }
@@ -1544,7 +1544,7 @@ bool CPyCppyy::InstanceArrayConverter::SetArg(
 
     if (Cppyy::IsSubtype(((CPPInstance*)first)->ObjectIsA(), fClass)) {
     // no memory policies supported; set pointer (may be null) and declare success
-        para.fValue.fVoidp = ((CPPInstance*)first)->fObject;
+        para.fValue.fVoidp = ((CPPInstance*)first)->GetObject();
         para.fTypeCode = 'p';
         return true;
     }
@@ -1593,7 +1593,7 @@ bool CPyCppyy::VoidPtrRefConverter::SetArg(
 {
 // convert <pyobject> to C++ void*&, set arg for call
     if (CPPInstance_Check(pyobject)) {
-        para.fValue.fVoidp = &((CPPInstance*)pyobject)->fObject;
+        para.fValue.fVoidp = &((CPPInstance*)pyobject)->GetObjectRaw();
         para.fTypeCode = 'V';
         return true;
     }
@@ -1608,7 +1608,7 @@ bool CPyCppyy::VoidPtrPtrConverter::SetArg(
 // convert <pyobject> to C++ void**, set arg for call
     if (CPPInstance_Check(pyobject)) {
     // this is a C++ object, take and set its address
-        para.fValue.fVoidp = &((CPPInstance*)pyobject)->fObject;
+        para.fValue.fVoidp = &((CPPInstance*)pyobject)->GetObjectRaw();
         para.fTypeCode = 'p';
         return true;
     }
@@ -1946,26 +1946,28 @@ bool CPyCppyy::SmartPtrConverter::SetArg(
     CPPInstance* pyobj = (CPPInstance*)pyobject;
 
 // for the case where we have a 'hidden' smart pointer:
-    if ((pyobj->fFlags & CPPInstance::kIsSmartPtr) &&
-            Cppyy::IsSubtype(pyobj->fSmartPtrType, fSmartPtrType)) {
-    // depending on memory policy, some objects need releasing when passed into functions
-        if (fKeepControl && !UseStrictOwnership(ctxt))
-            ((CPPInstance*)pyobject)->CppOwns();
+    if (pyobj->fFlags & CPPInstance::kIsSmartPtr) {
+        Cppyy::TCppType_t tsmart = pyobj->GetSmartType();
+        if (Cppyy::IsSubtype(tsmart, fSmartPtrType)) {
+        // depending on memory policy, some objects need releasing when passed into functions
+            if (fKeepControl && !UseStrictOwnership(ctxt))
+                ((CPPInstance*)pyobject)->CppOwns();
 
-    // calculate offset between formal and actual arguments
-        para.fValue.fVoidp = pyobj->fObject;
-        if (pyobj->fSmartPtrType != fSmartPtrType) {
-            para.fValue.fIntPtr += Cppyy::GetBaseOffset(
-                pyobj->fSmartPtrType, fSmartPtrType, para.fValue.fVoidp, 1 /* up-cast */);
+        // calculate offset between formal and actual arguments
+            para.fValue.fVoidp = pyobj->GetObjectRaw();
+            if (tsmart != fSmartPtrType) {
+                para.fValue.fIntPtr += Cppyy::GetBaseOffset(
+                    tsmart, fSmartPtrType, para.fValue.fVoidp, 1 /* up-cast */);
+            }
+
+        // set pointer (may be null) and declare success
+            para.fTypeCode = typeCode;
+            return true;
         }
-
-    // set pointer (may be null) and declare success
-        para.fTypeCode = typeCode;
-        return true;
     }
 
 // for the case where we have an 'exposed' smart pointer:
-    if (pyobj->ObjectIsA() && Cppyy::IsSubtype(pyobj->ObjectIsA(), fSmartPtrType)) {
+    if (Cppyy::IsSubtype(pyobj->ObjectIsA(), fSmartPtrType)) {
     // calculate offset between formal and actual arguments
         para.fValue.fVoidp = pyobj->GetObject();
         if (pyobj->ObjectIsA() != fSmartPtrType) {
@@ -1979,8 +1981,8 @@ bool CPyCppyy::SmartPtrConverter::SetArg(
     }
 
 // final option, try mapping pointer types held (TODO: do not allow for non-const ref)
-    if (pyobj->fSmartPtrType && Cppyy::IsSubtype(pyobj->ObjectIsA(), fRawPtrType)) {
-        para.fValue.fVoidp = ((CPPInstance*)pyobject)->fObject;
+    if (pyobj->GetSmartType() && Cppyy::IsSubtype(pyobj->ObjectIsA(), fRawPtrType)) {
+        para.fValue.fVoidp = ((CPPInstance*)pyobject)->GetObjectRaw();
         para.fTypeCode = 'V';
         return true;
     }

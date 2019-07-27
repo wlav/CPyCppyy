@@ -609,7 +609,7 @@ PyObject* CPyCppyy::InstancePtrPtrExecutor::Execute(
                              CPPInstance::kIsPtrPtr | CPPInstance::kIsReference);
 
     CPPInstance* cppinst = (CPPInstance*)fAssignable;
-    *result = cppinst->fObject;
+    *result = cppinst->GetObject();
 
     Py_DECREF(fAssignable);
     fAssignable = nullptr;
@@ -631,7 +631,7 @@ PyObject* CPyCppyy::InstancePtrRefExecutor::Execute(
         return BindCppObject(*result, fClass);
 
     CPPInstance* cppinst = (CPPInstance*)fAssignable;
-    *result = cppinst->fObject;
+    *result = cppinst->GetObject();;
 
     Py_DECREF(fAssignable);
     fAssignable = nullptr;

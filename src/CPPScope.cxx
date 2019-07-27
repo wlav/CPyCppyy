@@ -239,8 +239,13 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
                     PyErr_Warn(PyExc_RuntimeWarning,
                         (char*)"no python-side overrides supported");
                 } else {
-                    if (PyObject_SetAttrString((PyObject*)result, "__cpp_cross__", Py_True) == -1)
+                // the direct base can be useful for some templates, such as shared_ptrs,
+                // so make it accessible (the __cpp_cross__ data member also signals that
+                // this is a cross-inheritance class)
+                    PyObject* bname = CPyCppyy_PyUnicode_FromString(Cppyy::GetBaseName(result->fCppType, 0).c_str());
+                    if (PyObject_SetAttrString((PyObject*)result, "__cpp_cross__", bname) == -1)
                         PyErr_Clear();
+                    Py_DECREF(bname);
                 }
             } else if (sz == (Py_ssize_t)-1)
                 PyErr_Clear();
@@ -361,7 +366,7 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
                         Py_DECREF(val);
                     }
 
-                // add the __cppname__ for templates
+                // add the __cpp_name__ for templates
                     PyObject* cppname = nullptr;
                     if (scope == Cppyy::gGlobalScope) {
                         Py_INCREF(pyname);
@@ -536,8 +541,8 @@ static PyMethodDef meta_methods[] = {
 
 //-----------------------------------------------------------------------------
 static PyGetSetDef meta_getset[] = {
-    {(char*)"__cppname__", (getter)meta_getcppname, nullptr, nullptr, nullptr},
-    {(char*)"__module__",  (getter)meta_getmodule,  (setter)meta_setmodule, nullptr, nullptr},
+    {(char*)"__cpp_name__", (getter)meta_getcppname, nullptr, nullptr, nullptr},
+    {(char*)"__module__",   (getter)meta_getmodule,  (setter)meta_setmodule, nullptr, nullptr},
     {(char*)nullptr, nullptr, nullptr, nullptr, nullptr}
 };
 

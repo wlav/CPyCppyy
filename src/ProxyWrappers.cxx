@@ -254,8 +254,8 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
         // template proxy was already created in sync_templates call above, so
         // add only here, not to the cache of collected methods
             PyObject* attr = PyObject_GetAttrString(pyclass, const_cast<char*>(mtName.c_str()));
-            if (isTemplate) ((TemplateProxy*)attr)->AdoptTemplate(pycall->Clone());
-            else ((TemplateProxy*)attr)->AdoptMethod(pycall->Clone());
+            if (isTemplate) ((TemplateProxy*)attr)->AdoptTemplate(pycall);
+            else ((TemplateProxy*)attr)->AdoptMethod(pycall);
             Py_DECREF(attr);
         } else {
         // lookup method dispatcher and store method

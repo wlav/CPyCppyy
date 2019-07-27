@@ -41,7 +41,7 @@ static inline void InjectMethod(Cppyy::TCppMethod_t method, const std::string& m
 #else
     code << "    PyObject* mtPyName = PyUnicode_FromString(\"" << mtCppName << "\");\n"
 #endif
-            "    PyObject* pyresult = PyObject_CallMethodObjArgs(m_self, mtPyName";
+            "    PyObject* pyresult = PyObject_CallMethodObjArgs((PyObject*)m_self, mtPyName";
     for (Cppyy::TCppIndex_t i = 0; i < nArgs; ++i)
         code << ", pyargs[" << i << "]";
     code << ", NULL);\n    Py_DECREF(mtPyName);\n";
@@ -77,7 +77,7 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
 // start class declaration
     code << "namespace __cppyy_internal {\n"
          << "class " << derivedName << " : public ::" << baseNameScoped << " {\n"
-            "  CPyCppyy::PyObjectPtr m_self;\n"
+            "  CPyCppyy::DispatchPtr m_self;\n"
             "public:\n";
 
 // methods: first collect all callables, then get overrides from base class, for
@@ -166,7 +166,7 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
         code << "  " << derivedName << "(const " << derivedName << "& other) : ";
         if (has_cctor)
             code << baseName << "(other), ";
-        code << "m_self(other.m_self) {}\n";
+        code << "m_self(other.m_self, this) {}\n";
     }
 
 // destructor: default is fine

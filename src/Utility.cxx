@@ -391,7 +391,7 @@ std::string CPyCppyy::Utility::ConstructTemplateArgs(
         if (CPyCppyy_PyUnicode_Check(tn)) {
             tmpl_name.append(CPyCppyy_PyUnicode_AsString(tn));
     // some commmon numeric types (separated out for performance: checking for
-    // __cppname__ and/or __name__ is rather expensive)
+    // __cpp_name__ and/or __name__ is rather expensive)
         } else if (tn == (PyObject*)&PyInt_Type) {
             tmpl_name.append("int");
 #if PY_VERSION_HEX < 0x03000000
@@ -884,7 +884,7 @@ bool CPyCppyy::Utility::IncludePython()
             "}\n"
 
         // utilities from the CPyCppyy public API
-            "#include \"CPyCppyy/PyObjectPtr.h\"\n"
+            "#include \"CPyCppyy/DispatchPtr.h\"\n"
             "#include \"CPyCppyy/TPyException.h\"\n"
             );
         includesDone = okay;

@@ -1,5 +1,6 @@
 // Bindings
 #include "CPyCppyy.h"
+#include "CPyCppyy/DispatchPtr.h"
 #include "CPPInstance.h"
 #include "MemoryRegulator.h"
 #include "ProxyWrappers.h"
@@ -24,31 +25,194 @@
 // In addition to encapsulation, CPPInstance offers rudimentary comparison
 // operators (based on pointer value and class comparisons); stubs (with lazy
 // lookups) for numeric operators; and a representation that prints the C++
-//  pointer values, rather than the PyObject* ones as is the default.
+// pointer values, rather than the PyObject* ones as is the default.
+
+
+//- private helpers ----------------------------------------------------------
+namespace {
+
+// Several specific use cases require extra data in a CPPInstance, but can not
+// be a new type. E.g. cross-inheritance derived types are by definition added
+// a posterio, and caching of datamembers is up to the datamember, not the
+// instance type. To not have normal use of CPPInstance take extra memory, this
+// extended data can slot in place of fObject for those use cases.
+
+struct ExtendedData {
+    ExtendedData() : fObject(nullptr), fSmartPtrType(0), fDereferencer(0), fDispatchPtr(nullptr) {}
+    ~ExtendedData() {
+        for (auto& pc : fDatamemberCache)
+            Py_XDECREF(pc.second);
+        fDatamemberCache.clear();
+    }
+
+// the original object reference it replaces (Note: has to be first data member, see usage
+// in GetObjectRaw(), e.g. for ptr-ptr passing)
+    void* fObject;
+
+// for smart pointer types
+    Cppyy::TCppType_t   fSmartPtrType;
+    Cppyy::TCppMethod_t fDereferencer;
+
+// for caching expensive-to-create data member representations
+    CPyCppyy::CI_DatamemberCache_t fDatamemberCache;
+
+// for back-referencing from Python-derived instances
+    CPyCppyy::DispatchPtr* fDispatchPtr;
+};
+
+} // unnamed namespace
+
+#define EXT_OBJECT(pyobj)  ((ExtendedData*)((pyobj)->fObject))->fObject
+#define SMART_TYPE(pyobj)  ((ExtendedData*)((pyobj)->fObject))->fSmartPtrType
+#define SMART_DEREF(pyobj) ((ExtendedData*)((pyobj)->fObject))->fDereferencer
+#define DISPATCHPTR(pyobj) ((ExtendedData*)((pyobj)->fObject))->fDispatchPtr
+#define DATA_CACHE(pyobj)  ((ExtendedData*)((pyobj)->fObject))->fDatamemberCache
+
+inline void CPyCppyy::CPPInstance::CreateExtension() {
+    if (fFlags & kIsExtended)
+        return;
+    void* obj = fObject;
+    fObject = (void*)new ExtendedData{};
+    EXT_OBJECT(this) = obj;
+    fFlags |= kIsExtended;
+}
+
+void* CPyCppyy::CPPInstance::GetExtendedObject() const
+{
+    if (fFlags & kIsSmartPtr) {
+    // We get the raw pointer from the smart pointer each time, in case it has
+    // changed or has been freed.
+        return Cppyy::CallR(SMART_DEREF(this), EXT_OBJECT(this), 0, nullptr);
+    }
+    return EXT_OBJECT(this);
+}
+
+
+//- public methods -----------------------------------------------------------
+CPyCppyy::CPPInstance* CPyCppyy::CPPInstance::Copy(void* cppinst)
+{
+// create a fresh instance; args and kwds are not used by op_new (see below)
+    PyObject* self = (PyObject*)this;
+    PyTypeObject* pytype = Py_TYPE(self);
+    PyObject* newinst = pytype->tp_new(pytype, nullptr, nullptr);
+
+// set the C++ instance as given
+    ((CPPInstance*)newinst)->fObject = cppinst;
+
+// look for user-provided __cpp_copy__ (not reusing __copy__ b/c of differences
+// in semantics: need to pass in the new instance) ...
+    PyObject* cpy = PyObject_GetAttrString(self, (char*)"__cpp_copy__");
+    if (cpy && PyCallable_Check(cpy)) {
+        PyObject* args = PyTuple_New(1);
+        Py_INCREF(newinst);
+        PyTuple_SET_ITEM(args, 0, newinst);
+        PyObject* res = PyObject_CallObject(cpy, args);
+        Py_DECREF(args);
+        Py_DECREF(cpy);
+        if (res) {
+            Py_DECREF(res);
+            return (CPPInstance*)newinst;
+        }
+
+    // error already set, but need to return nullptr
+        Py_DECREF(newinst);
+        return nullptr;
+    } else if (cpy)
+        Py_DECREF(cpy);
+    else
+        PyErr_Clear();
+
+// ... otherwise, shallow copy any Python-side dictionary items
+    PyObject* selfdct = PyObject_GetAttr(self, PyStrings::gDict);
+    PyObject* newdct  = PyObject_GetAttr(newinst, PyStrings::gDict);
+    bool bMergeOk = PyDict_Merge(newdct, selfdct, 1) == 0;
+    Py_DECREF(newdct);
+    Py_DECREF(selfdct);
+
+    if (!bMergeOk) {
+    // presume error already set
+        Py_DECREF(newinst);
+        return nullptr;
+    }
+
+    return (CPPInstance*)newinst;
+}
+
+
+//----------------------------------------------------------------------------
+void CPyCppyy::CPPInstance::PythonOwns()
+{
+    fFlags |= kIsOwner;
+    if ((fFlags & kIsExtended) && DISPATCHPTR(this))
+        DISPATCHPTR(this)->PythonOwns();
+}
+
+//----------------------------------------------------------------------------
+void CPyCppyy::CPPInstance::CppOwns()
+{
+    fFlags &= ~kIsOwner;
+    if ((fFlags & kIsExtended) && DISPATCHPTR(this))
+        DISPATCHPTR(this)->CppOwns();
+}
+
+
+//----------------------------------------------------------------------------
+void CPyCppyy::CPPInstance::SetSmartPtr(Cppyy::TCppType_t ptrtype, Cppyy::TCppMethod_t deref)
+{
+// Turn this proxy into one carrying a `smart pointer
+    CreateExtension();
+    fFlags |= kIsSmartPtr;
+    SMART_TYPE(this)  = ptrtype;
+    SMART_DEREF(this) = deref;
+}
+
+//----------------------------------------------------------------------------
+Cppyy::TCppType_t CPyCppyy::CPPInstance::GetSmartType()
+{
+    if (!(fFlags & kIsSmartPtr)) return (Cppyy::TCppType_t)0;
+    return SMART_TYPE(this);
+}
+
+
+//----------------------------------------------------------------------------
+CPyCppyy::CI_DatamemberCache_t& CPyCppyy::CPPInstance::GetDatamemberCache()
+{
+// Return the cache for expensive data objects (and make extended as necessary)
+    CreateExtension();
+    return DATA_CACHE(this);
+}
+
+
+//----------------------------------------------------------------------------
+void CPyCppyy::CPPInstance::SetDispatchPtr(void* ptr)
+{
+// Set up the dispatch pointer for memory management
+    CreateExtension();
+    DISPATCHPTR(this) = (DispatchPtr*)ptr;
+}
 
 
 //----------------------------------------------------------------------------
 void CPyCppyy::op_dealloc_nofree(CPPInstance* pyobj) {
 // Destroy the held C++ object, if owned; does not deallocate the proxy.
     bool isSmartPtr = pyobj->fFlags & CPPInstance::kIsSmartPtr;
-    Cppyy::TCppType_t klass = isSmartPtr ? pyobj->fSmartPtrType : pyobj->ObjectIsA();
+    Cppyy::TCppType_t klass = isSmartPtr ? SMART_TYPE(pyobj) : pyobj->ObjectIsA();
+
+    void* cppobj = pyobj->GetObject();
 
     if (!(pyobj->fFlags & CPPInstance::kIsReference))
-        MemoryRegulator::UnregisterPyObject(pyobj->GetObject(), klass);
+        MemoryRegulator::UnregisterPyObject(cppobj, klass);
 
     if (pyobj->fFlags & CPPInstance::kIsValue) {
-        void* addr = isSmartPtr ? pyobj->fObject : pyobj->GetObject();
+        void* addr = isSmartPtr ? EXT_OBJECT(pyobj) : cppobj;
         Cppyy::CallDestructor(klass, addr);
         Cppyy::Deallocate(klass, addr);
-    } else if (pyobj->fObject && (pyobj->fFlags & CPPInstance::kIsOwner)) {
-        void* addr = isSmartPtr ? pyobj->fObject : pyobj->GetObject();
-        Cppyy::Destruct(klass, addr);
+    } else if (pyobj->fFlags & CPPInstance::kIsOwner) {
+        void* addr = isSmartPtr ? EXT_OBJECT(pyobj) : cppobj;
+        if (addr) Cppyy::Destruct(klass, addr);
     }
-    pyobj->fObject = nullptr;
-
-    for (auto& pc : pyobj->fDatamemberCache)
-        Py_XDECREF(pc.second);
-    pyobj->fDatamemberCache.clear();
+    if (pyobj->fFlags & CPPInstance::kIsExtended) EXT_OBJECT(pyobj) = nullptr;
+    else pyobj->fObject = nullptr;
 }
 
 
@@ -111,7 +275,7 @@ static PyObject* op_get_smart_ptr(CPPInstance* self)
         Py_RETURN_NONE;
     }
 
-    return (PyObject*)CPyCppyy::BindCppObjectNoCast(self->fObject, self->fSmartPtrType);
+    return (PyObject*)CPyCppyy::BindCppObjectNoCast(EXT_OBJECT(self), SMART_TYPE(self));
 }
 
 
@@ -134,10 +298,7 @@ static CPPInstance* op_new(PyTypeObject* subtype, PyObject*, PyObject*)
 // Create a new object proxy (holder only).
     CPPInstance* pyobj = (CPPInstance*)subtype->tp_alloc(subtype, 0);
     pyobj->fObject = nullptr;
-    pyobj->fFlags  = 0;
-    pyobj->fSmartPtrType = (Cppyy::TCppType_t)0;
-    pyobj->fDereferencer = (Cppyy::TCppMethod_t)0;
-    new (&pyobj->fDatamemberCache) CI_DatamemberCache_t{};
+    pyobj->fFlags = CPPInstance::kNone;
 
     return pyobj;
 }
@@ -147,7 +308,7 @@ static void op_dealloc(CPPInstance* pyobj)
 {
 // Remove (Python-side) memory held by the object proxy.
     op_dealloc_nofree(pyobj);
-    pyobj->fDatamemberCache.~CI_DatamemberCache_t();
+    if (pyobj->fFlags & CPPInstance::kIsExtended) delete (ExtendedData*)pyobj->fObject;
     Py_TYPE(pyobj)->tp_free((PyObject*)pyobj);
 }
 
@@ -193,13 +354,13 @@ static PyObject* op_repr(CPPInstance* pyobj)
 
     PyObject* repr = nullptr;
     if (pyobj->fFlags & CPPInstance::kIsSmartPtr) {
-        Cppyy::TCppType_t smartPtrType = pyobj->fSmartPtrType;
+        Cppyy::TCppType_t smartPtrType = SMART_TYPE(pyobj);
         std::string smartPtrName = smartPtrType ?
             Cppyy::GetFinalName(smartPtrType) : "unknown smart pointer";
         repr = CPyCppyy_PyUnicode_FromFormat(
             const_cast<char*>("<%s.%s object at %p held by %s at %p>"),
             CPyCppyy_PyUnicode_AsString(modname), clName.c_str(),
-            pyobj->GetObject(), smartPtrName.c_str(), pyobj->fObject);
+            pyobj->GetObject(), smartPtrName.c_str(), EXT_OBJECT(pyobj));
     } else {
         repr = CPyCppyy_PyUnicode_FromFormat(const_cast<char*>("<%s.%s object at %p>"),
             CPyCppyy_PyUnicode_AsString(modname), clName.c_str(), pyobj->GetObject());

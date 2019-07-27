@@ -389,8 +389,8 @@ void* GetCPPInstanceAddress(PyObject*, PyObject* args)
         }
 
     // this is an address of an address (i.e. &myobj, with myobj of type MyObj*)
-    // note that pyobject->fObject may be null
-        return (void*)pyobj->fObject;
+    // note that the return result may be null
+        return ((CPPInstance*)pyobj)->GetObject();
     }
 
     PyErr_SetString(PyExc_ValueError, "invalid argument for addressof()");

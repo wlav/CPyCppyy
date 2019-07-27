@@ -66,7 +66,7 @@ bool CPyCppyy::CreatePyStrings() {
     CPPYY_INITIALIZE_STRING(gBase,           __base__);
     CPPYY_INITIALIZE_STRING(gCppEq,          __cpp_eq__);
     CPPYY_INITIALIZE_STRING(gCppNe,          __cpp_ne__);
-    CPPYY_INITIALIZE_STRING(gCppName,        __cppname__);
+    CPPYY_INITIALIZE_STRING(gCppName,        __cpp_name__);
     CPPYY_INITIALIZE_STRING(gDeref,          __deref__);
     CPPYY_INITIALIZE_STRING(gDict,           __dict__);
     if (!(PyStrings::gEmptyString = CPyCppyy_PyUnicode_FromString((char*)"")))
