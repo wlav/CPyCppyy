@@ -139,7 +139,9 @@ namespace Cppyy {
     CPPYY_IMPORT
     bool        IsSubtype(TCppType_t derived, TCppType_t base);
     CPPYY_IMPORT
-    bool        GetSmartPtrInfo(const std::string&, TCppType_t& raw, TCppMethod_t& deref);
+    bool        IsSmartPtr(TCppType_t type);
+    CPPYY_IMPORT
+    bool        GetSmartPtrInfo(const std::string&, TCppType_t* raw, TCppMethod_t* deref);
     CPPYY_IMPORT
     void        AddSmartPtrType(const std::string&);
 

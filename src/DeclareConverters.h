@@ -334,11 +334,10 @@ protected:
 class SmartPtrConverter : public Converter {
 public:
     SmartPtrConverter(Cppyy::TCppType_t smart,
-                      Cppyy::TCppType_t raw,
-                      Cppyy::TCppMethod_t deref,
+                      Cppyy::TCppType_t underlying,
                       bool keepControl = false,
                       bool isRef = false)
-        : fSmartPtrType(smart), fRawPtrType(raw), fDereferencer(deref),
+        : fSmartPtrType(smart), fUnderlyingType(underlying),
           fKeepControl(keepControl), fIsRef(isRef) {}
 
 public:
@@ -350,8 +349,7 @@ protected:
     virtual bool GetAddressSpecialCase(PyObject*, void*&) { return false; }
 
     Cppyy::TCppType_t   fSmartPtrType;
-    Cppyy::TCppType_t   fRawPtrType;
-    Cppyy::TCppMethod_t fDereferencer;
+    Cppyy::TCppType_t   fUnderlyingType;
     bool                fKeepControl;
     bool                fIsRef;
 };

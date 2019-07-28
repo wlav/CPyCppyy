@@ -1946,15 +1946,14 @@ bool CPyCppyy::SmartPtrConverter::SetArg(
     CPPInstance* pyobj = (CPPInstance*)pyobject;
 
 // for the case where we have a 'hidden' smart pointer:
-    if (pyobj->fFlags & CPPInstance::kIsSmartPtr) {
-        Cppyy::TCppType_t tsmart = pyobj->GetSmartType();
+    if (Cppyy::TCppType_t tsmart = pyobj->GetSmartIsA()) {
         if (Cppyy::IsSubtype(tsmart, fSmartPtrType)) {
         // depending on memory policy, some objects need releasing when passed into functions
             if (fKeepControl && !UseStrictOwnership(ctxt))
                 ((CPPInstance*)pyobject)->CppOwns();
 
         // calculate offset between formal and actual arguments
-            para.fValue.fVoidp = pyobj->GetObjectRaw();
+            para.fValue.fVoidp = pyobj->GetSmartObject();
             if (tsmart != fSmartPtrType) {
                 para.fValue.fIntPtr += Cppyy::GetBaseOffset(
                     tsmart, fSmartPtrType, para.fValue.fVoidp, 1 /* up-cast */);
@@ -1967,7 +1966,7 @@ bool CPyCppyy::SmartPtrConverter::SetArg(
     }
 
 // for the case where we have an 'exposed' smart pointer:
-    if (Cppyy::IsSubtype(pyobj->ObjectIsA(), fSmartPtrType)) {
+    if (!pyobj->IsSmart() && Cppyy::IsSubtype(pyobj->ObjectIsA(), fSmartPtrType)) {
     // calculate offset between formal and actual arguments
         para.fValue.fVoidp = pyobj->GetObject();
         if (pyobj->ObjectIsA() != fSmartPtrType) {
@@ -1981,8 +1980,8 @@ bool CPyCppyy::SmartPtrConverter::SetArg(
     }
 
 // final option, try mapping pointer types held (TODO: do not allow for non-const ref)
-    if (pyobj->GetSmartType() && Cppyy::IsSubtype(pyobj->ObjectIsA(), fRawPtrType)) {
-        para.fValue.fVoidp = ((CPPInstance*)pyobject)->GetObjectRaw();
+    if (pyobj->IsSmart() && Cppyy::IsSubtype(pyobj->ObjectIsA(), fUnderlyingType)) {
+        para.fValue.fVoidp = ((CPPInstance*)pyobject)->GetSmartObject();
         para.fTypeCode = 'V';
         return true;
     }
@@ -1995,13 +1994,7 @@ PyObject* CPyCppyy::SmartPtrConverter::FromMemory(void* address)
     if (!address || !fSmartPtrType)
         return nullptr;
 
-// TODO: note the mismatch between address, which is the smart pointer, and the
-// declared type, which is the raw pointer
-    CPPInstance* pyobj = (CPPInstance*)BindCppObjectNoCast(address, fRawPtrType);
-    if (pyobj)
-        pyobj->SetSmartPtr(fSmartPtrType, fDereferencer);
-
-    return (PyObject*)pyobj;
+    return BindCppObjectNoCast(address, fSmartPtrType);
 }
 
 
@@ -2237,14 +2230,14 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, long
 // converters for known C++ classes and default (void*)
     Converter* result = nullptr;
     if (Cppyy::TCppScope_t klass = Cppyy::GetScope(realType)) {
-        Cppyy::TCppType_t raw; Cppyy::TCppMethod_t deref;
-        if (Cppyy::GetSmartPtrInfo(realType, raw, deref)) {
+        Cppyy::TCppType_t raw{0};
+        if (Cppyy::GetSmartPtrInfo(realType, &raw, nullptr)) {
             if (cpd == "") {
-                result = new SmartPtrConverter(klass, raw, deref, control);
+                result = new SmartPtrConverter(klass, raw, control);
             } else if (cpd == "&") {
-                result = new SmartPtrConverter(klass, raw, deref);
+                result = new SmartPtrConverter(klass, raw);
             } else if (cpd == "*" && size <= 0) {
-                result = new SmartPtrConverter(klass, raw, deref, control, true);
+                result = new SmartPtrConverter(klass, raw, control, true);
             }
         }
 

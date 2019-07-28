@@ -174,7 +174,7 @@ PyObject* FollowGetAttr(PyObject* self, PyObject* name)
     if (!CPyCppyy_PyUnicode_Check(name))
         PyErr_SetString(PyExc_TypeError, "getattr(): attribute name must be string");
 
-    PyObject* pyptr = PyObject_CallMethodObjArgs(self, PyStrings::gDeref, nullptr);
+    PyObject* pyptr = PyObject_CallMethodObjArgs(self, PyStrings::gFollow, nullptr);
     if (!pyptr)
          return nullptr;
 
@@ -950,12 +950,14 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
 
 //- method name based pythonization ------------------------------------------
 
-// for smart pointer style classes (note fall-through)
-    if (HasAttrDirect(pyclass, PyStrings::gDeref)) {
+// for smart pointer style classes that are otherwise not known as such; would
+// prefer operator-> as that returns a pointer (which is simpler since it never
+// has to deal with ref-assignment), but operator* plays better with STL iters
+// and algorithms
+    if (HasAttrDirect(pyclass, PyStrings::gDeref) && !Cppyy::IsSmartPtr(((CPPScope*)pyclass)->fCppType))
         Utility::AddToClass(pyclass, "__getattr__", (PyCFunction)DeRefGetAttr, METH_O);
-    } else if (HasAttrDirect(pyclass, PyStrings::gFollow)) {
+    else if (HasAttrDirect(pyclass, PyStrings::gFollow) && !Cppyy::IsSmartPtr(((CPPScope*)pyclass)->fCppType))
         Utility::AddToClass(pyclass, "__getattr__", (PyCFunction)FollowGetAttr, METH_O);
-    }
 
 // for STL containers, and user classes modeled after them
     if (HasAttrDirect(pyclass, PyStrings::gSize))

@@ -14,11 +14,11 @@ PyObject* CreateScopeProxy(PyObject*, PyObject* args);
 PyObject* CreateScopeProxy(
     const std::string& scope_name, PyObject* parent = nullptr);
 
-// bind a C++ object into a Python proxy object
+// bind a C++ object into a Python proxy object (flags are CPPInstance::Default)
 PyObject* BindCppObjectNoCast(Cppyy::TCppObject_t object,
-    Cppyy::TCppType_t klass, int flags = 0x0);
+    Cppyy::TCppType_t klass, int flags = 0x0001);
 PyObject* BindCppObject(Cppyy::TCppObject_t object,
-    Cppyy::TCppType_t klass, int flags = 0x0);
+    Cppyy::TCppType_t klass, int flags = 0x0001);
 PyObject* BindCppObjectArray(
     Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, long* dims);
 

@@ -640,105 +640,6 @@ PyObject* CPyCppyy::InstancePtrRefExecutor::Execute(
 }
 
 
-//- smart pointers -----------------------------------------------------------
-PyObject* CPyCppyy::SmartPtrExecutor::Execute(
-    Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
-{
-// smart pointer executor
-    Cppyy::TCppObject_t value = GILCallO(method, self, ctxt, fSmartPtrType);
-
-    if (!value) {
-        if (!PyErr_Occurred())          // callee may have set a python error itself
-            PyErr_SetString(PyExc_ValueError, "NULL result where temporary expected");
-        return nullptr;
-    }
-
-// fixme? - why doesn't this do the same as `self.__smartptr__().get()'
-    CPPInstance* pyobj = (CPPInstance*)BindCppObjectNoCast(value, fRawPtrType);
-
-    if (pyobj) {
-        pyobj->SetSmartPtr(fSmartPtrType, fDereferencer);
-        pyobj->PythonOwns();  // life-time control by python ref-counting
-    }
-
-    return (PyObject*)pyobj;
-}
-
-PyObject* CPyCppyy::SmartPtrPtrExecutor::Execute(
-    Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
-{
-    Cppyy::TCppObject_t value = GILCallR(method, self, ctxt);
-    if (!value)
-        return nullptr;
-
-// todo: why doesn't this do the same as `self.__smartptr__().get()'
-    CPPInstance* pyobj = (CPPInstance*)BindCppObjectNoCast(value, fRawPtrType);
-
-    if (pyobj)
-        pyobj->SetSmartPtr(fSmartPtrType, fDereferencer);
-
-    return (PyObject*)pyobj;
-}
-
-PyObject* CPyCppyy::SmartPtrRefExecutor::Execute(
-    Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
-{
-    Cppyy::TCppObject_t value = GILCallR(method, self, ctxt);
-    if (!value)
-        return nullptr;
-
-    //if (!fAssignable) {
-
-// fixme? - why doesn't this do the same as `self.__smartptr__().get()'
-    CPPInstance* pyobj = (CPPInstance*)BindCppObjectNoCast(value, fRawPtrType);
-
-    if (pyobj)
-        pyobj->SetSmartPtr(fSmartPtrType, fDereferencer);
-
-    return (PyObject*)pyobj;
-
-   // todo: assignment not done yet
-   //
-  /*} else {
-
-       PyObject* result = BindCppObject((void*)value, fClass);
-
-   // this generic code is quite slow compared to its C++ equivalent ...
-       PyObject* assign = PyObject_GetAttrString(result, const_cast<char*>("__assign__"));
-       if (!assign) {
-           PyErr_Clear();
-           PyObject* descr = PyObject_Str(result);
-           if (descr && PyBytes_CheckExact(descr)) {
-               PyErr_Format(PyExc_TypeError, "cannot assign to return object (%s)",
-                   PyBytes_AS_STRING(descr));
-           } else {
-               PyErr_SetString(PyExc_TypeError, "cannot assign to result");
-           }
-           Py_XDECREF(descr);
-           Py_DECREF(result);
-           Py_DECREF(fAssignable); fAssignable = nullptr;
-           return nullptr;
-       }
-
-       PyObject* res2 = PyObject_CallFunction(
-           assign, const_cast<char*>("O"), fAssignable);
-
-
-       Py_DECREF(assign);
-       Py_DECREF(result);
-       Py_DECREF(fAssignable); fAssignable = nullptr;
-
-       if (res2) {
-           Py_DECREF(res2);             // typically, *this from operator=()
-           Py_RETURN_NONE;
-       }
-
-       return nullptr;
-   }
-   */
-}
-
-
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::InstanceArrayExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
@@ -822,35 +723,22 @@ CPyCppyy::Executor* CPyCppyy::CreateExecutor(const std::string& fullType)
 // C++ classes and special cases
     Executor* result = 0;
     if (Cppyy::TCppType_t klass = Cppyy::GetScope(realType)) {
-        Cppyy::TCppType_t raw; Cppyy::TCppMethod_t deref;
-        if (Cppyy::GetSmartPtrInfo(realType, raw, deref)) {
-            if (cpd == "") {
-                result = new SmartPtrExecutor(klass, raw, deref);
-            } else if (cpd == "*") {
-                result = new SmartPtrPtrExecutor(klass, raw, deref);
-            } else if (cpd == "&") {
-                result = new SmartPtrRefExecutor(klass, raw, deref);
-            }
-        }
-
-        if (!result) {
-            if (cpd == "")
-                result = new InstanceExecutor(klass);
-            else if (cpd == "&")
-                result = new InstanceRefExecutor(klass);
-            else if (cpd == "**" || cpd == "*[]" || cpd == "&*")
-                result = new InstancePtrPtrExecutor(klass);
-            else if (cpd == "*&")
+        if (cpd == "")
+            result = new InstanceExecutor(klass);
+        else if (cpd == "&")
+            result = new InstanceRefExecutor(klass);
+        else if (cpd == "**" || cpd == "*[]" || cpd == "&*")
+            result = new InstancePtrPtrExecutor(klass);
+        else if (cpd == "*&")
+            result = new InstancePtrRefExecutor(klass);
+        else if (cpd == "[]") {
+            Py_ssize_t asize = Utility::ArraySize(resolvedType);
+            if (0 < asize)
+                result = new InstanceArrayExecutor(klass, asize);
+            else
                 result = new InstancePtrRefExecutor(klass);
-            else if (cpd == "[]") {
-                Py_ssize_t asize = Utility::ArraySize(resolvedType);
-                if (0 < asize)
-                    result = new InstanceArrayExecutor(klass, asize);
-                else
-                    result = new InstancePtrRefExecutor(klass);
-            } else
-                result = new InstancePtrExecutor(klass);
-        }
+        } else
+            result = new InstancePtrExecutor(klass);
     } else {
     // unknown: void* may work ("user knows best"), void will fail on use of return value
         h = (cpd == "") ? gExecFactories.find("void") : gExecFactories.find("void*");

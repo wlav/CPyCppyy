@@ -203,13 +203,24 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
     subtype->tp_alloc   = (allocfunc)meta_alloc;
     subtype->tp_dealloc = (destructor)meta_dealloc;
 
-// creation of the python-side class
+// creation of the python-side class; extend the size if this is a smart ptr
+    Cppyy::TCppType_t raw{0}; Cppyy::TCppMethod_t deref{0};
+    if (CPPScope_CheckExact(subtype)) {
+        if (Cppyy::GetSmartPtrInfo(Cppyy::GetScopedFinalName(((CPPScope*)subtype)->fCppType), &raw, &deref))
+            subtype->tp_basicsize = sizeof(CPPSmartClass);
+    }
     CPPScope* result = (CPPScope*)PyType_Type.tp_new(subtype, args, kwds);
     if (!result)
         return nullptr;
 
     result->fFlags      = CPPScope::kNone;
     result->fModuleName = nullptr;
+
+    if (raw && deref) {
+        result->fFlags |= CPPScope::kIsSmart;
+        ((CPPSmartClass*)result)->fUnderlyingType = raw;
+        ((CPPSmartClass*)result)->fDereferencer   = deref;
+    }
 
 // initialization of class (based on metatype)
     const char* mp = strstr(subtype->tp_name, "_meta");
@@ -252,6 +263,7 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
         }
     }
 
+// maps for using namespaces and tracking objects
     if (!Cppyy::IsNamespace(result->fCppType))
         result->fImp.fCppObjects = new CppToPyMap_t;
     else {

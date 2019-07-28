@@ -1,10 +1,12 @@
 // Bindings
 #include "CPyCppyy.h"
-#include "CPyCppyy/DispatchPtr.h"
 #include "CPPConstructor.h"
 #include "CPPInstance.h"
 #include "Executors.h"
 #include "MemoryRegulator.h"
+#include "ProxyWrappers.h"
+
+#include "CPyCppyy/DispatchPtr.h"
 
 // Standard
 #include <string>
@@ -46,7 +48,7 @@ PyObject* CPyCppyy::CPPConstructor::Call(
     }
 
 // perform the call, nullptr 'this' makes the other side allocate the memory
-    Cppyy::TCppScope_t disp = self->ObjectIsA();
+    Cppyy::TCppScope_t disp = self->ObjectIsA(false /* check_smart */);
     Cppyy::TCppMethod_t curMethod = GetMethod();
     if (GetScope() != disp) {
     // happens for Python derived types, which have a dispatcher inserted that
@@ -99,6 +101,17 @@ PyObject* CPyCppyy::CPPConstructor::Call(
 
     // TODO: consistent up or down cast ...
         MemoryRegulator::RegisterPyObject(self, (Cppyy::TCppObject_t)address);
+
+    // handling smart types this way is deeply fugly, but if CPPInstance sets the proper
+    // types in op_new first, then the wrong init is called
+        if (((CPPClass*)Py_TYPE(self))->fFlags & CPPScope::kIsSmart) {
+            PyObject* pyclass = CreateScopeProxy(((CPPSmartClass*)Py_TYPE(self))->fUnderlyingType);
+            if (pyclass) {
+                self->SetSmart((PyObject*)Py_TYPE(self));
+                Py_DECREF((PyObject*)Py_TYPE(self));
+                Py_TYPE(self) = (PyTypeObject*)pyclass;
+            }
+        }
 
     // done with self
         Py_DECREF(self);

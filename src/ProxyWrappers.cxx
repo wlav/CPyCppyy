@@ -682,7 +682,7 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& name, PyObject* parent)
         if (pyscope && !(((CPPScope*)pyscope)->fFlags & CPPScope::kIsInComplete)) {
             gPyClasses[klass] = PyWeakref_NewRef(pyscope, nullptr);
 
-            if (!Cppyy::IsNamespace(klass)) {
+            if (!(((CPPScope*)pyscope)->fFlags & CPPScope::kIsNamespace)) {
             // add python-style features to classes only
                 if (!Pythonize(pyscope, Cppyy::GetScopedFinalName(klass))) {
                     Py_DECREF(pyscope);
@@ -741,6 +741,17 @@ PyObject* CPyCppyy::BindCppObjectNoCast(Cppyy::TCppObject_t address,
             return oldPyObject;
     }
 
+// if smart, instantiate a Python-side object of the underlying type, carrying the smartptr
+    PyObject* smart_type = (flags != CPPInstance::kNone && (((CPPClass*)pyclass)->fFlags & CPPScope::kIsSmart)) ? pyclass : nullptr;
+    if (smart_type) {
+        pyclass = CreateScopeProxy(((CPPSmartClass*)smart_type)->fUnderlyingType);
+        if (!pyclass) {
+        // simply restore and expose as the actual smart pointer class
+            pyclass = smart_type;
+            smart_type = nullptr;
+        }
+    }
+
 // instantiate an object of this class
     PyObject* args = PyTuple_New(0);
     CPPInstance* pyobj =
@@ -756,6 +767,9 @@ PyObject* CPyCppyy::BindCppObjectNoCast(Cppyy::TCppObject_t address,
 
         if (address && !isRef)
             MemoryRegulator::RegisterPyObject(pyobj, address);
+
+        if (smart_type)
+            pyobj->SetSmart(smart_type);
     }
 
 // successful completion
