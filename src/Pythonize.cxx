@@ -141,7 +141,7 @@ PyObject* DeRefGetAttr(PyObject* self, PyObject* name)
 {
 // Follow operator*() if present (available in python as __deref__), so that
 // smart pointers behave as expected.
-    if (!CPyCppyy_PyUnicode_Check(name))
+    if (!CPyCppyy_PyText_Check(name))
         PyErr_SetString(PyExc_TypeError, "getattr(): attribute name must be string");
 
     PyObject* pyptr = PyObject_CallMethodObjArgs(self, PyStrings::gDeref, nullptr);
@@ -153,7 +153,7 @@ PyObject* DeRefGetAttr(PyObject* self, PyObject* name)
         PyObject* val1 = PyObject_Str(self);
         PyObject* val2 = PyObject_Str(name);
         PyErr_Format(PyExc_AttributeError, "%s has no attribute \'%s\'",
-            CPyCppyy_PyUnicode_AsString(val1), CPyCppyy_PyUnicode_AsString(val2));
+            CPyCppyy_PyText_AsString(val1), CPyCppyy_PyText_AsString(val2));
         Py_DECREF(val2);
         Py_DECREF(val1);
 
@@ -171,7 +171,7 @@ PyObject* FollowGetAttr(PyObject* self, PyObject* name)
 {
 // Follow operator->() if present (available in python as __follow__), so that
 // smart pointers behave as expected.
-    if (!CPyCppyy_PyUnicode_Check(name))
+    if (!CPyCppyy_PyText_Check(name))
         PyErr_SetString(PyExc_TypeError, "getattr(): attribute name must be string");
 
     PyObject* pyptr = PyObject_CallMethodObjArgs(self, PyStrings::gFollow, nullptr);
@@ -276,7 +276,7 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 // std::vector, this implements construction from python iterables directly, except
 // for arrays, which can be passed wholesale, and strings, which shouldn't be used
     if (PyTuple_GET_SIZE(args) == 1 &&                              \
-            (CPyCppyy_PyUnicode_Check(PyTuple_GET_ITEM(args, 0)) || \
+            (CPyCppyy_PyText_Check(PyTuple_GET_ITEM(args, 0)) || \
              PyBytes_Check(PyTuple_GET_ITEM(args, 0)))) {
         PyErr_SetString(PyExc_TypeError, "can not convert string to vector");
         return 0;
@@ -284,7 +284,7 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 
     if (PyTuple_GET_SIZE(args) == 1 && PySequence_Check(PyTuple_GET_ITEM(args, 0)) && \
             !Py_TYPE(PyTuple_GET_ITEM(args, 0))->tp_as_buffer) {
-        PyObject* mname = CPyCppyy_PyUnicode_FromString("__real_init");
+        PyObject* mname = CPyCppyy_PyText_FromString("__real_init");
         PyObject* result = PyObject_CallMethodObjArgs(self, mname, nullptr);
         Py_DECREF(mname);
         if (!result)
@@ -431,7 +431,7 @@ static PyObject* vector_iter(PyObject* v) {
             vi->vi_data = nullptr;
         Py_XDECREF(pydata);
 
-        vi->vi_converter = CPyCppyy::CreateConverter(CPyCppyy_PyUnicode_AsString(pyvalue_type));
+        vi->vi_converter = CPyCppyy::CreateConverter(CPyCppyy_PyText_AsString(pyvalue_type));
         vi->vi_stride    = PyLong_AsLong(pyvalue_size);
     } else {
         PyErr_Clear();
@@ -606,7 +606,7 @@ PyObject* StlSequenceIter(PyObject* self)
         Py_XDECREF(end);
 
     // add iterated collection as attribute so its refcount stays >= 1 while it's being iterated over
-        PyObject_SetAttr(iter, CPyCppyy_PyUnicode_FromString("_collection"), self);
+        PyObject_SetAttr(iter, CPyCppyy_PyText_FromString("_collection"), self);
     }
     return iter;
 }
@@ -708,7 +708,7 @@ static int PyObject_Compare(PyObject* one, PyObject* other) {
 }
 #endif
 static inline PyObject* CPyCppyy_PyString_FromCppString(std::string* s) {
-    return CPyCppyy_PyUnicode_FromStringAndSize(s->c_str(), s->size());
+    return CPyCppyy_PyText_FromStringAndSize(s->c_str(), s->size());
 }
 
 static inline PyObject* CPyCppyy_PyString_FromCppString(std::wstring* s) {
@@ -734,7 +734,7 @@ PyObject* name##StringRepr(PyObject* self)                                   \
 {                                                                            \
     PyObject* data = name##GetData(self);                                    \
     if (data) {                                                              \
-        PyObject* repr = CPyCppyy_PyUnicode_FromFormat("\'%s\'", CPyCppyy_PyUnicode_AsString(data));\
+        PyObject* repr = CPyCppyy_PyText_FromFormat("\'%s\'", CPyCppyy_PyText_AsString(data));\
         Py_DECREF(data);                                                     \
         return repr;                                                         \
     }                                                                        \
@@ -891,7 +891,7 @@ static PyObject* ComplexRepr(PyObject* self) {
 
     std::ostringstream s;
     s << '(' << r << '+' << i << "j)";
-    return CPyCppyy_PyUnicode_FromString(s.str().c_str());
+    return CPyCppyy_PyText_FromString(s.str().c_str());
 }
 
 static PyObject* ComplexDRealGet(CPPInstance* self, void*)
@@ -1047,7 +1047,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
                 PyObject_SetAttrString(pyclass, "value_size", pyvalue_size);
                 Py_DECREF(pyvalue_size);
 
-                PyObject* pyvalue_type = CPyCppyy_PyUnicode_FromString(vtype.c_str());
+                PyObject* pyvalue_type = CPyCppyy_PyText_FromString(vtype.c_str());
                 PyObject_SetAttrString(pyclass, "value_type", pyvalue_type);
                 Py_DECREF(pyvalue_type);
             }
@@ -1116,9 +1116,9 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
     auto p = outer_scope.empty() ? gPythonizations.end() : gPythonizations.find(outer_scope);
     if (p == gPythonizations.end()) {
         p = gPythonizations.find("");
-        PyTuple_SET_ITEM(args, 1, CPyCppyy_PyUnicode_FromString(name.c_str()));
+        PyTuple_SET_ITEM(args, 1, CPyCppyy_PyText_FromString(name.c_str()));
     } else {
-        PyTuple_SET_ITEM(args, 1, CPyCppyy_PyUnicode_FromString(
+        PyTuple_SET_ITEM(args, 1, CPyCppyy_PyText_FromString(
                              name.substr(outer_scope.size()+2, std::string::npos).c_str()));
     }
 

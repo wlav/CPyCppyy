@@ -43,7 +43,7 @@ static void ll_dealloc(CPyCppyy::LowLevelView* pyobj)
 //---------------------------------------------------------------------------
 static PyObject* ll_typecode(CPyCppyy::LowLevelView* self, void*)
 {
-    return CPyCppyy_PyUnicode_FromString((char*)self->fBufInfo.format);
+    return CPyCppyy_PyText_FromString((char*)self->fBufInfo.format);
 }
 
 //---------------------------------------------------------------------------
@@ -63,7 +63,7 @@ static PyObject* ll_reshape(CPyCppyy::LowLevelView* self, PyObject* shape)
             PyObject* pystr = PyObject_Str(shape);
             if (pystr) {
                 PyErr_Format(PyExc_TypeError, "tuple object of length 1 expected, received %s",
-                    CPyCppyy_PyUnicode_AsStringChecked(pystr));
+                    CPyCppyy_PyText_AsStringChecked(pystr));
                 Py_DECREF(pystr);
                 return nullptr;
             }

@@ -48,8 +48,8 @@ void TemplateProxy::Set(const std::string& cppname, const std::string& pyname, P
     fSelf         = nullptr;
     fTemplateArgs = nullptr;
 
-    fTI->fCppName = CPyCppyy_PyUnicode_FromString(const_cast<char*>(cppname.c_str()));
-    fTI->fPyName  = CPyCppyy_PyUnicode_FromString(const_cast<char*>(pyname.c_str()));
+    fTI->fCppName = CPyCppyy_PyText_FromString(const_cast<char*>(cppname.c_str()));
+    fTI->fPyName  = CPyCppyy_PyText_FromString(const_cast<char*>(pyname.c_str()));
     Py_XINCREF(pyclass);
     fTI->fPyClass = pyclass;
 
@@ -104,9 +104,9 @@ PyObject* TemplateProxy::Instantiate(const std::string& fname,
         // special case for arrays
             PyObject* pytc = PyObject_GetAttr(itemi, PyStrings::gTypeCode);
             if (pytc) {
-                if (CPyCppyy_PyUnicode_Check(pytc)) {
+                if (CPyCppyy_PyText_Check(pytc)) {
                 // array, build up a pointer type
-                    char tc = ((char*)CPyCppyy_PyUnicode_AsString(pytc))[0];
+                    char tc = ((char*)CPyCppyy_PyText_AsString(pytc))[0];
                     const char* ptrname = 0;
                     switch (tc) {
                         case 'b': ptrname = "char*";           break;
@@ -121,7 +121,7 @@ PyObject* TemplateProxy::Instantiate(const std::string& fname,
                         default:  ptrname = "void*";  // TODO: verify if this is right
                     }
                     if (ptrname) {
-                        PyObject* pyptrname = CPyCppyy_PyUnicode_FromString(ptrname);
+                        PyObject* pyptrname = CPyCppyy_PyText_FromString(ptrname);
                         PyTuple_SET_ITEM(tpArgs, i, pyptrname);
                         bArgSet = true;
                     // string added, but not counted towards nStrings
@@ -135,8 +135,8 @@ PyObject* TemplateProxy::Instantiate(const std::string& fname,
             if (!bArgSet) pytc = PyObject_GetAttr(itemi, PyStrings::gCTypesType);
 
             if (pytc) {
-                if (CPyCppyy_PyUnicode_Check(pytc)) {
-                    char tc = ((char*)CPyCppyy_PyUnicode_AsString(pytc))[0];
+                if (CPyCppyy_PyText_Check(pytc)) {
+                    char tc = ((char*)CPyCppyy_PyText_AsString(pytc))[0];
                     const char* actname = 0;
                     switch (tc) {
                         case 'c': actname = "char&";           break;
@@ -151,7 +151,7 @@ PyObject* TemplateProxy::Instantiate(const std::string& fname,
                         // no default, just let fail
                     }
                     if (actname) {
-                        PyObject* pyactname = CPyCppyy_PyUnicode_FromString(actname);
+                        PyObject* pyactname = CPyCppyy_PyText_FromString(actname);
                         PyTuple_SET_ITEM(tpArgs, i, pyactname);
                         bArgSet = true;
                     // string added, but not counted towards nStrings
@@ -185,7 +185,7 @@ PyObject* TemplateProxy::Instantiate(const std::string& fname,
         std::string fullname = Cppyy::GetMethodFullName(cppmeth);
 
         PyObject* dct = PyObject_GetAttr(fTI->fPyClass, PyStrings::gDict);
-        PyObject* pyfullname = CPyCppyy_PyUnicode_FromString(fullname.c_str());
+        PyObject* pyfullname = CPyCppyy_PyText_FromString(fullname.c_str());
         PyObject* pyol = PyObject_GetItem(dct, pyfullname);
         if (!pyol) PyErr_Clear();
         Py_DECREF(dct);
@@ -249,7 +249,7 @@ PyObject* TemplateProxy::Instantiate(const std::string& fname,
 
     // Special Case if name was aliased (e.g. typedef in template instantiation)
         if (bIsAliased) {
-            PyObject* pyf = CPyCppyy_PyUnicode_FromString(fname.c_str());
+            PyObject* pyf = CPyCppyy_PyText_FromString(fname.c_str());
             PyType_Type.tp_setattro(fTI->fPyClass, pyf, pyol);
             Py_DECREF(pyf);
         }
@@ -324,8 +324,8 @@ static PyObject* tpp_doc(TemplateProxy* pytmpl, void*)
     if (pytmpl->fTI->fTemplated->HasMethods()) {
         PyObject* doc2 = PyObject_GetAttrString((PyObject*)pytmpl->fTI->fTemplated, "__doc__");
         if (doc && doc2) {
-            CPyCppyy_PyUnicode_AppendAndDel(&doc, CPyCppyy_PyUnicode_FromString("\n"));
-            CPyCppyy_PyUnicode_AppendAndDel(&doc, doc2);
+            CPyCppyy_PyText_AppendAndDel(&doc, CPyCppyy_PyText_FromString("\n"));
+            CPyCppyy_PyText_AppendAndDel(&doc, doc2);
         } else if (!doc && doc2) {
             doc = doc2;
         }
@@ -333,8 +333,8 @@ static PyObject* tpp_doc(TemplateProxy* pytmpl, void*)
     if (pytmpl->fTI->fLowPriority->HasMethods()) {
         PyObject* doc2 = PyObject_GetAttrString((PyObject*)pytmpl->fTI->fLowPriority, "__doc__");
         if (doc && doc2) {
-            CPyCppyy_PyUnicode_AppendAndDel(&doc, CPyCppyy_PyUnicode_FromString("\n"));
-            CPyCppyy_PyUnicode_AppendAndDel(&doc, doc2);
+            CPyCppyy_PyText_AppendAndDel(&doc, CPyCppyy_PyText_FromString("\n"));
+            CPyCppyy_PyText_AppendAndDel(&doc, doc2);
         } else if (!doc && doc2) {
             doc = doc2;
         }
@@ -343,7 +343,7 @@ static PyObject* tpp_doc(TemplateProxy* pytmpl, void*)
     if (doc)
         return doc;
 
-    return CPyCppyy_PyUnicode_FromString(TemplateProxy_Type.tp_doc);
+    return CPyCppyy_PyText_FromString(TemplateProxy_Type.tp_doc);
 }
 
 //----------------------------------------------------------------------------
@@ -359,7 +359,7 @@ static PyObject* tpp_repr(TemplateProxy* pytmpl)
 static inline std::string targs2str(TemplateProxy* pytmpl)
 {
     if (!pytmpl || !pytmpl->fTemplateArgs) return "";
-    return CPyCppyy_PyUnicode_AsString(pytmpl->fTemplateArgs);
+    return CPyCppyy_PyText_AsString(pytmpl->fTemplateArgs);
 }
 
 static inline void UpdateDispatchMap(TemplateProxy* pytmpl, bool use_targs, uint64_t sighash, CPPOverload* pymeth)
@@ -487,9 +487,9 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
 // case 1: explicit template previously selected through subscript
     if (pytmpl->fTemplateArgs) {
     // instantiate explicitly
-        PyObject* pyfullname = CPyCppyy_PyUnicode_FromString(
-            CPyCppyy_PyUnicode_AsString(pytmpl->fTI->fCppName));
-        CPyCppyy_PyUnicode_Append(&pyfullname, pytmpl->fTemplateArgs);
+        PyObject* pyfullname = CPyCppyy_PyText_FromString(
+            CPyCppyy_PyText_AsString(pytmpl->fTI->fCppName));
+        CPyCppyy_PyText_Append(&pyfullname, pytmpl->fTemplateArgs);
 
     // first, lookup by full name, if previously stored
         bool isNS = (((CPPScope*)pytmpl->fTI->fPyClass)->fFlags & CPPScope::kIsNamespace);
@@ -509,7 +509,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
 
     // not cached or failed call; try instantiation
         pymeth = pytmpl->Instantiate(
-            CPyCppyy_PyUnicode_AsString(pyfullname), args, Utility::kNone);
+            CPyCppyy_PyText_AsString(pyfullname), args, Utility::kNone);
         Py_DECREF(pyfullname);
         if (pymeth) {
         // attempt actuall call
@@ -564,7 +564,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
         // failed lookup be removed?
         int pcnt = 0;
         pymeth = pytmpl->Instantiate(
-            CPyCppyy_PyUnicode_AsString(pytmpl->fTI->fCppName), args, pref, &pcnt);
+            CPyCppyy_PyText_AsString(pytmpl->fTI->fCppName), args, pref, &pcnt);
         if (pymeth) {
         // attempt actuall call
             result = CallMethodImp(pytmpl, pymeth, args, kwds, sighash);
@@ -594,11 +594,11 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
 
 // error reporting is fraud, given the numerous steps taken, but more details seems better
     if (!errors.empty()) {
-        PyObject* topmsg = CPyCppyy_PyUnicode_FromString("Template method resolution failed:");
+        PyObject* topmsg = CPyCppyy_PyText_FromString("Template method resolution failed:");
         Utility::SetDetailedException(errors, topmsg /* steals */, PyExc_TypeError /* default error */);
     } else {
         PyErr_Format(PyExc_TypeError, "cannot resolve method template call for \'%s\'",
-            CPyCppyy_PyUnicode_AsString(pytmpl->fTI->fPyName));
+            CPyCppyy_PyText_AsString(pytmpl->fTI->fPyName));
     }
 
     Py_DECREF(kwds);
@@ -632,7 +632,7 @@ static PyObject* tpp_subscript(TemplateProxy* pytmpl, PyObject* args)
 // to template specializations.
     TemplateProxy* typeBoundMethod = tpp_descrget(pytmpl, pytmpl->fSelf, nullptr);
     Py_XDECREF(typeBoundMethod->fTemplateArgs);
-    typeBoundMethod->fTemplateArgs = CPyCppyy_PyUnicode_FromString(
+    typeBoundMethod->fTemplateArgs = CPyCppyy_PyText_FromString(
         Utility::ConstructTemplateArgs(nullptr, args).c_str());
     return (PyObject*)typeBoundMethod;
 }

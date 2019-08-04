@@ -102,7 +102,7 @@ static inline Cppyy::TCppObject_t GILCallConstructor(
 #endif
 }
 
-static inline PyObject* CPyCppyy_PyUnicode_FromLong(long cl)
+static inline PyObject* CPyCppyy_PyText_FromLong(long cl)
 {
 // python chars are range(256)
     if (cl < -256 || cl > 255) {
@@ -110,11 +110,11 @@ static inline PyObject* CPyCppyy_PyUnicode_FromLong(long cl)
         return nullptr;
     }
     int c = (int)cl;
-    if (c < 0) return CPyCppyy_PyUnicode_FromFormat("%c", 256 - std::abs(c));
-    return CPyCppyy_PyUnicode_FromFormat("%c", c);
+    if (c < 0) return CPyCppyy_PyText_FromFormat("%c", 256 - std::abs(c));
+    return CPyCppyy_PyText_FromFormat("%c", c);
 }
 
-static inline PyObject* CPyCppyy_PyUnicode_FromULong(unsigned long uc)
+static inline PyObject* CPyCppyy_PyText_FromULong(unsigned long uc)
 {
 // TODO: range check here?
     if (255 < uc) {
@@ -122,7 +122,7 @@ static inline PyObject* CPyCppyy_PyUnicode_FromULong(unsigned long uc)
         return nullptr;
     }
     int c = (int)uc;
-    return CPyCppyy_PyUnicode_FromFormat("%c", c);
+    return CPyCppyy_PyText_FromFormat("%c", c);
 }
 
 static inline PyObject* CPyCppyy_PyBool_FromLong(long b)
@@ -158,7 +158,7 @@ PyObject* CPyCppyy::CharExecutor::Execute(
 {
 // execute <method with argument <self, ctxt>, construct python string return value
 // with the single char
-    return CPyCppyy_PyUnicode_FromLong((int)GILCallC(method, self, ctxt));
+    return CPyCppyy_PyText_FromLong((int)GILCallC(method, self, ctxt));
 }
 
 //----------------------------------------------------------------------------
@@ -167,7 +167,7 @@ PyObject* CPyCppyy::CharConstRefExecutor::Execute(
 {
 // execute <method> with argument <self, ctxt>, construct python string return value
 // with the single char
-    return CPyCppyy_PyUnicode_FromLong(*((char*)GILCallR(method, self, ctxt)));
+    return CPyCppyy_PyText_FromLong(*((char*)GILCallR(method, self, ctxt)));
 }
 
 //----------------------------------------------------------------------------
@@ -176,7 +176,7 @@ PyObject* CPyCppyy::UCharExecutor::Execute(
 {
 // execute <method> with argument <self, args>, construct python string return value
 // with the single char
-    return CPyCppyy_PyUnicode_FromLong((unsigned char)GILCallB(method, self, ctxt));
+    return CPyCppyy_PyText_FromLong((unsigned char)GILCallB(method, self, ctxt));
 }
 
 //----------------------------------------------------------------------------
@@ -185,7 +185,7 @@ PyObject* CPyCppyy::UCharConstRefExecutor::Execute(
 {
 // execute <method> with argument <self, ctxt>, construct python string return value
 // with the single char from the pointer return
-    return CPyCppyy_PyUnicode_FromLong(*((unsigned char*)GILCallR(method, self, ctxt)));
+    return CPyCppyy_PyText_FromLong(*((unsigned char*)GILCallR(method, self, ctxt)));
 }
 
 //----------------------------------------------------------------------------
@@ -325,9 +325,9 @@ PyObject* CPyCppyy::name##RefExecutor::Execute(                              \
     }                                                                        \
 }
 
-CPPYY_IMPL_REFEXEC(Bool,   bool,   Long_t,   CPyCppyy_PyBool_FromLong,    PyLong_AsLong)
-CPPYY_IMPL_REFEXEC(Char,   char,   Long_t,   CPyCppyy_PyUnicode_FromLong, PyLong_AsLong)
-CPPYY_IMPL_REFEXEC(UChar,  unsigned char,  ULong_t,  CPyCppyy_PyUnicode_FromULong, PyLongOrInt_AsULong)
+CPPYY_IMPL_REFEXEC(Bool,   bool,   Long_t,   CPyCppyy_PyBool_FromLong, PyLong_AsLong)
+CPPYY_IMPL_REFEXEC(Char,   char,   Long_t,   CPyCppyy_PyText_FromLong, PyLong_AsLong)
+CPPYY_IMPL_REFEXEC(UChar,  unsigned char,  ULong_t,  CPyCppyy_PyText_FromULong, PyLongOrInt_AsULong)
 CPPYY_IMPL_REFEXEC(Int8,   int8_t,  Long_t,  PyInt_FromLong, PyLong_AsLong)
 CPPYY_IMPL_REFEXEC(UInt8,  uint8_t, ULong_t, PyInt_FromLong, PyLongOrInt_AsULong)
 CPPYY_IMPL_REFEXEC(Short,  short,          Long_t,   PyInt_FromLong,     PyLong_AsLong)
@@ -364,10 +364,10 @@ PyObject* CPyCppyy::STLStringRefExecutor::Execute(
 // execute <method> with argument <self, ctxt>, return python string return value
     std::string* result = (std::string*)GILCallR(method, self, ctxt);
     if (!fAssignable)
-        return CPyCppyy_PyUnicode_FromStringAndSize(result->c_str(), result->size());
+        return CPyCppyy_PyText_FromStringAndSize(result->c_str(), result->size());
 
     *result = std::string(
-        CPyCppyy_PyUnicode_AsString(fAssignable), CPyCppyy_PyUnicode_GET_SIZE(fAssignable));
+        CPyCppyy_PyText_AsString(fAssignable), CPyCppyy_PyText_GET_SIZE(fAssignable));
 
     Py_DECREF(fAssignable);
     fAssignable = nullptr;
@@ -395,7 +395,7 @@ PyObject* CPyCppyy::CStringExecutor::Execute(
         return PyStrings::gEmptyString;
     }
 
-    return CPyCppyy_PyUnicode_FromString(result);
+    return CPyCppyy_PyText_FromString(result);
 }
 
 //----------------------------------------------------------------------------
@@ -487,7 +487,7 @@ PyObject* CPyCppyy::STLStringExecutor::Execute(
     }
 
     PyObject* pyresult =
-        CPyCppyy_PyUnicode_FromStringAndSize(result->c_str(), result->size());
+        CPyCppyy_PyText_FromStringAndSize(result->c_str(), result->size());
     ::operator delete(result); // calls Cppyy::CallO which calls ::operator new
 
     return pyresult;
@@ -556,9 +556,9 @@ PyObject* CPyCppyy::InstanceRefExecutor::Execute(
         if (!assign) {
             PyErr_Clear();
             PyObject* descr = PyObject_Str(result);
-            if (descr && CPyCppyy_PyUnicode_CheckExact(descr)) {
+            if (descr && CPyCppyy_PyText_CheckExact(descr)) {
                 PyErr_Format(PyExc_TypeError, "cannot assign to return object (%s)",
-                             CPyCppyy_PyUnicode_AsString(descr));
+                             CPyCppyy_PyText_AsString(descr));
             } else {
                 PyErr_SetString(PyExc_TypeError, "cannot assign to result");
             }
@@ -588,7 +588,7 @@ static inline PyObject* SetInstanceCheckError(PyObject* pyobj) {
     PyObject* pystr = PyObject_Str(pyobj);
     if (pystr) {
         PyErr_Format(PyExc_TypeError,
-           "C++ object expected, got %s", CPyCppyy_PyUnicode_AsString(pystr));
+           "C++ object expected, got %s", CPyCppyy_PyText_AsString(pystr));
         Py_DECREF(pystr);
     } else
         PyErr_SetString(PyExc_TypeError, "C++ object expected");

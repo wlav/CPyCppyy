@@ -208,7 +208,7 @@ void CPyCppyy::CPPMethod::SetPyError_(PyObject* msg)
     if (evalue) {
         PyObject* descr = PyObject_Str(evalue);
         if (descr) {
-            details = CPyCppyy_PyUnicode_AsString(descr);
+            details = CPyCppyy_PyText_AsString(descr);
             Py_DECREF(descr);
         }
     }
@@ -222,18 +222,18 @@ void CPyCppyy::CPPMethod::SetPyError_(PyObject* msg)
         errtype = PyExc_TypeError;
     }
     PyObject* pyname = PyObject_GetAttr(errtype, PyStrings::gName);
-    const char* cname = pyname ? CPyCppyy_PyUnicode_AsString(pyname) : "Exception";
+    const char* cname = pyname ? CPyCppyy_PyText_AsString(pyname) : "Exception";
 
     if (details.empty()) {
-        PyErr_Format(errtype, "%s =>\n    %s: %s", CPyCppyy_PyUnicode_AsString(doc),
-            cname, msg ? CPyCppyy_PyUnicode_AsString(msg) : "");
+        PyErr_Format(errtype, "%s =>\n    %s: %s", CPyCppyy_PyText_AsString(doc),
+            cname, msg ? CPyCppyy_PyText_AsString(msg) : "");
     } else if (msg) {
         PyErr_Format(errtype, "%s =>\n    %s: %s (%s)",
-            CPyCppyy_PyUnicode_AsString(doc), cname, CPyCppyy_PyUnicode_AsString(msg),
+            CPyCppyy_PyText_AsString(doc), cname, CPyCppyy_PyText_AsString(msg),
             details.c_str());
     } else {
         PyErr_Format(errtype, "%s =>\n    %s: %s",
-            CPyCppyy_PyUnicode_AsString(doc), cname, details.c_str());
+            CPyCppyy_PyText_AsString(doc), cname, details.c_str());
     }
 
     Py_XDECREF(pyname);
@@ -282,7 +282,7 @@ CPyCppyy::CPPMethod::~CPPMethod()
 PyObject* CPyCppyy::CPPMethod::GetPrototype(bool fa)
 {
 // construct python string from the method's prototype
-    return CPyCppyy_PyUnicode_FromFormat("%s%s %s::%s%s",
+    return CPyCppyy_PyText_FromFormat("%s%s %s::%s%s",
         (Cppyy::IsStaticMethod(fMethod) ? "static " : ""),
         Cppyy::GetMethodResultType(fMethod).c_str(),
         Cppyy::GetScopedFinalName(fScope).c_str(), Cppyy::GetMethodName(fMethod).c_str(),
@@ -407,7 +407,7 @@ PyObject* CPyCppyy::CPPMethod::GetCoVarNames()
 // TODO: static methods need no 'self' (but is harmless otherwise)
 
     PyObject* co_varnames = PyTuple_New(co_argcount+1 /* self */);
-    PyTuple_SET_ITEM(co_varnames, 0, CPyCppyy_PyUnicode_FromString("self"));
+    PyTuple_SET_ITEM(co_varnames, 0, CPyCppyy_PyText_FromString("self"));
     for (int iarg = 0; iarg < co_argcount; ++iarg) {
         std::string argrep = Cppyy::GetMethodArgType(fMethod, iarg);
         const std::string& parname = Cppyy::GetMethodArgName(fMethod, iarg);
@@ -416,7 +416,7 @@ PyObject* CPyCppyy::CPPMethod::GetCoVarNames()
             argrep += parname;
         }
 
-        PyObject* pyspec = CPyCppyy_PyUnicode_FromString(argrep.c_str());
+        PyObject* pyspec = CPyCppyy_PyText_FromString(argrep.c_str());
         PyTuple_SET_ITEM(co_varnames, iarg+1, pyspec);
     }
 
@@ -437,7 +437,7 @@ PyObject* CPyCppyy::CPPMethod::GetArgDefault(int iarg)
             (char*)defvalue.c_str(), Py_eval_input, gThisModule, gThisModule);
         if (!pyval && PyErr_Occurred()) {
             PyErr_Clear();
-            return CPyCppyy_PyUnicode_FromString(defvalue.c_str());
+            return CPyCppyy_PyText_FromString(defvalue.c_str());
         }
 
         return pyval;
@@ -514,7 +514,7 @@ PyObject* CPyCppyy::CPPMethod::PreProcessArgs(
     }
 
 // no self, set error and lament
-    SetPyError_(CPyCppyy_PyUnicode_FromFormat(
+    SetPyError_(CPyCppyy_PyText_FromFormat(
         "unbound method %s::%s must be called with a %s instance as first argument",
         Cppyy::GetFinalName(fScope).c_str(), Cppyy::GetMethodName(fMethod).c_str(),
         Cppyy::GetFinalName(fScope).c_str()));
@@ -530,11 +530,11 @@ bool CPyCppyy::CPPMethod::ConvertAndSetArgs(PyObject* args, CallContext* ctxt)
     if (argMax != argc) {
     // argc must be between min and max number of arguments
         if (argc < fArgsRequired) {
-            SetPyError_(CPyCppyy_PyUnicode_FromFormat(
+            SetPyError_(CPyCppyy_PyText_FromFormat(
                 "takes at least %ld arguments (%ld given)", fArgsRequired, argc));
             return false;
         } else if (argMax < argc) {
-            SetPyError_(CPyCppyy_PyUnicode_FromFormat(
+            SetPyError_(CPyCppyy_PyText_FromFormat(
                 "takes at most %ld arguments (%ld given)", argMax, argc));
             return false;
         }
@@ -548,7 +548,7 @@ bool CPyCppyy::CPPMethod::ConvertAndSetArgs(PyObject* args, CallContext* ctxt)
     Parameter* cppArgs = ctxt->GetArgs(argc);
     for (int i = 0; i < (int)argc; ++i) {
         if (!fConverters[i]->SetArg(PyTuple_GET_ITEM(args, i), cppArgs[i], ctxt)) {
-            SetPyError_(CPyCppyy_PyUnicode_FromFormat("could not convert argument %d", i+1));
+            SetPyError_(CPyCppyy_PyText_FromFormat("could not convert argument %d", i+1));
             isOK = false;
             break;
         }
@@ -641,7 +641,7 @@ PyObject* CPyCppyy::CPPMethod::Call(
 PyObject* CPyCppyy::CPPMethod::GetSignature(bool fa)
 {
 // construct python string from the method's signature
-    return CPyCppyy_PyUnicode_FromString(GetSignatureString(fa).c_str());
+    return CPyCppyy_PyText_FromString(GetSignatureString(fa).c_str());
 }
 
 //----------------------------------------------------------------------------

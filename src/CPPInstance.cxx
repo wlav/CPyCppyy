@@ -243,7 +243,7 @@ static PyObject* op_dispatch(PyObject* self, PyObject* args, PyObject* /* kdws *
 // method. The actual selection is in the __overload__() method of CPPOverload.
     PyObject *mname = nullptr, *sigarg = nullptr;
     if (!PyArg_ParseTuple(args, const_cast<char*>("O!O!:__dispatch__"),
-            &CPyCppyy_PyUnicode_Type, &mname, &CPyCppyy_PyUnicode_Type, &sigarg))
+            &CPyCppyy_PyText_Type, &mname, &CPyCppyy_PyText_Type, &sigarg))
         return nullptr;
 
 // get the named overload
@@ -353,13 +353,13 @@ static PyObject* op_repr(CPPInstance* pyobj)
     PyObject* repr = nullptr;
     if (pyobj->IsSmart()) {
         std::string smartPtrName = Cppyy::GetScopedFinalName(SMART_TYPE(pyobj));
-        repr = CPyCppyy_PyUnicode_FromFormat(
+        repr = CPyCppyy_PyText_FromFormat(
             const_cast<char*>("<%s.%s object at %p held by %s at %p>"),
-            CPyCppyy_PyUnicode_AsString(modname), clName.c_str(),
+            CPyCppyy_PyText_AsString(modname), clName.c_str(),
             pyobj->GetObject(), smartPtrName.c_str(), pyobj->GetObjectRaw());
     } else {
-        repr = CPyCppyy_PyUnicode_FromFormat(const_cast<char*>("<%s.%s object at %p>"),
-            CPyCppyy_PyUnicode_AsString(modname), clName.c_str(), pyobj->GetObject());
+        repr = CPyCppyy_PyText_FromFormat(const_cast<char*>("<%s.%s object at %p>"),
+            CPyCppyy_PyText_AsString(modname), clName.c_str(), pyobj->GetObject());
     }
 
     Py_DECREF(modname);
@@ -405,7 +405,7 @@ static PyObject* op_str(CPPInstance* cppinst)
         Py_DECREF(lshift);
         if (res) {
             Py_DECREF(res);
-            return CPyCppyy_PyUnicode_FromString(s.str().c_str());
+            return CPyCppyy_PyText_FromString(s.str().c_str());
         }
         PyErr_Clear();
     }

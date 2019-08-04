@@ -226,7 +226,7 @@ PyTypeObject CPPDataMember_Type = {
 void CPyCppyy::CPPDataMember::Set(Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t idata)
 {
     fEnclosingScope = scope;
-    fName           = CPyCppyy_PyUnicode_FromString(Cppyy::GetDatamemberName(scope, idata).c_str());
+    fName           = CPyCppyy_PyText_FromString(Cppyy::GetDatamemberName(scope, idata).c_str());
     fOffset         = Cppyy::GetDatamemberOffset(scope, idata); // TODO: make lazy
     fProperty       = Cppyy::IsStaticData(scope, idata) ? kIsStaticData : 0;
 
@@ -260,7 +260,7 @@ void CPyCppyy::CPPDataMember::Set(Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t i
 void CPyCppyy::CPPDataMember::Set(Cppyy::TCppScope_t scope, const std::string& name, void* address)
 {
     fEnclosingScope = scope;
-    fName           = CPyCppyy_PyUnicode_FromString(name.c_str());
+    fName           = CPyCppyy_PyText_FromString(name.c_str());
     fOffset         = (intptr_t)address;
     fProperty       = (kIsStaticData | kIsConstData | kIsEnumData /* true, but may chance */);
     fConverter      = CreateConverter("internal_enum_type_t");

@@ -56,10 +56,10 @@ public:
     }
 
     virtual PyObject* GetSignature(bool /*show_formalargs*/ = true) {
-        return CPyCppyy_PyUnicode_FromString("*args, **kwargs");
+        return CPyCppyy_PyText_FromString("*args, **kwargs");
     }
     virtual PyObject* GetPrototype(bool /*show_formalargs*/ = true) {
-        return CPyCppyy_PyUnicode_FromString("<callback>");
+        return CPyCppyy_PyText_FromString("<callback>");
     }
     virtual PyObject* GetDocString() {
         if (PyObject_HasAttrString(fCallable, "__doc__")) {
@@ -178,7 +178,7 @@ static inline PyObject* HandleReturn(
 //= CPyCppyy method proxy object behaviour ===================================
 static PyObject* mp_name(CPPOverload* pymeth, void*)
 {
-    return CPyCppyy_PyUnicode_FromString(pymeth->GetName().c_str());
+    return CPyCppyy_PyText_FromString(pymeth->GetName().c_str());
 }
 
 //-----------------------------------------------------------------------------
@@ -205,10 +205,10 @@ static PyObject* mp_doc(CPPOverload* pymeth, void*)
         return doc;
 
 // overloaded method
-    PyObject* separator = CPyCppyy_PyUnicode_FromString("\n");
+    PyObject* separator = CPyCppyy_PyText_FromString("\n");
     for (CPPOverload::Methods_t::size_type i = 1; i < nMethods; ++i) {
-        CPyCppyy_PyUnicode_Append(&doc, separator);
-        CPyCppyy_PyUnicode_AppendAndDel(&doc, methods[i]->GetDocString());
+        CPyCppyy_PyText_Append(&doc, separator);
+        CPyCppyy_PyText_AppendAndDel(&doc, methods[i]->GetDocString());
     }
     Py_DECREF(separator);
 
@@ -285,8 +285,8 @@ static PyObject* mp_func_code(CPPOverload* pymeth, void*)
     if (!co_varnames) {
     // TODO: static methods need no 'self' (but is harmless otherwise)
         co_varnames = PyTuple_New(1 /* self */ + 1 /* fake */);
-        PyTuple_SET_ITEM(co_varnames, 0, CPyCppyy_PyUnicode_FromString("self"));
-        PyTuple_SET_ITEM(co_varnames, 1, CPyCppyy_PyUnicode_FromString("*args"));
+        PyTuple_SET_ITEM(co_varnames, 0, CPyCppyy_PyText_FromString("self"));
+        PyTuple_SET_ITEM(co_varnames, 1, CPyCppyy_PyText_FromString("*args"));
     }
 
     int co_argcount = (int)PyTuple_Size(co_varnames);
@@ -617,7 +617,7 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
             // this should not happen; set an error to prevent core dump and report
                 PyObject* sig = methods[i]->GetPrototype();
                 PyErr_Format(PyExc_SystemError, "%s =>\n    %s",
-                    CPyCppyy_PyUnicode_AsString(sig), (char*)"nullptr result without error in mp_call");
+                    CPyCppyy_PyText_AsString(sig), (char*)"nullptr result without error in mp_call");
                 Py_DECREF(sig);
             }
             Utility::FetchError(errors);
@@ -632,7 +632,7 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
     }
 
 // first summarize, then add details
-    PyObject* topmsg = CPyCppyy_PyUnicode_FromFormat(
+    PyObject* topmsg = CPyCppyy_PyText_FromFormat(
         "none of the %d overloaded methods succeeded. Full details:", (int)nMethods);
     SetDetailedException(errors, topmsg /* steals */, PyExc_TypeError /* default error */);
 
@@ -646,7 +646,7 @@ static PyObject* mp_str(CPPOverload* cppinst)
 // Print a description that includes the C++ name
      std::ostringstream s;
      s << "<C++ overload \"" << cppinst->fMethodInfo->fName << "\" at " << (void*)cppinst << ">";
-     return CPyCppyy_PyUnicode_FromString(s.str().c_str());
+     return CPyCppyy_PyText_FromString(s.str().c_str());
 }
 
 //-----------------------------------------------------------------------------
@@ -766,13 +766,13 @@ static PyObject* mp_richcompare(CPPOverload* self, CPPOverload* other, int op)
 static PyObject* mp_overload(CPPOverload* pymeth, PyObject* sigarg)
 {
 // Select and call a specific C++ overload, based on its signature.
-    if (!CPyCppyy_PyUnicode_Check(sigarg)) {
+    if (!CPyCppyy_PyText_Check(sigarg)) {
         PyErr_Format(PyExc_TypeError, "__overload__() argument 1 must be string, not %.50s",
             sigarg == Py_None ? "None" : Py_TYPE(sigarg)->tp_name);
         return nullptr;
     }
 
-    PyObject* sig1 = CPyCppyy_PyUnicode_FromFormat("(%s)", CPyCppyy_PyUnicode_AsString(sigarg));
+    PyObject* sig1 = CPyCppyy_PyText_FromFormat("(%s)", CPyCppyy_PyText_AsString(sigarg));
 
     CPPOverload::Methods_t& methods = pymeth->fMethodInfo->fMethods;
     for (auto& meth : methods) {
@@ -800,7 +800,7 @@ static PyObject* mp_overload(CPPOverload* pymeth, PyObject* sigarg)
 
     Py_DECREF(sig1);
     PyErr_Format(PyExc_LookupError,
-        "signature \"%s\" not found", CPyCppyy_PyUnicode_AsString(sigarg));
+        "signature \"%s\" not found", CPyCppyy_PyText_AsString(sigarg));
     return nullptr;
 }
 

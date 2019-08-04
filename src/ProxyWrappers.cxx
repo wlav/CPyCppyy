@@ -102,7 +102,7 @@ void AddPropertyToClass(PyObject* pyclass,
     Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t idata)
 {
     CPyCppyy::CPPDataMember* property = CPyCppyy::CPPDataMember_New(scope, idata);
-    PyObject* pname = CPyCppyy_PyUnicode_FromString(const_cast<char*>(property->GetName().c_str()));
+    PyObject* pname = CPyCppyy_PyText_FromString(const_cast<char*>(property->GetName().c_str()));
 
 // allow access at the instance level
     PyType_Type.tp_setattro(pyclass, pname, (PyObject*)property);
@@ -119,7 +119,7 @@ void AddPropertyToClass(PyObject* pyclass,
 static inline
 void AddScopeToParent(PyObject* parent, const std::string& name, PyObject* newscope)
 {
-    PyObject* pyname = CPyCppyy_PyUnicode_FromString((char*)name.c_str());
+    PyObject* pyname = CPyCppyy_PyText_FromString((char*)name.c_str());
     if (CPPScope_Check(parent)) PyType_Type.tp_setattro(parent, pyname, newscope);
     else PyObject_SetAttr(parent, pyname, newscope);
     Py_DECREF(pyname);
@@ -135,7 +135,7 @@ static inline void sync_templates(
     PyObject* pyclass, const std::string& mtCppName, const std::string& mtName)
 {
     PyObject* dct = PyObject_GetAttr(pyclass, PyStrings::gDict);
-    PyObject* pyname = CPyCppyy_PyUnicode_FromString(const_cast<char*>(mtName.c_str()));
+    PyObject* pyname = CPyCppyy_PyText_FromString(const_cast<char*>(mtName.c_str()));
     PyObject* attr = PyObject_GetItem(dct, pyname);
     if (!attr) PyErr_Clear();
     Py_DECREF(dct);
@@ -321,7 +321,7 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
     // in order to prevent removing templated editions of this method (which were set earlier,
     // above, as a different proxy object), we'll check and add this method flagged as a generic
     // one (to be picked up by the templated one as appropriate) if a template exists
-        PyObject* pyname = CPyCppyy_PyUnicode_FromString(const_cast<char*>(imd->first.c_str()));
+        PyObject* pyname = CPyCppyy_PyText_FromString(const_cast<char*>(imd->first.c_str()));
         PyObject* attr = PyObject_GetItem(dct, pyname);
         Py_DECREF(pyname);
         if (TemplateProxy_Check(attr)) {
@@ -332,7 +332,7 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
             if (!attr) PyErr_Clear();
         // normal case, add a new method
             CPPOverload* method = CPPOverload_New(imd->first, imd->second);
-            PyObject* pymname = CPyCppyy_PyUnicode_FromString(const_cast<char*>(method->GetName().c_str()));
+            PyObject* pymname = CPyCppyy_PyText_FromString(const_cast<char*>(method->GetName().c_str()));
             PyType_Type.tp_setattro(pyclass, pymname, (PyObject*)method);
             Py_DECREF(pymname);
             Py_DECREF(method);
@@ -499,7 +499,7 @@ PyObject* CPyCppyy::CreateScopeProxy(Cppyy::TCppScope_t scope)
 PyObject* CPyCppyy::CreateScopeProxy(PyObject*, PyObject* args)
 {
 // Build a python shadow class for the named C++ class.
-    std::string cname = CPyCppyy_PyUnicode_AsString(PyTuple_GetItem(args, 0));
+    std::string cname = CPyCppyy_PyText_AsString(PyTuple_GetItem(args, 0));
     if (PyErr_Occurred())
         return nullptr;
 
@@ -524,7 +524,7 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& name, PyObject* parent)
             }
 
         // should be a string
-            scName = CPyCppyy_PyUnicode_AsString(parname);
+            scName = CPyCppyy_PyText_AsString(parname);
             Py_DECREF(parname);
             if (PyErr_Occurred())
                 return nullptr;
@@ -691,10 +691,8 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& name, PyObject* parent)
             } else {
             // add to sys.modules to allow importing from this namespace
                 PyObject* pyfullname = PyObject_GetAttr(pyscope, PyStrings::gModule);
-                CPyCppyy_PyUnicode_AppendAndDel(
-                    &pyfullname, CPyCppyy_PyUnicode_FromString("."));
-                CPyCppyy_PyUnicode_AppendAndDel(
-                    &pyfullname, PyObject_GetAttr(pyscope, PyStrings::gName));
+                CPyCppyy_PyText_AppendAndDel(&pyfullname, CPyCppyy_PyText_FromString("."));
+                CPyCppyy_PyText_AppendAndDel(&pyfullname, PyObject_GetAttr(pyscope, PyStrings::gName));
                 PyObject* modules = PySys_GetObject(const_cast<char*>("modules"));
                 if (modules && PyDict_Check(modules))
                     PyDict_SetItem(modules, pyfullname, pyscope);

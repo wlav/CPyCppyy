@@ -114,7 +114,7 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
         }
 
         std::string mtCppName = Cppyy::GetMethodName(method);
-        PyObject* key = CPyCppyy_PyUnicode_FromString(mtCppName.c_str());
+        PyObject* key = CPyCppyy_PyText_FromString(mtCppName.c_str());
         int contains = PyDict_Contains(dct, key);
         if (contains == -1) PyErr_Clear();
         if (contains != 1) {
@@ -140,7 +140,7 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
             for (Py_ssize_t i = 0; i < PyList_GET_SIZE(keys); ++i) {
             // TODO: should probably invert this looping; but that makes handling overloads clunky
                 PyObject* key = PyList_GET_ITEM(keys, i);
-                std::string mtCppName = CPyCppyy_PyUnicode_AsString(key);
+                std::string mtCppName = CPyCppyy_PyText_AsString(key);
                 const auto& v = Cppyy::GetMethodIndicesFromName(tbase, mtCppName);
                 for (auto idx : v)
                     InjectMethod(Cppyy::GetMethod(tbase, idx), mtCppName, code);

@@ -86,9 +86,9 @@ static inline bool CPyCppyy_PyLong_AsBool(PyObject* pyobject)
     return (bool)l;
 }
 
-static inline char CPyCppyy_PyUnicode_AsChar(PyObject* pyobject) {
+static inline char CPyCppyy_PyText_AsChar(PyObject* pyobject) {
 // python string to C++ char conversion
-    return (char)CPyCppyy_PyUnicode_AsString(pyobject)[0];
+    return (char)CPyCppyy_PyText_AsString(pyobject)[0];
 }
 
 static inline uint8_t CPyCppyy_PyLong_AsUInt8(PyObject* pyobject)
@@ -304,12 +304,12 @@ bool CPyCppyy::name##Converter::ToMemory(PyObject* value, void* address)     \
 static inline int ExtractChar(PyObject* pyobject, const char* tname, int low, int high)
 {
     int lchar = -1;
-    if (CPyCppyy_PyUnicode_Check(pyobject)) {
-        if (CPyCppyy_PyUnicode_GET_SIZE(pyobject) == 1)
-            lchar = (int)CPyCppyy_PyUnicode_AsChar(pyobject);
+    if (CPyCppyy_PyText_Check(pyobject)) {
+        if (CPyCppyy_PyText_GET_SIZE(pyobject) == 1)
+            lchar = (int)CPyCppyy_PyText_AsChar(pyobject);
         else
             PyErr_Format(PyExc_ValueError, "%s expected, got string of size " PY_SSIZE_T_FORMAT,
-                tname, CPyCppyy_PyUnicode_GET_SIZE(pyobject));
+                tname, CPyCppyy_PyText_GET_SIZE(pyobject));
     } else if (!PyFloat_Check(pyobject)) {   // don't allow truncating conversion
         lchar = (int)PyLong_AsLong(pyobject);
         if (lchar == -1 && PyErr_Occurred())
@@ -391,16 +391,16 @@ bool CPyCppyy::name##Converter::SetArg(                                      \
                                                                              \
 PyObject* CPyCppyy::name##Converter::FromMemory(void* address)               \
 {                                                                            \
-    return CPyCppyy_PyUnicode_FromFormat("%c", *((type*)address));           \
+    return CPyCppyy_PyText_FromFormat("%c", *((type*)address));              \
 }                                                                            \
                                                                              \
 bool CPyCppyy::name##Converter::ToMemory(PyObject* value, void* address)     \
 {                                                                            \
-    if (CPyCppyy_PyUnicode_Check(value)) {                                   \
-        const char* buf = CPyCppyy_PyUnicode_AsString(value);                \
+    if (CPyCppyy_PyText_Check(value)) {                                      \
+        const char* buf = CPyCppyy_PyText_AsString(value);                   \
         if (PyErr_Occurred())                                                \
             return false;                                                    \
-        Py_ssize_t len = CPyCppyy_PyUnicode_GET_SIZE(value);                 \
+        Py_ssize_t len = CPyCppyy_PyText_GET_SIZE(value);                    \
         if (len != 1) {                                                      \
             PyErr_Format(PyExc_TypeError, #type" expected, got string of size %ld", len);\
             return false;                                                    \
@@ -792,11 +792,11 @@ bool CPyCppyy::CStringConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)
 {
 // construct a new string and copy it in new memory
-    const char* s = CPyCppyy_PyUnicode_AsStringChecked(pyobject);
+    const char* s = CPyCppyy_PyText_AsStringChecked(pyobject);
     if (PyErr_Occurred())
         return false;
 
-    fBuffer = std::string(s, CPyCppyy_PyUnicode_GET_SIZE(pyobject));
+    fBuffer = std::string(s, CPyCppyy_PyText_GET_SIZE(pyobject));
 
 // verify (too long string will cause truncation, no crash)
     if (fMaxSize != -1 && fMaxSize < (long)fBuffer.size())
@@ -816,10 +816,10 @@ PyObject* CPyCppyy::CStringConverter::FromMemory(void* address)
     if (address && *(char**)address) {
         if (fMaxSize != -1) {      // need to prevent reading beyond boundary
             std::string buf(*(char**)address, fMaxSize);    // cut on fMaxSize
-            return CPyCppyy_PyUnicode_FromString(buf.c_str());   // cut on \0
+            return CPyCppyy_PyText_FromString(buf.c_str());   // cut on \0
         }
 
-        return CPyCppyy_PyUnicode_FromString(*(char**)address);
+        return CPyCppyy_PyText_FromString(*(char**)address);
     }
 
 // empty string in case there's no address
@@ -830,12 +830,12 @@ PyObject* CPyCppyy::CStringConverter::FromMemory(void* address)
 bool CPyCppyy::CStringConverter::ToMemory(PyObject* value, void* address)
 {
 // convert <value> to C++ const char*, write it at <address>
-    const char* s = CPyCppyy_PyUnicode_AsStringChecked(value);
+    const char* s = CPyCppyy_PyText_AsStringChecked(value);
     if (PyErr_Occurred())
         return false;
 
 // verify (too long string will cause truncation, no crash)
-    if (fMaxSize != -1 && fMaxSize < (long)CPyCppyy_PyUnicode_GET_SIZE(value))
+    if (fMaxSize != -1 && fMaxSize < (long)CPyCppyy_PyText_GET_SIZE(value))
         PyErr_Warn(PyExc_RuntimeWarning, (char*)"string too long for char array (truncated)");
 
     if (fMaxSize != -1)
@@ -956,7 +956,7 @@ PyObject* CPyCppyy::NonConstCStringConverter::FromMemory(void* address)
 {
 // assume this is a buffer access if the size is known; otherwise assume string
     if (fMaxSize != -1)
-        return CPyCppyy_PyUnicode_FromStringAndSize(*(char**)address, fMaxSize);
+        return CPyCppyy_PyText_FromStringAndSize(*(char**)address, fMaxSize);
     return this->CStringConverter::FromMemory(address);
 }
 
@@ -1150,9 +1150,9 @@ CPyCppyy::name##Converter::name##Converter(bool keepControl) :               \
 bool CPyCppyy::name##Converter::SetArg(                                      \
     PyObject* pyobject, Parameter& para, CallContext* ctxt)                  \
 {                                                                            \
-    if (CPyCppyy_PyUnicode_Check(pyobject)) {                                \
-        fBuffer = type(CPyCppyy_PyUnicode_AsString(pyobject),                \
-                       CPyCppyy_PyUnicode_GET_SIZE(pyobject));               \
+    if (CPyCppyy_PyText_Check(pyobject)) {                                   \
+        fBuffer = type(CPyCppyy_PyText_AsString(pyobject),                   \
+                       CPyCppyy_PyText_GET_SIZE(pyobject));                  \
         para.fValue.fVoidp = &fBuffer;                                       \
         para.fTypeCode = 'V';                                                \
         return true;                                                         \
@@ -1169,15 +1169,15 @@ bool CPyCppyy::name##Converter::SetArg(                                      \
 PyObject* CPyCppyy::name##Converter::FromMemory(void* address)               \
 {                                                                            \
     if (address)                                                             \
-        return CPyCppyy_PyUnicode_FromStringAndSize(((type*)address)->F1(), ((type*)address)->F2()); \
+        return CPyCppyy_PyText_FromStringAndSize(((type*)address)->F1(), ((type*)address)->F2()); \
     Py_INCREF(PyStrings::gEmptyString);                                      \
     return PyStrings::gEmptyString;                                          \
 }                                                                            \
                                                                              \
 bool CPyCppyy::name##Converter::ToMemory(PyObject* value, void* address)     \
 {                                                                            \
-    if (CPyCppyy_PyUnicode_Check(value)) {                                   \
-        *((type*)address) = CPyCppyy_PyUnicode_AsString(value);              \
+    if (CPyCppyy_PyText_Check(value)) {                                      \
+        *((type*)address) = CPyCppyy_PyText_AsString(value);                 \
         return true;                                                         \
     }                                                                        \
                                                                              \
@@ -1709,7 +1709,7 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
     // find the overload with matching signature
         for (auto& m : ol->fMethodInfo->fMethods) {
             PyObject* sig = m->GetSignature(false);
-            bool found = fSignature == CPyCppyy_PyUnicode_AsString(sig);
+            bool found = fSignature == CPyCppyy_PyText_AsString(sig);
             Py_DECREF(sig);
             if (found) {
                 para.fValue.fVoidp = (void*)m->GetFunctionAddress();
@@ -1725,9 +1725,9 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
     if (TemplateProxy_Check(pyobject)) {
     // get the actual underlying template matching the signature
         TemplateProxy* pytmpl = (TemplateProxy*)pyobject;
-        std::string fullname = CPyCppyy_PyUnicode_AsString(pytmpl->fTI->fCppName);
+        std::string fullname = CPyCppyy_PyText_AsString(pytmpl->fTI->fCppName);
         if (pytmpl->fTemplateArgs)
-            fullname += CPyCppyy_PyUnicode_AsString(pytmpl->fTemplateArgs);
+            fullname += CPyCppyy_PyText_AsString(pytmpl->fTemplateArgs);
         Cppyy::TCppScope_t scope = ((CPPClass*)pytmpl->fTI->fPyClass)->fCppType;
         Cppyy::TCppMethod_t cppmeth = Cppyy::GetMethodTemplate(scope, fullname, fSignature);
         if (cppmeth) {
@@ -2030,7 +2030,7 @@ bool CPyCppyy::InitializerListConverter::SetArg(
     return false;
 #else
 // convert the given argument to an initializer list temporary
-    if (!PySequence_Check(pyobject) || CPyCppyy_PyUnicode_Check(pyobject)
+    if (!PySequence_Check(pyobject) || CPyCppyy_PyText_Check(pyobject)
 #if PY_VERSION_HEX >= 0x03000000
         || PyBytes_Check(pyobject)
 #endif

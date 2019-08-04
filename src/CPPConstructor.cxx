@@ -25,7 +25,7 @@ PyObject* CPyCppyy::CPPConstructor::GetDocString()
 {
 // GetMethod() may return an empty function if this is just a special case place holder
     const std::string& clName = Cppyy::GetFinalName(this->GetScope());
-    return CPyCppyy_PyUnicode_FromFormat("%s::%s%s",
+    return CPyCppyy_PyText_FromFormat("%s::%s%s",
         clName.c_str(), clName.c_str(), this->GetMethod() ? this->GetSignatureString().c_str() : "()");
 }
 

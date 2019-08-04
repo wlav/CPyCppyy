@@ -170,7 +170,7 @@ bool CPyCppyy::Utility::AddToClass(
     pdef->ml_doc   = nullptr;
 
     PyObject* func = PyCFunction_New(pdef, nullptr);
-    PyObject* name = CPyCppyy_PyUnicode_FromString(pdef->ml_name);
+    PyObject* name = CPyCppyy_PyText_FromString(pdef->ml_name);
     PyObject* method = CustomInstanceMethod_New(func, nullptr, pyclass);
     bool isOk = PyType_Type.tp_setattro(pyclass, name, method) == 0;
     Py_DECREF(method);
@@ -196,7 +196,7 @@ bool CPyCppyy::Utility::AddToClass(PyObject* pyclass, const char* label, const c
     if (!pyfunc)
         return false;
 
-    PyObject* pylabel = CPyCppyy_PyUnicode_FromString(const_cast<char*>(label));
+    PyObject* pylabel = CPyCppyy_PyText_FromString(const_cast<char*>(label));
     bool isOk = PyType_Type.tp_setattro(pyclass, pylabel, pyfunc) == 0;
     Py_DECREF(pylabel);
 
@@ -217,7 +217,7 @@ bool CPyCppyy::Utility::AddToClass(PyObject* pyclass, const char* label, PyCalla
             PyErr_Clear();
         Py_XDECREF((PyObject*)method);
         method = CPPOverload_New(label, pyfunc);
-        PyObject* pylabel = CPyCppyy_PyUnicode_FromString(const_cast<char*>(label));
+        PyObject* pylabel = CPyCppyy_PyText_FromString(const_cast<char*>(label));
         bool isOk = PyType_Type.tp_setattro(pyclass, pylabel, (PyObject*)method) == 0;
         Py_DECREF(pylabel);
         Py_DECREF(method);
@@ -261,7 +261,7 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const char* op,
         cname = Cppyy::GetScopedFinalName(((CPPScope*)pyclass)->fCppType);
     else {
         PyObject* pyname = PyObject_GetAttr(pyclass, PyStrings::gName);
-        cname = Cppyy::ResolveName(CPyCppyy_PyUnicode_AsString(pyname));
+        cname = Cppyy::ResolveName(CPyCppyy_PyText_AsString(pyname));
         Py_DECREF(pyname);
     }
 
@@ -379,7 +379,7 @@ std::string CPyCppyy::Utility::ConstructTemplateArgs(
     std::string tmpl_name;
     tmpl_name.reserve(128);
     if (pyname)
-        tmpl_name.append(CPyCppyy_PyUnicode_AsString(pyname));
+        tmpl_name.append(CPyCppyy_PyText_AsString(pyname));
     tmpl_name.push_back('<');
 
     if (pcnt) *pcnt = 0;     // count number of times 'pref' is used
@@ -388,8 +388,8 @@ std::string CPyCppyy::Utility::ConstructTemplateArgs(
     for (int i = argoff; i < nArgs; ++i) {
     // add type as string to name
         PyObject* tn = justOne ? tpArgs : PyTuple_GET_ITEM(tpArgs, i);
-        if (CPyCppyy_PyUnicode_Check(tn)) {
-            tmpl_name.append(CPyCppyy_PyUnicode_AsString(tn));
+        if (CPyCppyy_PyText_Check(tn)) {
+            tmpl_name.append(CPyCppyy_PyText_AsString(tn));
     // some commmon numeric types (separated out for performance: checking for
     // __cpp_name__ and/or __name__ is rather expensive)
         } else if (tn == (PyObject*)&PyInt_Type) {
@@ -426,18 +426,18 @@ std::string CPyCppyy::Utility::ConstructTemplateArgs(
             }
         } else if (PyObject_HasAttr(tn, PyStrings::gCppName)) {
             PyObject* tpName = PyObject_GetAttr(tn, PyStrings::gCppName);
-            tmpl_name.append(CPyCppyy_PyUnicode_AsString(tpName));
+            tmpl_name.append(CPyCppyy_PyText_AsString(tpName));
             Py_DECREF(tpName);
         } else if (PyObject_HasAttr(tn, PyStrings::gName)) {
             PyObject* tpName = PyObject_GetAttr(tn, PyStrings::gName);
-            tmpl_name.append(CPyCppyy_PyUnicode_AsString(tpName));
+            tmpl_name.append(CPyCppyy_PyText_AsString(tpName));
             Py_DECREF(tpName);
         } else if (PyInt_Check(tn) || PyLong_Check(tn) || PyFloat_Check(tn)) {
         // last ditch attempt, works for things like int values; since this is a
         // source of errors otherwise, it is limited to specific types and not
         // generally used (str(obj) can print anything ...)
             PyObject* pystr = PyObject_Str(tn);
-            tmpl_name.append(CPyCppyy_PyUnicode_AsString(pystr));
+            tmpl_name.append(CPyCppyy_PyText_AsString(pystr));
             Py_DECREF(pystr);
         } else {
             PyErr_SetString(PyExc_SyntaxError,
@@ -618,7 +618,7 @@ Py_ssize_t CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, v
         // determine buffer compatibility (use "buf" as a status flag)
             PyObject* pytc = PyObject_GetAttr(pyobject, PyStrings::gTypeCode);
             if (pytc != 0) {      // for array objects
-                if (CPyCppyy_PyUnicode_AsString(pytc)[0] != tc)
+                if (CPyCppyy_PyText_AsString(pytc)[0] != tc)
                     buf = 0;      // no match
                 Py_DECREF(pytc);
             } else if (seqmeths->sq_length &&
@@ -634,9 +634,9 @@ Py_ssize_t CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, v
             // clarify error message
                 PyObject* pytype = 0, *pyvalue = 0, *pytrace = 0;
                 PyErr_Fetch(&pytype, &pyvalue, &pytrace);
-                PyObject* pyvalue2 = CPyCppyy_PyUnicode_FromFormat(
+                PyObject* pyvalue2 = CPyCppyy_PyText_FromFormat(
                     (char*)"%s and given element size (%ld) do not match needed (%d)",
-                    CPyCppyy_PyUnicode_AsString(pyvalue),
+                    CPyCppyy_PyText_AsString(pyvalue),
                     seqmeths->sq_length ? (Long_t)(buflen/(*(seqmeths->sq_length))(pyobject)) : (Long_t)buflen,
                     size);
                 Py_DECREF(pyvalue);
@@ -753,7 +753,7 @@ std::string CPyCppyy::Utility::ClassName(PyObject* pyobj)
     PyObject* pyname = PyObject_GetAttr(pyclass, PyStrings::gCppName);
     if (!pyname) pyname = PyObject_GetAttr(pyclass, PyStrings::gName);
     if (pyname) {
-        clname = CPyCppyy_PyUnicode_AsString(pyname);
+        clname = CPyCppyy_PyText_AsString(pyname);
         Py_DECREF(pyname);
     } else
         PyErr_Clear();
@@ -799,31 +799,31 @@ void CPyCppyy::Utility::SetDetailedException(std::vector<PyError_t>& errors, PyO
 // Use the collected exceptions to build up a detailed error log.
     if (errors.empty()) {
     // should not happen ...
-        PyErr_SetString(defexc, CPyCppyy_PyUnicode_AsString(topmsg));
+        PyErr_SetString(defexc, CPyCppyy_PyText_AsString(topmsg));
         Py_DECREF(topmsg);
         return;
     }
 
 // add the details to the topmsg
-    PyObject* separator = CPyCppyy_PyUnicode_FromString("\n  ");
+    PyObject* separator = CPyCppyy_PyText_FromString("\n  ");
 
     PyObject* exc_type = nullptr;
     for (auto& e : errors) {
         if (!exc_type) exc_type = e.fType;
         else if (exc_type != e.fType) exc_type = defexc;
-        CPyCppyy_PyUnicode_Append(&topmsg, separator);
-        if (CPyCppyy_PyUnicode_Check(e.fValue)) {
-            CPyCppyy_PyUnicode_Append(&topmsg, e.fValue);
+        CPyCppyy_PyText_Append(&topmsg, separator);
+        if (CPyCppyy_PyText_Check(e.fValue)) {
+            CPyCppyy_PyText_Append(&topmsg, e.fValue);
         } else if (e.fValue) {
             PyObject* excstr = PyObject_Str(e.fValue);
             if (!excstr) {
                 PyErr_Clear();
                 excstr = PyObject_Str((PyObject*)Py_TYPE(e.fValue));
             }
-            CPyCppyy_PyUnicode_AppendAndDel(&topmsg, excstr);
+            CPyCppyy_PyText_AppendAndDel(&topmsg, excstr);
         } else {
-            CPyCppyy_PyUnicode_AppendAndDel(&topmsg,
-                CPyCppyy_PyUnicode_FromString("unknown exception"));
+            CPyCppyy_PyText_AppendAndDel(&topmsg,
+                CPyCppyy_PyText_FromString("unknown exception"));
         }
     }
 
@@ -831,7 +831,7 @@ void CPyCppyy::Utility::SetDetailedException(std::vector<PyError_t>& errors, PyO
     std::for_each(errors.begin(), errors.end(), PyError_t::Clear);
 
 // set the python exception
-    PyErr_SetString(exc_type, CPyCppyy_PyUnicode_AsString(topmsg));
+    PyErr_SetString(exc_type, CPyCppyy_PyText_AsString(topmsg));
     Py_DECREF(topmsg);
 }
 
