@@ -141,6 +141,7 @@ CPyCppyy::CPPInstance* CPyCppyy::CPPInstance::Copy(void* cppinst)
         return nullptr;
     }
 
+    MemoryRegulator::RegisterPyObject((CPPInstance*)newinst, cppinst);
     return (CPPInstance*)newinst;
 }
 

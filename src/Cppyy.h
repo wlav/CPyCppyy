@@ -131,6 +131,8 @@ namespace Cppyy {
     CPPYY_IMPORT
     std::string GetScopedFinalName(TCppType_t type);
     CPPYY_IMPORT
+    bool        HasVirtualDestructor(TCppType_t type);
+    CPPYY_IMPORT
     bool        HasComplexHierarchy(TCppType_t type);
     CPPYY_IMPORT
     TCppIndex_t GetNumBases(TCppType_t type);

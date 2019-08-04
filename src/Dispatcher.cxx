@@ -3,6 +3,7 @@
 #include "Dispatcher.h"
 #include "CPPScope.h"
 #include "PyStrings.h"
+#include "ProxyWrappers.h"
 #include "TypeManip.h"
 #include "Utility.h"
 
@@ -55,8 +56,17 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
 {
 // Scan all methods in dct and where it overloads base methods in klass, create
 // dispatchers on the C++ side. Then interject the dispatcher class.
-    if (Cppyy::IsNamespace(klass->fCppType) || !PyDict_Check(dct))
+    if (Cppyy::IsNamespace(klass->fCppType) || !PyDict_Check(dct)) {
+        PyErr_Format(PyExc_TypeError,
+            "%s not an acceptable base: is namespace or has no dict", Cppyy::GetScopedFinalName(klass->fCppType).c_str());
         return false;
+    }
+
+    if (!Cppyy::HasVirtualDestructor(klass->fCppType)) {
+        PyErr_Format(PyExc_TypeError,
+            "%s not an acceptable base: no virtual destructor", Cppyy::GetScopedFinalName(klass->fCppType).c_str());
+        return false;
+    }
 
     if (!Utility::IncludePython())
         return false;
@@ -79,6 +89,9 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
          << "class " << derivedName << " : public ::" << baseNameScoped << " {\n"
             "  CPyCppyy::DispatchPtr m_self;\n"
             "public:\n";
+
+// add a virtual destructor for good measure
+    code << "  virtual ~" << derivedName << "() {}\n";
 
 // methods: first collect all callables, then get overrides from base class, for
 // those that are still missing, search the hierarchy
@@ -183,6 +196,12 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
     Cppyy::TCppScope_t disp = Cppyy::GetScope("__cppyy_internal::"+derivedName);
     if (!disp) return false;
     klass->fCppType = disp;
+
+// at this point, the dispatcher only lives in C++, as opposed to regular classes
+// that are part of the hierarchy in Python, so create it, which will cache it for
+// later use by e.g. the MemoryRegulator
+    PyObject* disp_proxy = CPyCppyy::CreateScopeProxy(disp);
+    Py_XDECREF(disp_proxy);
 
     return true;
 }

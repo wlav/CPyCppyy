@@ -246,8 +246,8 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
             if (0 < sz && !Cppyy::IsNamespace(result->fCppType)) {
                 result->fFlags |= CPPScope::kIsPython;
                 if (!InsertDispatcher(result, dct)) {
-                    PyErr_Warn(PyExc_RuntimeWarning,
-                        (char*)"no python-side overrides supported");
+                    if (!PyErr_Occurred())
+                         PyErr_Warn(PyExc_RuntimeWarning, (char*)"no python-side overrides supported");
                 } else {
                 // the direct base can be useful for some templates, such as shared_ptrs,
                 // so make it accessible (the __cpp_cross__ data member also signals that
@@ -270,6 +270,10 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
         result->fFlags |= CPPScope::kIsNamespace;
     }
 
+    if (PyErr_Occurred()) {
+        Py_DECREF((PyObject*)result);
+        return nullptr;
+    }
     return (PyObject*)result;
 }
 
