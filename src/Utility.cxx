@@ -170,7 +170,7 @@ bool CPyCppyy::Utility::AddToClass(
     pdef->ml_doc   = nullptr;
 
     PyObject* func = PyCFunction_New(pdef, nullptr);
-    PyObject* name = CPyCppyy_PyText_FromString(pdef->ml_name);
+    PyObject* name = CPyCppyy_PyText_InternFromString(pdef->ml_name);
     PyObject* method = CustomInstanceMethod_New(func, nullptr, pyclass);
     bool isOk = PyType_Type.tp_setattro(pyclass, name, method) == 0;
     Py_DECREF(method);
@@ -196,7 +196,7 @@ bool CPyCppyy::Utility::AddToClass(PyObject* pyclass, const char* label, const c
     if (!pyfunc)
         return false;
 
-    PyObject* pylabel = CPyCppyy_PyText_FromString(const_cast<char*>(label));
+    PyObject* pylabel = CPyCppyy_PyText_InternFromString(const_cast<char*>(label));
     bool isOk = PyType_Type.tp_setattro(pyclass, pylabel, pyfunc) == 0;
     Py_DECREF(pylabel);
 
@@ -217,7 +217,7 @@ bool CPyCppyy::Utility::AddToClass(PyObject* pyclass, const char* label, PyCalla
             PyErr_Clear();
         Py_XDECREF((PyObject*)method);
         method = CPPOverload_New(label, pyfunc);
-        PyObject* pylabel = CPyCppyy_PyText_FromString(const_cast<char*>(label));
+        PyObject* pylabel = CPyCppyy_PyText_InternFromString(const_cast<char*>(label));
         bool isOk = PyType_Type.tp_setattro(pyclass, pylabel, (PyObject*)method) == 0;
         Py_DECREF(pylabel);
         Py_DECREF(method);

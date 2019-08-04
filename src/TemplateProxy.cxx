@@ -249,7 +249,7 @@ PyObject* TemplateProxy::Instantiate(const std::string& fname,
 
     // Special Case if name was aliased (e.g. typedef in template instantiation)
         if (bIsAliased) {
-            PyObject* pyf = CPyCppyy_PyText_FromString(fname.c_str());
+            PyObject* pyf = CPyCppyy_PyText_InternFromString(fname.c_str());
             PyType_Type.tp_setattro(fTI->fPyClass, pyf, pyol);
             Py_DECREF(pyf);
         }

@@ -102,7 +102,7 @@ void AddPropertyToClass(PyObject* pyclass,
     Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t idata)
 {
     CPyCppyy::CPPDataMember* property = CPyCppyy::CPPDataMember_New(scope, idata);
-    PyObject* pname = CPyCppyy_PyText_FromString(const_cast<char*>(property->GetName().c_str()));
+    PyObject* pname = CPyCppyy_PyText_InternFromString(const_cast<char*>(property->GetName().c_str()));
 
 // allow access at the instance level
     PyType_Type.tp_setattro(pyclass, pname, (PyObject*)property);
@@ -119,7 +119,7 @@ void AddPropertyToClass(PyObject* pyclass,
 static inline
 void AddScopeToParent(PyObject* parent, const std::string& name, PyObject* newscope)
 {
-    PyObject* pyname = CPyCppyy_PyText_FromString((char*)name.c_str());
+    PyObject* pyname = CPyCppyy_PyText_InternFromString((char*)name.c_str());
     if (CPPScope_Check(parent)) PyType_Type.tp_setattro(parent, pyname, newscope);
     else PyObject_SetAttr(parent, pyname, newscope);
     Py_DECREF(pyname);
@@ -135,7 +135,7 @@ static inline void sync_templates(
     PyObject* pyclass, const std::string& mtCppName, const std::string& mtName)
 {
     PyObject* dct = PyObject_GetAttr(pyclass, PyStrings::gDict);
-    PyObject* pyname = CPyCppyy_PyText_FromString(const_cast<char*>(mtName.c_str()));
+    PyObject* pyname = CPyCppyy_PyText_InternFromString(const_cast<char*>(mtName.c_str()));
     PyObject* attr = PyObject_GetItem(dct, pyname);
     if (!attr) PyErr_Clear();
     Py_DECREF(dct);
@@ -332,7 +332,7 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
             if (!attr) PyErr_Clear();
         // normal case, add a new method
             CPPOverload* method = CPPOverload_New(imd->first, imd->second);
-            PyObject* pymname = CPyCppyy_PyText_FromString(const_cast<char*>(method->GetName().c_str()));
+            PyObject* pymname = CPyCppyy_PyText_InternFromString(const_cast<char*>(method->GetName().c_str()));
             PyType_Type.tp_setattro(pyclass, pymname, (PyObject*)method);
             Py_DECREF(pymname);
             Py_DECREF(method);

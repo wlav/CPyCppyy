@@ -34,7 +34,7 @@ static inline PyObject* add_template(PyObject* pyclass,
 
     const std::string& ncl = TypeManip::clean_type(name);
     if (ncl != name) {
-        PyObject* pyncl = CPyCppyy_PyText_FromString(ncl.c_str());
+        PyObject* pyncl = CPyCppyy_PyText_InternFromString(ncl.c_str());
         pytmpl = (TemplateProxy*)PyType_Type.tp_getattro((PyObject*)Py_TYPE(pyclass), pyncl);
         if (!pytmpl) {
             PyErr_Clear();
