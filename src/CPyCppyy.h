@@ -182,11 +182,19 @@ static inline void* CPyCppyy_PyCapsule_GetPointer(PyObject* capsule, const char*
 #define Py_TYPE(ob)             (((PyObject*)(ob))->ob_type)
 #endif
 
-// API change in 2.5, but kept for convenience
+// API changes in 2.5 (int -> Py_ssize_t) and 3.6 (PyUnicodeObject -> PyObject)
+#if PY_VERSION_HEX < 0x03060000
 static inline Py_ssize_t CPyCppyy_PyUnicode_AsWideChar(PyObject* pyobj, wchar_t* w, Py_ssize_t size)
 {
+#if PY_VERSION_HEX < 0x02050000
+     return (Py_ssize_t)PyUnicode_AsWideChar((PyUnicodeObject*)pyobj, w, (int)size);
+#else
      return PyUnicode_AsWideChar((PyUnicodeObject*)pyobj, w, size);
+#endif
 }
+#else
+#define CPyCppyy_PyUnicode_AsWideChar PyUnicode_AsWideChar
+#endif
 
 // backwards compatibility, pre python 2.5
 #if PY_VERSION_HEX < 0x02050000
