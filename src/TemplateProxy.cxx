@@ -219,7 +219,7 @@ PyObject* TemplateProxy::Instantiate(const std::string& fname,
             if (!bWasFull)
                 AdoptTemplate(meth->Clone());
 
-        // actual overload to use
+        // actual overload to use (now owns meth)
             pyol = (PyObject*)CPPOverload_New(fullname, meth);
             if (bIsConstructor) {
             // TODO: this is an ugly hack :(
@@ -236,7 +236,7 @@ PyObject* TemplateProxy::Instantiate(const std::string& fname,
         else if (bIsCppOL) {
             if (!bWasFull)
                 AdoptTemplate(meth->Clone());
-            ((CPPOverload*)pyol)->AdoptMethod(meth);
+            ((CPPOverload*)pyol)->AdoptMethod(meth);   // takes ownership
         }
 
     // Case 5: must be a template proxy, meaning that current template name
@@ -244,7 +244,7 @@ PyObject* TemplateProxy::Instantiate(const std::string& fname,
         else {
             ((TemplateProxy*)pyol)->AdoptMethod(meth->Clone());
             Py_DECREF(pyol);
-            pyol = (PyObject*)CPPOverload_New(fname, meth);
+            pyol = (PyObject*)CPPOverload_New(fname, meth);      // takes ownership
         }
 
     // Special Case if name was aliased (e.g. typedef in template instantiation)
@@ -379,7 +379,7 @@ static inline void UpdateDispatchMap(TemplateProxy* pytmpl, bool use_targs, uint
 }
 
 static inline PyObject* CallMethodImp(TemplateProxy* pytmpl,
-    PyObject* pymeth, PyObject* args, PyObject* kwds, uint64_t sighash)
+    PyObject*& pymeth, PyObject* args, PyObject* kwds, uint64_t sighash)
 {
 // Actual call of a given overload: takes care of handlign of "self" and
 // dereferences the overloaded method after use.
@@ -406,8 +406,9 @@ static inline PyObject* CallMethodImp(TemplateProxy* pytmpl,
         Py_XDECREF(((CPPOverload*)pymeth)->fSelf); ((CPPOverload*)pymeth)->fSelf = nullptr;    // unbind
         UpdateDispatchMap(pytmpl, true, sighash, (CPPOverload*)pymeth);
         Py_DECREF(kwds);
-    } else Py_DECREF(pymeth);
+    }
 
+    Py_DECREF(pymeth); pymeth = nullptr;
     return result;
 }
 
@@ -454,28 +455,30 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
 // short-cut through memoization map
     uint64_t sighash = HashSignature(args);
 
-// look for known signatures ...
-    CPPOverload* ol = nullptr;
-    auto& v = pytmpl->fTI->fDispatchMap[targs2str(pytmpl)];
-    for (const auto& p : v) {
-        if (p.first == sighash) {
-            ol = p.second;
-            break;
+    if (!pytmpl->fTemplateArgs) {
+    // look for known signatures ...
+        CPPOverload* ol = nullptr;
+        auto& v = pytmpl->fTI->fDispatchMap[targs2str(pytmpl)];
+        for (const auto& p : v) {
+            if (p.first == sighash) {
+                ol = p.second;
+                break;
+            }
         }
-    }
 
-    if (ol != nullptr) {
-        if (!pytmpl->fSelf) {
-            result = CPPOverload_Type.tp_call((PyObject*)ol, args, kwds);
-        } else {
-            pymeth = CPPOverload_Type.tp_descr_get(
+        if (ol != nullptr) {
+            if (!pytmpl->fSelf) {
+                result = CPPOverload_Type.tp_call((PyObject*)ol, args, kwds);
+            } else {
+                pymeth = CPPOverload_Type.tp_descr_get(
                 (PyObject*)ol, pytmpl->fSelf, (PyObject*)&CPPOverload_Type);
-            result = CPPOverload_Type.tp_call(pymeth, args, kwds);
-            Py_DECREF(pymeth);
+                result = CPPOverload_Type.tp_call(pymeth, args, kwds);
+                Py_DECREF(pymeth); pymeth = nullptr;
+            }
+            if (result)
+                return result;
+            Utility::FetchError(errors);
         }
-        if (result)
-            return result;
-        Utility::FetchError(errors);
     }
 
 // do not mix template instantiations with implicit conversions
@@ -505,7 +508,6 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
             Utility::FetchError(errors);
         } else if (!pymeth)
             PyErr_Clear();
-        Py_XDECREF(pymeth);
 
     // not cached or failed call; try instantiation
         pymeth = pytmpl->Instantiate(
@@ -530,7 +532,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
     // now call the method with the arguments (loops internally and implicit is okay as
     // these are not templated methods that should match exactly)
         result = CPPOverload_Type.tp_call(pymeth, args, kwds);
-        Py_DECREF(pymeth);
+        Py_DECREF(pymeth); pymeth = nullptr;
         if (result) {
             Py_INCREF(pytmpl->fTI->fNonTemplated);
             UpdateDispatchMap(pytmpl, false, sighash, pytmpl->fTI->fNonTemplated);
@@ -548,7 +550,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
     // now call the method with the arguments (loops internally)
         PyDict_SetItem(kwds, PyStrings::gNoImplicit, Py_True);
         result = CPPOverload_Type.tp_call(pymeth, args, kwds);
-        Py_DECREF(pymeth);
+        Py_DECREF(pymeth); pymeth = nullptr;
         if (result) {
             Py_INCREF(pytmpl->fTI->fTemplated);
             UpdateDispatchMap(pytmpl, true, sighash, pytmpl->fTI->fTemplated);
@@ -582,7 +584,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
     // now call the method with the arguments (loops internally)
         PyDict_SetItem(kwds, PyStrings::gNoImplicit, Py_True);
         result = CPPOverload_Type.tp_call(pymeth, args, kwds);
-        Py_DECREF(pymeth);
+        Py_DECREF(pymeth); pymeth = nullptr;
         if (result) {
             Py_INCREF(pytmpl->fTI->fLowPriority);
             UpdateDispatchMap(pytmpl, false, sighash, pytmpl->fTI->fLowPriority);
