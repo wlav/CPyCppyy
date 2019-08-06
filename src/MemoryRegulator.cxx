@@ -113,7 +113,7 @@ bool CPyCppyy::MemoryRegulator::RecursiveRemove(
     }
 
     CppToPyMap_t* cppobjs = ((CPPClass*)pyscope)->fImp.fCppObjects;
-    if (cppobjs) {       // table may have been deleted on shutdown
+    if (!cppobjs) {       // table may have been deleted on shutdown
         Py_DECREF(pyscope);
         return false;
     }
