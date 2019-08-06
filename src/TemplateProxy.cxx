@@ -180,34 +180,54 @@ PyObject* TemplateProxy::Instantiate(const std::string& fname,
     Cppyy::TCppScope_t scope = ((CPPClass*)fTI->fPyClass)->fCppType;
     Cppyy::TCppMethod_t cppmeth = Cppyy::GetMethodTemplate(scope, fname, proto);
     if (cppmeth) {    // overload stops here
-    // A successful instantiation needs to be cached to prevent future,
-    // wasteful, instantiations.
-        std::string fullname = Cppyy::GetMethodFullName(cppmeth);
+    // A successful instantiation needs to be cached to pre-empt future instantiations. There
+    // are two names involved, the original asked (which may be partial) and the received.
+    //
+    // Caching scheme: if the match is exact, simply add the overload to the pre-existing
+    // one, or create a new overload for later lookups. If the match is not exact, do the
+    // same, but also create an alias. Only add exact matches to the set of known template
+    // instantiations, to prevent piling on from different partial instantiations.
+    //
+    // TODO: this caches the lookup method before the call, meaning that failing overloads
+    // can add already existing overloads to the set of methods.
 
+        std::string resname = Cppyy::GetMethodFullName(cppmeth);
+        bool bExactMatch = fname == resname;
+
+    // lookup on existing name in case this was an overload, not a caching, failure
         PyObject* dct = PyObject_GetAttr(fTI->fPyClass, PyStrings::gDict);
-        PyObject* pyfullname = CPyCppyy_PyText_FromString(fullname.c_str());
-        PyObject* pyol = PyObject_GetItem(dct, pyfullname);
+        PyObject* pycachename = CPyCppyy_PyText_InternFromString(fname.c_str());
+        PyObject* pyol = PyObject_GetItem(dct, pycachename);
         if (!pyol) PyErr_Clear();
-        Py_DECREF(dct);
+        bool bIsCppOL = CPPOverload_Check(pyol);
 
-        bool bWasFull   = fullname == fname;
-        bool bIsAliased = bWasFull ? false : (fname.rfind('>') != std::string::npos);
-        bool bIsCppOL   = CPPOverload_Check(pyol);
-
-        if (pyol && !bIsCppOL && !TemplateProxy_CheckExact(pyol)) {
+        if (pyol && !bIsCppOL && !TemplateProxy_Check(pyol)) {
         // unknown object ... leave well alone
             Py_DECREF(pyol);
+            Py_DECREF(pycachename);
+            Py_DECREF(dct);
             return nullptr;
         }
 
-        bool bIsConstructor = false;
+    // find the full name if the requested one was partial
+        PyObject* exact = nullptr;
+        PyObject* pyresname = CPyCppyy_PyText_FromString(resname.c_str());
+        if (!bExactMatch) {
+            exact = PyObject_GetItem(dct, pyresname);
+            if (!exact) PyErr_Clear();
+        }
+        Py_DECREF(dct);
+
+        bool bIsConstructor = false, bNeedsRebind = true;
 
         PyCallable* meth = nullptr;
-        if (Cppyy::IsNamespace(scope))
+        if (Cppyy::IsNamespace(scope)) {
             meth = new CPPFunction(scope, cppmeth);
-        else if (Cppyy::IsStaticMethod(cppmeth))
+            bNeedsRebind = false;
+        } else if (Cppyy::IsStaticMethod(cppmeth)) {
             meth = new CPPClassMethod(scope, cppmeth);
-        else if (Cppyy::IsConstructor(cppmeth)) {
+            bNeedsRebind = false;
+        } else if (Cppyy::IsConstructor(cppmeth)) {
             bIsConstructor = true;
             meth = new CPPConstructor(scope, cppmeth);
         } else
@@ -215,12 +235,8 @@ PyObject* TemplateProxy::Instantiate(const std::string& fname,
 
     // Case 1/2: method simply did not exist before
         if (!pyol) {
-        // cache internally if original lookup was not with full name
-            if (!bWasFull)
-                AdoptTemplate(meth->Clone());
-
         // actual overload to use (now owns meth)
-            pyol = (PyObject*)CPPOverload_New(fullname, meth);
+            pyol = (PyObject*)CPPOverload_New(fname, meth);
             if (bIsConstructor) {
             // TODO: this is an ugly hack :(
                 ((CPPOverload*)pyol)->fMethodInfo->fFlags |= \
@@ -228,36 +244,37 @@ PyObject* TemplateProxy::Instantiate(const std::string& fname,
             }
 
         // add to class dictionary
-            PyType_Type.tp_setattro(fTI->fPyClass, pyfullname, pyol);
+            PyType_Type.tp_setattro(fTI->fPyClass, pycachename, pyol);
         }
 
     // Case 3/4: pre-existing method that was either not found b/c the full
     // templated name was constructed in this call or it failed as overload
         else if (bIsCppOL) {
-            if (!bWasFull)
-                AdoptTemplate(meth->Clone());
+        // TODO: see above, since the call hasn't happened yet, this overload may
+        // already exist and fail again.
             ((CPPOverload*)pyol)->AdoptMethod(meth);   // takes ownership
         }
 
-    // Case 5: must be a template proxy, meaning that current template name
-    // is not a template overload
+    // Case 5: must be a template proxy, meaning that current template name is not
+    // a template overload
         else {
-            ((TemplateProxy*)pyol)->AdoptMethod(meth->Clone());
+            ((TemplateProxy*)pyol)->AdoptTemplate(meth->Clone());
             Py_DECREF(pyol);
             pyol = (PyObject*)CPPOverload_New(fname, meth);      // takes ownership
         }
 
     // Special Case if name was aliased (e.g. typedef in template instantiation)
-        if (bIsAliased) {
-            PyObject* pyf = CPyCppyy_PyText_InternFromString(fname.c_str());
-            PyType_Type.tp_setattro(fTI->fPyClass, pyf, pyol);
-            Py_DECREF(pyf);
+        if (!exact && !bExactMatch) {
+            PyType_Type.tp_setattro(fTI->fPyClass, pyresname, pyol);
         }
 
-    // retrieve fresh (for boundedness) and call (no fresh retrieval if was TemplateProxy)
-        Py_DECREF(pyfullname);
+    // cleanup
+        Py_DECREF(pyresname);
+        Py_DECREF(pycachename);
+
+    // retrieve fresh (for boundedness) and call
         PyObject* pymeth =
-            CPPOverload_Type.tp_descr_get(pyol, fSelf, (PyObject*)&CPPOverload_Type);
+            CPPOverload_Type.tp_descr_get(pyol, bNeedsRebind ? fSelf : nullptr, (PyObject*)&CPPOverload_Type);
         Py_DECREF(pyol);
         return pymeth;
     }
@@ -415,6 +432,7 @@ static inline PyObject* CallMethodImp(TemplateProxy* pytmpl,
 #define TPPCALL_RETURN                                                       \
 { if (!errors.empty())                                                       \
       std::for_each(errors.begin(), errors.end(), Utility::PyError_t::Clear);\
+  Py_DECREF(kwds);                                                           \
   return result; }
 
 static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
@@ -506,21 +524,38 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
                 TPPCALL_RETURN;
             }
             Utility::FetchError(errors);
+        } else if (pymeth && PyCallable_Check(pymeth)) {
+        // something different (user provided?)
+            result = PyObject_CallObject(pymeth, args);
+            Py_DECREF(pymeth);
+            if (result) {
+                Py_DECREF(pyfullname);
+                TPPCALL_RETURN;
+            }
+            Utility::FetchError(errors);
         } else if (!pymeth)
             PyErr_Clear();
 
     // not cached or failed call; try instantiation
         pymeth = pytmpl->Instantiate(
             CPyCppyy_PyText_AsString(pyfullname), args, Utility::kNone);
-        Py_DECREF(pyfullname);
         if (pymeth) {
         // attempt actuall call
             result = CallMethodImp(pytmpl, pymeth, args, kwds, sighash);
-            if (result) TPPCALL_RETURN;
+            if (result) {
+                Py_DECREF(pyfullname);
+                TPPCALL_RETURN;
+            }
         }
 
-    // debatable ... should this drop through?
+    // no drop through if failed (if implicit was desired, don't provide template args)
         Utility::FetchError(errors);
+        PyObject* topmsg = CPyCppyy_PyText_FromFormat("Could not instantiate %s:", CPyCppyy_PyText_AsString(pyfullname));
+        Py_DECREF(pyfullname);
+        Utility::SetDetailedException(errors, topmsg /* steals */, PyExc_TypeError /* default error */);
+
+        Py_DECREF(kwds);
+        return nullptr;
     }
 
 // case 2: select known non-template overload
@@ -536,7 +571,6 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
         if (result) {
             Py_INCREF(pytmpl->fTI->fNonTemplated);
             UpdateDispatchMap(pytmpl, false, sighash, pytmpl->fTI->fNonTemplated);
-            Py_DECREF(kwds);
             TPPCALL_RETURN;
         }
         Utility::FetchError(errors);
@@ -554,7 +588,6 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
         if (result) {
             Py_INCREF(pytmpl->fTI->fTemplated);
             UpdateDispatchMap(pytmpl, true, sighash, pytmpl->fTI->fTemplated);
-            Py_DECREF(kwds);
             TPPCALL_RETURN;
         }
         Utility::FetchError(errors);
@@ -588,7 +621,6 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
         if (result) {
             Py_INCREF(pytmpl->fTI->fLowPriority);
             UpdateDispatchMap(pytmpl, false, sighash, pytmpl->fTI->fLowPriority);
-            Py_DECREF(kwds);
             TPPCALL_RETURN;
         }
         Utility::FetchError(errors);
