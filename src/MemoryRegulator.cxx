@@ -113,7 +113,7 @@ bool CPyCppyy::MemoryRegulator::RecursiveRemove(
     }
 
     CppToPyMap_t* cppobjs = ((CPPClass*)pyscope)->fImp.fCppObjects;
-    if (cppobjs) {       // table may have been deleted on shutdown
+    if (!cppobjs) {       // table may have been deleted on shutdown
         Py_DECREF(pyscope);
         return false;
     }
@@ -157,6 +157,9 @@ bool CPyCppyy::MemoryRegulator::RecursiveRemove(
         PyObject_ClearWeakRefs((PyObject*)pyobj);
         ((PyObject*)pyobj)->ob_refcnt = refcnt;
 
+    // erase the object from tracking (weakref table already cleared, above)
+        cppobjs->erase(ppo);
+
     // cleanup object internals
         pyobj->CppOwns();              // held object is out of scope now anyway
         op_dealloc_nofree(pyobj);      // normal object cleanup, while keeping memory
@@ -166,8 +169,6 @@ bool CPyCppyy::MemoryRegulator::RecursiveRemove(
         Py_DECREF(Py_TYPE(pyobj));
         ((PyObject*)pyobj)->ob_type = &CPyCppyy_NoneType;
 
-    // erase the object from tracking (weakref table already cleared, above)
-        cppobjs->erase(ppo);
         Py_DECREF(pyscope);
         return true;
     }
