@@ -395,13 +395,13 @@ static inline void UpdateDispatchMap(TemplateProxy* pytmpl, bool use_targs, uint
     if (!bInserted) v.push_back(std::make_pair(sighash, pymeth));
 }
 
-static inline PyObject* CallMethodImp(TemplateProxy* pytmpl,
-    PyObject*& pymeth, PyObject* args, PyObject* kwds, uint64_t sighash)
+static inline PyObject* CallMethodImp(TemplateProxy* pytmpl, PyObject*& pymeth,
+    PyObject* args, PyObject* kwds, bool impOK, uint64_t sighash)
 {
 // Actual call of a given overload: takes care of handlign of "self" and
 // dereferences the overloaded method after use.
     PyObject* result;
-    PyDict_SetItem(kwds, PyStrings::gNoImplicit, Py_True);
+    if (!impOK) PyDict_SetItem(kwds, PyStrings::gNoImplicit, Py_True);
     bool isNS = (((CPPScope*)pytmpl->fTI->fPyClass)->fFlags & CPPScope::kIsNamespace);
     if (isNS && pytmpl->fSelf) {
     // this is a global method added a posteriori to the class
@@ -518,7 +518,8 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
 
     // attempt call if found (this may fail if there are specializations)
         if (CPPOverload_Check(pymeth)) {
-            result = CallMethodImp(pytmpl, pymeth, args, kwds, sighash);
+        // since the template args are fully explicit, allow implicit conversion of arguments
+            result = CallMethodImp(pytmpl, pymeth, args, kwds, true, sighash);
             if (result) {
                 Py_DECREF(pyfullname);
                 TPPCALL_RETURN;
@@ -540,8 +541,8 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
         pymeth = pytmpl->Instantiate(
             CPyCppyy_PyText_AsString(pyfullname), args, Utility::kNone);
         if (pymeth) {
-        // attempt actuall call
-            result = CallMethodImp(pytmpl, pymeth, args, kwds, sighash);
+        // attempt actuall call; same as above, allow implicit conversion of arguments
+            result = CallMethodImp(pytmpl, pymeth, args, kwds, true, sighash);
             if (result) {
                 Py_DECREF(pyfullname);
                 TPPCALL_RETURN;
@@ -601,8 +602,8 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
         pymeth = pytmpl->Instantiate(
             CPyCppyy_PyText_AsString(pytmpl->fTI->fCppName), args, pref, &pcnt);
         if (pymeth) {
-        // attempt actuall call
-            result = CallMethodImp(pytmpl, pymeth, args, kwds, sighash);
+        // attempt actuall call; argument based, so do not allow implicit conversions
+            result = CallMethodImp(pytmpl, pymeth, args, kwds, false, sighash);
             if (result) TPPCALL_RETURN;
         }
         Utility::FetchError(errors);

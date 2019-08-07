@@ -369,7 +369,7 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& 
 
 //----------------------------------------------------------------------------
 static bool AddTypeName(std::string& tmpl_name, PyObject* tn, PyObject* arg,
-    CPyCppyy::Utility::ArgPreference pref, int* pcnt)
+    CPyCppyy::Utility::ArgPreference pref, int* pcnt = nullptr)
 {
 // Determine the appropriate C++ type for a given Python type; this is a helper because
 // it can recurse if the type is list or tuple and needs matching on std::vector.
@@ -396,10 +396,9 @@ static bool AddTypeName(std::string& tmpl_name, PyObject* tn, PyObject* arg,
             std::string subtype{"const std::vector<"};
             PyObject* item = PySequence_GetItem(arg, 0);
             ArgPreference subpref = pref == kValue ? kValue : kPointer;
-            int subcnt = 0;
-            if (AddTypeName(subtype, (PyObject*)Py_TYPE(item), item, subpref, &subcnt)) {
+            if (AddTypeName(subtype, (PyObject*)Py_TYPE(item), item, subpref)) {
                 tmpl_name.append(subtype);
-                tmpl_name.append(pref == kValue ? ">" : ">&");
+                tmpl_name.append(">&");
             }
             Py_DECREF(item);
         }
