@@ -230,8 +230,8 @@ void CPyCppyy::CPPDataMember::Set(Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t i
     fOffset         = Cppyy::GetDatamemberOffset(scope, idata); // TODO: make lazy
     fProperty       = Cppyy::IsStaticData(scope, idata) ? kIsStaticData : 0;
 
-    std::vector<long> dims;
-    int ndim = 0; long size = 0;
+    std::vector<dim_t> dims;
+    int ndim = 0; dim_t size = 0;
     while (0 < (size = Cppyy::GetDimensionSize(scope, idata, ndim))) {
          ndim += 1;
          if (size == INT_MAX)      // meaning: incomplete array type

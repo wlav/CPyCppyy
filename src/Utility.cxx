@@ -909,7 +909,7 @@ bool CPyCppyy::Utility::IncludePython()
             "  virtual PyObject* FromMemory(void* address);\n"
             "  virtual bool ToMemory(PyObject* value, void* address);\n"
             "};\n"
-            "CPYCPPYY_IMPORT Converter* CreateConverter(const std::string& fullType, long* dims = nullptr);\n"
+            "CPYCPPYY_IMPORT Converter* CreateConverter(const std::string& fullType, intptr_t* dims = nullptr);\n"
             "}\n"
 
         // utilities from the CPyCppyy public API

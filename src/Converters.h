@@ -10,6 +10,9 @@ namespace CPyCppyy {
 struct Parameter;
 struct CallContext;
 
+typedef intptr_t dim_t;
+typedef dim_t* dims_t;
+
 class CPYCPPYY_CLASS_EXPORT Converter {
 public:
     virtual ~Converter() {}
@@ -21,7 +24,7 @@ public:
 };
 
 // create converter from fully qualified type
-CPYCPPYY_EXPORT Converter* CreateConverter(const std::string& fullType, long* dims = nullptr);
+CPYCPPYY_EXPORT Converter* CreateConverter(const std::string& fullType, dims_t dims = nullptr);
 
 
 // converters for special cases (only here b/c of external use of StrictInstancePtrConverter)
