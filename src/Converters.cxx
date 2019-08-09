@@ -1067,8 +1067,7 @@ CPyCppyy::name##ArrayConverter::name##ArrayConverter(dims_t dims) {          \
     int nalloc = (dims && 0 < dims[0]) ? (int)dims[0]+1: 2;                  \
     fShape = new Py_ssize_t[nalloc];                                         \
     if (dims) {                                                              \
-        for (int i = 0; i < nalloc; ++i)                                     \
-            fShape[i] = (Py_ssize_t)dims[i];                                 \
+        for (int i = 0; i < nalloc; ++i) fShape[i] = (Py_ssize_t)dims[i];    \
     } else {                                                                 \
         fShape[0] = 1; fShape[1] = -1;                                       \
     }                                                                        \
@@ -2182,10 +2181,30 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, dims
 
 //-- still nothing? try pointer instead of array (for builtins)
     if (cpd == "[]") {
+    // simple array
         h = gConvFactories.find(realType + "*");
         if (h != gConvFactories.end()) {
             if (dims && dims[1] == UNKNOWN_SIZE) dims[1] = UNKNOWN_ARRAY_SIZE;
             return (h->second)(dims);
+        }
+    } else if (cpd == "*[]") {
+    // array of pointers
+        h = gConvFactories.find(realType + "*");
+        if (h != gConvFactories.end()) {
+        // upstream treats the pointer type as the array element type, but that pointer is
+        // treated as a low-level view as well, so adjust the dims
+            dim_t newdim = (dims && 0 < dims[0]) ? dims[0]+1 : 2;
+            dims_t newdims = new dim_t[newdim+1];
+            newdims[0] = newdim;
+            newdims[1] = (0 < size ? size : UNKNOWN_ARRAY_SIZE);      // the array
+            newdims[2] = UNKNOWN_SIZE;                                // the pointer
+            if (dims && 2 < newdim) {
+                for (int i = 2; i < (newdim-1); ++i)
+                    newdims[i+1] = dims[i];
+            }
+            Converter* cnv = (h->second)(newdims);
+            delete [] newdims;
+            return cnv;
         }
     }
 
@@ -2356,6 +2375,7 @@ public:
         gf["bool&"] =                       (cf_t)+[](dims_t d) { return new BoolArrayRefConverter{d}; };
         gf["const unsigned char*"] =        (cf_t)+[](dims_t d) { return new UCharArrayConverter{d}; };
         gf["unsigned char*"] =              (cf_t)+[](dims_t d) { return new UCharArrayConverter{d}; };
+        gf["UCharAsInt*"] =                 (cf_t)+[](dims_t d) { return new UCharArrayConverter{d}; };
         gf["short*"] =                      (cf_t)+[](dims_t d) { return new ShortArrayConverter{d}; };
         gf["short&"] =                      (cf_t)+[](dims_t d) { return new ShortArrayRefConverter{d}; };
         gf["unsigned short*"] =             (cf_t)+[](dims_t d) { return new UShortArrayConverter{d}; };
