@@ -162,26 +162,32 @@ static inline PyObject* HandleReturn(
         if (pymeth->fMethodInfo->fFlags & CallContext::kSetLifeline)
             ll_action = 1;
         else if (CPPInstance_Check(pymeth->fSelf) && CPPInstance_Check(result)) {
-        // if self was a by-value return, pro-actively protect the return value; else if
-        // the return value falls within the memory of 'this', force a lifeline
-            if (((CPPInstance*)pymeth->fSelf)->fFlags & CPPInstance::kIsValue)
-                ll_action = 2;
-            else {
-                ptrdiff_t offset = (ptrdiff_t)(
-                    (CPPInstance*)result)->GetObject() - (ptrdiff_t)pymeth->fSelf->GetObject();
-                if (0 <= offset && offset < (ptrdiff_t)Cppyy::SizeOf(pymeth->fSelf->ObjectIsA()))
-                     ll_action = 3;
+        // if self was a by-value return and result is not, pro-actively protect result;
+        // else if the return value falls within the memory of 'this', force a lifeline
+            CPPInstance* cppself = (CPPInstance*)pymeth->fSelf;
+            CPPInstance* cppres  = (CPPInstance*)result;
+            if (!(cppres->fFlags & CPPInstance::kIsValue)) {  // no need if the result is a full copy
+                if (cppself->fFlags & CPPInstance::kIsValue)
+                    ll_action = 2;
+                else if (cppself->fFlags & CPPInstance::kHasLifeline)
+                    ll_action = 3;
+                else {
+                    ptrdiff_t offset = (ptrdiff_t)cppres->GetObject() - (ptrdiff_t)cppself->GetObject();
+                    if (0 <= offset && offset < (ptrdiff_t)Cppyy::SizeOf(cppself->ObjectIsA()))
+                         ll_action = 4;
+                }
             }
+            if (ll_action) cppres->fFlags |= CPPInstance::kHasLifeline;    // for chaining
         }
     }
 
     if (ll_action) {
         if (PyObject_SetAttr(result, PyStrings::gLifeLine, (PyObject*)pymeth->fSelf) == -1)
             PyErr_Clear();         // ignored
-        if (ll_action == 2 /* by-value return */ || ll_action == 3 /* return internal to 'this' */) {
-        // set flag for future direct use
-            pymeth->fMethodInfo->fFlags |= CallContext::kSetLifeline;
-        }
+        if (ll_action == 1 /* directly set */ && CPPInstance_Check(result))
+            ((CPPInstance*)result)->fFlags |= CPPInstance::kHasLifeline;   // for chaining
+        else
+            pymeth->fMethodInfo->fFlags |= CallContext::kSetLifeline;      // for next time
     }
 
 // reset self as necessary to allow re-use of the CPPOverload

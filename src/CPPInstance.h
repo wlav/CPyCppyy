@@ -35,7 +35,8 @@ public:
         kIsRValue    = 0x0010,
         kIsValue     = 0x0020,
         kIsPtrPtr    = 0x0040,
-        kIsSmartPtr  = 0x0080 };
+        kIsSmartPtr  = 0x0080,
+        kHasLifeline = 0x0100 };
 
 public:                 // public, as the python C-API works with C structs
     PyObject_HEAD
