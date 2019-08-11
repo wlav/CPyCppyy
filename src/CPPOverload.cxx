@@ -141,6 +141,7 @@ static inline PyObject* HandleReturn(
     CPPOverload* pymeth, CPPInstance* oldSelf, PyObject* result)
 {
 // special case for python exceptions, propagated through C++ layer
+    int ll_action = 0;
     if (result) {
 
     // if this method creates new objects, always take ownership
@@ -158,13 +159,28 @@ static inline PyObject* HandleReturn(
         }
 
     // if this new object falls inside self, make sure its lifetime is proper
-        if (CPPInstance_Check(pymeth->fSelf) && CPPInstance_Check(result)) {
-            ptrdiff_t offset = (ptrdiff_t)(
-                (CPPInstance*)result)->GetObject() - (ptrdiff_t)pymeth->fSelf->GetObject();
-            if (0 <= offset && offset < (ptrdiff_t)Cppyy::SizeOf(pymeth->fSelf->ObjectIsA())) {
-                if (PyObject_SetAttr(result, PyStrings::gLifeLine, (PyObject*)pymeth->fSelf) == -1)
-                    PyErr_Clear();     // ignored
+        if (pymeth->fMethodInfo->fFlags & CallContext::kSetLifeline)
+            ll_action = 1;
+        else if (CPPInstance_Check(pymeth->fSelf) && CPPInstance_Check(result)) {
+        // if self was a by-value return, pro-actively protect the return value; else if
+        // the return value falls within the memory of 'this', force a lifeline
+            if (((CPPInstance*)pymeth->fSelf)->fFlags & CPPInstance::kIsValue)
+                ll_action = 2;
+            else {
+                ptrdiff_t offset = (ptrdiff_t)(
+                    (CPPInstance*)result)->GetObject() - (ptrdiff_t)pymeth->fSelf->GetObject();
+                if (0 <= offset && offset < (ptrdiff_t)Cppyy::SizeOf(pymeth->fSelf->ObjectIsA()))
+                     ll_action = 3;
             }
+        }
+    }
+
+    if (ll_action) {
+        if (PyObject_SetAttr(result, PyStrings::gLifeLine, (PyObject*)pymeth->fSelf) == -1)
+            PyErr_Clear();         // ignored
+        if (ll_action == 2 /* by-value return */ || ll_action == 3 /* return internal to 'this' */) {
+        // set flag for future direct use
+            pymeth->fMethodInfo->fFlags |= CallContext::kSetLifeline;
         }
     }
 
@@ -381,7 +397,30 @@ static PyObject* mp_func_globals(CPPOverload* /* pymeth */, void*)
 }
 
 //-----------------------------------------------------------------------------
-PyObject* mp_getcreates(CPPOverload* pymeth, void*)
+static inline int set_flag(CPPOverload* pymeth, PyObject* value, CallContext::ECallFlags flag, const char* name)
+{
+// Generic setter of a (boolean) flag.
+    if (!value) {        // accept as false (delete)
+        pymeth->fMethodInfo->fFlags &= ~flag;
+        return 0;
+    }
+
+    long istrue = PyLong_AsLong(value);
+    if (istrue == -1 && PyErr_Occurred()) {
+        PyErr_Format(PyExc_ValueError, "a boolean 1 or 0 is required for %s", name);
+        return -1;
+    }
+
+    if (istrue)
+        pymeth->fMethodInfo->fFlags |= flag;
+    else
+        pymeth->fMethodInfo->fFlags &= ~flag;
+
+    return 0;
+}
+
+//-----------------------------------------------------------------------------
+static PyObject* mp_getcreates(CPPOverload* pymeth, void*)
 {
 // Get '__creates__' boolean, which determines ownership of return values.
     return PyInt_FromLong((long)IsCreator(pymeth->fMethodInfo->fFlags));
@@ -391,23 +430,7 @@ PyObject* mp_getcreates(CPPOverload* pymeth, void*)
 static int mp_setcreates(CPPOverload* pymeth, PyObject* value, void*)
 {
 // Set '__creates__' boolean, which determines ownership of return values.
-    if (!value) {        // means that __creates__ is being deleted
-        pymeth->fMethodInfo->fFlags &= ~CallContext::kIsCreator;
-        return 0;
-    }
-
-    long iscreator = PyLong_AsLong(value);
-    if (iscreator == -1 && PyErr_Occurred()) {
-        PyErr_SetString(PyExc_ValueError, "a boolean 1 or 0 is required for __creates__");
-        return -1;
-    }
-
-    if (iscreator)
-        pymeth->fMethodInfo->fFlags |= CallContext::kIsCreator;
-    else
-        pymeth->fMethodInfo->fFlags &= ~CallContext::kIsCreator;
-
-    return 0;
+    return set_flag(pymeth, value, CallContext::kIsCreator, "__creates__");
 }
 
 //-----------------------------------------------------------------------------
@@ -444,9 +467,26 @@ static int mp_setmempolicy(CPPOverload* pymeth, PyObject* value, void*)
 }
 
 //-----------------------------------------------------------------------------
+static PyObject* mp_getlifeline(CPPOverload* pymeth, void*)
+{
+// Get '__set_lifeline__' boolean, which determines whether a lifeline should be
+// set on self from the return value.
+    return PyInt_FromLong(
+        (long)(pymeth->fMethodInfo->fFlags & CallContext::kSetLifeline));
+}
+
+//-----------------------------------------------------------------------------
+static int mp_setlifeline(CPPOverload* pymeth, PyObject* value, void*)
+{
+// Set '__set_lifeline__' boolean, which determines whether a lifeline should be
+// set on self from the return value.
+    return set_flag(pymeth, value, CallContext::kSetLifeline, "__set_lifeline__");
+}
+
+//-----------------------------------------------------------------------------
 static PyObject* mp_getthreaded(CPPOverload* pymeth, void*)
 {
-// Get '_threaded' boolean, which determines whether the GIL will be released.
+// Get '__release_gil__' boolean, which determines whether the GIL will be released.
     return PyInt_FromLong(
         (long)(pymeth->fMethodInfo->fFlags & CallContext::kReleaseGIL));
 }
@@ -454,19 +494,8 @@ static PyObject* mp_getthreaded(CPPOverload* pymeth, void*)
 //-----------------------------------------------------------------------------
 static int mp_setthreaded(CPPOverload* pymeth, PyObject* value, void*)
 {
-// Set '_threaded' boolean, which determines whether the GIL will be released.
-    long isthreaded = PyLong_AsLong(value);
-    if (isthreaded == -1 && PyErr_Occurred()) {
-        PyErr_SetString(PyExc_ValueError, "a boolean 1 or 0 is required for __release_gil__");
-        return -1;
-    }
-
-    if (isthreaded)
-        pymeth->fMethodInfo->fFlags |= CallContext::kReleaseGIL;
-    else
-        pymeth->fMethodInfo->fFlags &= ~CallContext::kReleaseGIL;
-
-    return 0;
+// Set '__release_gil__' boolean, which determines whether the GIL will be released.
+    return set_flag(pymeth, value, CallContext::kReleaseGIL, "__release_gil__");
 }
 
 //-----------------------------------------------------------------------------
@@ -506,6 +535,8 @@ static PyGetSetDef mp_getset[] = {
       (char*)"For ownership rules of result: if true, objects are python-owned", nullptr},
     {(char*)"__mempolicy__",       (getter)mp_getmempolicy, (setter)mp_setmempolicy,
       (char*)"For argument ownership rules: like global, either heuristic or strict", nullptr},
+    {(char*)"__set_lifeline__",    (getter)mp_getlifeline, (setter)mp_setlifeline,
+      (char*)"If true, set a lifeline from the return value onto self", nullptr},
     {(char*)"__release_gil__",     (getter)mp_getthreaded, (setter)mp_setthreaded,
       (char*)"If true, releases GIL on call into C++", nullptr},
     {(char*)"__useffi__",          (getter)mp_getuseffi, (setter)mp_setuseffi,
