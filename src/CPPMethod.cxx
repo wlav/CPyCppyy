@@ -320,14 +320,14 @@ int CPyCppyy::CPPMethod::GetPriority()
         if (Cppyy::IsBuiltin(aname)) {
         // integer types
             if (strstr(aname.c_str(), "bool"))
-                priority += 100;       // bool over int (does accept 1 and 0)
+                priority +=    1;      // bool over int (does accept 1 and 0)
             else if (strstr(aname.c_str(), "long long"))
-                priority +=   5;       // will very likely fit
+                priority +=   -5;      // will very likely fit
             else if (strstr(aname.c_str(), "long"))
-                priority +=  10;       // most affine integer type
+                priority +=  -10;      // most affine integer type
             // no need to compare with int; leave at zero
             else if (strstr(aname.c_str(), "short"))
-                priority += -20;       // not really relevant as a type
+                priority +=  -50;      // not really relevant as a type
 
         // floating point types (note all numbers lower than integer types)
             else if (strstr(aname.c_str(), "float"))
@@ -339,7 +339,7 @@ int CPyCppyy::CPPMethod::GetPriority()
 
         // string/char types
             else if (strstr(aname.c_str(), "char") && aname[aname.size()-1] != '*')
-                priority += -10;       // prefer (const) char* over char
+                priority += -60;       // prefer (const) char* over char
 
         // oddball
             else if (strstr(aname.c_str(), "void*"))
