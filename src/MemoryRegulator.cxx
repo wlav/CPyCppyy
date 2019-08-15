@@ -89,6 +89,10 @@ struct InitCPyCppyy_NoneType_t {
 
 } // unnamed namespace
 
+// Memory regulation hooks
+CPyCppyy::MemHook_t CPyCppyy::MemoryRegulator::registerHook = nullptr;
+CPyCppyy::MemHook_t CPyCppyy::MemoryRegulator::unregisterHook = nullptr;
+
 
 //- ctor/dtor ----------------------------------------------------------------
 CPyCppyy::MemoryRegulator::MemoryRegulator()
@@ -186,6 +190,11 @@ bool CPyCppyy::MemoryRegulator::RegisterPyObject(
     if (!(pyobj && cppobj))
         return false;
 
+    if (registerHook) {
+        auto res = registerHook(cppobj, pyobj->ObjectIsA(false));
+        if (!res.second) return res.first;
+    }
+
     static PyObject* objectEraseCallback = PyCFunction_New(&gObjectEraseMethodDef, nullptr);
 
     CppToPyMap_t* cppobjs = ((CPPClass*)Py_TYPE(pyobj))->fImp.fCppObjects;
@@ -214,6 +223,11 @@ bool CPyCppyy::MemoryRegulator::UnregisterPyObject(
     if (!CPPScope_Check(pyscope)) {
         Py_XDECREF(pyscope);
         return false;
+    }
+
+    if (unregisterHook) {
+        auto res = unregisterHook(cppobj, klass);
+        if (!res.second) return res.first;
     }
 
     CppToPyMap_t* cppobjs = ((CPPClass*)pyscope)->fImp.fCppObjects;
