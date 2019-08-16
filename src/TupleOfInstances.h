@@ -9,6 +9,9 @@ namespace CPyCppyy {
       @version 1.0
  */
 
+typedef Py_ssize_t dim_t;
+typedef dim_t* dims_t;
+
 //- custom tuple type that can pass through C-style arrays -------------------
 extern PyTypeObject TupleOfInstances_Type;
 extern PyTypeObject InstanceArrayIter_Type;
@@ -26,7 +29,7 @@ inline bool TupleOfInstances_CheckExact(T* object)
 }
 
 PyObject* TupleOfInstances_New(
-    Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, long ndims, long* dims);
+    Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, dim_t ndims, dims_t dims);
 
 } // namespace CPyCppyy
 

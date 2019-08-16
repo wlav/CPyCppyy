@@ -9,6 +9,9 @@ namespace CPyCppyy {
 
 struct CallContext;
 
+typedef Py_ssize_t dim_t;
+typedef dim_t* dims_t;
+
 class Executor {
 public:
     virtual ~Executor() {}

@@ -2107,7 +2107,7 @@ bool CPyCppyy::NotImplementedConverter::SetArg(PyObject*, Parameter&, CallContex
 
 //- helper to refactor some code from CreateConverter ------------------------
 static inline CPyCppyy::Converter* selectInstanceCnv(
-    Cppyy::TCppScope_t klass, const std::string& cpd, long size, long* dims, bool isConst, bool control)
+    Cppyy::TCppScope_t klass, const std::string& cpd, long size, dims_t dims, bool isConst, bool control)
 {
     using namespace CPyCppyy;
     Converter* result = nullptr;
