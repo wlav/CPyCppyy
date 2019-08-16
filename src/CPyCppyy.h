@@ -61,6 +61,8 @@ typedef long long          Long64_t; //Portable signed long integer 8 bytes
 typedef unsigned long long ULong64_t;//Portable unsigned long integer 8 bytes
 #endif
 
+typedef Py_ssize_t dim_t;
+typedef dim_t* dims_t;
 
 // for 3.3 support
 #if PY_VERSION_HEX < 0x03030000

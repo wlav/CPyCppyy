@@ -10,9 +10,6 @@ namespace CPyCppyy {
 struct Parameter;
 struct CallContext;
 
-typedef Py_ssize_t dim_t;
-typedef dim_t* dims_t;
-
 class CPYCPPYY_CLASS_EXPORT Converter {
 public:
     virtual ~Converter() {}
