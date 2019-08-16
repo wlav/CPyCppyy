@@ -14,10 +14,13 @@
 //                                                                          //
 //////////////////////////////////////////////////////////////////////////////
 
+// Bindings
+#include "CPyCppyy/CommonDefs.h"
+
 
 namespace CPyCppyy {
 
-class DispatchPtr {
+class CPYCPPYY_CLASS_EXPORT DispatchPtr {
 public:
 // Default constructor: only ever created from C++, as by definition, creation
 // from the Python side makes the relevant Python instance available. Calls to
