@@ -370,6 +370,7 @@ static PyObject* op_repr(CPPInstance* pyobj)
 //----------------------------------------------------------------------------
 static PyObject* op_str(CPPInstance* cppinst)
 {
+#ifndef _WIN64
 // Forward to C++ insertion operator if available, otherwise forward to repr.
     PyObject* pyobj = (PyObject*)cppinst;
     PyObject* lshift = PyObject_GetAttr(pyobj, PyStrings::gLShift);
@@ -410,7 +411,8 @@ static PyObject* op_str(CPPInstance* cppinst)
         }
         PyErr_Clear();
     }
- 
+#endif  //!_WIN64
+
     return op_repr(cppinst);
 }
 
