@@ -346,6 +346,19 @@ int CPyCppyy::CPPMethod::GetPriority()
                 priority -= 1000;      // void*/void** shouldn't be too greedy
 
         } else {
+        // This is a user-defined type (class, struct, enum, etc.).
+
+        // There's a bit of hysteresis here for templates: once GetScope() is called, their
+        // IsComplete() succeeds, the other way around it does not. Since GetPriority() is
+        // likely called several times in a sort, the GetScope() _must_ come first, or
+        // different GetPriority() calls may return different results (since the 2nd time,
+        // GetScope() will have been called from the first), killing the stable_sort.
+
+        // prefer more derived classes
+            Cppyy::TCppScope_t scope = Cppyy::GetScope(TypeManip::clean_type(aname, false));
+            if (scope)
+                priority += (int)Cppyy::GetNumBases(scope);
+
         // a couple of special cases as explained above
             if (aname.find("initializer_list") != std::string::npos) {
                 priority += -1000;     // difficult/expensive conversion
@@ -358,11 +371,6 @@ int CPyCppyy::CPPMethod::GetPriority()
                 else
                     priority += -2000; // prefer pointer passing over reference
             }
-
-        // prefer more derived classes
-            Cppyy::TCppScope_t scope = Cppyy::GetScope(TypeManip::clean_type(aname, false));
-            if (scope)
-                priority += (int)Cppyy::GetNumBases(scope);
         }
     }
 
