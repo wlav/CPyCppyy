@@ -47,6 +47,13 @@ PyObject* CPyCppyy::CPPConstructor::Call(
         return nullptr;
     }
 
+// verify existence of self (i.e. tp_new called)
+    if (!self) {
+        PyErr_Print();
+        PyErr_SetString(PyExc_ReferenceError, "no python object allcoated");
+        return nullptr;
+    }
+
 // perform the call, nullptr 'this' makes the other side allocate the memory
     Cppyy::TCppScope_t disp = self->ObjectIsA(false /* check_smart */);
     Cppyy::TCppMethod_t curMethod = GetMethod();

@@ -60,7 +60,7 @@ void TemplateProxy::Set(const std::string& cppname, const std::string& pyname, P
 }
 
 //----------------------------------------------------------------------------
-void TemplateProxy::MergeOverload(CPPOverload*& mp) {
+void TemplateProxy::MergeOverload(CPPOverload* mp) {
 // Store overloads of this templated method.
     bool isGreedy = false;
     for (auto pc : mp->fMethodInfo->fMethods) {
@@ -385,6 +385,8 @@ static inline void UpdateDispatchMap(TemplateProxy* pytmpl, bool use_targs, uint
 // with the same CPPOverload, just with more methods)
     bool bInserted = false;
     auto& v = pytmpl->fTI->fDispatchMap[use_targs ? targs2str(pytmpl) : ""];
+
+    Py_INCREF(pymeth);
     for (auto& p : v) {
         if (p.first == sighash) {
             Py_DECREF(p.second);
@@ -489,7 +491,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
                 result = CPPOverload_Type.tp_call((PyObject*)ol, args, kwds);
             } else {
                 pymeth = CPPOverload_Type.tp_descr_get(
-                (PyObject*)ol, pytmpl->fSelf, (PyObject*)&CPPOverload_Type);
+                    (PyObject*)ol, pytmpl->fSelf, (PyObject*)&CPPOverload_Type);
                 result = CPPOverload_Type.tp_call(pymeth, args, kwds);
                 Py_DECREF(pymeth); pymeth = nullptr;
             }
@@ -570,7 +572,6 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
         result = CPPOverload_Type.tp_call(pymeth, args, kwds);
         Py_DECREF(pymeth); pymeth = nullptr;
         if (result) {
-            Py_INCREF(pytmpl->fTI->fNonTemplated);
             UpdateDispatchMap(pytmpl, false, sighash, pytmpl->fTI->fNonTemplated);
             TPPCALL_RETURN;
         }
@@ -587,7 +588,6 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
         result = CPPOverload_Type.tp_call(pymeth, args, kwds);
         Py_DECREF(pymeth); pymeth = nullptr;
         if (result) {
-            Py_INCREF(pytmpl->fTI->fTemplated);
             UpdateDispatchMap(pytmpl, true, sighash, pytmpl->fTI->fTemplated);
             TPPCALL_RETURN;
         }
@@ -620,7 +620,6 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
         result = CPPOverload_Type.tp_call(pymeth, args, kwds);
         Py_DECREF(pymeth); pymeth = nullptr;
         if (result) {
-            Py_INCREF(pytmpl->fTI->fLowPriority);
             UpdateDispatchMap(pytmpl, false, sighash, pytmpl->fTI->fLowPriority);
             TPPCALL_RETURN;
         }

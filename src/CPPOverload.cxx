@@ -583,7 +583,7 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
 
 // simple case
     if (nMethods == 1) {
-        ctxt.fFlags |= CallContext::kAllowImplicit;   // no two rounds needed
+        if (!NoImplicit(&ctxt)) ctxt.fFlags |= CallContext::kAllowImplicit;    // no two rounds needed
         PyObject* result = methods[0]->Call(pymeth->fSelf, args, kwds, &ctxt);
         return HandleReturn(pymeth, oldSelf, result);
     }
@@ -948,7 +948,7 @@ void CPyCppyy::CPPOverload::AdoptMethod(PyCallable* pc)
 }
 
 //-----------------------------------------------------------------------------
-void CPyCppyy::CPPOverload::MergeOverload(CPPOverload*& meth)
+void CPyCppyy::CPPOverload::MergeOverload(CPPOverload* meth)
 {
     if (!HasMethods()) // if fresh method being filled: also copy flags
         fMethodInfo->fFlags = meth->fMethodInfo->fFlags;
@@ -957,8 +957,6 @@ void CPyCppyy::CPPOverload::MergeOverload(CPPOverload*& meth)
     fMethodInfo->fFlags &= ~CallContext::kIsSorted;
     meth->fMethodInfo->fDispatchMap.clear();
     meth->fMethodInfo->fMethods.clear();
-    Py_DECREF(meth);
-    meth = this;
 }
 
 //-----------------------------------------------------------------------------

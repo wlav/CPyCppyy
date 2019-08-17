@@ -195,7 +195,7 @@ static inline bool ConvertImplicit(Cppyy::TCppType_t klass,
     using namespace CPyCppyy;
 
     if (!AllowImplicit(ctxt)) {
-        ctxt->fFlags |= CallContext::kHaveImplicit;
+        if (!NoImplicit(ctxt)) ctxt->fFlags |= CallContext::kHaveImplicit;
         return false;
     }
 

@@ -141,7 +141,7 @@ static inline void sync_templates(
     Py_DECREF(dct);
     if (!TemplateProxy_Check(attr)) {
         TemplateProxy* pytmpl = TemplateProxy_New(mtCppName, mtName, pyclass);
-        if (CPPOverload_Check(attr)) pytmpl->MergeOverload((CPPOverload*&)attr);
+        if (CPPOverload_Check(attr)) pytmpl->MergeOverload((CPPOverload*)attr);
         PyType_Type.tp_setattro(pyclass, pyname, (PyObject*)pytmpl);
         Py_DECREF(pytmpl);
     }

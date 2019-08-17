@@ -61,7 +61,7 @@ public:                 // public, as the python C-API works with C structs
     TP_TInfo_t fTI;
 
 public:
-    void MergeOverload(CPPOverload*& mp);
+    void MergeOverload(CPPOverload* mp);
     void AdoptMethod(PyCallable* pc);
     void AdoptTemplate(PyCallable* pc);
     PyObject* Instantiate(const std::string& fname,

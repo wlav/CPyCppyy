@@ -118,6 +118,10 @@ inline bool AllowImplicit(CallContext* ctxt) {
     return ctxt ? (!(ctxt->fFlags & CallContext::kNoImplicit) && (ctxt->fFlags & CallContext::kAllowImplicit)) : false;
 }
 
+inline bool NoImplicit(CallContext* ctxt) {
+    return ctxt ? (ctxt->fFlags & CallContext::kNoImplicit) : false;
+}
+
 inline bool ReleasesGIL(CallContext* ctxt) {
     return ctxt ? (ctxt->fFlags & CallContext::kReleaseGIL) : false;
 }

@@ -58,7 +58,7 @@ public:
 public:
     void Set(const std::string& name, std::vector<PyCallable*>& methods);
     void AdoptMethod(PyCallable* pc);
-    void MergeOverload(CPPOverload*& meth);
+    void MergeOverload(CPPOverload* meth);
 
     const std::string& GetName() const { return fMethodInfo->fName; }
     bool HasMethods() const { return !fMethodInfo->fMethods.empty(); }
