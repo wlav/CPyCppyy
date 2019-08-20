@@ -12,6 +12,7 @@
 #include "TypeManip.h"
 
 // Standard
+#include <limits.h>
 #include <string.h>
 #include <algorithm>
 #include <list>
@@ -377,10 +378,22 @@ static bool AddTypeName(std::string& tmpl_name, PyObject* tn, PyObject* arg,
     using namespace CPyCppyy::Utility;
 
     if (tn == (PyObject*)&PyInt_Type) {
-        tmpl_name.append("int");
+        if (arg) {
+#if PY_VERSION_HEX < 0x03000000
+            long l = PyInt_AS_LONG(arg);
+            if (l < INT_MIN || INT_MAX < l)
+#else
+            Long64_t ll = PyLong_AsLongLong(arg);
+            if (ll < INT_MIN || INT_MAX < ll)
+#endif
+                tmpl_name.append("Long64_t");
+            else
+                tmpl_name.append("int");
+        } else
+            tmpl_name.append("int");
 #if PY_VERSION_HEX < 0x03000000
     } else if (tn == (PyObject*)&PyLong_Type) {
-        tmpl_name.append("long");
+        tmpl_name.append("Long64_t");
 #endif
     } else if (tn == (PyObject*)&PyFloat_Type) {
     // special case for floats (Python-speak for double) if from argument (only)
