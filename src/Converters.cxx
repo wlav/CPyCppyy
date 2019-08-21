@@ -1006,6 +1006,14 @@ bool CPyCppyy::VoidArrayConverter::SetArg(
         return true;
     }
 
+// allow ctypes voidp (which if got as a buffer will return void**, not void*)
+    static PyObject* c_voidp_type = (PyObject*)GetCTypesType("c_void_p");
+    if (PyObject_IsInstance(pyobject, c_voidp_type)) {
+        para.fValue.fVoidp = (void*)((CPyCppyy_tagCDataObject*)pyobject)->b_ptr;
+        para.fTypeCode = 'V';
+        return true;
+    }
+
 // final try: attempt to get buffer
     Py_ssize_t buflen = Utility::GetBuffer(pyobject, '*', 1, para.fValue.fVoidp, false);
 
@@ -1619,7 +1627,8 @@ bool CPyCppyy::VoidPtrPtrConverter::SetArg(
         return true;
     }
 
-// buffer objects are allowed under "user knows best"
+// buffer objects are allowed under "user knows best" (this includes the buffer
+// interface to ctypes.c_void_p, which results in a void**)
     Py_ssize_t buflen = Utility::GetBuffer(pyobject, '*', 1, para.fValue.fVoidp, false);
 
 // ok if buffer exists (can't perform any useful size checks)
