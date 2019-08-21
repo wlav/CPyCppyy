@@ -809,15 +809,29 @@ static PyObject* mp_overload(CPPOverload* pymeth, PyObject* sigarg)
         return nullptr;
     }
 
-    PyObject* sig1 = CPyCppyy_PyText_FromFormat("(%s)", CPyCppyy_PyText_AsString(sigarg));
+    std::string sig1{"("}; sig1.append(CPyCppyy_PyText_AsString(sigarg)); sig1.append(")");
+    sig1.erase(std::remove(sig1.begin(), sig1.end(), ' '), std::end(sig1));
 
     CPPOverload::Methods_t& methods = pymeth->fMethodInfo->fMethods;
     for (auto& meth : methods) {
 
-        PyObject* sig2 = meth->GetSignature(false);
-        if (PyObject_RichCompareBool(sig1, sig2, Py_EQ)) {
-            Py_DECREF(sig2);
+        bool found = false;
 
+        PyObject* pysig2 = meth->GetSignature(false);
+        std::string sig2(CPyCppyy_PyText_AsString(pysig2));
+        sig2.erase(std::remove(sig2.begin(), sig2.end(), ' '), std::end(sig2));
+        Py_DECREF(pysig2);
+        if (sig1 == sig2) found = true;
+
+        if (!found) {
+            pysig2 = meth->GetSignature(true);
+            std::string sig3(CPyCppyy_PyText_AsString(pysig2));
+            sig3.erase(std::remove(sig3.begin(), sig3.end(), ' '), std::end(sig3));
+            Py_DECREF(pysig2);
+            if (sig1 == sig3) found = true;
+        }
+
+        if (found) {
             CPPOverload* newmeth = mp_new(nullptr, nullptr, nullptr);
             CPPOverload::Methods_t vec; vec.push_back(meth->Clone());
             newmeth->Set(pymeth->fMethodInfo->fName, vec);
@@ -828,14 +842,10 @@ static PyObject* mp_overload(CPPOverload* pymeth, PyObject* sigarg)
             }
             newmeth->fMethodInfo->fFlags = pymeth->fMethodInfo->fFlags;
 
-            Py_DECREF(sig1);
             return (PyObject*)newmeth;
         }
-
-        Py_DECREF(sig2);
     }
 
-    Py_DECREF(sig1);
     PyErr_Format(PyExc_LookupError,
         "signature \"%s\" not found", CPyCppyy_PyText_AsString(sigarg));
     return nullptr;
