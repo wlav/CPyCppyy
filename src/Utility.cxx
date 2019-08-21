@@ -393,7 +393,7 @@ static bool AddTypeName(std::string& tmpl_name, PyObject* tn, PyObject* arg,
             tmpl_name.append("int");
 #if PY_VERSION_HEX < 0x03000000
     } else if (tn == (PyObject*)&PyLong_Type) {
-        tmpl_name.append("Long64_t");
+        tmpl_name.append("long");
 #endif
     } else if (tn == (PyObject*)&PyFloat_Type) {
     // special case for floats (Python-speak for double) if from argument (only)
