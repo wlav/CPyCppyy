@@ -410,7 +410,7 @@ static bool AddTypeName(std::string& tmpl_name, PyObject* tn, PyObject* arg,
                      PyErr_Clear();
                      tmpl_name.append("long");   // still out of range, will fail later
                  } else
-                     tmpl_name.append(ULONG_MAX < ll ? "ULong64_t" : "unsigned long");
+                     tmpl_name.append(ULONG_MAX < ull ? "ULong64_t" : "unsigned long");
              } else
                  tmpl_name.append((ll < LONG_MIN || LONG_MAX < ll) ? "Long64_t" : "long");
         } else
