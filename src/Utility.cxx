@@ -426,12 +426,12 @@ static bool AddTypeName(std::string& tmpl_name, PyObject* tn, PyObject* arg,
         tmpl_name.append("std::string");
     } else if (tn == (PyObject*)&PyList_Type || tn == (PyObject*)&PyTuple_Type) {
         if (arg && PySequence_Size(arg)) {
-            std::string subtype{"const std::vector<"};
+            std::string subtype{"std::initializer_list<"};
             PyObject* item = PySequence_GetItem(arg, 0);
             ArgPreference subpref = pref == kValue ? kValue : kPointer;
             if (AddTypeName(subtype, (PyObject*)Py_TYPE(item), item, subpref)) {
                 tmpl_name.append(subtype);
-                tmpl_name.append(">&");
+                tmpl_name.append(">");
             }
             Py_DECREF(item);
         }
