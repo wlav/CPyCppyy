@@ -194,9 +194,15 @@ static inline bool ConvertImplicit(Cppyy::TCppType_t klass,
 {
     using namespace CPyCppyy;
 
+// only proceed if implicit conversions are allowed (in "round 2") or if the
+// argument is exactly a tuple or list, as these are the equivalent of
+// initializer lists and thus "syntax" not a conversion
     if (!AllowImplicit(ctxt)) {
-        if (!NoImplicit(ctxt)) ctxt->fFlags |= CallContext::kHaveImplicit;
-        return false;
+        PyTypeObject* pytype = (PyTypeObject*)Py_TYPE(pyobject);
+        if (!(pytype == &PyList_Type || pytype == &PyTuple_Type)) {
+            if (!NoImplicit(ctxt)) ctxt->fFlags |= CallContext::kHaveImplicit;
+            return false;
+        }
     }
 
 // exercise implicit conversion
@@ -1385,23 +1391,22 @@ bool CPyCppyy::InstanceConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* ctxt)
 {
 // convert <pyobject> to C++ instance, set arg for call
-    if (!CPPInstance_Check(pyobject))
-        return false;
+    if (CPPInstance_Check(pyobject)) {
+        CPPInstance* pyobj = (CPPInstance*)pyobject;
+        if (pyobj->ObjectIsA() && Cppyy::IsSubtype(pyobj->ObjectIsA(), fClass)) {
+        // calculate offset between formal and actual arguments
+            para.fValue.fVoidp = pyobj->GetObject();
+            if (!para.fValue.fVoidp)
+                return false;
 
-    CPPInstance* pyobj = (CPPInstance*)pyobject;
-    if (pyobj->ObjectIsA() && Cppyy::IsSubtype(pyobj->ObjectIsA(), fClass)) {
-    // calculate offset between formal and actual arguments
-        para.fValue.fVoidp = pyobj->GetObject();
-        if (!para.fValue.fVoidp)
-            return false;
+            if (pyobj->ObjectIsA() != fClass) {
+                para.fValue.fIntPtr += Cppyy::GetBaseOffset(
+                    pyobj->ObjectIsA(), fClass, para.fValue.fVoidp, 1 /* up-cast */);
+            }
 
-        if (pyobj->ObjectIsA() != fClass) {
-            para.fValue.fIntPtr += Cppyy::GetBaseOffset(
-                pyobj->ObjectIsA(), fClass, para.fValue.fVoidp, 1 /* up-cast */);
+            para.fTypeCode = 'V';
+            return true;
         }
-
-        para.fTypeCode = 'V';
-        return true;
     }
 
     return ConvertImplicit(fClass, pyobject, para, ctxt);
