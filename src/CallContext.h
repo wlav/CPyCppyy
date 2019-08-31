@@ -25,11 +25,11 @@ struct Parameter {
         Long_t         fLong;
         intptr_t       fIntPtr;
         ULong_t        fULong;
-        Long64_t       fLongLong;
-        ULong64_t      fULongLong;
+        Long64_t       fLLong;
+        ULong64_t      fULLong;
         float          fFloat;
         double         fDouble;
-        LongDouble_t   fLongDouble;
+        LongDouble_t   fLDouble;
         void*          fVoidp;
     } fValue;
     void* fRef;
