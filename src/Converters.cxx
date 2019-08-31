@@ -2357,7 +2357,7 @@ public:
         gf["char&"] =                       (cf_t)+[](dims_t) { return new CharRefConverter{}; };
         gf["signed char"] =                 (cf_t)+[](dims_t) { return new CharConverter{}; };
         gf["const signed char&"] =          (cf_t)+[](dims_t) { return new ConstCharRefConverter{}; };
-        gf["signed char&"] =                (cf_t)+[](dims_t) { return new CharRefConverter{}; };
+        gf["signed char&"] =                (cf_t)+[](dims_t) { return new SCharRefConverter{}; };
         gf["unsigned char"] =               (cf_t)+[](dims_t) { return new UCharConverter{}; };
         gf["const unsigned char&"] =        (cf_t)+[](dims_t) { return new ConstUCharRefConverter{}; };
         gf["unsigned char&"] =              (cf_t)+[](dims_t) { return new UCharRefConverter{}; };
