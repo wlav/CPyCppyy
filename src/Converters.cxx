@@ -1088,7 +1088,7 @@ bool CPyCppyy::VoidArrayConverter::ToMemory(PyObject* value, void* address)
 }
 
 //----------------------------------------------------------------------------
-#define CPPYY_IMPL_ARRAY_CONVERTER(name, type, code)                         \
+#define CPPYY_IMPL_ARRAY_CONVERTER(name, ctype, type, code)                  \
 CPyCppyy::name##ArrayConverter::name##ArrayConverter(dims_t dims) {          \
     int nalloc = (dims && 0 < dims[0]) ? (int)dims[0]+1: 2;                  \
     fShape = new Py_ssize_t[nalloc];                                         \
@@ -1102,7 +1102,19 @@ CPyCppyy::name##ArrayConverter::name##ArrayConverter(dims_t dims) {          \
 bool CPyCppyy::name##ArrayConverter::SetArg(                                 \
     PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)            \
 {                                                                            \
-    return CArraySetArg(pyobject, para, code, sizeof(type));                 \
+    if (CArraySetArg(pyobject, para, code, sizeof(type)))                    \
+        return true;                                                         \
+    PyObject* pytype = 0, *pyvalue = 0, *pytrace = 0;                        \
+    PyErr_Fetch(&pytype, &pyvalue, &pytrace);                                \
+    static PyTypeObject* ctypes_type = GetCTypesType(#ctype);                \
+    if (Py_TYPE(pyobject) == ctypes_type) {                                  \
+        para.fValue.fVoidp = (void*)((CPyCppyy_tagCDataObject*)pyobject)->b_ptr;\
+        para.fTypeCode = 'p';                                                \
+        Py_XDECREF(pytype); Py_XDECREF(pyvalue); Py_XDECREF(pytrace);        \
+        return true;                                                         \
+    }                                                                        \
+    PyErr_Restore(pytype, pyvalue, pytrace);                                 \
+    return false;                                                            \
 }                                                                            \
                                                                              \
 PyObject* CPyCppyy::name##ArrayConverter::FromMemory(void* address)          \
@@ -1134,19 +1146,19 @@ bool CPyCppyy::name##ArrayConverter::ToMemory(PyObject* value, void* address)\
 }
 
 //----------------------------------------------------------------------------
-CPPYY_IMPL_ARRAY_CONVERTER(Bool,     bool,                 'b') // signed char
-CPPYY_IMPL_ARRAY_CONVERTER(UChar,    unsigned char,        'B')
-CPPYY_IMPL_ARRAY_CONVERTER(Short,    short,                'h')
-CPPYY_IMPL_ARRAY_CONVERTER(UShort,   unsigned short,       'H')
-CPPYY_IMPL_ARRAY_CONVERTER(Int,      int,                  'i')
-CPPYY_IMPL_ARRAY_CONVERTER(UInt,     unsigned int,         'I')
-CPPYY_IMPL_ARRAY_CONVERTER(Long,     long,                 'l')
-CPPYY_IMPL_ARRAY_CONVERTER(ULong,    unsigned long,        'L')
-CPPYY_IMPL_ARRAY_CONVERTER(LLong,    long long,            'q')
-CPPYY_IMPL_ARRAY_CONVERTER(ULLong,   unsigned long long,   'Q')
-CPPYY_IMPL_ARRAY_CONVERTER(Float,    float,                'f')
-CPPYY_IMPL_ARRAY_CONVERTER(Double,   double,               'd')
-CPPYY_IMPL_ARRAY_CONVERTER(ComplexD, std::complex<double>, 'Z')
+CPPYY_IMPL_ARRAY_CONVERTER(Bool,     c_bool,      bool,                 'b') // signed char
+CPPYY_IMPL_ARRAY_CONVERTER(UChar,    c_ubyte,     unsigned char,        'B')
+CPPYY_IMPL_ARRAY_CONVERTER(Short,    c_short,     short,                'h')
+CPPYY_IMPL_ARRAY_CONVERTER(UShort,   c_ushort,    unsigned short,       'H')
+CPPYY_IMPL_ARRAY_CONVERTER(Int,      c_int,       int,                  'i')
+CPPYY_IMPL_ARRAY_CONVERTER(UInt,     c_uint,      unsigned int,         'I')
+CPPYY_IMPL_ARRAY_CONVERTER(Long,     c_long,      long,                 'l')
+CPPYY_IMPL_ARRAY_CONVERTER(ULong,    c_ulong,     unsigned long,        'L')
+CPPYY_IMPL_ARRAY_CONVERTER(LLong,    c_longlong,  long long,            'q')
+CPPYY_IMPL_ARRAY_CONVERTER(ULLong,   c_ulonglong, unsigned long long,   'Q')
+CPPYY_IMPL_ARRAY_CONVERTER(Float,    c_float,     float,                'f')
+CPPYY_IMPL_ARRAY_CONVERTER(Double,   c_double,    double,               'd')
+CPPYY_IMPL_ARRAY_CONVERTER(ComplexD, c_complex,   std::complex<double>, 'Z')
 
 
 //- converters for special cases ---------------------------------------------
