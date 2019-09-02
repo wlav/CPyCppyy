@@ -168,6 +168,23 @@ static bool IsPyCArgObject(PyObject* pyobject)
     return Py_TYPE(pyobject) == pycarg_type;
 }
 
+static bool IsCTypesArrayOrPointer(PyObject* pyobject)
+{
+    static PyTypeObject* cstgdict_type = nullptr;
+    if (!cstgdict_type) {
+    // get any pointer type to initialize the extended dictionary type
+        PyTypeObject* ct_int = GetCTypesType(ct_c_int);
+        if (ct_int && ct_int->tp_dict) {
+            cstgdict_type = Py_TYPE(ct_int->tp_dict);
+        }
+    }
+
+    PyTypeObject* pytype = Py_TYPE(pyobject);
+    if (pytype->tp_dict && Py_TYPE(pytype->tp_dict) == cstgdict_type)
+        return true;
+    return false;
+}
+
 
 //- custom helpers to check ranges -------------------------------------------
 static inline bool CPyCppyy_PyLong_AsBool(PyObject* pyobject)
@@ -1131,6 +1148,16 @@ bool CPyCppyy::VoidArrayConverter::SetArg(
         return true;
     }
 
+// allow any other ctypes pointer type
+    if (IsCTypesArrayOrPointer(pyobject)) {
+        void** payload = (void**)((CPyCppyy_tagCDataObject*)pyobject)->b_ptr;
+        if (payload) {
+            para.fValue.fVoidp = *payload;
+            para.fTypeCode = 'p';
+            return true;
+        }
+    }
+
 // final try: attempt to get buffer
     Py_ssize_t buflen = Utility::GetBuffer(pyobject, '*', 1, para.fValue.fVoidp, false);
 
@@ -1257,6 +1284,11 @@ bool CPyCppyy::name##ArrayPtrConverter::SetArg(                              \
         para.fValue.fVoidp = (void*)((CPyCppyy_tagCDataObject*)pyobject)->b_ptr;\
         para.fTypeCode = 'p';                                                \
         return true;                                                         \
+    } else if (Py_TYPE(pyobject) == GetCTypesType(ct_c_void_p)) {            \
+    /* special case: pass address of c_void_p buffer to return the address */\
+        para.fValue.fVoidp = (void*)&((CPyCppyy_tagCDataObject*)pyobject)->b_ptr;\
+        para.fTypeCode = 'p';                                                \
+        return true;                                                         \
     }                                                                        \
     bool res = name##ArrayConverter::SetArg(pyobject, para, ctxt);           \
     if (res && para.fTypeCode == 'p') {                                      \
@@ -1264,7 +1296,6 @@ bool CPyCppyy::name##ArrayPtrConverter::SetArg(                              \
         para.fValue.fVoidp = &para.fRef;                                     \
         return true;                                                         \
     }                                                                        \
-                                                                             \
     return false;                                                            \
 }
 
