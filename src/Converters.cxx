@@ -2456,11 +2456,13 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, dims
     // converter factory available, use it to create converter
         result = (h->second)(dims);
     else if (!result) {
-        if (cpd != "") {
+    // default to something reasonable, assuming "user knows best"
+        if (cpd.size() == 2 && cpd != "&&") // "**", "*[]", "*&"
+            result = new VoidPtrPtrConverter();
+        else if (!cpd.empty())
             result = new VoidArrayConverter();        // "user knows best"
-        } else {
+        else
             result = new NotImplementedConverter();   // fails on use
-        }
     }
 
     return result;
