@@ -36,6 +36,7 @@ CPPYY_DECL_VIEW_CREATOR(long long);
 CPPYY_DECL_VIEW_CREATOR(unsigned long long);
 CPPYY_DECL_VIEW_CREATOR(float);
 CPPYY_DECL_VIEW_CREATOR(double);
+CPPYY_DECL_VIEW_CREATOR(long double);
 CPPYY_DECL_VIEW_CREATOR(std::complex<float>);
 CPPYY_DECL_VIEW_CREATOR(std::complex<double>);
 CPPYY_DECL_VIEW_CREATOR(std::complex<int>);

@@ -60,7 +60,14 @@ public:                                                                      \
     virtual bool ToMemory(PyObject*, void*);                                 \
 private:                                                                     \
     Py_ssize_t* fShape;                                                      \
+};                                                                           \
+                                                                             \
+class name##ArrayPtrConverter : public name##ArrayConverter {                \
+public:                                                                      \
+    using name##ArrayConverter::name##ArrayConverter;                        \
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);      \
 };
+
 
 // converters for built-ins
 CPPYY_DECLARE_BASIC_CONVERTER(Long);
@@ -162,6 +169,7 @@ CPPYY_DECLARE_ARRAY_CONVERTER(LLong);
 CPPYY_DECLARE_ARRAY_CONVERTER(ULLong);
 CPPYY_DECLARE_ARRAY_CONVERTER(Float);
 CPPYY_DECLARE_ARRAY_CONVERTER(Double);
+CPPYY_DECLARE_ARRAY_CONVERTER(LDouble);
 CPPYY_DECLARE_ARRAY_CONVERTER(ComplexD);
 
 

@@ -18,6 +18,7 @@
 #include <limits.h>
 #include <stddef.h>      // for ptrdiff_t
 #include <string.h>
+#include <array>
 #include <utility>
 #include <sstream>
 #if __cplusplus > 201402L
@@ -50,23 +51,123 @@ const size_t MOVE_REFCOUNT_CUTOFF = 2;
 #endif
 
 //- pretend-ctypes helpers ---------------------------------------------------
-#if PY_VERSION_HEX >= 0x02050000
-struct CPyCppyy_tagCDataObject { // non-public (but so far very stable)
+struct CPyCppyy_tagCDataObject {       // non-public (but stable)
     PyObject_HEAD
     char* b_ptr;
-    int  b_needsfree;
+    int   b_needsfree;
 };
 
-static PyTypeObject* GetCTypesType(const char* name) {
-    static PyObject* ct = PyImport_ImportModule("ctypes");      // ref-count kept
-    if (!ct) {
+struct CPyCppyy_tagPyCArgObject {      // not public (but stable; note that older
+    PyObject_HEAD                      // Pythons protect 'D' with HAVE_LONG_LONG)
+    void* pffi_type;
+    char tag;
+    union {                            // for convenience, kept only relevant vals
+        long long q;
+        long double D;
+        void *p;
+    } value;
+    PyObject* obj;
+};
+
+// indices of ctypes types into the array caches (not that c_complex does not
+// exist as a type in ctypes)
+#define ct_c_bool        0
+#define ct_c_char        1
+#define ct_c_shar        1
+#define ct_c_wchar       2
+#define ct_c_byte        3
+#define ct_c_int8        3
+#define ct_c_ubyte       4
+#define ct_c_uchar       4
+#define ct_c_uint8       4
+#define ct_c_short       5
+#define ct_c_ushort      6
+#define ct_c_int         7
+#define ct_c_uint        8
+#define ct_c_long        9
+#define ct_c_ulong      10
+#define ct_c_longlong   11
+#define ct_c_ulonglong  12
+#define ct_c_float      13
+#define ct_c_double     14
+#define ct_c_longdouble 15
+#define ct_c_char_p     16
+#define ct_c_wchar_p    17
+#define ct_c_void_p     18
+#define ct_c_complex    19
+#define NTYPES          20
+
+static std::array<const char*, NTYPES> gCTypesNames = {
+    "c_bool", "c_char", "c_wchar", "c_byte", "c_ubyte", "c_short", "c_ushort", "c_int", "c_uint",
+    "c_long", "c_ulong", "c_longlong", "c_ulonglong", "c_float", "c_double", "c_longdouble",
+    "c_char_p", "c_wchar_p", "c_void_p", "c_complex" };
+static std::array<PyTypeObject*, NTYPES> gCTypesTypes;
+static std::array<PyTypeObject*, NTYPES> gCTypesPtrTypes;
+
+// Both GetCTypesType and GetCTypesPtrType, rely on the ctypes module itself
+// caching the types (thus also making them unique), so no ref-count is needed.
+// Further, by keeping a ref-count on the module, it won't be off-loaded until
+// the 2nd cleanup cycle.
+static PyTypeObject* GetCTypesType(int nidx)
+{
+    static PyObject* ctmod = PyImport_ImportModule("ctypes");   // ref-count kept
+    if (!ctmod) {
         PyErr_Clear();
         return nullptr;
     }
-    PyTypeObject* ct_t = (PyTypeObject*)PyObject_GetAttrString(ct, name);
-    return ct_t;   // in typical use below, this keeps a ref count, too
+    PyTypeObject* ct_t = gCTypesTypes[nidx];
+    if (!ct_t) {
+        ct_t = (PyTypeObject*)PyObject_GetAttrString(ctmod, gCTypesNames[nidx]);
+        if (!ct_t) PyErr_Clear();
+        else {
+            gCTypesTypes[nidx] = ct_t;
+            Py_DECREF(ct_t);
+        }
+    }
+    return ct_t;
 }
-#endif
+
+static PyTypeObject* GetCTypesPtrType(int nidx)
+{
+    static PyObject* ctmod = PyImport_ImportModule("ctypes");   // ref-count kept
+    if (!ctmod) {
+        PyErr_Clear();
+        return nullptr;
+    }
+    PyTypeObject* cpt_t = gCTypesPtrTypes[nidx];
+    if (!cpt_t) {
+        PyObject* ct_t = (PyObject*)GetCTypesType(nidx);
+        if (ct_t) {
+            PyObject* ptrcreat = PyObject_GetAttrString(ctmod, "POINTER");
+            cpt_t = (PyTypeObject*)PyObject_CallFunctionObjArgs(ptrcreat, ct_t, NULL);
+            Py_DECREF(ptrcreat);
+            gCTypesPtrTypes[nidx] = cpt_t;
+            Py_XDECREF(cpt_t);
+        }
+    }
+    return cpt_t;
+}
+
+static bool IsPyCArgObject(PyObject* pyobject)
+{
+    static PyTypeObject* pycarg_type = nullptr;
+    if (!pycarg_type) {
+        PyObject* ctmod = PyImport_ImportModule("ctypes");
+        if (!ctmod) PyErr_Clear();
+        else {
+             PyTypeObject* ct_t = (PyTypeObject*)PyObject_GetAttrString(ctmod, "c_int");
+             PyObject* cobj = ct_t->tp_new(ct_t, nullptr, nullptr);
+             PyObject* byref = PyObject_GetAttrString(ctmod, "byref");
+             PyObject* pyptr = PyObject_CallFunctionObjArgs(byref, cobj, NULL);
+             Py_DECREF(byref); Py_DECREF(cobj); Py_DECREF(ct_t);
+             pycarg_type = Py_TYPE(pyptr);  // static, no ref-count needed
+             Py_DECREF(pyptr);
+        }
+        Py_DECREF(ctmod);
+    }
+    return Py_TYPE(pyobject) == pycarg_type;
+}
+
 
 //- custom helpers to check ranges -------------------------------------------
 static inline bool CPyCppyy_PyLong_AsBool(PyObject* pyobject)
@@ -286,7 +387,7 @@ bool CPyCppyy::Converter::ToMemory(PyObject*, void*)
 
 
 //- helper macro's -----------------------------------------------------------
-#define CPPYY_IMPL_BASIC_CONVERTER(name, type, stype, F1, F2, tc)            \
+#define CPPYY_IMPL_BASIC_CONVERTER(name, type, stype, ctype, F1, F2, tc)     \
 bool CPyCppyy::name##Converter::SetArg(                                      \
     PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)            \
 {                                                                            \
@@ -297,7 +398,7 @@ bool CPyCppyy::name##Converter::SetArg(                                      \
         if (!ctypes_type) {                                                  \
             PyObject* pytype = 0, *pyvalue = 0, *pytrace = 0;                \
             PyErr_Fetch(&pytype, &pyvalue, &pytrace);                        \
-            ctypes_type = GetCTypesType("c_"#type);                          \
+            ctypes_type = GetCTypesType(ct_##ctype);                         \
             PyErr_Restore(pytype, pyvalue, pytrace);                         \
         }                                                                    \
         if (Py_TYPE(pyobject) == ctypes_type) {                              \
@@ -351,11 +452,11 @@ static inline int ExtractChar(PyObject* pyobject, const char* tname, int low, in
 }
 
 //----------------------------------------------------------------------------
-#define CPPYY_IMPL_REFCONVERTER_FROM_MEMORY(name, c_type)                    \
+#define CPPYY_IMPL_REFCONVERTER_FROM_MEMORY(name, ctype)                     \
 PyObject* CPyCppyy::name##RefConverter::FromMemory(void* ptr)                \
 {                                                                            \
 /* convert a reference to int to Python through ctypes pointer object */     \
-    static PyTypeObject* ctypes_type = GetCTypesType(#c_type);               \
+    PyTypeObject* ctypes_type = GetCTypesType(ct_##ctype);                   \
     if (!ctypes_type) {                                                      \
         PyErr_SetString(PyExc_RuntimeError, "no ctypes available");          \
         return nullptr;                                                      \
@@ -367,7 +468,7 @@ PyObject* CPyCppyy::name##RefConverter::FromMemory(void* ptr)                \
 }
 
 //----------------------------------------------------------------------------
-#define CPPYY_IMPL_BASIC_CONST_REFCONVERTER(name, type, c_type, F1)          \
+#define CPPYY_IMPL_BASIC_CONST_REFCONVERTER(name, type, ctype, F1)           \
 bool CPyCppyy::Const##name##RefConverter::SetArg(                            \
     PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)            \
 {                                                                            \
@@ -379,10 +480,10 @@ bool CPyCppyy::Const##name##RefConverter::SetArg(                            \
     para.fTypeCode = 'r';                                                    \
     return true;                                                             \
 }                                                                            \
-CPPYY_IMPL_REFCONVERTER_FROM_MEMORY(Const##name, c_type)
+CPPYY_IMPL_REFCONVERTER_FROM_MEMORY(Const##name, ctype)
 
 //----------------------------------------------------------------------------
-#define CPPYY_IMPL_BASIC_CONST_CHAR_REFCONVERTER(name, type, c_type, low, high)\
+#define CPPYY_IMPL_BASIC_CONST_CHAR_REFCONVERTER(name, type, ctype, low, high)\
 bool CPyCppyy::Const##name##RefConverter::SetArg(                            \
     PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)            \
 {                                                                            \
@@ -394,7 +495,7 @@ bool CPyCppyy::Const##name##RefConverter::SetArg(                            \
     para.fTypeCode = 'l';                                                    \
     return true;                                                             \
 }                                                                            \
-CPPYY_IMPL_REFCONVERTER_FROM_MEMORY(Const##name, c_type)
+CPPYY_IMPL_REFCONVERTER_FROM_MEMORY(Const##name, ctype)
 
 
 //----------------------------------------------------------------------------
@@ -444,7 +545,7 @@ bool CPyCppyy::name##Converter::ToMemory(PyObject* value, void* address)     \
 
 
 //- converters for built-ins -------------------------------------------------
-CPPYY_IMPL_BASIC_CONVERTER(Long, long, long, PyLong_FromLong, CPyCppyy_PyLong_AsStrictLong, 'l')
+CPPYY_IMPL_BASIC_CONVERTER(Long, long, long, c_long, PyLong_FromLong, CPyCppyy_PyLong_AsStrictLong, 'l')
 
 //----------------------------------------------------------------------------
 bool CPyCppyy::LongRefConverter::SetArg(
@@ -459,8 +560,7 @@ bool CPyCppyy::LongRefConverter::SetArg(
     }
 #endif
 
-    static PyTypeObject* c_long_type = GetCTypesType("c_long");
-    if (Py_TYPE(pyobject) == c_long_type) {
+    if (Py_TYPE(pyobject) == GetCTypesType(ct_c_long)) {
         para.fValue.fVoidp = (void*)((CPyCppyy_tagCDataObject*)pyobject)->b_ptr;
         para.fTypeCode = 'V';
         return true;
@@ -503,8 +603,7 @@ bool CPyCppyy::IntRefConverter::SetArg(
 #endif
 
 #if PY_VERSION_HEX >= 0x02050000
-    static PyTypeObject* c_int_type = GetCTypesType("c_int");
-    if (Py_TYPE(pyobject) == c_int_type) {
+    if (Py_TYPE(pyobject) == GetCTypesType(ct_c_int)) {
         para.fValue.fVoidp = (void*)((CPyCppyy_tagCDataObject*)pyobject)->b_ptr;
         para.fTypeCode = 'V';
         return true;
@@ -527,26 +626,25 @@ bool CPyCppyy::IntRefConverter::SetArg(
 }
 
 //----------------------------------------------------------------------------
-#define CPPYY_IMPL_REFCONVERTER(name, c_type, type, code)                    \
+#define CPPYY_IMPL_REFCONVERTER(name, ctype, type, code)                     \
 bool CPyCppyy::name##RefConverter::SetArg(                                   \
     PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)            \
 {                                                                            \
 /* convert a reference to int to Python through ctypes pointer object */     \
-    static PyTypeObject* ctypes_type = GetCTypesType(#c_type);               \
-    if (Py_TYPE(pyobject) == ctypes_type) {                                  \
+    if (Py_TYPE(pyobject) == GetCTypesType(ct_##ctype)) {                    \
         para.fValue.fVoidp = (void*)((CPyCppyy_tagCDataObject*)pyobject)->b_ptr;\
         para.fTypeCode = 'V';                                                \
         return true;                                                         \
     }                                                                        \
     bool res = CArraySetArg(pyobject, para, code, sizeof(type));             \
     if (!res) {                                                              \
-        PyErr_SetString(PyExc_TypeError, "use ctypes."#c_type" for pass-by-ref of "#type);\
+        PyErr_SetString(PyExc_TypeError, "use ctypes."#ctype" for pass-by-ref of "#type);\
         return false;                                                        \
     }                                                                        \
     para.fTypeCode = 'V';                                                    \
     return res;                                                              \
 }                                                                            \
-CPPYY_IMPL_REFCONVERTER_FROM_MEMORY(name, c_type)
+CPPYY_IMPL_REFCONVERTER_FROM_MEMORY(name, ctype)
 
 CPPYY_IMPL_REFCONVERTER(Bool,    c_bool,       bool,               'b');
 CPPYY_IMPL_REFCONVERTER(Char,    c_char,       char,               'b');
@@ -569,7 +667,7 @@ CPPYY_IMPL_REFCONVERTER(LDouble, c_longdouble, LongDouble_t,       'D');
 //----------------------------------------------------------------------------
 // convert <pyobject> to C++ bool, allow int/long -> bool, set arg for call
 CPPYY_IMPL_BASIC_CONVERTER(
-    Bool, bool, long, PyInt_FromLong, CPyCppyy_PyLong_AsBool, 'l')
+    Bool, bool, long, c_bool, PyInt_FromLong, CPyCppyy_PyLong_AsBool, 'l')
 
 //----------------------------------------------------------------------------
 CPPYY_IMPL_BASIC_CHAR_CONVERTER(Char,  char,          CHAR_MIN,  CHAR_MAX)
@@ -621,15 +719,15 @@ bool CPyCppyy::WCharConverter::ToMemory(PyObject* value, void* address)
 
 //----------------------------------------------------------------------------
 CPPYY_IMPL_BASIC_CONVERTER(
-    Int8,  int8_t,  long, PyInt_FromLong, CPyCppyy_PyLong_AsInt8,  'l')
+    Int8,  int8_t,  long, c_int8, PyInt_FromLong, CPyCppyy_PyLong_AsInt8,  'l')
 CPPYY_IMPL_BASIC_CONVERTER(
-    UInt8, uint8_t, long, PyInt_FromLong, CPyCppyy_PyLong_AsUInt8, 'l')
+    UInt8, uint8_t, long, c_uint8, PyInt_FromLong, CPyCppyy_PyLong_AsUInt8, 'l')
 CPPYY_IMPL_BASIC_CONVERTER(
-    Short, short, long, PyInt_FromLong, CPyCppyy_PyLong_AsShort, 'l')
+    Short, short, long, c_short, PyInt_FromLong, CPyCppyy_PyLong_AsShort, 'l')
 CPPYY_IMPL_BASIC_CONVERTER(
-    UShort, unsigned short, long, PyInt_FromLong, CPyCppyy_PyLong_AsUShort, 'l')
+    UShort, unsigned short, long, c_ushort, PyInt_FromLong, CPyCppyy_PyLong_AsUShort, 'l')
 CPPYY_IMPL_BASIC_CONVERTER(
-    Int, Int_t, long, PyInt_FromLong, CPyCppyy_PyLong_AsStrictInt, 'l')
+    Int, int, long, c_uint, PyInt_FromLong, CPyCppyy_PyLong_AsStrictInt, 'l')
 
 //----------------------------------------------------------------------------
 bool CPyCppyy::ULongConverter::SetArg(
@@ -684,12 +782,12 @@ bool CPyCppyy::UIntConverter::ToMemory(PyObject* value, void* address)
 
 //- floating point converters ------------------------------------------------
 CPPYY_IMPL_BASIC_CONVERTER(
-    Float,  float,  double, PyFloat_FromDouble, PyFloat_AsDouble, 'f')
+    Float,  float,  double, c_float, PyFloat_FromDouble, PyFloat_AsDouble, 'f')
 CPPYY_IMPL_BASIC_CONVERTER(
-    Double, double, double, PyFloat_FromDouble, PyFloat_AsDouble, 'd')
+    Double, double, double, c_double, PyFloat_FromDouble, PyFloat_AsDouble, 'd')
 
 CPPYY_IMPL_BASIC_CONVERTER(
-    LDouble, LongDouble_t, LongDouble_t, PyFloat_FromDouble, PyFloat_AsDouble, 'g')
+    LDouble, LongDouble_t, LongDouble_t, c_longdouble, PyFloat_FromDouble, PyFloat_AsDouble, 'g')
 
 CPyCppyy::ComplexDConverter::ComplexDConverter(bool keepControl) :
     InstanceConverter(Cppyy::GetScope("std::complex<double>"), keepControl) {}
@@ -1024,9 +1122,10 @@ bool CPyCppyy::VoidArrayConverter::SetArg(
         return true;
     }
 
-// allow ctypes voidp (which if got as a buffer will return void**, not void*)
-    static PyObject* c_voidp_type = (PyObject*)GetCTypesType("c_void_p");
-    if (PyObject_IsInstance(pyobject, c_voidp_type)) {
+// allow ctypes voidp (which if got as a buffer will return void**, not void*); use
+// isintance instead of an exact check, b/c c_void_p is the type mapper for typedefs
+// of void* (typically opaque handles)
+    if (PyObject_IsInstance(pyobject, (PyObject*)GetCTypesType(ct_c_void_p))) {
         para.fValue.fVoidp = (void*)((CPyCppyy_tagCDataObject*)pyobject)->b_ptr;
         para.fTypeCode = 'V';
         return true;
@@ -1102,19 +1201,25 @@ CPyCppyy::name##ArrayConverter::name##ArrayConverter(dims_t dims) {          \
 bool CPyCppyy::name##ArrayConverter::SetArg(                                 \
     PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)            \
 {                                                                            \
-    if (CArraySetArg(pyobject, para, code, sizeof(type)))                    \
-        return true;                                                         \
-    PyObject* pytype = 0, *pyvalue = 0, *pytrace = 0;                        \
-    PyErr_Fetch(&pytype, &pyvalue, &pytrace);                                \
-    static PyTypeObject* ctypes_type = GetCTypesType(#ctype);                \
+    /* filter ctypes first b/c their buffer conversion will be wrong */      \
+    PyTypeObject* ctypes_type = GetCTypesType(ct_##ctype);                   \
     if (Py_TYPE(pyobject) == ctypes_type) {                                  \
         para.fValue.fVoidp = (void*)((CPyCppyy_tagCDataObject*)pyobject)->b_ptr;\
         para.fTypeCode = 'p';                                                \
-        Py_XDECREF(pytype); Py_XDECREF(pyvalue); Py_XDECREF(pytrace);        \
         return true;                                                         \
+    } else if (Py_TYPE(pyobject) == GetCTypesPtrType(ct_##ctype)) {          \
+        para.fValue.fVoidp = (void*)((CPyCppyy_tagCDataObject*)pyobject)->b_ptr;\
+        para.fTypeCode = 'V';                                                \
+        return true;                                                         \
+    } else if (IsPyCArgObject(pyobject)) {                                   \
+        CPyCppyy_tagPyCArgObject* carg = (CPyCppyy_tagPyCArgObject*)pyobject;\
+        if (carg->obj && Py_TYPE(carg->obj) == ctypes_type) {                \
+            para.fValue.fVoidp = (void*)((CPyCppyy_tagCDataObject*)carg->obj)->b_ptr;\
+            para.fTypeCode = 'p';                                            \
+            return true;                                                     \
+        }                                                                    \
     }                                                                        \
-    PyErr_Restore(pytype, pyvalue, pytrace);                                 \
-    return false;                                                            \
+    return CArraySetArg(pyobject, para, code, sizeof(type));                 \
 }                                                                            \
                                                                              \
 PyObject* CPyCppyy::name##ArrayConverter::FromMemory(void* address)          \
@@ -1143,22 +1248,42 @@ bool CPyCppyy::name##ArrayConverter::ToMemory(PyObject* value, void* address)\
     } else                                                                   \
         *(type**)address = (type*)buf;                                       \
     return true;                                                             \
+}                                                                            \
+                                                                             \
+bool CPyCppyy::name##ArrayPtrConverter::SetArg(                              \
+    PyObject* pyobject, Parameter& para, CallContext* ctxt )                 \
+{                                                                            \
+    if (Py_TYPE(pyobject) == GetCTypesPtrType(ct_##ctype)) {                 \
+        para.fValue.fVoidp = (void*)((CPyCppyy_tagCDataObject*)pyobject)->b_ptr;\
+        para.fTypeCode = 'p';                                                \
+        return true;                                                         \
+    }                                                                        \
+    bool res = name##ArrayConverter::SetArg(pyobject, para, ctxt);           \
+    if (res && para.fTypeCode == 'p') {                                      \
+        para.fRef = para.fValue.fVoidp;                                      \
+        para.fValue.fVoidp = &para.fRef;                                     \
+        return true;                                                         \
+    }                                                                        \
+                                                                             \
+    return false;                                                            \
 }
 
+
 //----------------------------------------------------------------------------
-CPPYY_IMPL_ARRAY_CONVERTER(Bool,     c_bool,      bool,                 'b') // signed char
-CPPYY_IMPL_ARRAY_CONVERTER(UChar,    c_ubyte,     unsigned char,        'B')
-CPPYY_IMPL_ARRAY_CONVERTER(Short,    c_short,     short,                'h')
-CPPYY_IMPL_ARRAY_CONVERTER(UShort,   c_ushort,    unsigned short,       'H')
-CPPYY_IMPL_ARRAY_CONVERTER(Int,      c_int,       int,                  'i')
-CPPYY_IMPL_ARRAY_CONVERTER(UInt,     c_uint,      unsigned int,         'I')
-CPPYY_IMPL_ARRAY_CONVERTER(Long,     c_long,      long,                 'l')
-CPPYY_IMPL_ARRAY_CONVERTER(ULong,    c_ulong,     unsigned long,        'L')
-CPPYY_IMPL_ARRAY_CONVERTER(LLong,    c_longlong,  long long,            'q')
-CPPYY_IMPL_ARRAY_CONVERTER(ULLong,   c_ulonglong, unsigned long long,   'Q')
-CPPYY_IMPL_ARRAY_CONVERTER(Float,    c_float,     float,                'f')
-CPPYY_IMPL_ARRAY_CONVERTER(Double,   c_double,    double,               'd')
-CPPYY_IMPL_ARRAY_CONVERTER(ComplexD, c_complex,   std::complex<double>, 'Z')
+CPPYY_IMPL_ARRAY_CONVERTER(Bool,     c_bool,       bool,                 'b') // signed char
+CPPYY_IMPL_ARRAY_CONVERTER(UChar,    c_ubyte,      unsigned char,        'B')
+CPPYY_IMPL_ARRAY_CONVERTER(Short,    c_short,      short,                'h')
+CPPYY_IMPL_ARRAY_CONVERTER(UShort,   c_ushort,     unsigned short,       'H')
+CPPYY_IMPL_ARRAY_CONVERTER(Int,      c_int,        int,                  'i')
+CPPYY_IMPL_ARRAY_CONVERTER(UInt,     c_uint,       unsigned int,         'I')
+CPPYY_IMPL_ARRAY_CONVERTER(Long,     c_long,       long,                 'l')
+CPPYY_IMPL_ARRAY_CONVERTER(ULong,    c_ulong,      unsigned long,        'L')
+CPPYY_IMPL_ARRAY_CONVERTER(LLong,    c_longlong,   long long,            'q')
+CPPYY_IMPL_ARRAY_CONVERTER(ULLong,   c_ulonglong,  unsigned long long,   'Q')
+CPPYY_IMPL_ARRAY_CONVERTER(Float,    c_float,      float,                'f')
+CPPYY_IMPL_ARRAY_CONVERTER(Double,   c_double,     double,               'd')
+CPPYY_IMPL_ARRAY_CONVERTER(LDouble,  c_longdouble, long double,          'D')
+CPPYY_IMPL_ARRAY_CONVERTER(ComplexD, c_complex,    std::complex<double>, 'Z')
 
 
 //- converters for special cases ---------------------------------------------
@@ -1642,6 +1767,13 @@ bool CPyCppyy::VoidPtrPtrConverter::SetArg(
         para.fValue.fVoidp = &((CPPInstance*)pyobject)->GetObjectRaw();
         para.fTypeCode = 'p';
         return true;
+    } else if (IsPyCArgObject(pyobject)) {
+        CPyCppyy_tagPyCArgObject* carg = (CPyCppyy_tagPyCArgObject*)pyobject;
+        if (carg->obj) {
+            para.fValue.fVoidp = (void*)((CPyCppyy_tagCDataObject*)carg->obj)->b_ptr;
+            para.fTypeCode = 'p';
+            return true;
+        }
     }
 
 // buffer objects are allowed under "user knows best" (this includes the buffer
@@ -2411,19 +2543,33 @@ public:
 
     // pointer/array factories
         gf["bool*"] =                       (cf_t)+[](dims_t d) { return new BoolArrayConverter{d}; };
+        gf["bool**"] =                      (cf_t)+[](dims_t d) { return new BoolArrayPtrConverter{d}; };
         gf["const unsigned char*"] =        (cf_t)+[](dims_t d) { return new UCharArrayConverter{d}; };
         gf["unsigned char*"] =              (cf_t)+[](dims_t d) { return new UCharArrayConverter{d}; };
         gf["UCharAsInt*"] =                 (cf_t)+[](dims_t d) { return new UCharArrayConverter{d}; };
+        gf["unsigned char**"] =             (cf_t)+[](dims_t d) { return new UCharArrayPtrConverter{d}; };
         gf["short*"] =                      (cf_t)+[](dims_t d) { return new ShortArrayConverter{d}; };
+        gf["short**"] =                     (cf_t)+[](dims_t d) { return new ShortArrayPtrConverter{d}; };
         gf["unsigned short*"] =             (cf_t)+[](dims_t d) { return new UShortArrayConverter{d}; };
+        gf["unsigned short**"] =            (cf_t)+[](dims_t d) { return new UShortArrayPtrConverter{d}; };
         gf["int*"] =                        (cf_t)+[](dims_t d) { return new IntArrayConverter{d}; };
+        gf["int**"] =                       (cf_t)+[](dims_t d) { return new IntArrayPtrConverter{d}; };
         gf["unsigned int*"] =               (cf_t)+[](dims_t d) { return new UIntArrayConverter{d}; };
+        gf["unsigned int**"] =              (cf_t)+[](dims_t d) { return new UIntArrayPtrConverter{d}; };
         gf["long*"] =                       (cf_t)+[](dims_t d) { return new LongArrayConverter{d}; };
+        gf["long**"] =                      (cf_t)+[](dims_t d) { return new LongArrayPtrConverter{d}; };
         gf["unsigned long*"] =              (cf_t)+[](dims_t d) { return new ULongArrayConverter{d}; };
+        gf["unsigned long**"] =             (cf_t)+[](dims_t d) { return new ULongArrayPtrConverter{d}; };
         gf["long long*"] =                  (cf_t)+[](dims_t d) { return new LLongArrayConverter{d}; };
+        gf["long long**"] =                 (cf_t)+[](dims_t d) { return new LLongArrayPtrConverter{d}; };
         gf["unsigned long long*"] =         (cf_t)+[](dims_t d) { return new ULLongArrayConverter{d}; };
+        gf["unsigned long long**"] =        (cf_t)+[](dims_t d) { return new ULLongArrayPtrConverter{d}; };
         gf["float*"] =                      (cf_t)+[](dims_t d) { return new FloatArrayConverter{d}; };
+        gf["float**"] =                     (cf_t)+[](dims_t d) { return new FloatArrayPtrConverter{d}; };
         gf["double*"] =                     (cf_t)+[](dims_t d) { return new DoubleArrayConverter{d}; };
+        gf["double**"] =                    (cf_t)+[](dims_t d) { return new DoubleArrayPtrConverter{d}; };
+        gf["long double*"] =                (cf_t)+[](dims_t d) { return new LDoubleArrayConverter{d}; };
+        gf["long double**"] =               (cf_t)+[](dims_t d) { return new LDoubleArrayPtrConverter{d}; };
         gf["std::complex<double>*"] =       (cf_t)+[](dims_t d) { return new ComplexDArrayConverter{d}; };
         gf["complex<double>*"] =            (cf_t)+[](dims_t d) { return new ComplexDArrayConverter{d}; };
         gf["void*"] =                       (cf_t)+[](dims_t d) { return new VoidArrayConverter{(bool)d}; };
