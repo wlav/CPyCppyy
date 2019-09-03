@@ -951,8 +951,19 @@ bool CPyCppyy::CStringConverter::SetArg(
 {
 // construct a new string and copy it in new memory
     const char* s = CPyCppyy_PyText_AsStringChecked(pyobject);
-    if (PyErr_Occurred())
+    if (PyErr_Occurred()) {
+    // special case: allow ctypes c_char_p
+        PyObject* pytype = 0, *pyvalue = 0, *pytrace = 0;
+        PyErr_Fetch(&pytype, &pyvalue, &pytrace);
+        if (Py_TYPE(pyobject) == GetCTypesType(ct_c_char_p)) {
+            para.fValue.fVoidp = (void*)((CPyCppyy_tagCDataObject*)pyobject)->b_ptr;
+            para.fTypeCode = 'V';
+            Py_XDECREF(pytype); Py_XDECREF(pyvalue); Py_XDECREF(pytrace);
+            return true;
+        }
+        PyErr_Restore(pytype, pyvalue, pytrace);
         return false;
+    }
 
     fBuffer = std::string(s, CPyCppyy_PyText_GET_SIZE(pyobject));
 
