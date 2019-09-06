@@ -201,26 +201,28 @@ std::string CPyCppyy::CPPMethod::GetSignatureString(bool fa)
 void CPyCppyy::CPPMethod::SetPyError_(PyObject* msg)
 {
 // helper to report errors in a consistent format (derefs msg)
-    PyObject *etype, *evalue, *etrace;
-    PyErr_Fetch(&etype, &evalue, &etrace);
+    std::string details{};
 
-    std::string details = "";
-    if (evalue) {
-        PyObject* descr = PyObject_Str(evalue);
-        if (descr) {
-            details = CPyCppyy_PyText_AsString(descr);
-            Py_DECREF(descr);
+    PyObject* etype = nullptr;
+    if (PyErr_Occurred()) {
+        PyObject *evalue = nullptr, *etrace = nullptr;
+        PyErr_Fetch(&etype, &evalue, &etrace);
+
+        if (evalue) {
+            PyObject* descr = PyObject_Str(evalue);
+            if (descr) {
+                details = CPyCppyy_PyText_AsString(descr);
+                Py_DECREF(descr);
+            }
         }
-    }
 
-    Py_XDECREF(evalue); Py_XDECREF(etrace);
+        Py_XDECREF(evalue); Py_XDECREF(etrace);
+    }
 
     PyObject* doc = GetDocString();
     PyObject* errtype = etype;
-    if (!errtype) {
-        Py_INCREF(PyExc_TypeError);
+    if (!errtype)
         errtype = PyExc_TypeError;
-    }
     PyObject* pyname = PyObject_GetAttr(errtype, PyStrings::gName);
     const char* cname = pyname ? CPyCppyy_PyText_AsString(pyname) : "Exception";
 
