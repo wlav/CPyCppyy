@@ -459,13 +459,15 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
             if (pyuscope) {
                 attr = PyObject_GetAttr(pyuscope, pyname);
                 if (attr) break;
+                PyErr_Clear();
             }
         }
     }
 
-    if (attr)
+    if (attr) {
         std::for_each(errors.begin(), errors.end(), Utility::PyError_t::Clear);
-    else {
+        PyErr_Clear();
+    } else {
     // not found: prepare a full error report
         PyObject* topmsg = nullptr;
         PyObject* sklass = PyObject_Str(pyclass);
