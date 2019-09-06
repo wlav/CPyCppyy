@@ -430,7 +430,6 @@ static inline PyObject* CallMethodImp(TemplateProxy* pytmpl, PyObject*& pymeth,
     if (result) {
         Py_XDECREF(((CPPOverload*)pymeth)->fSelf); ((CPPOverload*)pymeth)->fSelf = nullptr;    // unbind
         UpdateDispatchMap(pytmpl, true, sighash, (CPPOverload*)pymeth);
-        Py_DECREF(kwds);
     }
 
     Py_DECREF(pymeth); pymeth = nullptr;
