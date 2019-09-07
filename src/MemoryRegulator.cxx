@@ -12,7 +12,7 @@
 
 // memory regulater callback for deletion of registered objects
 static PyMethodDef gObjectEraseMethodDef = {
-    const_cast<char*>("MemoryRegulator_internal_raseCallback"),
+    const_cast<char*>("MemoryRegulator_internal_EraseCallback"),
     (PyCFunction)CPyCppyy::MemoryRegulator::EraseCallback,
     METH_O, nullptr
 };
