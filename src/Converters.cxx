@@ -1297,7 +1297,7 @@ bool CPyCppyy::name##ArrayPtrConverter::SetArg(                              \
         return true;                                                         \
     } else if (Py_TYPE(pyobject) == GetCTypesType(ct_c_void_p)) {            \
     /* special case: pass address of c_void_p buffer to return the address */\
-        para.fValue.fVoidp = (void*)&((CPyCppyy_tagCDataObject*)pyobject)->b_ptr;\
+        para.fValue.fVoidp = (void*)((CPyCppyy_tagCDataObject*)pyobject)->b_ptr;\
         para.fTypeCode = 'p';                                                \
         return true;                                                         \
     }                                                                        \
