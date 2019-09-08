@@ -336,6 +336,10 @@ static inline bool ConvertImplicit(Cppyy::TCppType_t klass,
 {
     using namespace CPyCppyy;
 
+// filter out copy and move constructors
+    if (IsConstructor(ctxt->fFlags) && klass == ctxt->fCurScope && ctxt->GetSize() == 1)
+        return false;
+
 // only proceed if implicit conversions are allowed (in "round 2") or if the
 // argument is exactly a tuple or list, as these are the equivalent of
 // initializer lists and thus "syntax" not a conversion

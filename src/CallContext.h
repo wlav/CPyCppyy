@@ -38,7 +38,7 @@ struct Parameter {
 
 // extra call information
 struct CallContext {
-    CallContext() : fFlags(0), fArgsVec(nullptr), fNArgs(0), fTemps(nullptr) {}
+    CallContext() : fFlags(0), fCurScope(0), fArgsVec(nullptr), fNArgs(0), fTemps(nullptr) {}
     CallContext(const CallContext&) = delete;
     CallContext& operator=(const CallContext&) = delete;
     ~CallContext() { if (fTemps) Cleanup(); delete fArgsVec; }
@@ -87,7 +87,9 @@ struct CallContext {
     size_t GetSize() { return fNArgs; }
 
 public:
+// info/status
     uint64_t fFlags;
+    Cppyy::TCppScope_t fCurScope;
 
 private:
 // payload
