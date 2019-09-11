@@ -85,7 +85,6 @@ static void meta_dealloc(CPPScope* scope)
             delete scope->fImp.fUsing; scope->fImp.fUsing = nullptr;
         }
     } else {
-        for (auto& pp : *scope->fImp.fCppObjects) Py_DECREF(pp.second);
         delete scope->fImp.fCppObjects; scope->fImp.fCppObjects = nullptr;
     }
     free(scope->fModuleName);
