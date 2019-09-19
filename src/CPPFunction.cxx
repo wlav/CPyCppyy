@@ -6,7 +6,7 @@
 
 //- CPPFunction public members --------------------------------------------------
 PyObject* CPyCppyy::CPPFunction::PreProcessArgs(
-        CPPInstance*& self, PyObject* args, PyObject*)
+    CPPInstance*& self, PyObject* args, PyObject*)
 {
 // add self as part of the function arguments (means bound member)
     Py_ssize_t sz = PyTuple_GET_SIZE(args);
@@ -25,7 +25,7 @@ PyObject* CPyCppyy::CPPFunction::PreProcessArgs(
 
 //---------------------------------------------------------------------------
 PyObject* CPyCppyy::CPPFunction::Call(
-        CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt)
+    CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt)
 {
 // setup as necessary
     if (!fIsInitialized && !this->Initialize(ctxt))
@@ -50,7 +50,7 @@ PyObject* CPyCppyy::CPPFunction::Call(
 
 //- CPPReverseBinary public members ---------------------------------------------
 PyObject* CPyCppyy::CPPReverseBinary::PreProcessArgs(
-        CPPInstance*& self, PyObject* args, PyObject* kwds)
+    CPPInstance*& self, PyObject* args, PyObject* kwds)
 {
     if (self) {
     // add self as part of the function arguments (means bound member)
@@ -67,7 +67,7 @@ PyObject* CPyCppyy::CPPReverseBinary::PreProcessArgs(
 
 //---------------------------------------------------------------------------
 PyObject* CPyCppyy::CPPReverseBinary::Call(
-        CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt)
+    CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt)
 {
 // This Call() function is very similar to the one of CPPFunction: only
 // difference is that PreProcessArgs() is always called.
@@ -91,4 +91,3 @@ PyObject* CPyCppyy::CPPReverseBinary::Call(
 // execute function
     return this->Execute(nullptr, 0, ctxt);
 }
-
