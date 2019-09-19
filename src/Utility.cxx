@@ -240,14 +240,20 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* left, PyObject* right, const
 // gC2POperatorMapping (i.e. if it is ambiguous at the member level).
 
 // this should be a given, nevertheless ...
-    if (!CPPInstance_Check(left))
+    bool reverse = false;
+    PyObject* pyclass = nullptr;
+    if (CPPInstance_Check(left))
+        pyclass = (PyObject*)Py_TYPE(left);
+    else if (CPPInstance_Check(right)) {
+        pyclass = (PyObject*)Py_TYPE(right);
+        reverse = true;
+    } else
         return false;
 
 // retrieve the class names to match the signature of any found global functions
-    std::string rcname = ClassName(right);
     std::string lcname = ClassName(left);
-    PyObject* pyclass = (PyObject*)Py_TYPE(left);
-    bool result = AddBinaryOperator(pyclass, lcname, rcname, op, label, alt, scope);
+    std::string rcname = ClassName(right);
+    bool result = AddBinaryOperator(pyclass, lcname, rcname, op, label, alt, scope, reverse);
 
     return result;
 }
@@ -272,33 +278,26 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const char* op,
 //----------------------------------------------------------------------------
 static inline
 CPyCppyy::PyCallable* BuildOperator(const std::string& lcname, const std::string& rcname,
-    const char* op, Cppyy::TCppScope_t scope = Cppyy::gGlobalScope)
+    const char* op, Cppyy::TCppScope_t scope, bool reverse=false)
 {
 // Helper to find a function with matching signature in 'funcs'.
     std::string opname = "operator";
     opname += op;
 
-    bool isReverse = false;
     Cppyy::TCppIndex_t idx = Cppyy::GetGlobalOperator(scope, lcname, rcname, opname);
-    if (idx == (Cppyy::TCppIndex_t)-1) {
-        if (op[1] == '\0' && (op[0] == '*' || op[0] == '+')) { // TODO: bit operators?
-        // these are associative operators, so try reverse
-            isReverse = true;
-            idx = Cppyy::GetGlobalOperator(scope, rcname, lcname, opname);
-        }
-
-        if (idx == (Cppyy::TCppIndex_t)-1)
-            return nullptr;
-    }
+    if (idx == (Cppyy::TCppIndex_t)-1)
+        return nullptr;
 
     Cppyy::TCppMethod_t meth = Cppyy::GetMethod(scope, idx);
-    if (!isReverse)
+    if (!reverse)
         return new CPyCppyy::CPPFunction(scope, meth);
     return new CPyCppyy::CPPReverseBinary(scope, meth);
 }
 
-bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& lcname,
-    const std::string& rcname, const char* op, const char* label, const char* alt, Cppyy::TCppScope_t scope)
+bool CPyCppyy::Utility::AddBinaryOperator(
+    PyObject* pyclass, const std::string& lcname, const std::string& rcname,
+    const char* op, const char* label, const char* alt,
+    Cppyy::TCppScope_t scope, bool reverse)
 {
 // Find a global function with a matching signature and install the result on pyclass;
 // in addition, __gnu_cxx, std::__1, and __cppyy_internal are searched pro-actively (as
@@ -312,10 +311,10 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& 
     const std::string& lnsname = TypeManip::extract_namespace(lcname);
     if (!scope) scope = Cppyy::GetScope(lnsname);
     if (scope)
-        pyfunc = BuildOperator(lcname, rcname, op, scope);
+        pyfunc = BuildOperator(lcname, rcname, op, scope, reverse);
 
     if (!pyfunc && scope != Cppyy::gGlobalScope)      // search in global scope anyway
-        pyfunc = BuildOperator(lcname, rcname, op);
+        pyfunc = BuildOperator(lcname, rcname, op, Cppyy::gGlobalScope, reverse);
 
     if (!pyfunc) {
     // For GNU on clang, search the internal __gnu_cxx namespace for binary operators (is
@@ -324,7 +323,7 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& 
     //       namespace where the class is defined
         static Cppyy::TCppScope_t gnucxx = Cppyy::GetScope("__gnu_cxx");
         if (gnucxx)
-            pyfunc = BuildOperator(lcname, rcname, op, gnucxx);
+            pyfunc = BuildOperator(lcname, rcname, op, gnucxx, reverse);
     }
 
     if (!pyfunc) {
@@ -337,7 +336,7 @@ bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const std::string& 
  && lcname.find("__wrap_iter") == std::string::npos   // wrapper call does not compile
 #endif
         ) {
-            pyfunc = BuildOperator(lcname, rcname, op, std__1);
+            pyfunc = BuildOperator(lcname, rcname, op, std__1, reverse);
         }
     }
 

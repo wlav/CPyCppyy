@@ -32,7 +32,8 @@ bool AddBinaryOperator(PyObject* left, PyObject* right, const char* op,
 bool AddBinaryOperator(PyObject* pyclass, const char* op,
     const char* label, const char* alt_label = nullptr, Cppyy::TCppScope_t scope = 0);
 bool AddBinaryOperator(PyObject* pyclass, const std::string& lcname, const std::string& rcname,
-    const char* op, const char* label, const char* alt_label = nullptr, Cppyy::TCppScope_t scope = 0);
+    const char* op, const char* label, const char* alt_label = nullptr,
+    Cppyy::TCppScope_t scope = 0, bool reverse = false);
 
 // helper for template classes and methods
 enum ArgPreference { kNone, kPointer, kReference, kValue };

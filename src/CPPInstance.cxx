@@ -458,41 +458,56 @@ static PyGetSetDef op_getset[] = {
 
 
 //= CPyCppyy type number stubs to allow dynamic overrides =====================
-#define CPYCPPYY_STUB_BODY(name, op, pystring)                                \
-/* place holder to lazily install __name__ if a global overload is available */\
-    if (!Utility::AddBinaryOperator(                                          \
-            left, right, #op, "__"#name"__", "__r"#name"__")) {               \
+#define CPYCPPYY_OPERATOR_STUB(name, op, pyname)                              \
+static PyObject* op_##name##_stub(PyObject* left, PyObject* right)            \
+{                                                                             \
+/* place holder to lazily install __#name__ if the operator is available */   \
+    if (!Utility::AddBinaryOperator(left, right, #op, "__"#name"__")) {       \
         Py_INCREF(Py_NotImplemented);                                         \
         return Py_NotImplemented;                                             \
     }                                                                         \
                                                                               \
 /* redo the call, which will now go to the newly installed method */          \
-    return PyObject_CallMethodObjArgs(left, pystring, right, nullptr);
-
-#define CPYCPPYY_STUB(name, op, pystring)                                     \
-static PyObject* op_##name##_stub(PyObject* left, PyObject* right)            \
-{                                                                             \
-    CPYCPPYY_STUB_BODY(name, op, pystring)                                    \
+    return PyObject_CallMethodObjArgs(left, pyname, right, nullptr);          \
 }
 
-#define CPYCPPYY_ASSOCIATIVE_STUB(name, op, pystring)                         \
+#define CPYCPPYY_ASSOCIATIVE_OPERATOR_STUB(name, op, pylname, pyrname)        \
 static PyObject* op_##name##_stub(PyObject* left, PyObject* right)            \
 {                                                                             \
-    if (!CPPInstance_Check(left)) {                                           \
-        if (CPPInstance_Check(right)) {                                       \
-            std::swap(left, right);                                           \
-        } else {                                                              \
+/* place holder to lazily install __(r)#name__ if the operator is available */\
+/* TODO: consider caching these methods on the CPPClass */                    \
+    PyObject *meth, *cppobj, *other;                                          \
+    if (CPPInstance_Check(left)) {                                            \
+        meth = pylname; cppobj = left; other = right;                         \
+    } else if (CPPInstance_Check(right)) {                                    \
+        meth = pyrname; cppobj = right; other = left;                         \
+    } else {                                                                  \
+        Py_INCREF(Py_NotImplemented);                                         \
+        return Py_NotImplemented;                                             \
+    }                                                                         \
+    PyObject* pyol = PyObject_GetAttr(cppobj, meth);                          \
+    if (!pyol) {                                                              \
+        PyErr_Clear();                                                        \
+        if (!Utility::AddBinaryOperator(left, right, #op, CPyCppyy_PyText_AsString(meth))) {\
+            Py_INCREF(Py_NotImplemented);                                     \
+            return Py_NotImplemented;                                         \
+        }                                                                     \
+        pyol = PyObject_GetAttr(cppobj, meth);                                \
+        if (!pyol) {                                                          \
+            PyErr_Clear();                                                    \
             Py_INCREF(Py_NotImplemented);                                     \
             return Py_NotImplemented;                                         \
         }                                                                     \
     }                                                                         \
-    CPYCPPYY_STUB_BODY(name, op, pystring)                                    \
+    PyObject* res = PyObject_CallFunctionObjArgs(pyol, other, nullptr);       \
+    Py_DECREF(pyol);                                                          \
+    return res;                                                               \
 }
 
-CPYCPPYY_ASSOCIATIVE_STUB(add, +, PyStrings::gAdd)
-CPYCPPYY_STUB(sub, -, PyStrings::gSub)
-CPYCPPYY_ASSOCIATIVE_STUB(mul, *, PyStrings::gMul)
-CPYCPPYY_STUB(div, /, PyStrings::gDiv)
+CPYCPPYY_ASSOCIATIVE_OPERATOR_STUB(add, +, PyStrings::gLAdd, PyStrings::gRAdd)
+CPYCPPYY_OPERATOR_STUB(sub, -, PyStrings::gSub)
+CPYCPPYY_ASSOCIATIVE_OPERATOR_STUB(mul, *, PyStrings::gLMul, PyStrings::gRMul)
+CPYCPPYY_OPERATOR_STUB(div, /, PyStrings::gDiv)
 
 //-----------------------------------------------------------------------------
 static PyNumberMethods op_as_number = {
