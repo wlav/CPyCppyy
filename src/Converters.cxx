@@ -2490,7 +2490,7 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, dims
     }
 
     if (!result && cpd == "&&") {
-    // for builting, can use const-ref for r-ref
+    // for builtin, can use const-ref for r-ref
         h = gConvFactories.find("const " + realType + "&");
         if (h != gConvFactories.end())
             return (h->second)(dims);
