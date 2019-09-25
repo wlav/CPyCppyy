@@ -183,6 +183,8 @@ class InstanceConverter : public StrictInstancePtrConverter {
 public:
     using StrictInstancePtrConverter::StrictInstancePtrConverter;
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
+    virtual PyObject* FromMemory(void*);
+    virtual bool ToMemory(PyObject*, void*);
 };
 
 class InstanceRefConverter : public Converter  {

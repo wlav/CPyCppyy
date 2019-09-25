@@ -1596,6 +1596,28 @@ bool CPyCppyy::InstanceConverter::SetArg(
 }
 
 //----------------------------------------------------------------------------
+PyObject* CPyCppyy::InstanceConverter::FromMemory(void* address)
+{
+    return BindCppObjectNoCast((Cppyy::TCppObject_t)address, fClass);
+}
+
+//----------------------------------------------------------------------------
+bool CPyCppyy::InstanceConverter::ToMemory(PyObject* value, void* address)
+{
+// assign value to C++ instance living at <address> through assignment operator
+    PyObject* pyobj = BindCppObjectNoCast(address, fClass);
+    PyObject* result = PyObject_CallMethod(pyobj, (char*)"__assign__", (char*)"O", value);
+    Py_DECREF(pyobj);
+
+    if (result) {
+        Py_DECREF(result);
+        return true;
+    }
+    return false;
+}
+
+
+//----------------------------------------------------------------------------
 bool CPyCppyy::InstanceRefConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* ctxt)
 {
