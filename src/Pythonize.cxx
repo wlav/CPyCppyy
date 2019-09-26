@@ -1108,6 +1108,32 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         Utility::AddToClass(pyclass, "__repr__", (PyCFunction)ComplexRepr, METH_NOARGS);
     }
 
+// direct user access; there are two calls here:
+//   - explicit pythonization: won't fall through to the base classes and is preferred if present
+//   - normal pythonization: only called if explicit isn't present, falls through to base classes
+    bool bUserOk = true; PyObject* res = nullptr;
+    PyObject* pyname = CPyCppyy_PyText_FromString(name.c_str());
+    if (HasAttrDirect(pyclass, PyStrings::gExPythonize)) {
+        res = PyObject_CallMethodObjArgs(pyclass, PyStrings::gExPythonize, pyclass, pyname, nullptr);
+        bUserOk = (bool)res;
+    } else {
+        PyObject* func = PyObject_GetAttr(pyclass, PyStrings::gPythonize);
+        if (func) {
+            res = PyObject_CallFunctionObjArgs(func, pyclass, pyname, nullptr);
+            Py_DECREF(func);
+            bUserOk = (bool)res;
+        } else
+            PyErr_Clear();
+    }
+    if (!bUserOk) {
+        Py_DECREF(pyname);
+        return false;
+    } else {
+        Py_XDECREF(res);
+        // pyname handed to tuple below
+    }
+
+// call registered pythonizors, if any
     PyObject* args = PyTuple_New(2);
     Py_INCREF(pyclass);
     PyTuple_SET_ITEM(args, 0, pyclass);
@@ -1118,10 +1144,11 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
     auto p = outer_scope.empty() ? gPythonizations.end() : gPythonizations.find(outer_scope);
     if (p == gPythonizations.end()) {
         p = gPythonizations.find("");
-        PyTuple_SET_ITEM(args, 1, CPyCppyy_PyText_FromString(name.c_str()));
+        PyTuple_SET_ITEM(args, 1, pyname);
     } else {
         PyTuple_SET_ITEM(args, 1, CPyCppyy_PyText_FromString(
-                             name.substr(outer_scope.size()+2, std::string::npos).c_str()));
+                                      name.substr(outer_scope.size()+2, std::string::npos).c_str()));
+        Py_DECREF(pyname);
     }
 
     if (p != gPythonizations.end()) {

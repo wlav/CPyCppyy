@@ -61,6 +61,9 @@ namespace PyStrings {
 
     extern PyObject* gNoImplicit;
 
+    extern PyObject* gExPythonize;
+    extern PyObject* gPythonize;
+
 } // namespace PyStrings
 
 bool CreatePyStrings();

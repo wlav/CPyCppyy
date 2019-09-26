@@ -58,6 +58,9 @@ PyObject* CPyCppyy::PyStrings::gThisModule       = nullptr;
 
 PyObject* CPyCppyy::PyStrings::gNoImplicit       = nullptr;
 
+PyObject* CPyCppyy::PyStrings::gExPythonize      = nullptr;
+PyObject* CPyCppyy::PyStrings::gPythonize        = nullptr;
+
 
 //-----------------------------------------------------------------------------
 #define CPPYY_INITIALIZE_STRING(var, str)                                     \
@@ -122,6 +125,9 @@ bool CPyCppyy::CreatePyStrings() {
 
     CPPYY_INITIALIZE_STRING(gNoImplicit,     __cppyy_no_implicit);
 
+    CPPYY_INITIALIZE_STRING(gExPythonize,    __cppyy_explicit_pythonize__);
+    CPPYY_INITIALIZE_STRING(gPythonize,      __cppyy_pythonize__);
+
     return true;
 }
 
@@ -181,6 +187,9 @@ PyObject* CPyCppyy::DestroyPyStrings() {
     Py_DECREF(PyStrings::gThisModule);  PyStrings::gThisModule  = nullptr;
 
     Py_DECREF(PyStrings::gNoImplicit);  PyStrings::gNoImplicit  = nullptr;
+
+    Py_DECREF(PyStrings::gExPythonize); PyStrings::gExPythonize = nullptr;
+    Py_DECREF(PyStrings::gPythonize);   PyStrings::gPythonize   = nullptr;
 
     Py_RETURN_NONE;
 }
