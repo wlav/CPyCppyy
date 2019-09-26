@@ -32,10 +32,12 @@ PyObject* CPyCppyy::PyStrings::gAdd              = nullptr;
 PyObject* CPyCppyy::PyStrings::gLAdd             = nullptr;
 PyObject* CPyCppyy::PyStrings::gRAdd             = nullptr;
 PyObject* CPyCppyy::PyStrings::gSub              = nullptr;
+PyObject* CPyCppyy::PyStrings::gLSub             = nullptr;
 PyObject* CPyCppyy::PyStrings::gMul              = nullptr;
 PyObject* CPyCppyy::PyStrings::gLMul             = nullptr;
 PyObject* CPyCppyy::PyStrings::gRMul             = nullptr;
 PyObject* CPyCppyy::PyStrings::gDiv              = nullptr;
+PyObject* CPyCppyy::PyStrings::gLDiv             = nullptr;
 
 PyObject* CPyCppyy::PyStrings::gLShift           = nullptr;
 PyObject* CPyCppyy::PyStrings::gLShiftC          = nullptr;
@@ -94,10 +96,12 @@ bool CPyCppyy::CreatePyStrings() {
     CPPYY_INITIALIZE_STRING(gLAdd,           __cppyy_ladd__);
     CPPYY_INITIALIZE_STRING(gRAdd,           __cppyy_radd__);
     CPPYY_INITIALIZE_STRING(gSub,            __sub__);
+    CPPYY_INITIALIZE_STRING(gLSub,           __cppyy_lsub__);
     CPPYY_INITIALIZE_STRING(gMul,            __mul__);
     CPPYY_INITIALIZE_STRING(gLMul,           __cppyy_lmul__);
     CPPYY_INITIALIZE_STRING(gRMul,           __cppyy_rmul__);
     CPPYY_INITIALIZE_STRING(gDiv,            CPPYY__div__);
+    CPPYY_INITIALIZE_STRING(gLDiv,           __cppyy_ldiv__);
 
     CPPYY_INITIALIZE_STRING(gLShift,         __lshift__);
     CPPYY_INITIALIZE_STRING(gLShiftC,        __lshiftc__);
@@ -152,10 +156,12 @@ PyObject* CPyCppyy::DestroyPyStrings() {
     Py_DECREF(PyStrings::gLAdd);        PyStrings::gLAdd        = nullptr;
     Py_DECREF(PyStrings::gRAdd);        PyStrings::gRAdd        = nullptr;
     Py_DECREF(PyStrings::gSub);         PyStrings::gSub         = nullptr;
+    Py_DECREF(PyStrings::gLSub);        PyStrings::gLSub        = nullptr;
     Py_DECREF(PyStrings::gMul);         PyStrings::gMul         = nullptr;
     Py_DECREF(PyStrings::gLMul);        PyStrings::gLMul        = nullptr;
     Py_DECREF(PyStrings::gRMul);        PyStrings::gRMul        = nullptr;
     Py_DECREF(PyStrings::gDiv);         PyStrings::gDiv         = nullptr;
+    Py_DECREF(PyStrings::gLDiv);        PyStrings::gLDiv        = nullptr;
 
     Py_DECREF(PyStrings::gLShift);      PyStrings::gLShift      = nullptr;
     Py_DECREF(PyStrings::gLShiftC);     PyStrings::gLShiftC     = nullptr;

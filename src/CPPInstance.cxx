@@ -458,33 +458,7 @@ static PyGetSetDef op_getset[] = {
 
 
 //= CPyCppyy type number stubs to allow dynamic overrides =====================
-#define CPYCPPYY_OPERATOR_STUB(name, op, pyname)                              \
-static PyObject* op_##name##_stub(PyObject* left, PyObject* right)            \
-{                                                                             \
-/* place holder to lazily install __#name__ if the operator is available */   \
-    if (!Utility::AddBinaryOperator(left, right, #op, "__"#name"__")) {       \
-        Py_INCREF(Py_NotImplemented);                                         \
-        return Py_NotImplemented;                                             \
-    }                                                                         \
-                                                                              \
-/* redo the call, which will now go to the newly installed method */          \
-    return PyObject_CallMethodObjArgs(left, pyname, right, nullptr);          \
-}
-
-#define CPYCPPYY_ASSOCIATIVE_OPERATOR_STUB(name, op, pylname, pyrname)        \
-static PyObject* op_##name##_stub(PyObject* left, PyObject* right)            \
-{                                                                             \
-/* place holder to lazily install __(r)#name__ if the operator is available */\
-/* TODO: consider caching these methods on the CPPClass */                    \
-    PyObject *meth, *cppobj, *other;                                          \
-    if (CPPInstance_Check(left)) {                                            \
-        meth = pylname; cppobj = left; other = right;                         \
-    } else if (CPPInstance_Check(right)) {                                    \
-        meth = pyrname; cppobj = right; other = left;                         \
-    } else {                                                                  \
-        Py_INCREF(Py_NotImplemented);                                         \
-        return Py_NotImplemented;                                             \
-    }                                                                         \
+#define CPYCPPYY_STUB_BODY(op)                                                \
     PyObject* pyol = PyObject_GetAttr(cppobj, meth);                          \
     if (!pyol) {                                                              \
         PyErr_Clear();                                                        \
@@ -500,14 +474,50 @@ static PyObject* op_##name##_stub(PyObject* left, PyObject* right)            \
         }                                                                     \
     }                                                                         \
     PyObject* res = PyObject_CallFunctionObjArgs(pyol, other, nullptr);       \
+    if (!res) {                                                               \
+    /* try again, in case there is a better overload out there */             \
+        PyErr_Clear();                                                        \
+        if (!Utility::AddBinaryOperator(left, right, #op, CPyCppyy_PyText_AsString(meth))) {\
+            Py_INCREF(Py_NotImplemented);                                     \
+            return Py_NotImplemented;                                         \
+        }                                                                     \
+    /* CPPOverloads share their internals, so use old pyol to try again */    \
+        res = PyObject_CallFunctionObjArgs(pyol, other, nullptr);             \
+    }                                                                         \
     Py_DECREF(pyol);                                                          \
-    return res;                                                               \
+    return res;
+
+
+#define CPYCPPYY_OPERATOR_STUB(name, op, pyname)                              \
+static PyObject* op_##name##_stub(PyObject* left, PyObject* right)            \
+{                                                                             \
+/* placeholder to lazily install and forward to __#name__ if available */     \
+/* TODO: consider caching these methods on the CPPClass */                    \
+    PyObject* cppobj = left, *other = right; PyObject* meth = pyname;         \
+    CPYCPPYY_STUB_BODY(op)                                                    \
+}
+
+#define CPYCPPYY_ASSOCIATIVE_OPERATOR_STUB(name, op, pylname, pyrname)        \
+static PyObject* op_##name##_stub(PyObject* left, PyObject* right)            \
+{                                                                             \
+/* placeholder to lazily install and forward do __(r)#name__ if available */  \
+/* TODO: consider caching these methods on the CPPClass */                    \
+    PyObject *meth, *cppobj, *other;                                          \
+    if (CPPInstance_Check(left)) {                                            \
+        meth = pylname; cppobj = left; other = right;                         \
+    } else if (CPPInstance_Check(right)) {                                    \
+        meth = pyrname; cppobj = right; other = left;                         \
+    } else {                                                                  \
+        Py_INCREF(Py_NotImplemented);                                         \
+        return Py_NotImplemented;                                             \
+    }                                                                         \
+    CPYCPPYY_STUB_BODY(op)                                                    \
 }
 
 CPYCPPYY_ASSOCIATIVE_OPERATOR_STUB(add, +, PyStrings::gLAdd, PyStrings::gRAdd)
-CPYCPPYY_OPERATOR_STUB(sub, -, PyStrings::gSub)
+CPYCPPYY_OPERATOR_STUB(            sub, -, PyStrings::gLSub)
 CPYCPPYY_ASSOCIATIVE_OPERATOR_STUB(mul, *, PyStrings::gLMul, PyStrings::gRMul)
-CPYCPPYY_OPERATOR_STUB(div, /, PyStrings::gDiv)
+CPYCPPYY_OPERATOR_STUB(            div, /, PyStrings::gLDiv)
 
 //-----------------------------------------------------------------------------
 static PyNumberMethods op_as_number = {
