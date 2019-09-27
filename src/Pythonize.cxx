@@ -184,88 +184,47 @@ PyObject* FollowGetAttr(PyObject* self, PyObject* name)
 }
 
 //-----------------------------------------------------------------------------
-PyObject* GenObjectIsEqualNoCpp(PyObject* self, PyObject* obj)
+static inline PyObject* GenLazyEqNeq(PyObject* self, PyObject* obj, int op,
+    const char* cppop, const char* label, PyObject* pylabel)
 {
 // bootstrap as necessary
     if (obj != Py_None) {
-        if (Utility::AddBinaryOperator(self, obj, "==", "__eq__"))
-            return PyObject_CallMethodObjArgs(self, PyStrings::gEq, obj, nullptr);
-
-    // drop lazy lookup from future considerations if both types are the same
-    // and lookup failed (theoretically, it is possible to write a class that
-    // can only compare to other types, but that's very unlikely)
-        if (Py_TYPE(self) == Py_TYPE(obj) && \
-                HasAttrDirect((PyObject*)Py_TYPE(self), PyStrings::gEq)) {
-            if (PyObject_DelAttr((PyObject*)Py_TYPE(self), PyStrings::gEq) != 0)
+        CPPClass* klass = (CPPClass*)Py_TYPE(self);
+        if (Utility::AddBinaryOperator(self, obj, cppop, label)) {
+        // TODO: this is rather ugly to first store, then delete
+            CPPOverload* cppol = (CPPOverload*)PyObject_GetAttr((PyObject*)klass, pylabel);
+            if (!klass->fOperators) klass->fOperators = new Utility::PyOperators();
+            if (op == Py_EQ) klass->fOperators->eq = cppol;
+            else klass->fOperators->ne = cppol;
+            if (PyObject_DelAttr((PyObject*)klass, pylabel) != 0)
                 PyErr_Clear();
+
+        } else {
+        // drop lazy lookup from future considerations if both types are the same
+        // and lookup failed (theoretically, it is possible to write a class that
+        // can only compare to other types, but that's very unlikely)
+            if (Py_TYPE(self) == Py_TYPE(obj) && \
+                    HasAttrDirect((PyObject*)klass, pylabel)) {
+                if (PyObject_DelAttr((PyObject*)klass, pylabel) != 0)
+                    PyErr_Clear();
+            }
         }
     }
 
-// failed: fallback to generic rich comparison
-    return CPPInstance_Type.tp_richcompare(self, obj, Py_EQ);
+// regular richcompare will use the newly found method or default to generic
+    return CPPInstance_Type.tp_richcompare(self, obj, op);
 }
 
-PyObject* GenObjectIsEqual(PyObject* self, PyObject* obj)
+
+PyObject* LazyIsEqual(PyObject* self, PyObject* obj)
 {
-// Call the C++ operator==() if available, otherwise default.
-    PyObject* result = PyObject_CallMethodObjArgs(self, PyStrings::gCppEq, obj, nullptr);
-    if (result)
-        return result;
-    PyErr_Clear();
-
-// failed: fallback like python would do by reversing the arguments
-    if (CPPInstance_Check(obj)) {
-        result = PyObject_CallMethodObjArgs(obj, PyStrings::gCppEq, self, nullptr);
-        if (result)
-            return result;
-        PyErr_Clear();
-    }
-
-// failed, try generic
-    return CPPInstance_Type.tp_richcompare(self, obj, Py_EQ);
+    return GenLazyEqNeq(self, obj, Py_EQ, "==", "__eq__", PyStrings::gEq);
 }
 
 //-----------------------------------------------------------------------------
-PyObject* GenObjectIsNotEqualNoCpp(PyObject* self, PyObject* obj)
+PyObject* LazyIsNotEqual(PyObject* self, PyObject* obj)
 {
-// bootstrap as necessary
-    if (obj != Py_None) {
-        if (Utility::AddBinaryOperator(self, obj, "!=", "__ne__"))
-            return PyObject_CallMethodObjArgs(self, PyStrings::gNe, obj, nullptr);
-        PyErr_Clear();
-
-    // drop lazy lookup from future considerations if both types are the same
-    // and lookup failed (theoretically, it is possible to write a class that
-    // can only compare to other types, but that's very unlikely)
-        if (Py_TYPE(self) == Py_TYPE(obj) && \
-                HasAttrDirect((PyObject*)Py_TYPE(self), PyStrings::gNe)) {
-            if (PyObject_DelAttr((PyObject*)Py_TYPE(self), PyStrings::gNe) != 0)
-                PyErr_Clear();
-        }
-    }
-
-// failed: fallback to generic rich comparison
-    return CPPInstance_Type.tp_richcompare(self, obj, Py_NE);
-}
-
-PyObject* GenObjectIsNotEqual(PyObject* self, PyObject* obj)
-{
-// Reverse of GenObjectIsEqual, if operator!= defined.
-    PyObject* result = PyObject_CallMethodObjArgs(self, PyStrings::gCppNe, obj, nullptr);
-    if (result)
-        return result;
-    PyErr_Clear();
-
-// failed: fallback like python would do by reversing the arguments
-    if (CPPInstance_Check(obj)) {
-        result = PyObject_CallMethodObjArgs(obj, PyStrings::gCppNe, self, nullptr);
-        if (result)
-            return result;
-        PyErr_Clear();
-    }
-
-// failed, try generic
-    return CPPInstance_Type.tp_richcompare(self, obj, Py_NE);
+    return GenLazyEqNeq(self, obj, Py_NE, "!=", "__ne__", PyStrings::gNe);
 }
 
 
@@ -792,9 +751,7 @@ PyObject* StlIterNext(PyObject* self)
 
     if (last) {
     // handle special case of empty container (i.e. self is end)
-        if (PyObject_RichCompareBool(last, self, Py_EQ) == 1 || PyObject_RichCompareBool(last, self, Py_NE) == 0) {
-            PyErr_SetString(PyExc_StopIteration, "");
-        } else {
+        if (PyObject_RichCompareBool(last, self, Py_EQ) == 0) {
         // first, get next from the _current_ iterator as internal state may change
         // when call post or pre increment
             next = PyObject_CallMethodObjArgs(self, PyStrings::gDeref, nullptr);
@@ -813,12 +770,8 @@ PyObject* StlIterNext(PyObject* self)
             }
             if (iter) {
             // prefer != as per C++11 range-based for
-                int isEnd = PyObject_RichCompareBool(last, iter, Py_NE);
-                if (isEnd == -1) {     // if failed, try == instead
-                    PyErr_Clear();
-                    isEnd = PyObject_RichCompareBool(last, iter, Py_EQ);
-                } else isEnd = !isEnd;
-                if (!isEnd && !next) {
+                int isNotEnd = PyObject_RichCompareBool(last, iter, Py_NE);
+                if (isNotEnd && !next) {
                 // if no dereference, continue iterating over the iterator
                     Py_INCREF(iter);
                     next = iter;
@@ -829,6 +782,8 @@ PyObject* StlIterNext(PyObject* self)
                 Py_XDECREF(next);
                 next = nullptr;
             }
+        } else {
+            PyErr_SetString(PyExc_StopIteration, "");
         }
         Py_DECREF(last);
     }
@@ -948,15 +903,17 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
     if (!pyclass)
         return false;
 
+   CPPScope* klass = (CPPScope*)pyclass;
+
 //- method name based pythonization ------------------------------------------
 
 // for smart pointer style classes that are otherwise not known as such; would
 // prefer operator-> as that returns a pointer (which is simpler since it never
 // has to deal with ref-assignment), but operator* plays better with STL iters
 // and algorithms
-    if (HasAttrDirect(pyclass, PyStrings::gDeref) && !Cppyy::IsSmartPtr(((CPPScope*)pyclass)->fCppType))
+    if (HasAttrDirect(pyclass, PyStrings::gDeref) && !Cppyy::IsSmartPtr(klass->fCppType))
         Utility::AddToClass(pyclass, "__getattr__", (PyCFunction)DeRefGetAttr, METH_O);
-    else if (HasAttrDirect(pyclass, PyStrings::gFollow) && !Cppyy::IsSmartPtr(((CPPScope*)pyclass)->fCppType))
+    else if (HasAttrDirect(pyclass, PyStrings::gFollow) && !Cppyy::IsSmartPtr(klass->fCppType))
         Utility::AddToClass(pyclass, "__getattr__", (PyCFunction)FollowGetAttr, METH_O);
 
 // for STL containers, and user classes modeled after them
@@ -967,11 +924,11 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
            !((PyTypeObject*)pyclass)->tp_iter) {
         if (HasAttrDirect(pyclass, PyStrings::gBegin) && HasAttrDirect(pyclass, PyStrings::gEnd)) {
         // obtain the name of the return type
-            const auto& v = Cppyy::GetMethodIndicesFromName(((CPPScope*)pyclass)->fCppType, "begin");
+            const auto& v = Cppyy::GetMethodIndicesFromName(klass->fCppType, "begin");
             if (!v.empty()) {
             // check return type; if not explicitly an iterator, add it to the "known" return
             // types to add the "next" method on use
-                Cppyy::TCppMethod_t meth = Cppyy::GetMethod(((CPPScope*)pyclass)->fCppType, v[0]);
+                Cppyy::TCppMethod_t meth = Cppyy::GetMethod(klass->fCppType, v[0]);
                 const std::string& resname = Cppyy::GetMethodResultType(meth);
                 if (Cppyy::GetScope(resname)) {
                     if (resname.find("iterator") == std::string::npos)
@@ -994,22 +951,24 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         }
     }
 
-// map operator==() through GenObjectIsEqual to allow comparison to None (true is to
-// require that the located method is a CPPOverload; this prevents circular calls as
-// GenObjectIsEqual is no CPPOverload); this will search lazily for a global overload
+// operator==/!= are used in op_richcompare of CPPInstance, which subsequently allows
+// comparisons to None; if no operator is available, a hook is installed for lazy
+// lookups in the global and/or class namespace
     if (HasAttrDirect(pyclass, PyStrings::gEq, true)) {
-        Utility::AddToClass(pyclass, "__cpp_eq__",  "__eq__");
-        Utility::AddToClass(pyclass, "__eq__", (PyCFunction)GenObjectIsEqual, METH_O);
+        CPPOverload* cppol = (CPPOverload*)PyObject_GetAttr(pyclass, PyStrings::gEq);
+        if (!klass->fOperators) klass->fOperators = new Utility::PyOperators();
+        klass->fOperators->eq = cppol;
+        PyObject_DelAttr(pyclass, PyStrings::gEq);
     } else if (IsTopLevelClass(pyclass))
-        Utility::AddToClass(pyclass, "__eq__", (PyCFunction)GenObjectIsEqualNoCpp, METH_O);
+        Utility::AddToClass(pyclass, "__eq__", (PyCFunction)LazyIsEqual, METH_O);
 
-// map operator!=() through GenObjectIsNotEqual to allow comparison to None (see note
-// on true above for __eq__); this will search lazily for a global overload
     if (HasAttrDirect(pyclass, PyStrings::gNe, true)) {
-        Utility::AddToClass(pyclass, "__cpp_ne__",  "__ne__");
-        Utility::AddToClass(pyclass, "__ne__",  (PyCFunction)GenObjectIsNotEqual, METH_O);
+        CPPOverload* cppol = (CPPOverload*)PyObject_GetAttr(pyclass, PyStrings::gNe);
+        if (!klass->fOperators) klass->fOperators = new Utility::PyOperators();
+        klass->fOperators->ne = cppol;
+        PyObject_DelAttr(pyclass, PyStrings::gNe);
     } else if (IsTopLevelClass(pyclass))
-        Utility::AddToClass(pyclass, "__ne__",  (PyCFunction)GenObjectIsNotEqualNoCpp, METH_O);
+        Utility::AddToClass(pyclass, "__ne__",  (PyCFunction)LazyIsNotEqual, METH_O);
 
 
 //- class name based pythonization -------------------------------------------
@@ -1018,7 +977,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
 
     // std::vector<bool> is a special case in C++
         if (!sVectorBoolTypeID) sVectorBoolTypeID = (Cppyy::TCppType_t)Cppyy::GetScope("std::vector<bool>");
-        if (CPPScope_Check(pyclass) && ((CPPClass*)pyclass)->fCppType == sVectorBoolTypeID) {
+        if (klass->fCppType == sVectorBoolTypeID) {
             Utility::AddToClass(pyclass, "__getitem__", (PyCFunction)VectorBoolGetItem, METH_O);
             Utility::AddToClass(pyclass, "__setitem__", (PyCFunction)VectorBoolSetItem);
         } else {

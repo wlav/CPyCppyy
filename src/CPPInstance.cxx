@@ -1,6 +1,8 @@
 // Bindings
 #include "CPyCppyy.h"
 #include "CPPInstance.h"
+#include "CPPScope.h"
+#include "CPPOverload.h"
 #include "MemoryRegulator.h"
 #include "ProxyWrappers.h"
 #include "PyStrings.h"
@@ -323,7 +325,45 @@ static int op_clear(CPPInstance* pyobj)
 }
 
 //----------------------------------------------------------------------------
-static PyObject* op_richcompare(CPPInstance* self, CPPInstance* other, int op)
+static inline PyObject* eqneq_binop(CPPClass* klass, PyObject* self, PyObject* obj, int op)
+{
+    if (!klass->fOperators)
+        return nullptr;
+
+    bool flipit = false;
+    CPPOverload* binop = op == Py_EQ ? klass->fOperators->eq : klass->fOperators->ne;
+    if (!binop) {    // as an alternative try !== or !!=
+        binop = op == Py_EQ ? klass->fOperators->ne : klass->fOperators->eq;
+        if (binop) flipit = true;
+    }
+
+    if (!binop) return nullptr;
+
+    PyObject* args = PyTuple_New(1);
+    Py_INCREF(obj);  PyTuple_SET_ITEM(args, 0, obj);
+// since this overload is "ours", don't have to worry about rebinding
+    binop->fSelf = (CPPInstance*)self;
+    PyObject* result = CPPOverload_Type.tp_call((PyObject*)binop, args, nullptr);
+    binop->fSelf = nullptr;
+    Py_DECREF(args);
+
+    if (!result) {
+        PyErr_Clear();
+        return nullptr;
+    }
+
+// successful result, but may need to reverse the outcome
+    if (!flipit) return result;
+
+    int istrue = PyObject_IsTrue(result);
+    Py_DECREF(result);
+    if (istrue) {
+        Py_RETURN_FALSE;
+    }
+    Py_RETURN_TRUE;
+}
+
+static PyObject* op_richcompare(CPPInstance* self, PyObject* other, int op)
 {
 // Rich set of comparison objects; only equals and not-equals are defined.
     if (op != Py_EQ && op != Py_NE) {
@@ -331,21 +371,28 @@ static PyObject* op_richcompare(CPPInstance* self, CPPInstance* other, int op)
         return Py_NotImplemented;
     }
 
-    bool bIsEq = false;
-
 // special case for None to compare True to a null-pointer
-    if ((PyObject*)other == Py_None && !self->fObject)
-        bIsEq = true;
+    if ((PyObject*)other == Py_None && !self->fObject) {
+        if (op == Py_EQ) { Py_RETURN_TRUE; }
+        Py_RETURN_FALSE;
+    }
 
-// type + held pointer value defines identity (will cover if other is not
-// actually an CPPInstance, as ob_type will be unequal)
-    else if (Py_TYPE(self) == Py_TYPE(other) && self->GetObject() == other->GetObject())
+// use C++-side operators if available
+    PyObject* result = eqneq_binop((CPPClass*)Py_TYPE(self), (PyObject*)self, other, op);
+    if (!result && CPPInstance_Check(other))
+        result = eqneq_binop((CPPClass*)Py_TYPE(other), other, (PyObject*)self, op);
+    if (result) return result;
+
+// default behavior: type + held pointer value defines identity (covers if
+// other is not actually an CPPInstance, as ob_type will be unequal)
+    bool bIsEq = false;
+    if (Py_TYPE(self) == Py_TYPE(other) && \
+            self->GetObject() == ((CPPInstance*)other)->GetObject())
         bIsEq = true;
 
     if ((op == Py_EQ && bIsEq) || (op == Py_NE && !bIsEq)) {
         Py_RETURN_TRUE;
     }
-
     Py_RETURN_FALSE;
 }
 

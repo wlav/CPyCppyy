@@ -7,8 +7,6 @@
 PyObject* CPyCppyy::PyStrings::gAssign           = nullptr;
 PyObject* CPyCppyy::PyStrings::gBases            = nullptr;
 PyObject* CPyCppyy::PyStrings::gBase             = nullptr;
-PyObject* CPyCppyy::PyStrings::gCppEq            = nullptr;
-PyObject* CPyCppyy::PyStrings::gCppNe            = nullptr;
 PyObject* CPyCppyy::PyStrings::gCppName          = nullptr;
 PyObject* CPyCppyy::PyStrings::gDeref            = nullptr;
 PyObject* CPyCppyy::PyStrings::gPreInc           = nullptr;
@@ -75,8 +73,6 @@ bool CPyCppyy::CreatePyStrings() {
     CPPYY_INITIALIZE_STRING(gAssign,         __assign__);
     CPPYY_INITIALIZE_STRING(gBases,          __bases__);
     CPPYY_INITIALIZE_STRING(gBase,           __base__);
-    CPPYY_INITIALIZE_STRING(gCppEq,          __cpp_eq__);
-    CPPYY_INITIALIZE_STRING(gCppNe,          __cpp_ne__);
     CPPYY_INITIALIZE_STRING(gCppName,        __cpp_name__);
     CPPYY_INITIALIZE_STRING(gDeref,          __deref__);
     CPPYY_INITIALIZE_STRING(gPreInc,         __preinc__);
@@ -141,8 +137,6 @@ PyObject* CPyCppyy::DestroyPyStrings() {
 // Remove all cached python strings.
     Py_DECREF(PyStrings::gBases);       PyStrings::gBases       = nullptr;
     Py_DECREF(PyStrings::gBase);        PyStrings::gBase        = nullptr;
-    Py_DECREF(PyStrings::gCppEq);       PyStrings::gCppEq       = nullptr;
-    Py_DECREF(PyStrings::gCppNe);       PyStrings::gCppNe       = nullptr;
     Py_DECREF(PyStrings::gCppName);     PyStrings::gCppName     = nullptr;
     Py_DECREF(PyStrings::gDeref);       PyStrings::gDeref       = nullptr;
     Py_DECREF(PyStrings::gPreInc);      PyStrings::gPreInc      = nullptr;

@@ -827,6 +827,14 @@ std::string CPyCppyy::Utility::ClassName(PyObject* pyobj)
 
 
 //----------------------------------------------------------------------------
+CPyCppyy::Utility::PyOperators::~PyOperators()
+{
+    Py_XDECREF(eq);
+    Py_XDECREF(ne);
+}
+
+
+//----------------------------------------------------------------------------
 PyObject* CPyCppyy::Utility::PyErr_Occurred_WithGIL()
 {
 // Re-acquire the GIL before calling PyErr_Occurred() in case it has been

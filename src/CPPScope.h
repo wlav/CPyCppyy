@@ -32,6 +32,7 @@ namespace CPyCppyy {
  */
 
 typedef std::map<Cppyy::TCppObject_t, PyObject*> CppToPyMap_t;
+namespace Utility { struct PyOperators; }
 
 class CPPScope {
 public:
@@ -51,6 +52,7 @@ public:
         CppToPyMap_t*           fCppObjects;     // classes only
         std::vector<PyObject*>* fUsing;          // namespaces only
     } fImp;
+    Utility::PyOperators*       fOperators;
     char*             fModuleName;
 
 private:
@@ -92,6 +94,7 @@ inline CPPScope* CPPScopeMeta_New(Cppyy::TCppScope_t klass, PyObject* args)
     pymeta->fCppType         = klass;
     pymeta->fFlags           = CPPScope::kIsMeta;
     pymeta->fImp.fCppObjects = nullptr;
+    pymeta->fOperators       = nullptr;
     pymeta->fModuleName      = nullptr;
 
     return pymeta;

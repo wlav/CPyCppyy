@@ -10,6 +10,7 @@
 namespace CPyCppyy {
 
 class PyCallable;
+class CPPOverload;
 
 extern dict_lookup_func gDictLookupOrg;
 extern bool gDictLookupActive;
@@ -55,6 +56,14 @@ Py_ssize_t GetBuffer(PyObject* pyobject, char tc, int size, void*& buf, bool che
 
 // data/operator mappings
 std::string MapOperatorName(const std::string& name, bool bTakesParames);
+
+struct PyOperators {
+    PyOperators() : eq(nullptr), ne(nullptr) {}
+    ~PyOperators();
+
+    CPPOverload* eq;
+    CPPOverload* ne;
+};
 
 // meta information
 const std::string Compound(const std::string& name);
