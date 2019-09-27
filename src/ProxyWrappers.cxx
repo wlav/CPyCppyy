@@ -729,7 +729,7 @@ PyObject* CPyCppyy::BindCppObjectNoCast(Cppyy::TCppObject_t address,
     bool isValue = flags & CPPInstance::kIsValue;
 
 // TODO: make sure that a consistent address is used (may have to be done in BindCppObject)
-    if (address && !isValue /* always fresh */ && flags != CPPInstance::kNoSmartConv) {
+    if (address && !isValue /* always fresh */ && flags != CPPInstance::kNoWrapConv) {
         PyObject* oldPyObject = MemoryRegulator::RetrievePyObject(
             isRef ? *(void**)address : address, pyclass);
 
@@ -741,7 +741,7 @@ PyObject* CPyCppyy::BindCppObjectNoCast(Cppyy::TCppObject_t address,
     }
 
 // if smart, instantiate a Python-side object of the underlying type, carrying the smartptr
-    PyObject* smart_type = (flags != CPPInstance::kNoSmartConv && (((CPPClass*)pyclass)->fFlags & CPPScope::kIsSmart)) ? pyclass : nullptr;
+    PyObject* smart_type = (flags != CPPInstance::kNoWrapConv && (((CPPClass*)pyclass)->fFlags & CPPScope::kIsSmart)) ? pyclass : nullptr;
     if (smart_type) {
         pyclass = CreateScopeProxy(((CPPSmartClass*)smart_type)->fUnderlyingType);
         if (!pyclass) {
@@ -767,8 +767,8 @@ PyObject* CPyCppyy::BindCppObjectNoCast(Cppyy::TCppObject_t address,
         if (smart_type)
             pyobj->SetSmart(smart_type);
 
-    // do not register null pointers, references (?), or direct usage of smart pointers
-        if (address && !isRef && flags != CPPInstance::kNoSmartConv)
+    // do not register null pointers, references (?), or direct usage of smart pointers or iterators
+        if (address && !isRef && flags != CPPInstance::kNoWrapConv)
             MemoryRegulator::RegisterPyObject(pyobj, pyobj->GetObject());
     }
 

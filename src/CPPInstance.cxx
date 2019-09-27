@@ -276,7 +276,7 @@ static PyObject* op_get_smartptr(CPPInstance* self)
         Py_RETURN_NONE;
     }
 
-    return CPyCppyy::BindCppObjectNoCast(self->GetSmartObject(), SMART_TYPE(self), CPPInstance::kNoSmartConv);
+    return CPyCppyy::BindCppObjectNoCast(self->GetSmartObject(), SMART_TYPE(self), CPPInstance::kNoWrapConv);
 }
 
 
@@ -299,7 +299,7 @@ static CPPInstance* op_new(PyTypeObject* subtype, PyObject*, PyObject*)
 // Create a new object proxy (holder only).
     CPPInstance* pyobj = (CPPInstance*)subtype->tp_alloc(subtype, 0);
     pyobj->fObject = nullptr;
-    pyobj->fFlags = CPPInstance::kNoSmartConv;
+    pyobj->fFlags = CPPInstance::kNoWrapConv;
 
     return pyobj;
 }

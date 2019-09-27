@@ -77,11 +77,20 @@ protected:
     Cppyy::TCppType_t fClass;
 };
 
-class InstanceExecutor : public InstancePtrExecutor {
+class InstanceExecutor : public Executor {
 public:
-    using InstancePtrExecutor::InstancePtrExecutor;
+    InstanceExecutor(Cppyy::TCppType_t klass);
     virtual PyObject* Execute(
         Cppyy::TCppMethod_t, Cppyy::TCppObject_t, CallContext*);
+
+protected:
+    Cppyy::TCppType_t fClass;
+    unsigned int      fFlags;
+};
+
+class IteratorExecutor : public InstanceExecutor {
+public:
+    IteratorExecutor(Cppyy::TCppType_t klass);
 };
 
 CPPYY_DECL_EXEC(Constructor);

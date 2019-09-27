@@ -28,7 +28,7 @@ class CPPInstance {
 public:
     enum EFlags {
         kDefault     = 0x0000,
-        kNoSmartConv = 0x0001,
+        kNoWrapConv  = 0x0001,
         kIsOwner     = 0x0002,
         kIsExtended  = 0x0004,
         kIsReference = 0x0008,

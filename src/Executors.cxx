@@ -25,6 +25,9 @@ namespace CPyCppyy {
     static ExecFactories_t gExecFactories;
 
     extern PyObject* gNullPtrObject;
+
+    extern std::set<std::string> gIteratorTypes;
+
 }
 
 
@@ -520,6 +523,13 @@ PyObject* CPyCppyy::InstancePtrExecutor::Execute(
 }
 
 //----------------------------------------------------------------------------
+CPyCppyy::InstanceExecutor::InstanceExecutor(Cppyy::TCppType_t klass) :
+    fClass(klass), fFlags(CPPInstance::kIsValue)
+{
+    /* empty */
+}
+
+//----------------------------------------------------------------------------
 PyObject* CPyCppyy::InstanceExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
@@ -533,7 +543,7 @@ PyObject* CPyCppyy::InstanceExecutor::Execute(
     }
 
 // the result can then be bound
-    PyObject* pyobj = BindCppObjectNoCast(value, fClass, CPPInstance::kIsValue);
+    PyObject* pyobj = BindCppObjectNoCast(value, fClass, fFlags);
     if (!pyobj)
         return nullptr;
 
@@ -541,6 +551,15 @@ PyObject* CPyCppyy::InstanceExecutor::Execute(
     ((CPPInstance*)pyobj)->PythonOwns();
     return pyobj;
 }
+
+
+//----------------------------------------------------------------------------
+CPyCppyy::IteratorExecutor::IteratorExecutor(Cppyy::TCppType_t klass) :
+    InstanceExecutor(klass)
+{
+    fFlags = CPPInstance::kNoWrapConv;
+}
+
 
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::InstanceRefExecutor::Execute(
@@ -723,6 +742,11 @@ CPyCppyy::Executor* CPyCppyy::CreateExecutor(const std::string& fullType)
 // C++ classes and special cases
     Executor* result = 0;
     if (Cppyy::TCppType_t klass = Cppyy::GetScope(realType)) {
+        if (resolvedType.find("iterator") != std::string::npos || gIteratorTypes.find(fullType) != gIteratorTypes.end()) {
+            if (cpd == "")
+                return new IteratorExecutor(klass);
+        }
+
         if (cpd == "")
             result = new InstanceExecutor(klass);
         else if (cpd == "&")

@@ -894,7 +894,9 @@ static PyObject* ComplexDComplex(CPPInstance* self)
 
 
 //- public functions ---------------------------------------------------------
-static std::set<std::string> g_iterator_types;
+namespace CPyCppyy {
+    std::set<std::string> gIteratorTypes;
+}
 
 bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
 {
@@ -932,7 +934,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
                 const std::string& resname = Cppyy::GetMethodResultType(meth);
                 if (Cppyy::GetScope(resname)) {
                     if (resname.find("iterator") == std::string::npos)
-                        g_iterator_types.insert(resname);
+                        gIteratorTypes.insert(resname);
 
                 // install iterator protocol a la STL
                     ((PyTypeObject*)pyclass)->tp_iter = (getiterfunc)StlSequenceIter;
@@ -1027,7 +1029,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         Utility::AddToClass(pyclass, "__init__", (PyCFunction)SharedPtrInit, METH_VARARGS | METH_KEYWORDS);
     }
 
-    else if (name.find("iterator") != std::string::npos || g_iterator_types.find(name) != g_iterator_types.end()) {
+    else if (name.find("iterator") != std::string::npos || gIteratorTypes.find(name) != gIteratorTypes.end()) {
         ((PyTypeObject*)pyclass)->tp_iternext = (iternextfunc)StlIterNext;
         Utility::AddToClass(pyclass, CPPYY__next__, (PyCFunction)StlIterNext, METH_NOARGS);
     }
