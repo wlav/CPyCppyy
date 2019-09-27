@@ -14,6 +14,8 @@ namespace PyStrings {
     extern PyObject* gCppNe;
     extern PyObject* gCppName;
     extern PyObject* gDeref;
+    extern PyObject* gPreInc;
+    extern PyObject* gPostInc;
     extern PyObject* gDict;
     extern PyObject* gEmptyString;
     extern PyObject* gEq;

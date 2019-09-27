@@ -797,19 +797,19 @@ PyObject* StlIterNext(PyObject* self)
         } else {
         // first, get next from the _current_ iterator as internal state may change
         // when call post or pre increment
-            next = CallPyObjMethod(self, "__deref__");
+            next = PyObject_CallMethodObjArgs(self, PyStrings::gDeref, nullptr);
             if (!next) PyErr_Clear();
 
         // use postinc, even as the C++11 range-based for loops prefer preinc b/c
         // that allows the current value from the iterator to be had from __deref__,
         // an issue that does not come up in C++
             static PyObject* dummy = PyInt_FromLong(1l);
-            PyObject* iter = CallPyObjMethod(self, "__postinc__", dummy);
-            if (!iter && PyErr_Occurred()) {
+            PyObject* iter = PyObject_CallMethodObjArgs(self, PyStrings::gPostInc, dummy, nullptr);
+            if (!iter) {
             // allow preinc, as in that case likely __deref__ is not defined and it
             // is the iterator rather that is returned in the loop
                 PyErr_Clear();
-                iter = CallPyObjMethod(self, "__preinc__");
+                iter = PyObject_CallMethodObjArgs(self, PyStrings::gPreInc, nullptr);
             }
             if (iter) {
             // prefer != as per C++11 range-based for

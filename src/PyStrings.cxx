@@ -11,6 +11,8 @@ PyObject* CPyCppyy::PyStrings::gCppEq            = nullptr;
 PyObject* CPyCppyy::PyStrings::gCppNe            = nullptr;
 PyObject* CPyCppyy::PyStrings::gCppName          = nullptr;
 PyObject* CPyCppyy::PyStrings::gDeref            = nullptr;
+PyObject* CPyCppyy::PyStrings::gPreInc           = nullptr;
+PyObject* CPyCppyy::PyStrings::gPostInc          = nullptr;
 PyObject* CPyCppyy::PyStrings::gDict             = nullptr;
 PyObject* CPyCppyy::PyStrings::gEmptyString      = nullptr;
 PyObject* CPyCppyy::PyStrings::gEq               = nullptr;
@@ -77,6 +79,8 @@ bool CPyCppyy::CreatePyStrings() {
     CPPYY_INITIALIZE_STRING(gCppNe,          __cpp_ne__);
     CPPYY_INITIALIZE_STRING(gCppName,        __cpp_name__);
     CPPYY_INITIALIZE_STRING(gDeref,          __deref__);
+    CPPYY_INITIALIZE_STRING(gPreInc,         __preinc__);
+    CPPYY_INITIALIZE_STRING(gPostInc,        __postinc__);
     CPPYY_INITIALIZE_STRING(gDict,           __dict__);
     if (!(PyStrings::gEmptyString = CPyCppyy_PyText_FromString((char*)"")))
         return false;
@@ -141,6 +145,8 @@ PyObject* CPyCppyy::DestroyPyStrings() {
     Py_DECREF(PyStrings::gCppNe);       PyStrings::gCppNe       = nullptr;
     Py_DECREF(PyStrings::gCppName);     PyStrings::gCppName     = nullptr;
     Py_DECREF(PyStrings::gDeref);       PyStrings::gDeref       = nullptr;
+    Py_DECREF(PyStrings::gPreInc);      PyStrings::gPreInc      = nullptr;
+    Py_DECREF(PyStrings::gPostInc);     PyStrings::gPostInc     = nullptr;
     Py_DECREF(PyStrings::gDict);        PyStrings::gDict        = nullptr;
     Py_DECREF(PyStrings::gEmptyString); PyStrings::gEmptyString = nullptr;
     Py_DECREF(PyStrings::gEq);          PyStrings::gEq          = nullptr;
