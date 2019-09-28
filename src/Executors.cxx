@@ -19,7 +19,6 @@
 
 //- data _____________________________________________________________________
 namespace CPyCppyy {
-
     typedef Executor* (*ef_t) ();
     typedef std::map<std::string, ef_t> ExecFactories_t;
     static ExecFactories_t gExecFactories;
@@ -27,7 +26,6 @@ namespace CPyCppyy {
     extern PyObject* gNullPtrObject;
 
     extern std::set<std::string> gIteratorTypes;
-
 }
 
 
@@ -790,102 +788,104 @@ public:
         CPyCppyy::ExecFactories_t& gf = gExecFactories;
 
     // factories for built-ins
-        gf["bool"] =                        (ef_t)+[]() { return new BoolExecutor{}; };
+        gf["bool"] =                        (ef_t)+[]() { static BoolExecutor e{};          return &e; };
         gf["bool&"] =                       (ef_t)+[]() { return new BoolRefExecutor{}; };
-        gf["const bool&"] =                 (ef_t)+[]() { return new BoolConstRefExecutor{}; };
-        gf["char"] =                        (ef_t)+[]() { return new CharExecutor{}; };
-        gf["signed char"] =                 (ef_t)+[]() { return new CharExecutor{}; };
-        gf["unsigned char"] =               (ef_t)+[]() { return new UCharExecutor{}; };
+        gf["const bool&"] =                 (ef_t)+[]() { static BoolConstRefExecutor e{};  return &e; };
+        gf["char"] =                        (ef_t)+[]() { static CharExecutor e{};          return &e; };
+        gf["signed char"] =                 gf["char"];
+        gf["unsigned char"] =               (ef_t)+[]() { static UCharExecutor e{};         return &e; };
         gf["char&"] =                       (ef_t)+[]() { return new CharRefExecutor{}; };
-        gf["signed char&"] =                (ef_t)+[]() { return new CharRefExecutor{}; };
+        gf["signed char&"] =                gf["signed char&"];
         gf["unsigned char&"] =              (ef_t)+[]() { return new UCharRefExecutor{}; };
-        gf["const char&"] =                 (ef_t)+[]() { return new CharConstRefExecutor{}; };
-        gf["const signed char&"] =          (ef_t)+[]() { return new CharConstRefExecutor{}; };
-        gf["const unsigned char&"] =        (ef_t)+[]() { return new UCharConstRefExecutor{}; };
-        gf["wchar_t"] =                     (ef_t)+[]() { return new WCharExecutor{}; };
-        gf["int8_t"] =                      (ef_t)+[]() { return new Int8Executor{}; };
+        gf["const char&"] =                 (ef_t)+[]() { static CharConstRefExecutor e{};  return &e; };
+        gf["const signed char&"] =          gf["const char&"];
+        gf["const unsigned char&"] =        (ef_t)+[]() { static UCharConstRefExecutor e{}; return &e; };
+        gf["wchar_t"] =                     (ef_t)+[]() { static WCharExecutor e{};         return &e; };
+        gf["int8_t"] =                      (ef_t)+[]() { static Int8Executor e{};          return &e; };
         gf["int8_t&"] =                     (ef_t)+[]() { return new Int8RefExecutor{}; };
-        gf["const int8_t&"] =               (ef_t)+[]() { return new Int8RefExecutor{}; };
-        gf["uint8_t"] =                     (ef_t)+[]() { return new UInt8Executor{}; };
+        gf["const int8_t&"] =               (ef_t)+[]() { static Int8RefExecutor e{};       return &e; };
+        gf["uint8_t"] =                     (ef_t)+[]() { static UInt8Executor e{};         return &e; };
         gf["uint8_t&"] =                    (ef_t)+[]() { return new UInt8RefExecutor{}; };
-        gf["const uint8_t&"] =              (ef_t)+[]() { return new UInt8RefExecutor{}; };
-        gf["short"] =                       (ef_t)+[]() { return new ShortExecutor{}; };
+        gf["const uint8_t&"] =              (ef_t)+[]() { static UInt8RefExecutor e{};      return &e; };
+        gf["short"] =                       (ef_t)+[]() { static ShortExecutor e{};         return &e; };
         gf["short&"] =                      (ef_t)+[]() { return new ShortRefExecutor{}; };
-        gf["unsigned short"] =              (ef_t)+[]() { return new IntExecutor{}; };
-        gf["unsigned short&"] =             (ef_t)+[]() { return new UShortRefExecutor{}; };
-        gf["int"] =                         (ef_t)+[]() { return new IntExecutor{}; };
+        gf["int"] =                         (ef_t)+[]() { static IntExecutor e{};           return &e; };
         gf["int&"] =                        (ef_t)+[]() { return new IntRefExecutor{}; };
-        gf["unsigned int"] =                (ef_t)+[]() { return new ULongExecutor{}; };
-        gf["unsigned int&"] =               (ef_t)+[]() { return new UIntRefExecutor{}; };
-        gf["internal_enum_type_t"] =        (ef_t)+[]() { return new IntExecutor{}; };
-        gf["internal_enum_type_t&"] =       (ef_t)+[]() { return new IntRefExecutor{}; };
-        gf["long"] =                        (ef_t)+[]() { return new LongExecutor{}; };
-        gf["long&"] =                       (ef_t)+[]() { return new LongRefExecutor{}; };
-        gf["unsigned long"] =               (ef_t)+[]() { return new ULongExecutor{}; };
+        gf["unsigned short"] =              gf["int"];
+        gf["unsigned short&"] =             (ef_t)+[]() { return new UShortRefExecutor{}; };
+        gf["unsigned long"] =               (ef_t)+[]() { static ULongExecutor e{};         return &e; };
         gf["unsigned long&"] =              (ef_t)+[]() { return new ULongRefExecutor{}; };
-        gf["long long"] =                   (ef_t)+[]() { return new LongLongExecutor{}; };
-        gf["Long64_t"] =                    (ef_t)+[]() { return new LongLongExecutor{}; };
+        gf["unsigned int"] =                gf["unsigned long"];
+        gf["unsigned int&"] =               (ef_t)+[]() { return new UIntRefExecutor{}; };
+        gf["internal_enum_type_t"] =        gf["int"];
+        gf["internal_enum_type_t&"] =       gf["int&"];
+        gf["long"] =                        (ef_t)+[]() { static LongExecutor e{};          return &e; };
+        gf["long&"] =                       (ef_t)+[]() { return new LongRefExecutor{}; };
+        gf["unsigned long"] =               (ef_t)+[]() { static ULongExecutor e{};         return &e; };
+        gf["unsigned long&"] =              (ef_t)+[]() { return new ULongRefExecutor{}; };
+        gf["long long"] =                   (ef_t)+[]() { static LongLongExecutor e{};      return &e; };
+        gf["Long64_t"] =                    gf["long long"];
         gf["long long&"] =                  (ef_t)+[]() { return new LongLongRefExecutor{}; };
-        gf["Long64_t&"] =                   (ef_t)+[]() { return new LongLongRefExecutor{}; };
-        gf["unsigned long long"] =          (ef_t)+[]() { return new ULongLongExecutor{}; };
-        gf["ULong64_t"] =                   (ef_t)+[]() { return new ULongLongExecutor{}; };
+        gf["Long64_t&"] =                   gf["long long&"];
+        gf["unsigned long long"] =          (ef_t)+[]() { static ULongLongExecutor e{};     return &e; };
+        gf["ULong64_t"] =                   gf["unsigned long long"];
         gf["unsigned long long&"] =         (ef_t)+[]() { return new ULongLongRefExecutor{}; };
-        gf["ULong64_t&"] =                  (ef_t)+[]() { return new ULongLongRefExecutor{}; };
+        gf["ULong64_t&"] =                  gf["unsigned long long&"];
 
-        gf["float"] =                       (ef_t)+[]() { return new FloatExecutor{}; };
+        gf["float"] =                       (ef_t)+[]() { static FloatExecutor e{};      return &e; };
         gf["float&"] =                      (ef_t)+[]() { return new FloatRefExecutor{}; };
-        gf["Float16_t"] =                   (ef_t)+[]() { return new FloatExecutor{}; };
-        gf["Float16_t&"] =                  (ef_t)+[]() { return new FloatRefExecutor{}; };
-        gf["double"] =                      (ef_t)+[]() { return new DoubleExecutor{}; };
+        gf["Float16_t"] =                   gf["float"];
+        gf["Float16_t&"] =                  gf["float&"];
+        gf["double"] =                      (ef_t)+[]() { static DoubleExecutor e{};     return &e; };
         gf["double&"] =                     (ef_t)+[]() { return new DoubleRefExecutor{}; };
-        gf["Double32_t"] =                  (ef_t)+[]() { return new DoubleExecutor{}; };
-        gf["Double32_t&"] =                 (ef_t)+[]() { return new DoubleRefExecutor{}; };
-        gf["long double"] =                 (ef_t)+[]() { return new LongDoubleExecutor{}; }; // TODO: lost precision
+        gf["Double32_t"] =                  gf["double"];
+        gf["Double32_t&"] =                 gf["double&"];
+        gf["long double"] =                 (ef_t)+[]() { static LongDoubleExecutor e{}; return &e; }; // TODO: lost precision
         gf["long double&"] =                (ef_t)+[]() { return new LongDoubleRefExecutor{}; };
-        gf["void"] =                        (ef_t)+[]() { return new VoidExecutor{}; };
+        gf["void"] =                        (ef_t)+[]() { static VoidExecutor e{};       return &e; };
 
     // pointer/array factories
-        gf["void*"] =                       (ef_t)+[]() { return new VoidArrayExecutor{}; };
-        gf["bool*"] =                       (ef_t)+[]() { return new BoolArrayExecutor{}; };
-        gf["const unsigned char*"] =        (ef_t)+[]() { return new UCharArrayExecutor{}; };
-        gf["unsigned char*"] =              (ef_t)+[]() { return new UCharArrayExecutor{}; };
-        gf["short*"] =                      (ef_t)+[]() { return new ShortArrayExecutor{}; };
-        gf["unsigned short*"] =             (ef_t)+[]() { return new UShortArrayExecutor{}; };
-        gf["int*"] =                        (ef_t)+[]() { return new IntArrayExecutor{}; };
-        gf["unsigned int*"] =               (ef_t)+[]() { return new UIntArrayExecutor{}; };
-        gf["internal_enum_type_t*"] =       (ef_t)+[]() { return new UIntArrayExecutor{}; };
-        gf["long*"] =                       (ef_t)+[]() { return new LongArrayExecutor{}; };
-        gf["unsigned long*"] =              (ef_t)+[]() { return new ULongArrayExecutor{}; };
-        gf["long long*"] =                  (ef_t)+[]() { return new LLongArrayExecutor{}; };
-        gf["Long64_t*"] =                   (ef_t)+[]() { return new LLongArrayExecutor{}; };
-        gf["unsigned long long*"] =         (ef_t)+[]() { return new ULLongArrayExecutor{}; };
-        gf["ULong64_t*"] =                  (ef_t)+[]() { return new ULLongArrayExecutor{}; };
-        gf["float*"] =                      (ef_t)+[]() { return new FloatArrayExecutor{}; };
-        gf["double*"] =                     (ef_t)+[]() { return new DoubleArrayExecutor{}; };
-        gf["complex<float>*"] =             (ef_t)+[]() { return new ComplexFArrayExecutor{}; };
-        gf["complex<double>*"] =            (ef_t)+[]() { return new ComplexDArrayExecutor{}; };
-        gf["complex<int>*"] =               (ef_t)+[]() { return new ComplexIArrayExecutor{}; };
-        gf["complex<long>*"] =              (ef_t)+[]() { return new ComplexLArrayExecutor{}; };
+        gf["void*"] =                       (ef_t)+[]() { static VoidArrayExecutor e{};     return &e; };
+        gf["bool*"] =                       (ef_t)+[]() { static BoolArrayExecutor e{};     return &e; };
+        gf["unsigned char*"] =              (ef_t)+[]() { static UCharArrayExecutor e{};    return &e; };
+        gf["const unsigned char*"] =        gf["unsigned char*"];
+        gf["short*"] =                      (ef_t)+[]() { static ShortArrayExecutor e{};    return &e; };
+        gf["unsigned short*"] =             (ef_t)+[]() { static UShortArrayExecutor e{};   return &e; };
+        gf["int*"] =                        (ef_t)+[]() { static IntArrayExecutor e{};      return &e; };
+        gf["unsigned int*"] =               (ef_t)+[]() { static UIntArrayExecutor e{};     return &e; };
+        gf["internal_enum_type_t*"] =       gf["unsigned int*"];
+        gf["long*"] =                       (ef_t)+[]() { static LongArrayExecutor e{};     return &e; };
+        gf["unsigned long*"] =              (ef_t)+[]() { static ULongArrayExecutor e{};    return &e; };
+        gf["long long*"] =                  (ef_t)+[]() { static LLongArrayExecutor e{};    return &e; };
+        gf["Long64_t*"] =                   gf["long long*"];
+        gf["unsigned long long*"] =         (ef_t)+[]() { static ULLongArrayExecutor e{};   return &e; };
+        gf["ULong64_t*"] =                  gf["unsigned long long*"];
+        gf["float*"] =                      (ef_t)+[]() { static FloatArrayExecutor e{};    return &e; };
+        gf["double*"] =                     (ef_t)+[]() { static DoubleArrayExecutor e{};   return &e; };
+        gf["complex<float>*"] =             (ef_t)+[]() { static ComplexFArrayExecutor e{}; return &e; };
+        gf["complex<double>*"] =            (ef_t)+[]() { static ComplexDArrayExecutor e{}; return &e; };
+        gf["complex<int>*"] =               (ef_t)+[]() { static ComplexIArrayExecutor e{}; return &e; };
+        gf["complex<long>*"] =              (ef_t)+[]() { static ComplexLArrayExecutor e{}; return &e; };
 
     // factories for special cases
-        gf["const char*"] =                 (ef_t)+[]() { return new CStringExecutor{}; };
-        gf["char*"] =                       (ef_t)+[]() { return new CStringExecutor{}; };
-        gf["const signed char*"] =          (ef_t)+[]() { return new CStringExecutor{}; };
-        gf["signed char*"] =                (ef_t)+[]() { return new CStringExecutor{}; };
-        gf["wchar_t*"] =                    (ef_t)+[]() { return new WCStringExecutor{}; };
-        gf["std::string"] =                 (ef_t)+[]() { return new STLStringExecutor{}; };
-        gf["string"] =                      (ef_t)+[]() { return new STLStringExecutor{}; };
+        gf["const char*"] =                 (ef_t)+[]() { static CStringExecutor e{};     return &e; };
+        gf["char*"] =                       gf["const char*"];
+        gf["const signed char*"] =          gf["const char*"];
+        gf["signed char*"] =                gf["const char*"];
+        gf["wchar_t*"] =                    (ef_t)+[]() { static WCStringExecutor e{};    return &e;};
+        gf["std::string"] =                 (ef_t)+[]() { static STLStringExecutor e{};   return &e; };
+        gf["string"] =                      gf["std::string"];
         gf["std::string&"] =                (ef_t)+[]() { return new STLStringRefExecutor{}; };
-        gf["string&"] =                     (ef_t)+[]() { return new STLStringRefExecutor{}; };
-        gf["std::wstring"] =                (ef_t)+[]() { return new STLWStringExecutor{}; };
-        gf["std::" WSTRING] =               (ef_t)+[]() { return new STLWStringExecutor{}; };
-        gf[WSTRING] =                       (ef_t)+[]() { return new STLWStringExecutor{}; };
-        gf["complex<double>"] =             (ef_t)+[]() { return new ComplexDExecutor{}; };
+        gf["string&"] =                     gf["std::string&"];
+        gf["std::wstring"] =                (ef_t)+[]() { static STLWStringExecutor e{};  return &e; };
+        gf["std::" WSTRING] =               gf["std::wstring"];
+        gf[WSTRING] =                       gf["std::wstring"];
+        gf["complex<double>"] =             (ef_t)+[]() { static ComplexDExecutor e{};    return &e; };
         gf["complex<double>&"] =            (ef_t)+[]() { return new ComplexDRefExecutor{}; };
-        gf["__init__"] =                    (ef_t)+[]() { return new ConstructorExecutor{}; };
-        gf["PyObject*"] =                   (ef_t)+[]() { return new PyObjectExecutor{}; };
-        gf["_object*"] =                    (ef_t)+[]() { return new PyObjectExecutor{}; };
-        gf["FILE*"] =                       (ef_t)+[]() { return new VoidArrayExecutor{}; };
+        gf["__init__"] =                    (ef_t)+[]() { static ConstructorExecutor e{}; return &e; };
+        gf["PyObject*"] =                   (ef_t)+[]() { static PyObjectExecutor e{};    return &e; };
+        gf["_object*"] =                    gf["PyObject*"];
+        gf["FILE*"] =                       gf["void*"];
     }
 } initExecvFactories_;
 

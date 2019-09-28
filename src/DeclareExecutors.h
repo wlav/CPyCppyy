@@ -60,10 +60,7 @@ CPPYY_DECL_EXEC(ComplexIArray);
 CPPYY_DECL_EXEC(ComplexLArray);
 
 // special cases
-CPPYY_DECL_EXEC(ComplexF);
 CPPYY_DECL_EXEC(ComplexD);
-CPPYY_DECL_EXEC(ComplexI);
-CPPYY_DECL_EXEC(ComplexL);
 CPPYY_DECL_EXEC(STLString);
 CPPYY_DECL_EXEC(STLWString);
 
@@ -72,6 +69,7 @@ public:
     InstancePtrExecutor(Cppyy::TCppType_t klass) : fClass(klass) {}
     virtual PyObject* Execute(
         Cppyy::TCppMethod_t, Cppyy::TCppObject_t, CallContext*);
+    virtual bool HasState() { return true; }
 
 protected:
     Cppyy::TCppType_t fClass;
@@ -82,6 +80,7 @@ public:
     InstanceExecutor(Cppyy::TCppType_t klass);
     virtual PyObject* Execute(
         Cppyy::TCppMethod_t, Cppyy::TCppObject_t, CallContext*);
+    virtual bool HasState() { return true; }
 
 protected:
     Cppyy::TCppType_t fClass;

@@ -44,7 +44,7 @@ inline void CPyCppyy::CPPMethod::Copy_(const CPPMethod& /* other */)
 inline void CPyCppyy::CPPMethod::Destroy_() const
 {
 // destroy executor and argument converters
-    delete fExecutor;
+    if (fExecutor && fExecutor->HasState()) delete fExecutor;
 
     for (int i = 0; i < (int)fConverters.size(); ++i)
         delete fConverters[i];
@@ -255,7 +255,7 @@ CPyCppyy::CPPMethod::CPPMethod(
 
 //----------------------------------------------------------------------------
 CPyCppyy::CPPMethod::CPPMethod(const CPPMethod& other) :
-        PyCallable(other), fMethod(other.fMethod), fScope(other.fScope)
+    PyCallable(other), fMethod(other.fMethod), fScope(other.fScope)
 {
     Copy_(other);
 }
@@ -500,7 +500,7 @@ bool CPyCppyy::CPPMethod::Initialize(CallContext* ctxt)
 
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::CPPMethod::PreProcessArgs(
-        CPPInstance*& self, PyObject* args, PyObject*)
+    CPPInstance*& self, PyObject* args, PyObject*)
 {
 // verify existence of self, return if ok
     if (self) {
@@ -603,7 +603,7 @@ PyObject* CPyCppyy::CPPMethod::Execute(void* self, ptrdiff_t offset, CallContext
 
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::CPPMethod::Call(
-        CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt)
+    CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt)
 {
 // setup as necessary
     if (!fIsInitialized && !Initialize(ctxt))

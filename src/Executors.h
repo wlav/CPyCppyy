@@ -14,6 +14,7 @@ public:
     virtual ~Executor() {}
     virtual PyObject* Execute(
         Cppyy::TCppMethod_t, Cppyy::TCppObject_t, CallContext*) = 0;
+    virtual bool HasState() { return false; }
 };
 
 // special case needed for CPPSetItem
@@ -21,6 +22,7 @@ class RefExecutor : public Executor {
 public:
     RefExecutor() : fAssignable(nullptr) {}
     virtual bool SetAssignable(PyObject*);
+    virtual bool HasState() { return true; }
 
 protected:
     PyObject* fAssignable;
