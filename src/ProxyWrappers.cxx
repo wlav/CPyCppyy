@@ -209,21 +209,9 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
             }
         }
 
-    // public methods are normally visible, private methods are mangled python-wise
-    // note the overload implications which are name based, and note that genreflex
-    // does not create the interface methods for private/protected methods ...
-    // TODO: check whether Cling allows private method calling; otherwise delete this
-        if (!Cppyy::IsPublicMethod(method)) {
-            if (isConstructor)               // don't expose private ctors
-                continue;
-            else {                           // mangle private methods
-            // TODO: drop use of TClassEdit here ...
-            //            const std::string& clName = TClassEdit::ShortType(
-            //               Cppyy::GetFinalName(scope).c_str(), TClassEdit::kDropAlloc);
-                const std::string& clName = Cppyy::GetFinalName(scope);
-                mtName = "_" + clName + "__" + mtName;
-           }
-        }
+    // do not expose private methods as the Cling wrappers for them won't compile
+        if (!Cppyy::IsPublicMethod(method))
+            continue;
 
     // template members; handled by adding a dispatcher to the class
         bool storeOnTemplate =
