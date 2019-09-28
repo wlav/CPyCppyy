@@ -304,7 +304,7 @@ PyTypeObject IndexIter_Type = {
 
 
 static void vectoriter_dealloc(vectoriterobject* vi) {
-    delete vi->vi_converter;
+    if (vi->vi_converter && vi->vi_converter->HasState()) delete vi->vi_converter;
     indexiter_dealloc(vi);
 }
 

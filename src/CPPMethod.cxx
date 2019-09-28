@@ -46,8 +46,9 @@ inline void CPyCppyy::CPPMethod::Destroy_() const
 // destroy executor and argument converters
     if (fExecutor && fExecutor->HasState()) delete fExecutor;
 
-    for (int i = 0; i < (int)fConverters.size(); ++i)
-        delete fConverters[i];
+    for (auto p : fConverters) {
+        if (p && p->HasState()) delete p;
+    }
 }
 
 //----------------------------------------------------------------------------

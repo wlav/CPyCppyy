@@ -527,14 +527,15 @@ void CPyCppyy::Utility::ConstructCallbackPreamble(const std::string& retType,
 // return value and argument type converters
     bool isVoid = (retType == "void");
     if (!isVoid)
-        code << "    CPYCPPYY_STATIC std::unique_ptr<CPyCppyy::Converter> retconv{CPyCppyy::CreateConverter(\""
-             << retType << "\")};\n";
+        code << "    CPYCPPYY_STATIC std::unique_ptr<CPyCppyy::Converter, std::function<void(CPyCppyy::Converter*)>> "
+                     "retconv{CPyCppyy::CreateConverter(\""
+             << retType << "\"), CPyCppyy::ConverterDeleter};\n";
     if (nArgs) {
-        code << "    CPYCPPYY_STATIC std::vector<std::unique_ptr<CPyCppyy::Converter>> argcvs;\n"
+        code << "    CPYCPPYY_STATIC std::vector<std::unique_ptr<CPyCppyy::Converter, std::function<void(CPyCppyy::Converter*)>>> argcvs;\n"
              << "    if (argcvs.empty()) {\n"
              << "      argcvs.reserve(" << nArgs << ");\n";
         for (int i = 0; i < nArgs; ++i)
-            code << "      argcvs.emplace_back(CPyCppyy::CreateConverter(\"" << argtypes[i] << "\"));\n";
+            code << "      argcvs.emplace_back(CPyCppyy::CreateConverter(\"" << argtypes[i] << "\"), CPyCppyy::ConverterDeleter);\n";
         code << "    }\n";
     }
 
@@ -952,8 +953,10 @@ bool CPyCppyy::Utility::IncludePython()
             "  virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) = 0;\n"
             "  virtual PyObject* FromMemory(void* address);\n"
             "  virtual bool ToMemory(PyObject* value, void* address);\n"
+            "  virtual bool HasState() { return false; }\n"
             "};\n"
             "CPYCPPYY_IMPORT Converter* CreateConverter(const std::string& fullType, Py_ssize_t* dims = nullptr);\n"
+            "static void ConverterDeleter(Converter* p) { if (p && p->HasState()) delete p; }\n"
             "}\n"
 
         // utilities from the CPyCppyy public API

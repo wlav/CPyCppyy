@@ -817,29 +817,19 @@ public:
         gf["unsigned long&"] =              (ef_t)+[]() { return new ULongRefExecutor{}; };
         gf["unsigned int"] =                gf["unsigned long"];
         gf["unsigned int&"] =               (ef_t)+[]() { return new UIntRefExecutor{}; };
-        gf["internal_enum_type_t"] =        gf["int"];
-        gf["internal_enum_type_t&"] =       gf["int&"];
         gf["long"] =                        (ef_t)+[]() { static LongExecutor e{};          return &e; };
         gf["long&"] =                       (ef_t)+[]() { return new LongRefExecutor{}; };
         gf["unsigned long"] =               (ef_t)+[]() { static ULongExecutor e{};         return &e; };
         gf["unsigned long&"] =              (ef_t)+[]() { return new ULongRefExecutor{}; };
         gf["long long"] =                   (ef_t)+[]() { static LongLongExecutor e{};      return &e; };
-        gf["Long64_t"] =                    gf["long long"];
         gf["long long&"] =                  (ef_t)+[]() { return new LongLongRefExecutor{}; };
-        gf["Long64_t&"] =                   gf["long long&"];
         gf["unsigned long long"] =          (ef_t)+[]() { static ULongLongExecutor e{};     return &e; };
-        gf["ULong64_t"] =                   gf["unsigned long long"];
         gf["unsigned long long&"] =         (ef_t)+[]() { return new ULongLongRefExecutor{}; };
-        gf["ULong64_t&"] =                  gf["unsigned long long&"];
 
         gf["float"] =                       (ef_t)+[]() { static FloatExecutor e{};      return &e; };
         gf["float&"] =                      (ef_t)+[]() { return new FloatRefExecutor{}; };
-        gf["Float16_t"] =                   gf["float"];
-        gf["Float16_t&"] =                  gf["float&"];
         gf["double"] =                      (ef_t)+[]() { static DoubleExecutor e{};     return &e; };
         gf["double&"] =                     (ef_t)+[]() { return new DoubleRefExecutor{}; };
-        gf["Double32_t"] =                  gf["double"];
-        gf["Double32_t&"] =                 gf["double&"];
         gf["long double"] =                 (ef_t)+[]() { static LongDoubleExecutor e{}; return &e; }; // TODO: lost precision
         gf["long double&"] =                (ef_t)+[]() { return new LongDoubleRefExecutor{}; };
         gf["void"] =                        (ef_t)+[]() { static VoidExecutor e{};       return &e; };
@@ -853,19 +843,31 @@ public:
         gf["unsigned short*"] =             (ef_t)+[]() { static UShortArrayExecutor e{};   return &e; };
         gf["int*"] =                        (ef_t)+[]() { static IntArrayExecutor e{};      return &e; };
         gf["unsigned int*"] =               (ef_t)+[]() { static UIntArrayExecutor e{};     return &e; };
-        gf["internal_enum_type_t*"] =       gf["unsigned int*"];
         gf["long*"] =                       (ef_t)+[]() { static LongArrayExecutor e{};     return &e; };
         gf["unsigned long*"] =              (ef_t)+[]() { static ULongArrayExecutor e{};    return &e; };
         gf["long long*"] =                  (ef_t)+[]() { static LLongArrayExecutor e{};    return &e; };
-        gf["Long64_t*"] =                   gf["long long*"];
         gf["unsigned long long*"] =         (ef_t)+[]() { static ULLongArrayExecutor e{};   return &e; };
-        gf["ULong64_t*"] =                  gf["unsigned long long*"];
         gf["float*"] =                      (ef_t)+[]() { static FloatArrayExecutor e{};    return &e; };
         gf["double*"] =                     (ef_t)+[]() { static DoubleArrayExecutor e{};   return &e; };
         gf["complex<float>*"] =             (ef_t)+[]() { static ComplexFArrayExecutor e{}; return &e; };
         gf["complex<double>*"] =            (ef_t)+[]() { static ComplexDArrayExecutor e{}; return &e; };
         gf["complex<int>*"] =               (ef_t)+[]() { static ComplexIArrayExecutor e{}; return &e; };
         gf["complex<long>*"] =              (ef_t)+[]() { static ComplexLArrayExecutor e{}; return &e; };
+
+    // aliases
+        gf["internal_enum_type_t"] =        gf["int"];
+        gf["internal_enum_type_t&"] =       gf["int&"];
+        gf["internal_enum_type_t*"] =       gf["int*"];
+        gf["Long64_t"] =                    gf["long long"];
+        gf["Long64_t&"] =                   gf["long long&"];
+        gf["Long64_t*"] =                   gf["long long*"];
+        gf["ULong64_t"] =                   gf["unsigned long long"];
+        gf["ULong64_t&"] =                  gf["unsigned long long&"];
+        gf["ULong64_t*"] =                  gf["unsigned long long*"];
+        gf["Float16_t"] =                   gf["float"];
+        gf["Float16_t&"] =                  gf["float&"];
+        gf["Double32_t"] =                  gf["double"];
+        gf["Double32_t&"] =                 gf["double&"];
 
     // factories for special cases
         gf["const char*"] =                 (ef_t)+[]() { static CStringExecutor e{};     return &e; };

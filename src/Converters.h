@@ -18,6 +18,7 @@ public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) = 0;
     virtual PyObject* FromMemory(void* address);
     virtual bool ToMemory(PyObject* value, void* address);
+    virtual bool HasState() { return false; }
 };
 
 // create converter from fully qualified type
@@ -33,6 +34,7 @@ public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
     virtual PyObject* FromMemory(void* address);
     virtual bool ToMemory(PyObject* value, void* address);
+    virtual bool HasState() { return true; }
 
 protected:
     virtual bool GetAddressSpecialCase(PyObject* pyobject, void*& address);
@@ -51,7 +53,7 @@ public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
     virtual PyObject* FromMemory(void* address);
     virtual bool ToMemory(PyObject* value, void* address);
-        
+
 protected:
     Cppyy::TCppType_t fClass;
 };

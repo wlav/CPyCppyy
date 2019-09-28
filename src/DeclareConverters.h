@@ -58,6 +58,7 @@ public:                                                                      \
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);      \
     virtual PyObject* FromMemory(void*);                                     \
     virtual bool ToMemory(PyObject*, void*);                                 \
+    virtual bool HasState() { return true; }                                 \
 private:                                                                     \
     Py_ssize_t* fShape;                                                      \
 };                                                                           \
@@ -123,6 +124,7 @@ public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
     virtual PyObject* FromMemory(void* address);
     virtual bool ToMemory(PyObject* value, void* address);
+    virtual bool HasState() { return true; }
 
 protected:
     std::string fBuffer;
@@ -149,6 +151,7 @@ public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
     virtual PyObject* FromMemory(void* address);
     virtual bool ToMemory(PyObject* value, void* address);
+    virtual bool HasState() { return true; }
 
 protected:
     wchar_t* fBuffer;
@@ -195,6 +198,7 @@ public:
 public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
     virtual PyObject* FromMemory(void* address);
+    virtual bool HasState() { return true; }
 
 protected:
     Cppyy::TCppType_t fClass;
@@ -324,6 +328,7 @@ public:
 public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
     virtual PyObject* FromMemory(void* address);
+    virtual bool HasState() { return true; }
 
 protected:
     std::string fRetType;
@@ -341,8 +346,8 @@ public:
 
 public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
-    virtual PyObject* FromMemory(void* address);                             \
-    virtual bool ToMemory(PyObject* value, void* address);                   \
+    virtual PyObject* FromMemory(void* address);
+    virtual bool ToMemory(PyObject* value, void* address);
 
 protected:
     Converter* fConverter;
@@ -364,6 +369,7 @@ public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
     virtual PyObject* FromMemory(void* address);
     //virtual bool ToMemory(PyObject* value, void* address);
+    virtual bool HasState() { return true; }
 
 protected:
     virtual bool GetAddressSpecialCase(PyObject*, void*&) { return false; }
@@ -382,10 +388,11 @@ public:
         fConverter(cnv), fValueSize(sz) {}
     InitializerListConverter(const InitializerListConverter&) = delete;
     InitializerListConverter& operator=(const InitializerListConverter&) = delete;
-    virtual ~InitializerListConverter() { delete fConverter; }
+    virtual ~InitializerListConverter();
 
 public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
+    virtual bool HasState() { return true; }
 
 protected:
     Converter* fConverter;
