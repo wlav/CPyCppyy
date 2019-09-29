@@ -231,49 +231,6 @@ bool CPyCppyy::Utility::AddToClass(PyObject* pyclass, const char* label, PyCalla
     return true;
 }
 
-//----------------------------------------------------------------------------
-bool CPyCppyy::Utility::AddBinaryOperator(PyObject* left, PyObject* right, const char* op,
-    const char* label, const char* alt, Cppyy::TCppScope_t scope)
-{
-// Install the named operator (op) into the left object's class if such a function
-// exists as a global overload; a label must be given if the operator is not in
-// gC2POperatorMapping (i.e. if it is ambiguous at the member level).
-
-// this should be a given, nevertheless ...
-    bool reverse = false;
-    PyObject* pyclass = nullptr;
-    if (CPPInstance_Check(left))
-        pyclass = (PyObject*)Py_TYPE(left);
-    else if (CPPInstance_Check(right)) {
-        pyclass = (PyObject*)Py_TYPE(right);
-        reverse = true;
-    } else
-        return false;
-
-// retrieve the class names to match the signature of any found global functions
-    std::string lcname = ClassName(left);
-    std::string rcname = ClassName(right);
-    bool result = AddBinaryOperator(pyclass, lcname, rcname, op, label, alt, scope, reverse);
-
-    return result;
-}
-
-//----------------------------------------------------------------------------
-bool CPyCppyy::Utility::AddBinaryOperator(PyObject* pyclass, const char* op,
-    const char* label, const char* alt, Cppyy::TCppScope_t scope)
-{
-// Install binary operator op in pyclass, working on two instances of pyclass.
-    std::string cname;
-    if (CPPScope_Check(pyclass))
-        cname = Cppyy::GetScopedFinalName(((CPPScope*)pyclass)->fCppType);
-    else {
-        PyObject* pyname = PyObject_GetAttr(pyclass, PyStrings::gName);
-        cname = Cppyy::ResolveName(CPyCppyy_PyText_AsString(pyname));
-        Py_DECREF(pyname);
-    }
-
-    return AddBinaryOperator(pyclass, cname, cname, op, label, alt, scope);
-}
 
 //----------------------------------------------------------------------------
 static inline
@@ -294,17 +251,38 @@ CPyCppyy::PyCallable* BuildOperator(const std::string& lcname, const std::string
     return new CPyCppyy::CPPReverseBinary(scope, meth);
 }
 
-bool CPyCppyy::Utility::AddBinaryOperator(
-    PyObject* pyclass, const std::string& lcname, const std::string& rcname,
-    const char* op, const char* label, const char* alt,
-    Cppyy::TCppScope_t scope, bool reverse)
+//----------------------------------------------------------------------------
+CPyCppyy::PyCallable* CPyCppyy::Utility::FindBinaryOperator(PyObject* left, PyObject* right,
+    const char* op, Cppyy::TCppScope_t scope)
 {
-// Find a global function with a matching signature and install the result on pyclass;
-// in addition, __gnu_cxx, std::__1, and __cppyy_internal are searched pro-actively (as
-// there's AFAICS no way to unearth using information).
+// Find a callable matching the named operator (op) and the (left, right)
+// argsuments in the global or these objects' namespaces.
+
+    bool reverse = false;
+    if (!CPPInstance_Check(left)) {
+        if (CPPInstance_Check(right))
+           reverse = true;
+        else
+           return nullptr;
+    }
+
+// retrieve the class names to match the signature of any found global functions
+    std::string lcname = ClassName(left);
+    std::string rcname = ClassName(right);
+    return FindBinaryOperator(lcname, rcname, op, scope, reverse);
+}
+
+//----------------------------------------------------------------------------
+CPyCppyy::PyCallable* CPyCppyy::Utility::FindBinaryOperator(
+    const std::string& lcname, const std::string& rcname,
+    const char* op, Cppyy::TCppScope_t scope, bool reverse)
+{
+// Find a global function with a matching signature; search __gnu_cxx, std::__1,
+// and __cppyy_internal pro-actively (as there's AFAICS no way to unearth 'using'
+// information).
 
     if (rcname == "<unknown>" || lcname == "<unknown>")
-        return false;
+        return nullptr;
 
     PyCallable* pyfunc = 0;
 
@@ -357,14 +335,7 @@ bool CPyCppyy::Utility::AddBinaryOperator(
         }
     }
 
-    if (pyfunc) {  // found a matching overload; add to class
-        bool ok = AddToClass(pyclass, label, pyfunc);
-        if (ok && alt)
-            return AddToClass(pyclass, alt, label);
-        return ok;
-    }
-
-    return false;
+    return pyfunc;
 }
 
 //----------------------------------------------------------------------------
@@ -830,8 +801,8 @@ std::string CPyCppyy::Utility::ClassName(PyObject* pyobj)
 //----------------------------------------------------------------------------
 CPyCppyy::Utility::PyOperators::~PyOperators()
 {
-    Py_XDECREF(eq);
-    Py_XDECREF(ne);
+    Py_XDECREF(fEq);
+    Py_XDECREF(fNe);
 }
 
 

@@ -51,23 +51,6 @@ bool HasAttrDirect(PyObject* pyclass, PyObject* pyname, bool mustBeCPyCppyy = fa
 }
 
 //-----------------------------------------------------------------------------
-inline bool IsTopLevelClass(PyObject* pyclass) {
-// determine whether this class directly derives from CPPInstance
-    PyObject* bases = PyObject_GetAttr(pyclass, PyStrings::gBases);
-    if (!bases)
-        return false;
-
-    bool isTopLevel = false;
-    if (PyTuple_CheckExact(bases) && PyTuple_GET_SIZE(bases) && \
-            (void*)PyTuple_GET_ITEM(bases, 0) == (void*)&CPPInstance_Type) {
-        isTopLevel = true;
-    }
-
-    Py_DECREF(bases);
-    return isTopLevel;
-}
-
-//-----------------------------------------------------------------------------
 inline bool IsTemplatedSTLClass(const std::string& name, const std::string& klass) {
 // Scan the name of the class and determine whether it is a template instantiation.
     auto pos = name.find(klass);
@@ -181,50 +164,6 @@ PyObject* FollowGetAttr(PyObject* self, PyObject* name)
     PyObject* result = PyObject_GetAttr(pyptr, name);
     Py_DECREF(pyptr);
     return result;
-}
-
-//-----------------------------------------------------------------------------
-static inline PyObject* GenLazyEqNeq(PyObject* self, PyObject* obj, int op,
-    const char* cppop, const char* label, PyObject* pylabel)
-{
-// bootstrap as necessary
-    if (obj != Py_None) {
-        CPPClass* klass = (CPPClass*)Py_TYPE(self);
-        if (Utility::AddBinaryOperator(self, obj, cppop, label)) {
-        // TODO: this is rather ugly to first store, then delete
-            CPPOverload* cppol = (CPPOverload*)PyObject_GetAttr((PyObject*)klass, pylabel);
-            if (!klass->fOperators) klass->fOperators = new Utility::PyOperators();
-            if (op == Py_EQ) klass->fOperators->eq = cppol;
-            else klass->fOperators->ne = cppol;
-            if (PyObject_DelAttr((PyObject*)klass, pylabel) != 0)
-                PyErr_Clear();
-
-        } else {
-        // drop lazy lookup from future considerations if both types are the same
-        // and lookup failed (theoretically, it is possible to write a class that
-        // can only compare to other types, but that's very unlikely)
-            if (Py_TYPE(self) == Py_TYPE(obj) && \
-                    HasAttrDirect((PyObject*)klass, pylabel)) {
-                if (PyObject_DelAttr((PyObject*)klass, pylabel) != 0)
-                    PyErr_Clear();
-            }
-        }
-    }
-
-// regular richcompare will use the newly found method or default to generic
-    return CPPInstance_Type.tp_richcompare(self, obj, op);
-}
-
-
-PyObject* LazyIsEqual(PyObject* self, PyObject* obj)
-{
-    return GenLazyEqNeq(self, obj, Py_EQ, "==", "__eq__", PyStrings::gEq);
-}
-
-//-----------------------------------------------------------------------------
-PyObject* LazyIsNotEqual(PyObject* self, PyObject* obj)
-{
-    return GenLazyEqNeq(self, obj, Py_NE, "!=", "__ne__", PyStrings::gNe);
 }
 
 
@@ -957,20 +896,18 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
 // comparisons to None; if no operator is available, a hook is installed for lazy
 // lookups in the global and/or class namespace
     if (HasAttrDirect(pyclass, PyStrings::gEq, true)) {
-        CPPOverload* cppol = (CPPOverload*)PyObject_GetAttr(pyclass, PyStrings::gEq);
+        PyObject* cppol = PyObject_GetAttr(pyclass, PyStrings::gEq);
         if (!klass->fOperators) klass->fOperators = new Utility::PyOperators();
-        klass->fOperators->eq = cppol;
+        klass->fOperators->fEq = cppol;
         PyObject_DelAttr(pyclass, PyStrings::gEq);
-    } else if (IsTopLevelClass(pyclass))
-        Utility::AddToClass(pyclass, "__eq__", (PyCFunction)LazyIsEqual, METH_O);
+    }
 
     if (HasAttrDirect(pyclass, PyStrings::gNe, true)) {
-        CPPOverload* cppol = (CPPOverload*)PyObject_GetAttr(pyclass, PyStrings::gNe);
+        PyObject* cppol = PyObject_GetAttr(pyclass, PyStrings::gNe);
         if (!klass->fOperators) klass->fOperators = new Utility::PyOperators();
-        klass->fOperators->ne = cppol;
+        klass->fOperators->fNe = cppol;
         PyObject_DelAttr(pyclass, PyStrings::gNe);
-    } else if (IsTopLevelClass(pyclass))
-        Utility::AddToClass(pyclass, "__ne__",  (PyCFunction)LazyIsNotEqual, METH_O);
+    }
 
 
 //- class name based pythonization -------------------------------------------

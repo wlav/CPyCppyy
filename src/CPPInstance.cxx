@@ -327,24 +327,39 @@ static int op_clear(CPPInstance* pyobj)
 //----------------------------------------------------------------------------
 static inline PyObject* eqneq_binop(CPPClass* klass, PyObject* self, PyObject* obj, int op)
 {
+    using namespace Utility;
+
     if (!klass->fOperators)
-        return nullptr;
+        klass->fOperators = new PyOperators{};
 
     bool flipit = false;
-    CPPOverload* binop = op == Py_EQ ? klass->fOperators->eq : klass->fOperators->ne;
-    if (!binop) {    // as an alternative try !== or !!=
-        binop = op == Py_EQ ? klass->fOperators->ne : klass->fOperators->eq;
-        if (binop) flipit = true;
+    PyObject* binop = op == Py_EQ ? klass->fOperators->fEq : klass->fOperators->fNe;
+    if (!binop) {
+        const char* cppop = op == Py_EQ ? "==" : "!=";
+        PyCallable* pyfunc = Utility::FindBinaryOperator(self, obj, cppop);
+        if (pyfunc) binop = (PyObject*)CPPOverload_New(cppop, pyfunc);
+        else {
+            Py_INCREF(Py_None);
+            binop = Py_None;
+        }
+    // sets the operator to Py_None if not found, indicating that search was done
+        if (op == Py_EQ) klass->fOperators->fEq = binop;
+        else klass->fOperators->fNe = binop;
     }
 
-    if (!binop) return nullptr;
+    if (binop == Py_None) {  // can try !== or !!= as alternatives
+        binop = op == Py_EQ ? klass->fOperators->fNe : klass->fOperators->fEq;
+        if (binop && binop != Py_None) flipit = true;
+    }
+
+    if (!binop || binop == Py_None) return nullptr;
 
     PyObject* args = PyTuple_New(1);
     Py_INCREF(obj);  PyTuple_SET_ITEM(args, 0, obj);
 // since this overload is "ours", don't have to worry about rebinding
-    binop->fSelf = (CPPInstance*)self;
-    PyObject* result = CPPOverload_Type.tp_call((PyObject*)binop, args, nullptr);
-    binop->fSelf = nullptr;
+    ((CPPOverload*)binop)->fSelf = (CPPInstance*)self;
+    PyObject* result = CPPOverload_Type.tp_call(binop, args, nullptr);
+    ((CPPOverload*)binop)->fSelf = nullptr;
     Py_DECREF(args);
 
     if (!result) {
@@ -442,8 +457,9 @@ static PyObject* op_str(CPPInstance* cppinst)
         // attempt lazy install of global operator<<(ostream&)
             std::string rcname = Utility::ClassName(pyobj);
             Cppyy::TCppScope_t rnsID = Cppyy::GetScope(TypeManip::extract_namespace(rcname));
-            if (Utility::AddBinaryOperator(
-                    pyclass, "std::ostream", rcname, "<<", "__lshiftc__", nullptr, rnsID)) {
+            PyCallable* pyfunc = Utility::FindBinaryOperator("std::ostream", rcname, "<<", rnsID);
+            if (pyfunc) {
+                Utility::AddToClass(pyclass, "__lshiftc__", pyfunc);
                 lshift = PyObject_GetAttr(pyclass, PyStrings::gLShiftC);
             } else
                 PyType_Type.tp_setattro(pyclass, PyStrings::gLShiftC, Py_None);
@@ -509,7 +525,11 @@ static PyGetSetDef op_getset[] = {
     PyObject* pyol = PyObject_GetAttr(cppobj, meth);                          \
     if (!pyol) {                                                              \
         PyErr_Clear();                                                        \
-        if (!Utility::AddBinaryOperator(left, right, #op, CPyCppyy_PyText_AsString(meth))) {\
+        PyCallable* pyfunc = Utility::FindBinaryOperator(left, right, #op);   \
+        if (pyfunc) {                                                         \
+            PyObject* pyclass = (PyObject*)(CPPInstance_Check(left) ? Py_TYPE(left) : Py_TYPE(right));\
+            Utility::AddToClass(pyclass, CPyCppyy_PyText_AsString(meth), pyfunc);\
+        } else {                                                              \
             Py_INCREF(Py_NotImplemented);                                     \
             return Py_NotImplemented;                                         \
         }                                                                     \
@@ -524,7 +544,11 @@ static PyGetSetDef op_getset[] = {
     if (!res) {                                                               \
     /* try again, in case there is a better overload out there */             \
         PyErr_Clear();                                                        \
-        if (!Utility::AddBinaryOperator(left, right, #op, CPyCppyy_PyText_AsString(meth))) {\
+        PyCallable* pyfunc = Utility::FindBinaryOperator(left, right, #op);   \
+        if (pyfunc) {                                                         \
+            PyObject* pyclass = (PyObject*)(CPPInstance_Check(left) ? Py_TYPE(left) : Py_TYPE(right));\
+            Utility::AddToClass(pyclass, CPyCppyy_PyText_AsString(meth), pyfunc);\
+        } else {                                                              \
             Py_INCREF(Py_NotImplemented);                                     \
             return Py_NotImplemented;                                         \
         }                                                                     \

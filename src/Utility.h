@@ -10,7 +10,6 @@
 namespace CPyCppyy {
 
 class PyCallable;
-class CPPOverload;
 
 extern dict_lookup_func gDictLookupOrg;
 extern bool gDictLookupActive;
@@ -28,13 +27,10 @@ bool AddToClass(PyObject* pyclass, const char* label, const char* func);
 bool AddToClass(PyObject* pyclass, const char* label, PyCallable* pyfunc);
 
 // helpers for dynamically constructing binary operators
-bool AddBinaryOperator(PyObject* left, PyObject* right, const char* op,
-    const char* label, const char* alt_label = nullptr, Cppyy::TCppScope_t scope = 0);
-bool AddBinaryOperator(PyObject* pyclass, const char* op,
-    const char* label, const char* alt_label = nullptr, Cppyy::TCppScope_t scope = 0);
-bool AddBinaryOperator(PyObject* pyclass, const std::string& lcname, const std::string& rcname,
-    const char* op, const char* label, const char* alt_label = nullptr,
-    Cppyy::TCppScope_t scope = 0, bool reverse = false);
+PyCallable* FindBinaryOperator(PyObject* left, PyObject* right,
+    const char* op, Cppyy::TCppScope_t scope = 0);
+PyCallable* FindBinaryOperator(const std::string& lcname, const std::string& rcname,
+    const char* op, Cppyy::TCppScope_t scope = 0, bool reverse = false);
 
 // helper for template classes and methods
 enum ArgPreference { kNone, kPointer, kReference, kValue };
@@ -58,11 +54,11 @@ Py_ssize_t GetBuffer(PyObject* pyobject, char tc, int size, void*& buf, bool che
 std::string MapOperatorName(const std::string& name, bool bTakesParames);
 
 struct PyOperators {
-    PyOperators() : eq(nullptr), ne(nullptr) {}
+    PyOperators() : fEq(nullptr), fNe(nullptr) {}
     ~PyOperators();
 
-    CPPOverload* eq;
-    CPPOverload* ne;
+    PyObject* fEq;
+    PyObject* fNe;
 };
 
 // meta information
