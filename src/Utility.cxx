@@ -803,6 +803,10 @@ CPyCppyy::Utility::PyOperators::~PyOperators()
 {
     Py_XDECREF(fEq);
     Py_XDECREF(fNe);
+    Py_XDECREF(fLAdd); Py_XDECREF(fRAdd);
+    Py_XDECREF(fSub);
+    Py_XDECREF(fLMul); Py_XDECREF(fRMul);
+    Py_XDECREF(fDiv);
 }
 
 

@@ -32,15 +32,9 @@ namespace PyStrings {
     extern PyObject* gCTypesType;
 
     extern PyObject* gAdd;
-    extern PyObject* gLAdd;
-    extern PyObject* gRAdd;
     extern PyObject* gSub;
-    extern PyObject* gLSub;
     extern PyObject* gMul;
-    extern PyObject* gLMul;
-    extern PyObject* gRMul;
     extern PyObject* gDiv;
-    extern PyObject* gLDiv;
 
     extern PyObject* gLShift;
     extern PyObject* gLShiftC;

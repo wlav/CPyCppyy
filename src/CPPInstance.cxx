@@ -336,7 +336,7 @@ static inline PyObject* eqneq_binop(CPPClass* klass, PyObject* self, PyObject* o
     PyObject* binop = op == Py_EQ ? klass->fOperators->fEq : klass->fOperators->fNe;
     if (!binop) {
         const char* cppop = op == Py_EQ ? "==" : "!=";
-        PyCallable* pyfunc = Utility::FindBinaryOperator(self, obj, cppop);
+        PyCallable* pyfunc = FindBinaryOperator(self, obj, cppop);
         if (pyfunc) binop = (PyObject*)CPPOverload_New(cppop, pyfunc);
         else {
             Py_INCREF(Py_None);
@@ -521,74 +521,69 @@ static PyGetSetDef op_getset[] = {
 
 
 //= CPyCppyy type number stubs to allow dynamic overrides =====================
-#define CPYCPPYY_STUB_BODY(op)                                                \
-    PyObject* pyol = PyObject_GetAttr(cppobj, meth);                          \
-    if (!pyol) {                                                              \
+#define CPYCPPYY_STUB_BODY(name, op)                                          \
+    if (!meth) {                                                              \
         PyErr_Clear();                                                        \
         PyCallable* pyfunc = Utility::FindBinaryOperator(left, right, #op);   \
-        if (pyfunc) {                                                         \
-            PyObject* pyclass = (PyObject*)(CPPInstance_Check(left) ? Py_TYPE(left) : Py_TYPE(right));\
-            Utility::AddToClass(pyclass, CPyCppyy_PyText_AsString(meth), pyfunc);\
-        } else {                                                              \
-            Py_INCREF(Py_NotImplemented);                                     \
-            return Py_NotImplemented;                                         \
-        }                                                                     \
-        pyol = PyObject_GetAttr(cppobj, meth);                                \
-        if (!pyol) {                                                          \
-            PyErr_Clear();                                                    \
+        if (pyfunc) meth = (PyObject*)CPPOverload_New(#name, pyfunc);         \
+        else {                                                                \
             Py_INCREF(Py_NotImplemented);                                     \
             return Py_NotImplemented;                                         \
         }                                                                     \
     }                                                                         \
-    PyObject* res = PyObject_CallFunctionObjArgs(pyol, other, nullptr);       \
+    PyObject* res = PyObject_CallFunctionObjArgs(meth, cppobj, other, nullptr);\
     if (!res) {                                                               \
     /* try again, in case there is a better overload out there */             \
         PyErr_Clear();                                                        \
         PyCallable* pyfunc = Utility::FindBinaryOperator(left, right, #op);   \
-        if (pyfunc) {                                                         \
-            PyObject* pyclass = (PyObject*)(CPPInstance_Check(left) ? Py_TYPE(left) : Py_TYPE(right));\
-            Utility::AddToClass(pyclass, CPyCppyy_PyText_AsString(meth), pyfunc);\
-        } else {                                                              \
+        if (pyfunc) ((CPPOverload*&)meth)->AdoptMethod(pyfunc);               \
+        else {                                                                \
             Py_INCREF(Py_NotImplemented);                                     \
             return Py_NotImplemented;                                         \
         }                                                                     \
-    /* CPPOverloads share their internals, so use old pyol to try again */    \
-        res = PyObject_CallFunctionObjArgs(pyol, other, nullptr);             \
+    /* use same overload with newly added function */                         \
+        res = PyObject_CallFunctionObjArgs(meth, cppobj, other, nullptr);     \
     }                                                                         \
-    Py_DECREF(pyol);                                                          \
     return res;
 
 
-#define CPYCPPYY_OPERATOR_STUB(name, op, pyname)                              \
+#define CPYCPPYY_OPERATOR_STUB(name, op, ometh)                               \
 static PyObject* op_##name##_stub(PyObject* left, PyObject* right)            \
 {                                                                             \
-/* placeholder to lazily install and forward to __#name__ if available */     \
-/* TODO: consider caching these methods on the CPPClass */                    \
-    PyObject* cppobj = left, *other = right; PyObject* meth = pyname;         \
-    CPYCPPYY_STUB_BODY(op)                                                    \
+/* placeholder to lazily install and forward to 'ometh' if available */       \
+    CPPClass* klass = (CPPClass*)Py_TYPE(left);                               \
+    if (!klass->fOperators) klass->fOperators = new Utility::PyOperators{};   \
+    PyObject*& meth = ometh;                                                  \
+    PyObject *cppobj = left, *other = right;                                  \
+    CPYCPPYY_STUB_BODY(name, op)                                              \
 }
 
-#define CPYCPPYY_ASSOCIATIVE_OPERATOR_STUB(name, op, pylname, pyrname)        \
+#define CPYCPPYY_ASSOCIATIVE_OPERATOR_STUB(name, op, lmeth, rmeth)            \
 static PyObject* op_##name##_stub(PyObject* left, PyObject* right)            \
 {                                                                             \
-/* placeholder to lazily install and forward do __(r)#name__ if available */  \
-/* TODO: consider caching these methods on the CPPClass */                    \
-    PyObject *meth, *cppobj, *other;                                          \
+/* placeholder to lazily install and forward do '(l/r)meth' if available  */  \
+    CPPClass* klass; PyObject** pmeth;                                        \
+    PyObject *cppobj, *other;                                                 \
     if (CPPInstance_Check(left)) {                                            \
-        meth = pylname; cppobj = left; other = right;                         \
+        klass = (CPPClass*)Py_TYPE(left);                                     \
+        if (!klass->fOperators) klass->fOperators = new Utility::PyOperators{};\
+        pmeth = &lmeth; cppobj = left; other = right;                         \
     } else if (CPPInstance_Check(right)) {                                    \
-        meth = pyrname; cppobj = right; other = left;                         \
+        klass = (CPPClass*)Py_TYPE(right);                                    \
+        if (!klass->fOperators) klass->fOperators = new Utility::PyOperators{};\
+        pmeth = &rmeth; cppobj = right; other = left;                         \
     } else {                                                                  \
         Py_INCREF(Py_NotImplemented);                                         \
         return Py_NotImplemented;                                             \
     }                                                                         \
-    CPYCPPYY_STUB_BODY(op)                                                    \
+    PyObject*& meth = *pmeth;                                                 \
+    CPYCPPYY_STUB_BODY(name, op)                                              \
 }
 
-CPYCPPYY_ASSOCIATIVE_OPERATOR_STUB(add, +, PyStrings::gLAdd, PyStrings::gRAdd)
-CPYCPPYY_OPERATOR_STUB(            sub, -, PyStrings::gLSub)
-CPYCPPYY_ASSOCIATIVE_OPERATOR_STUB(mul, *, PyStrings::gLMul, PyStrings::gRMul)
-CPYCPPYY_OPERATOR_STUB(            div, /, PyStrings::gLDiv)
+CPYCPPYY_ASSOCIATIVE_OPERATOR_STUB(add, +, klass->fOperators->fLAdd, klass->fOperators->fRAdd)
+CPYCPPYY_OPERATOR_STUB(            sub, -, klass->fOperators->fSub)
+CPYCPPYY_ASSOCIATIVE_OPERATOR_STUB(mul, *, klass->fOperators->fLMul, klass->fOperators->fRMul)
+CPYCPPYY_OPERATOR_STUB(            div, /, klass->fOperators->fDiv)
 
 //-----------------------------------------------------------------------------
 static PyNumberMethods op_as_number = {
