@@ -161,7 +161,8 @@ static inline PyObject* HandleReturn(
     // if this new object falls inside self, make sure its lifetime is proper
         if (pymeth->fMethodInfo->fFlags & CallContext::kSetLifeline)
             ll_action = 1;
-        else if (CPPInstance_Check(pymeth->fSelf) && CPPInstance_Check(result)) {
+        else if (!(pymeth->fMethodInfo->fFlags & CallContext::kNeverLifeLine) && \
+                 CPPInstance_Check(pymeth->fSelf) && CPPInstance_Check(result)) {
         // if self was a by-value return and result is not, pro-actively protect result;
         // else if the return value falls within the memory of 'this', force a lifeline
             CPPInstance* cppself = (CPPInstance*)pymeth->fSelf;
@@ -178,7 +179,8 @@ static inline PyObject* HandleReturn(
                 }
             }
             if (ll_action) cppres->fFlags |= CPPInstance::kHasLifeline;    // for chaining
-        }
+        } else
+            pymeth->fMethodInfo->fFlags |= CallContext::kNeverLifeLine;
     }
 
     if (ll_action) {
