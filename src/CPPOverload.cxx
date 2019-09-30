@@ -179,8 +179,10 @@ static inline PyObject* HandleReturn(
                 }
             }
             if (ll_action) cppres->fFlags |= CPPInstance::kHasLifeline;    // for chaining
-        } else
-            pymeth->fMethodInfo->fFlags |= CallContext::kNeverLifeLine;
+        }
+
+        if (!ll_action)
+            pymeth->fMethodInfo->fFlags |= CallContext::kNeverLifeLine;    // assume invariant semantics
     }
 
     if (ll_action) {
