@@ -42,7 +42,9 @@ namespace {
             gOpSkip.insert("[]");      // __s/getitem__, depends on return type
             gOpSkip.insert("+");       // __add__, depends on # of args (see __pos__)
             gOpSkip.insert("-");       // __sub__, id. (eq. __neg__)
-            gOpSkip.insert("+");       // __mul__, double meaning in C++
+            gOpSkip.insert("*");       // __mul__ or __deref__
+            gOpSkip.insert("++");      // __postinc__ or __preinc__
+            gOpSkip.insert("--");      // __postdec__ or __predec__
 
             gC2POperatorMapping["[]"]  = "__getitem__";
             gC2POperatorMapping["()"]  = "__call__";
