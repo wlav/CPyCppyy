@@ -326,7 +326,7 @@ static PyObject* vector_iter(PyObject* v) {
     if (pyvalue_type && pyvalue_size) {
         PyObject* pydata = CallPyObjMethod(v, "data");
         if (!pydata || Utility::GetBuffer(pydata, '*', 1, vi->vi_data, false) == 0)
-            vi->vi_data = nullptr;
+            vi->vi_data = CPPInstance_Check(pydata) ? ((CPPInstance*)pydata)->GetObjectRaw() : nullptr;
         Py_XDECREF(pydata);
 
         vi->vi_converter = CPyCppyy::CreateConverter(CPyCppyy_PyText_AsString(pyvalue_type));
