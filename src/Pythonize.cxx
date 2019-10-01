@@ -323,13 +323,19 @@ static PyObject* vector_iter(PyObject* v) {
     PyObject* pyvalue_type = PyObject_GetAttrString((PyObject*)Py_TYPE(v), "value_type");
     PyObject* pyvalue_size = PyObject_GetAttrString((PyObject*)Py_TYPE(v), "value_size");
 
+    vi->vi_klass = 0;
     if (pyvalue_type && pyvalue_size) {
         PyObject* pydata = CallPyObjMethod(v, "data");
-        if (!pydata || Utility::GetBuffer(pydata, '*', 1, vi->vi_data, false) == 0)
-            vi->vi_data = CPPInstance_Check(pydata) ? ((CPPInstance*)pydata)->GetObjectRaw() : nullptr;
+        if (!pydata || Utility::GetBuffer(pydata, '*', 1, vi->vi_data, false) == 0) {
+            if (CPPInstance_Check(pydata)) {
+                vi->vi_data = ((CPPInstance*)pydata)->GetObjectRaw();
+                vi->vi_klass = ((CPPClass*)Py_TYPE(pydata))->fCppType;
+            } else
+                vi->vi_data = nullptr;
+        }
         Py_XDECREF(pydata);
 
-        vi->vi_converter = CPyCppyy::CreateConverter(CPyCppyy_PyText_AsString(pyvalue_type));
+        vi->vi_converter = vi->vi_klass ? nullptr : CPyCppyy::CreateConverter(CPyCppyy_PyText_AsString(pyvalue_type));
         vi->vi_stride    = PyLong_AsLong(pyvalue_size);
     } else {
         PyErr_Clear();
