@@ -7,6 +7,7 @@
 #include "ProxyWrappers.h"
 #include "PyStrings.h"
 #include "TypeManip.h"
+#include "SignalTryCatch.h"
 #include "Utility.h"
 
 #include "CPyCppyy/TPyException.h"
@@ -52,11 +53,11 @@ inline void CPyCppyy::CPPMethod::Destroy_() const
 }
 
 //----------------------------------------------------------------------------
-inline PyObject* CPyCppyy::CPPMethod::CallFast(
+inline PyObject* CPyCppyy::CPPMethod::Call(
     void* self, ptrdiff_t offset, CallContext* ctxt)
 {
-// Helper code to prevent some duplication; this is called from CallSafe() as well
-// as directly from CPPMethod::Execute in fast mode.
+// call into C++ through fExecutor; abstracted out from Execute() to prevent some
+// code duplication with ProtectedCall()
     PyObject* result = nullptr;
 
     try {       // C++ try block
@@ -117,20 +118,21 @@ inline PyObject* CPyCppyy::CPPMethod::CallFast(
 }
 
 //----------------------------------------------------------------------------
-inline PyObject* CPyCppyy::CPPMethod::CallSafe(
+inline PyObject* CPyCppyy::CPPMethod::ProtectedCall(
     void* self, ptrdiff_t offset, CallContext* ctxt)
 {
-// Helper code to prevent some code duplication; this code embeds a "try/catch"
-// block that saves the stack for restoration in case of an otherwise fatal signal.
+// helper code to prevent some code duplication; this code embeds a "try/catch"
+// block that saves the call environment for restoration in case of an otherwise
+// fatal signal
     PyObject* result = 0;
 
-//   TRY {       // ROOT "try block"
-    result = CallFast(self, offset, ctxt);
-   //   } CATCH(excode) {
-   //      PyErr_SetString(PyExc_SystemError, "problem in C++; program state has been reset");
-   //      result = 0;
-   //      Throw(excode);
-   //   } ENDTRY;
+    TRY {     // copy call environment to be able to jump back on signal
+        result = Call(self, offset, ctxt);
+    } CATCH(excode) {
+        PyErr_SetString(PyExc_SystemError, "problem in C++; program state has been reset");
+        result = 0;
+        Throw(excode);
+    } ENDTRY;
 
     return result;
 }
@@ -581,12 +583,12 @@ PyObject* CPyCppyy::CPPMethod::Execute(void* self, ptrdiff_t offset, CallContext
 // call the interface method
     PyObject* result = 0;
 
-    if (CallContext::sSignalPolicy == CallContext::kFast) {
+    if (CallContext::sSignalPolicy != CallContext::kProtected) {
     // bypasses try block (i.e. segfaults will abort)
-        result = CallFast(self, offset, ctxt);
+        result = Call(self, offset, ctxt);
     } else {
     // at the cost of ~10% performance, don't abort the interpreter on any signal
-        result = CallSafe(self, offset, ctxt);
+        result = ProtectedCall(self, offset, ctxt);
     }
 
 // TODO: the following is dreadfully slow and dead-locks on Apache: revisit

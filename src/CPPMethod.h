@@ -61,8 +61,8 @@ private:
     void Copy_(const CPPMethod&);
     void Destroy_() const;
 
-    PyObject* CallFast(void*, ptrdiff_t, CallContext*);
-    PyObject* CallSafe(void*, ptrdiff_t, CallContext*);
+    PyObject* Call(void*, ptrdiff_t, CallContext*);
+    PyObject* ProtectedCall(void*, ptrdiff_t, CallContext*);
 
     bool InitConverters_();
 

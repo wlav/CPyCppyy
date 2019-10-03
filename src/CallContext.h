@@ -56,9 +56,8 @@ struct CallContext {
         kReleaseGIL     = 0x0100, // if method should release the GIL
         kSetLifeline    = 0x0200, // if return value is part of 'this'
         kNeverLifeLine  = 0x0400, // if the return value is never part of 'this'
-        kFast           = 0x0800, // if method should NOT handle signals
-        kSafe           = 0x1000, // if method should return on signals
-        kIsPseudoFunc   = 0x2000, // internal, used for introspection
+        kProtected      = 0x0800, // if method should return on signals
+        kIsPseudoFunc   = 0x1000, // internal, used for introspection
     };
 
 // memory handling
@@ -70,7 +69,7 @@ struct CallContext {
 
 // signal safety
     static ECallFlags sSignalPolicy;
-    static bool SetSignalPolicy(ECallFlags e);
+    static bool SetGlobalSignalPolicy(bool setProtected);
 
     Parameter* GetArgs(size_t sz) {
         if (sz != (size_t)-1) fNArgs = sz;
