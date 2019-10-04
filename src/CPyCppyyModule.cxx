@@ -159,9 +159,13 @@ struct CPyCppyy_tagCDataObject {       // non-public (but stable)
 } // unnamed namespace
 
 namespace CPyCppyy {
-    PyObject* gThisModule = nullptr;
-    PyObject* gPyTypeMap = nullptr;
+    PyObject* gThisModule    = nullptr;
+    PyObject* gPyTypeMap     = nullptr;
     PyObject* gNullPtrObject = nullptr;
+    PyObject* gBusException  = nullptr;
+    PyObject* gSegvException = nullptr;
+    PyObject* gIllException  = nullptr;
+    PyObject* gAbrtException = nullptr;
     std::map<std::string, std::vector<PyObject*>> gPythonizations;
     std::set<Cppyy::TCppType_t> gPinnedTypes;
 }
@@ -884,6 +888,19 @@ extern "C" void initlibcppyy()
     gNullPtrObject = (PyObject*)&_CPyCppyy_NullPtrStruct;
     Py_INCREF(gNullPtrObject);
     PyModule_AddObject(gThisModule, (char*)"nullptr", gNullPtrObject);
+
+// C++-specific exceptions
+    PyObject* cppfatal = PyErr_NewException("cppyy.ll.FatalError", nullptr, nullptr);
+    PyModule_AddObject(gThisModule, (char*)"FatalError", cppfatal);
+
+    gBusException  = PyErr_NewException("cppyy.ll.BusError", cppfatal, nullptr);
+    PyModule_AddObject(gThisModule, (char*)"BusError", gBusException);
+    gSegvException = PyErr_NewException("cppyy.ll.SegmentationViolation", cppfatal, nullptr);
+    PyModule_AddObject(gThisModule, (char*)"SegmentationViolation", gSegvException);
+    gIllException  = PyErr_NewException("cppyy.ll.IllegalInstruction", cppfatal, nullptr);
+    PyModule_AddObject(gThisModule, (char*)"IllegalInstruction", gIllException);
+    gAbrtException = PyErr_NewException("cppyy.ll.AbortSignal", cppfatal, nullptr);
+    PyModule_AddObject(gThisModule, (char*)"AbortSignal", gAbrtException);
 
 // policy labels
     PyModule_AddObject(gThisModule, (char*)"kMemoryHeuristics",

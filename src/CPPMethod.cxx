@@ -25,6 +25,10 @@
 //- data and local helpers ---------------------------------------------------
 namespace CPyCppyy {
     extern PyObject* gThisModule;
+    extern PyObject* gBusException;
+    extern PyObject* gSegvException;
+    extern PyObject* gIllException;
+    extern PyObject* gAbrtException;
 }
 
 
@@ -129,8 +133,21 @@ inline PyObject* CPyCppyy::CPPMethod::ProtectedCall(
     TRY {     // copy call environment to be able to jump back on signal
         result = Call(self, offset, ctxt);
     } CATCH(excode) {
-        PyErr_SetString(PyExc_SystemError, "problem in C++; program state has been reset");
+    // Unfortunately, the excodes are not the ones from signal.h, but enums from TSysEvtHandler.h
+        if (excode == 0)
+            PyErr_SetString(gBusException, "bus error in C++; program state was reset");
+        else if (excode == 1)
+            PyErr_SetString(gSegvException, "segfault in C++; program state was reset");
+        else if (excode == 4)
+            PyErr_SetString(gIllException, "illegal instruction in C++; program state was reset");
+        else if (excode == 5)
+            PyErr_SetString(gAbrtException, "abort from C++; program state was reset");
+        else if (excode == 12)
+            PyErr_SetString(PyExc_FloatingPointError, "floating point exception in C++; program state was reset");
+        else
+            PyErr_SetString(PyExc_SystemError, "problem in C++; program state was reset");
         result = 0;
+
         Throw(excode);
     } ENDTRY;
 
