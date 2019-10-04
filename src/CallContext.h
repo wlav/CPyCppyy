@@ -57,7 +57,8 @@ struct CallContext {
         kSetLifeline    = 0x0200, // if return value is part of 'this'
         kNeverLifeLine  = 0x0400, // if the return value is never part of 'this'
         kProtected      = 0x0800, // if method should return on signals
-        kIsPseudoFunc   = 0x1000, // internal, used for introspection
+        kUseFFI         = 0x1000, // not implemented
+        kIsPseudoFunc   = 0x2000, // internal, used for introspection
     };
 
 // memory handling
