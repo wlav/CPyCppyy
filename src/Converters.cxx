@@ -2674,7 +2674,7 @@ public:
         gf["wchar_t*"] =                    (cf_t)+[](dims_t) { return new WCStringConverter{}; };
 // TODO: Figure out these char types (as well as char8_t coming in C++20) on all platforms; using wchar
 // isn't properly tested, but based on https://en.cppreference.com/w/cpp/language/types .
-#ifdef WIN32
+#ifdef _WIN32
         gf["char16_t*"] =                   gf["wchar_t*"];
         gf["char32_t*"] =                   (cf_t)+[](dims_t) { static NotImplementedConverter c{}; return &c; };
 #else

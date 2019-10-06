@@ -14,7 +14,9 @@
 #include <setjmp.h>
 #include "CPyCppyy/CommonDefs.h"
 
+#ifndef _WIN32
 #define NEED_SIGJMP 1
+#endif
 
 struct ExceptionContext_t {
 #ifdef NEED_SIGJMP
