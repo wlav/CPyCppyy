@@ -57,7 +57,7 @@ inline void CPyCppyy::CPPMethod::Destroy_() const
 }
 
 //----------------------------------------------------------------------------
-inline PyObject* CPyCppyy::CPPMethod::Call(
+inline PyObject* CPyCppyy::CPPMethod::ExecuteFast(
     void* self, ptrdiff_t offset, CallContext* ctxt)
 {
 // call into C++ through fExecutor; abstracted out from Execute() to prevent some
@@ -122,7 +122,7 @@ inline PyObject* CPyCppyy::CPPMethod::Call(
 }
 
 //----------------------------------------------------------------------------
-inline PyObject* CPyCppyy::CPPMethod::ProtectedCall(
+inline PyObject* CPyCppyy::CPPMethod::ExecuteProtected(
     void* self, ptrdiff_t offset, CallContext* ctxt)
 {
 // helper code to prevent some code duplication; this code embeds a "try/catch"
@@ -131,7 +131,7 @@ inline PyObject* CPyCppyy::CPPMethod::ProtectedCall(
     PyObject* result = 0;
 
     TRY {     // copy call environment to be able to jump back on signal
-        result = Call(self, offset, ctxt);
+        result = ExecuteFast(self, offset, ctxt);
     } CATCH(excode) {
     // Unfortunately, the excodes are not the ones from signal.h, but enums from TSysEvtHandler.h
         if (excode == 0)
@@ -603,10 +603,10 @@ PyObject* CPyCppyy::CPPMethod::Execute(void* self, ptrdiff_t offset, CallContext
     if (CallContext::sSignalPolicy != CallContext::kProtected && \
         !(ctxt->fFlags & CallContext::kProtected)) {
     // bypasses try block (i.e. segfaults will abort)
-        result = Call(self, offset, ctxt);
+        result = ExecuteFast(self, offset, ctxt);
     } else {
     // at the cost of ~10% performance, don't abort the interpreter on any signal
-        result = ProtectedCall(self, offset, ctxt);
+        result = ExecuteProtected(self, offset, ctxt);
     }
 
 // TODO: the following is dreadfully slow and dead-locks on Apache: revisit
