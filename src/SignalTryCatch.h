@@ -57,6 +57,4 @@ struct ExceptionContext_t {
 
 CPYCPPYY_IMPORT ExceptionContext_t *gException;
 
-CPYCPPYY_IMPORT void Throw(int code);
-
 #endif

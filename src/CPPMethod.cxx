@@ -147,8 +147,6 @@ inline PyObject* CPyCppyy::CPPMethod::ExecuteProtected(
         else
             PyErr_SetString(PyExc_SystemError, "problem in C++; program state was reset");
         result = 0;
-
-        Throw(excode);
     } ENDTRY;
 
     return result;
