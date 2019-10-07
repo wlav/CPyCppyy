@@ -46,6 +46,11 @@ namespace {
             gOpSkip.insert("++");      // __postinc__ or __preinc__
             gOpSkip.insert("--");      // __postdec__ or __predec__
 
+            gOpSkip.insert("new");     // this and the following not handled at all
+            gOpSkip.insert("new[]");
+            gOpSkip.insert("delete");
+            gOpSkip.insert("delete[]");
+
             gC2POperatorMapping["[]"]  = "__getitem__";
             gC2POperatorMapping["()"]  = "__call__";
             gC2POperatorMapping["/"]   = CPPYY__div__;
@@ -254,11 +259,24 @@ CPyCppyy::PyCallable* BuildOperator(const std::string& lcname, const std::string
 }
 
 //----------------------------------------------------------------------------
+CPyCppyy::PyCallable* CPyCppyy::Utility::FindUnaryOperator(PyObject* pyclass, const char* op)
+{
+// Find a callable matching named operator (op) and klass arguments in the global
+// namespace or the klass' namespace.
+    if (!CPPScope_Check(pyclass))
+        return nullptr;
+
+    CPPClass* klass = (CPPClass*)pyclass;
+    const std::string& lcname = Cppyy::GetScopedFinalName(klass->fCppType);
+    return FindBinaryOperator(lcname, "", op, klass->fCppType, false);
+}
+
+//----------------------------------------------------------------------------
 CPyCppyy::PyCallable* CPyCppyy::Utility::FindBinaryOperator(PyObject* left, PyObject* right,
     const char* op, Cppyy::TCppScope_t scope)
 {
 // Find a callable matching the named operator (op) and the (left, right)
-// argsuments in the global or these objects' namespaces.
+// arguments in the global or these objects' namespaces.
 
     bool reverse = false;
     if (!CPPInstance_Check(left)) {
@@ -269,8 +287,8 @@ CPyCppyy::PyCallable* CPyCppyy::Utility::FindBinaryOperator(PyObject* left, PyOb
     }
 
 // retrieve the class names to match the signature of any found global functions
-    std::string lcname = ClassName(left);
-    std::string rcname = ClassName(right);
+    const std::string& lcname = ClassName(left);
+    const std::string& rcname = ClassName(right);
     return FindBinaryOperator(lcname, rcname, op, scope, reverse);
 }
 

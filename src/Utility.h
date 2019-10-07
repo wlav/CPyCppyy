@@ -26,7 +26,8 @@ bool AddToClass(PyObject* pyclass, const char* label, PyCFunction cfunc,
 bool AddToClass(PyObject* pyclass, const char* label, const char* func);
 bool AddToClass(PyObject* pyclass, const char* label, PyCallable* pyfunc);
 
-// helpers for dynamically constructing binary operators
+// helpers for dynamically constructing operators
+PyCallable* FindUnaryOperator(PyObject* pyclass, const char* op);
 PyCallable* FindBinaryOperator(PyObject* left, PyObject* right,
     const char* op, Cppyy::TCppScope_t scope = 0);
 PyCallable* FindBinaryOperator(const std::string& lcname, const std::string& rcname,

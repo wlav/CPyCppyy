@@ -527,8 +527,7 @@ static PyGetSetDef op_getset[] = {
         PyCallable* pyfunc = Utility::FindBinaryOperator(left, right, #op);   \
         if (pyfunc) meth = (PyObject*)CPPOverload_New(#name, pyfunc);         \
         else {                                                                \
-            Py_INCREF(Py_NotImplemented);                                     \
-            return Py_NotImplemented;                                         \
+            Py_RETURN_NOTIMPLEMENTED;                                         \
         }                                                                     \
     }                                                                         \
     PyObject* res = PyObject_CallFunctionObjArgs(meth, cppobj, other, nullptr);\
@@ -538,8 +537,7 @@ static PyGetSetDef op_getset[] = {
         PyCallable* pyfunc = Utility::FindBinaryOperator(left, right, #op);   \
         if (pyfunc) ((CPPOverload*&)meth)->AdoptMethod(pyfunc);               \
         else {                                                                \
-            Py_INCREF(Py_NotImplemented);                                     \
-            return Py_NotImplemented;                                         \
+            Py_RETURN_NOTIMPLEMENTED;                                         \
         }                                                                     \
     /* use same overload with newly added function */                         \
         res = PyObject_CallFunctionObjArgs(meth, cppobj, other, nullptr);     \
@@ -573,17 +571,27 @@ static PyObject* op_##name##_stub(PyObject* left, PyObject* right)            \
         if (!klass->fOperators) klass->fOperators = new Utility::PyOperators{};\
         pmeth = &rmeth; cppobj = right; other = left;                         \
     } else {                                                                  \
-        Py_INCREF(Py_NotImplemented);                                         \
-        return Py_NotImplemented;                                             \
+        Py_RETURN_NOTIMPLEMENTED;                                             \
     }                                                                         \
     PyObject*& meth = *pmeth;                                                 \
     CPYCPPYY_STUB_BODY(name, op)                                              \
+}
+
+#define CPYCPPYY_UNARY_OPERATOR(name, op, label)                              \
+static PyObject* op_##name##_stub(PyObject* pyobj)                            \
+{                                                                             \
+/* placeholder to lazily install unary operators */                           \
+    PyCallable* pyfunc = Utility::FindUnaryOperator((PyObject*)Py_TYPE(pyobj), #op);\
+    if (pyfunc && Utility::AddToClass((PyObject*)Py_TYPE(pyobj), #label, pyfunc))\
+         return PyObject_CallMethod(pyobj, #label, nullptr);                  \
+    Py_RETURN_NOTIMPLEMENTED;                                                 \
 }
 
 CPYCPPYY_ASSOCIATIVE_OPERATOR_STUB(add, +, klass->fOperators->fLAdd, klass->fOperators->fRAdd)
 CPYCPPYY_OPERATOR_STUB(            sub, -, klass->fOperators->fSub)
 CPYCPPYY_ASSOCIATIVE_OPERATOR_STUB(mul, *, klass->fOperators->fLMul, klass->fOperators->fRMul)
 CPYCPPYY_OPERATOR_STUB(            div, /, klass->fOperators->fDiv)
+CPYCPPYY_UNARY_OPERATOR(neg, -, __neg__)
 
 //-----------------------------------------------------------------------------
 static PyNumberMethods op_as_number = {
@@ -596,7 +604,7 @@ static PyNumberMethods op_as_number = {
     0,                             // nb_remainder
     0,                             // nb_divmod
     0,                             // nb_power
-    0,                             // nb_negative
+    (unaryfunc)op_neg_stub,        // nb_negative
     0,                             // nb_positive
     0,                             // nb_absolute
     0,                             // tp_nonzero (nb_bool in p3)
