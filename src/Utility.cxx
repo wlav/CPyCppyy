@@ -61,7 +61,7 @@ namespace {
             gC2POperatorMapping["&"]   = "__and__";
             gC2POperatorMapping["|"]   = "__or__";
             gC2POperatorMapping["^"]   = "__xor__";
-            gC2POperatorMapping["~"]   = "__inv__";
+            gC2POperatorMapping["~"]   = "__invert__";
             gC2POperatorMapping["+="]  = "__iadd__";
             gC2POperatorMapping["-="]  = "__isub__";
             gC2POperatorMapping["*="]  = "__imul__";
@@ -268,7 +268,8 @@ CPyCppyy::PyCallable* CPyCppyy::Utility::FindUnaryOperator(PyObject* pyclass, co
 
     CPPClass* klass = (CPPClass*)pyclass;
     const std::string& lcname = Cppyy::GetScopedFinalName(klass->fCppType);
-    return FindBinaryOperator(lcname, "", op, klass->fCppType, false);
+    Cppyy::TCppScope_t scope = Cppyy::GetScope(TypeManip::extract_namespace(lcname));
+    return FindBinaryOperator(lcname, "", op, scope, false);
 }
 
 //----------------------------------------------------------------------------
