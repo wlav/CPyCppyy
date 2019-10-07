@@ -23,19 +23,21 @@ static PyObject* TC2CppName(PyObject* pytc, const char* cpd, bool allow_voidp)
     if (CPyCppyy_PyText_Check(pytc)) {
         char tc = ((char*)CPyCppyy_PyText_AsString(pytc))[0];
         switch (tc) {
-            case '?': name = "bool";           break;
-            case 'c': name = "char";           break;
-            case 'b': name = "char";           break;
-            case 'B': name = "unsigned char";  break;
-            case 'h': name = "short";          break;
-            case 'H': name = "unsigned short"; break;
-            case 'i': name = "int";            break;
-            case 'I': name = "unsigned int";   break;
-            case 'l': name = "long";           break;
-            case 'L': name = "unsigned long";  break;
-            case 'f': name = "float";          break;
-            case 'd': name = "double";         break;
-            case 'g': name = "long double";    break;
+            case '?': name = "bool";               break;
+            case 'c': name = "char";               break;
+            case 'b': name = "char";               break;
+            case 'B': name = "unsigned char";      break;
+            case 'h': name = "short";              break;
+            case 'H': name = "unsigned short";     break;
+            case 'i': name = "int";                break;
+            case 'I': name = "unsigned int";       break;
+            case 'l': name = "long";               break;
+            case 'L': name = "unsigned long";      break;
+            case 'q': name = "long long";          break;
+            case 'Q': name = "unsigned long long"; break;
+            case 'f': name = "float";              break;
+            case 'd': name = "double";             break;
+            case 'g': name = "long double";        break;
             default:  name = (allow_voidp ? "void*" : nullptr); break;
         }
     }
