@@ -890,16 +890,16 @@ extern "C" void initlibcppyy()
     PyModule_AddObject(gThisModule, (char*)"nullptr", gNullPtrObject);
 
 // C++-specific exceptions
-    PyObject* cppfatal = PyErr_NewException("cppyy.ll.FatalError", nullptr, nullptr);
+    PyObject* cppfatal = PyErr_NewException((char*)"cppyy.ll.FatalError", nullptr, nullptr);
     PyModule_AddObject(gThisModule, (char*)"FatalError", cppfatal);
 
-    gBusException  = PyErr_NewException("cppyy.ll.BusError", cppfatal, nullptr);
+    gBusException  = PyErr_NewException((char*)"cppyy.ll.BusError", cppfatal, nullptr);
     PyModule_AddObject(gThisModule, (char*)"BusError", gBusException);
-    gSegvException = PyErr_NewException("cppyy.ll.SegmentationViolation", cppfatal, nullptr);
+    gSegvException = PyErr_NewException((char*)"cppyy.ll.SegmentationViolation", cppfatal, nullptr);
     PyModule_AddObject(gThisModule, (char*)"SegmentationViolation", gSegvException);
-    gIllException  = PyErr_NewException("cppyy.ll.IllegalInstruction", cppfatal, nullptr);
+    gIllException  = PyErr_NewException((char*)"cppyy.ll.IllegalInstruction", cppfatal, nullptr);
     PyModule_AddObject(gThisModule, (char*)"IllegalInstruction", gIllException);
-    gAbrtException = PyErr_NewException("cppyy.ll.AbortSignal", cppfatal, nullptr);
+    gAbrtException = PyErr_NewException((char*)"cppyy.ll.AbortSignal", cppfatal, nullptr);
     PyModule_AddObject(gThisModule, (char*)"AbortSignal", gAbrtException);
 
 // policy labels

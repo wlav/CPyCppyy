@@ -586,7 +586,7 @@ static PyObject* op_##name##_stub(PyObject* pyobj)                            \
 /* placeholder to lazily install unary operators */                           \
     PyCallable* pyfunc = Utility::FindUnaryOperator((PyObject*)Py_TYPE(pyobj), #op);\
     if (pyfunc && Utility::AddToClass((PyObject*)Py_TYPE(pyobj), #label, pyfunc))\
-         return PyObject_CallMethod(pyobj, #label, nullptr);                  \
+         return PyObject_CallMethod(pyobj, (char*)#label, nullptr);           \
     PyErr_SetString(PyExc_NotImplementedError, "");                           \
     return nullptr;                                                           \
 }
