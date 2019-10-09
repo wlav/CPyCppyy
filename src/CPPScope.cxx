@@ -398,6 +398,7 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
                     PyTuple_SET_ITEM(pybases, 0, (PyObject*)&PyInt_Type);
                     PyObject* args = Py_BuildValue((char*)"sOO", name.c_str(), pybases, dct);
                     attr = Py_TYPE(&PyInt_Type)->tp_new(Py_TYPE(&PyInt_Type), args, nullptr);
+                    ((PyTypeObject*)attr)->tp_flags &= ~Py_TPFLAGS_HEAPTYPE;   // trick to make cls dict read-only
                     Py_DECREF(args);
                     Py_DECREF(pybases);
                     Py_DECREF(dct);
@@ -586,7 +587,11 @@ PyTypeObject CPPScope_Type = {
     (getattrofunc)meta_getattro,   // tp_getattro
     (setattrofunc)meta_setattro,   // tp_setattro
     0,                             // tp_as_buffer
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,     // tp_flags
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE
+#if PY_VERSION_HEX >= 0x03040000
+        | Py_TPFLAGS_TYPE_SUBCLASS
+#endif
+        ,                          // tp_flags
     (char*)"CPyCppyy metatype (internal)",        // tp_doc
     0,                             // tp_traverse
     0,                             // tp_clear
