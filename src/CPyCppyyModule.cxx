@@ -806,8 +806,12 @@ extern "C" void initlibcppyy()
 // setup interpreter
     PyEval_InitThreads();
 
-// prepare for lazyness
+// prepare for lazyness (the insert is needed to capture the most generic lookup
+// function, just in case ...)
     PyObject* dict = PyDict_New();
+    PyObject* notstring = PyInt_FromLong(5);
+    PyDict_SetItem(dict, notstring, notstring);
+    Py_DECREF(notstring);
 #if PY_VERSION_HEX >= 0x03030000
     gDictLookupOrg = (dict_lookup_func)((PyDictObject*)dict)->ma_keys->dk_lookup;
 #else
