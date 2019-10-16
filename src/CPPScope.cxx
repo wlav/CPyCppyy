@@ -427,7 +427,7 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
                 // final cleanup
                     Py_DECREF(args);
                     Py_DECREF(pymeta);
-                    Py_DECREF(pybases);
+
                 } else {
                 // presumably not a class enum; simply pretend int
                     Py_INCREF(&PyInt_Type);
