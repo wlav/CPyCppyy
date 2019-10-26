@@ -873,7 +873,7 @@ public:
         gf["const char*"] =                 (ef_t)+[]() { static CStringExecutor e{};     return &e; };
         gf["char*"] =                       gf["const char*"];
         gf["const signed char*"] =          gf["const char*"];
-        gf["signed char*"] =                gf["const char*"];
+        gf["signed char*"] =                gf["char*"];
         gf["wchar_t*"] =                    (ef_t)+[]() { static WCStringExecutor e{};    return &e;};
         gf["std::string"] =                 (ef_t)+[]() { static STLStringExecutor e{};   return &e; };
         gf["string"] =                      gf["std::string"];
