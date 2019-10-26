@@ -329,7 +329,7 @@ static PyObject* vector_iter(PyObject* v) {
         if (!pydata || Utility::GetBuffer(pydata, '*', 1, vi->vi_data, false) == 0) {
             if (CPPInstance_Check(pydata)) {
                 vi->vi_data = ((CPPInstance*)pydata)->GetObjectRaw();
-                vi->vi_klass = ((CPPClass*)Py_TYPE(pydata))->fCppType;
+                vi->vi_klass = ((CPPInstance*)pydata)->ObjectIsA(false);
             } else
                 vi->vi_data = nullptr;
         }

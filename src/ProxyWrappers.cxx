@@ -717,7 +717,7 @@ PyObject* CPyCppyy::BindCppObjectNoCast(Cppyy::TCppObject_t address,
     bool isValue = flags & CPPInstance::kIsValue;
 
 // TODO: make sure that a consistent address is used (may have to be done in BindCppObject)
-    if (address && !isValue /* always fresh */ && flags != CPPInstance::kNoWrapConv) {
+    if (address && !isValue /* always fresh */ && !(flags & (CPPInstance::kNoWrapConv|CPPInstance::kNoMemReg))) {
         PyObject* oldPyObject = MemoryRegulator::RetrievePyObject(
             isRef ? *(void**)address : address, pyclass);
 
