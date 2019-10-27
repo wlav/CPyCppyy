@@ -1,5 +1,5 @@
-#ifndef CPYCPPYY_COMMONDEFS
-#define CPYCPPYY_COMMONDEFS
+#ifndef CPYCPPYY_COMMONDEFS_H
+#define CPYCPPYY_COMMONDEFS_H
 
 // export macros for our own API
 // import/export (after precommondefs.h from PyPy)
@@ -13,4 +13,4 @@
 #define CPYCPPYY_CLASS_EXPORT
 #endif
 
-#endif // !CPYCPPYY_COMMONDEFS
+#endif // !CPYCPPYY_COMMONDEFS_H

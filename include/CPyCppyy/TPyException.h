@@ -1,5 +1,5 @@
-#ifndef CPYCPPYY_TPyException
-#define CPYCPPYY_TPyException
+#ifndef CPYCPPYY_TPyException_H
+#define CPYCPPYY_TPyException_H
 
 //////////////////////////////////////////////////////////////////////////////
 //                                                                          //
@@ -49,4 +49,4 @@ public:
 
 } // namespace CPyCppyy
 
-#endif // !CPYCPPYY_TPyException
+#endif // !CPYCPPYY_TPyException_H

@@ -1,5 +1,5 @@
-#ifndef CPYCPPYY_DISPATCHPTR
-#define CPYCPPYY_DISPATCHPTR
+#ifndef CPYCPPYY_DISPATCHPTR_H
+#define CPYCPPYY_DISPATCHPTR_H
 
 //////////////////////////////////////////////////////////////////////////////
 //                                                                          //
@@ -76,4 +76,4 @@ private:
 
 } // namespace CPyCppyy
 
-#endif // !CPYCPPYY_DISPATCHPTR
+#endif // !CPYCPPYY_DISPATCHPTR_H

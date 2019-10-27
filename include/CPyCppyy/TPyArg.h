@@ -1,5 +1,5 @@
-#ifndef CPYCPPYY_TPYARG
-#define CPYCPPYY_TPYARG
+#ifndef CPYCPPYY_TPYARG_H
+#define CPYCPPYY_TPYARG_H
 
 //////////////////////////////////////////////////////////////////////////////
 //                                                                          //
@@ -49,4 +49,4 @@ private:
     mutable PyObject* fPyObject;        //! converted C++ value as python object
 };
 
-#endif // !CPYCPPYY_TPYARG
+#endif // !CPYCPPYY_TPYARG_H

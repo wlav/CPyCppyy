@@ -1,5 +1,5 @@
-#ifndef CPYCPPYY_TPYRETURN
-#define CPYCPPYY_TPYRETURN
+#ifndef CPYCPPYY_TPYRETURN_H
+#define CPYCPPYY_TPYRETURN_H
 
 //////////////////////////////////////////////////////////////////////////////
 //                                                                          //
@@ -58,4 +58,4 @@ private:
     PyObject* fPyObject;            //! actual python object
 };
 
-#endif // !CPYCPPYY_TPYRETURN
+#endif // !CPYCPPYY_TPYRETURN_H
