@@ -136,13 +136,19 @@ static PyTypeObject* GetCTypesPtrType(int nidx)
     }
     PyTypeObject* cpt_t = gCTypesPtrTypes[nidx];
     if (!cpt_t) {
-        PyObject* ct_t = (PyObject*)GetCTypesType(nidx);
-        if (ct_t) {
-            PyObject* ptrcreat = PyObject_GetAttrString(ctmod, "POINTER");
-            cpt_t = (PyTypeObject*)PyObject_CallFunctionObjArgs(ptrcreat, ct_t, NULL);
-            Py_DECREF(ptrcreat);
+        if (strcmp(gCTypesNames[nidx], "c_char") == 0)  {
+            cpt_t = (PyTypeObject*)PyObject_GetAttrString(ctmod, "c_char_p");
+        } else {
+            PyObject* ct_t = (PyObject*)GetCTypesType(nidx);
+            if (ct_t) {
+                PyObject* ptrcreat = PyObject_GetAttrString(ctmod, "POINTER");
+                cpt_t = (PyTypeObject*)PyObject_CallFunctionObjArgs(ptrcreat, ct_t, NULL);
+                Py_DECREF(ptrcreat);
+            }
+        }
+        if (cpt_t) {
             gCTypesPtrTypes[nidx] = cpt_t;
-            Py_XDECREF(cpt_t);
+            Py_DECREF(cpt_t);
         }
     }
     return cpt_t;
