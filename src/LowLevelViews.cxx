@@ -714,6 +714,8 @@ template<> struct typecode_traits<signed char> {
     static constexpr const char* format = "b"; static constexpr const char* name = "signed char"; };
 template<> struct typecode_traits<unsigned char> {
     static constexpr const char* format = "B"; static constexpr const char* name = "UCharAsInt"; };
+template<> struct typecode_traits<const char*> {
+    static constexpr const char* format = "b"; static constexpr const char* name = "const char*"; };
 template<> struct typecode_traits<short> {
     static constexpr const char* format = "h"; static constexpr const char* name = "short"; };
 template<> struct typecode_traits<unsigned short> {
@@ -840,3 +842,7 @@ CPPYY_IMPL_VIEW_CREATOR(std::complex<float>);
 CPPYY_IMPL_VIEW_CREATOR(std::complex<double>);
 CPPYY_IMPL_VIEW_CREATOR(std::complex<int>);
 CPPYY_IMPL_VIEW_CREATOR(std::complex<long>);
+
+PyObject* CPyCppyy::CreateLowLevelView(const char** address, Py_ssize_t* shape) {
+    return CreateLowLevelViewT<const char*>(address, shape);
+}

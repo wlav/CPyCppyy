@@ -1333,6 +1333,15 @@ CPPYY_IMPL_ARRAY_CONVERTER(LDouble,  c_longdouble, long double,          'D')
 CPPYY_IMPL_ARRAY_CONVERTER(ComplexD, c_complex,    std::complex<double>, 'Z')
 
 
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::CStringArrayConverter::FromMemory(void* address)
+{
+    if (fShape[1] == UNKNOWN_SIZE)
+        return CreateLowLevelView((const char**)address, fShape);
+    return CreateLowLevelView(*(const char***)address, fShape);
+}
+
+
 //- converters for special cases ---------------------------------------------
 bool CPyCppyy::NullptrConverter::SetArg(PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)
 {
@@ -2618,6 +2627,7 @@ public:
         gf["bool**"] =                      (cf_t)+[](dims_t d) { return new BoolArrayPtrConverter{d}; };
         gf["const signed char[]"] =         (cf_t)+[](dims_t d) { return new SCharArrayConverter{d}; };
         gf["signed char[]"] =               (cf_t)+[](dims_t d) { return new SCharArrayConverter{d}; };
+        gf["signed char**"] =               (cf_t)+[](dims_t d) { return new SCharArrayPtrConverter{d}; };
         gf["const unsigned char*"] =        (cf_t)+[](dims_t d) { return new UCharArrayConverter{d}; };
         gf["unsigned char*"] =              (cf_t)+[](dims_t d) { return new UCharArrayConverter{d}; };
         gf["UCharAsInt*"] =                 (cf_t)+[](dims_t d) { return new UCharArrayConverter{d}; };
@@ -2686,6 +2696,7 @@ public:
         gf["char16_t*"] =                   (cf_t)+[](dims_t) { static NotImplementedConverter c{}; return &c; };
         gf["char32_t*"] =                   gf["wchar_t*"];
 #endif
+        gf["const char**"] =                (cf_t)+[](dims_t d) { return new CStringArrayConverter{d}; };
         gf["std::string"] =                 (cf_t)+[](dims_t) { return new STLStringConverter{}; };
         gf["string"] =                      gf["std::string"];
         gf["const std::string&"] =          gf["std::string"];

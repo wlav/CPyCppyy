@@ -59,7 +59,7 @@ public:                                                                      \
     virtual PyObject* FromMemory(void*);                                     \
     virtual bool ToMemory(PyObject*, void*);                                 \
     virtual bool HasState() { return true; }                                 \
-private:                                                                     \
+protected:                                                                   \
     Py_ssize_t* fShape;                                                      \
 };                                                                           \
                                                                              \
@@ -175,6 +175,12 @@ CPPYY_DECLARE_ARRAY_CONVERTER(Float);
 CPPYY_DECLARE_ARRAY_CONVERTER(Double);
 CPPYY_DECLARE_ARRAY_CONVERTER(LDouble);
 CPPYY_DECLARE_ARRAY_CONVERTER(ComplexD);
+
+class CStringArrayConverter : public SCharArrayPtrConverter {
+public:
+    using SCharArrayPtrConverter::SCharArrayPtrConverter;
+    virtual PyObject* FromMemory(void* address);
+};
 
 
 // converters for special cases
