@@ -10,50 +10,50 @@
 //////////////////////////////////////////////////////////////////////////////
 
 // Bindings
-#include "TPyReturn.h"
+#include "CPyCppyy/PyResult.h"
 #include "CPyCppyy/CommonDefs.h"
 
+// Standard
+#include <string>
+#include <vector>
 
-class CPYCPPYY_CLASS_EXPORT TPython {
 
-private:
-    static bool Initialize();
+namespace CPyCppyy {
 
-public:
-// import a python module, making its classes available
-    static bool Import(const char* name);
-
-// load a python script as if it were a macro
-    static void LoadMacro(const char* name);
+// import a python module, making its classes available to Cling
+CPYCPPYY_EXPORT bool Import(const std::string& name);
 
 // execute a python stand-alone script, with argv CLI arguments
-    static void ExecScript(const char* name, int argc = 0, const char** argv = 0);
+CPYCPPYY_EXPORT void ExecScript(const std::string& name, const std::vector<std::string>& args);
 
 // execute a python statement (e.g. "import sys")
-    static bool Exec(const char* cmd);
+CPYCPPYY_EXPORT bool Exec(const std::string& cmd);
 
 // evaluate a python expression (e.g. "1+1")
-    static const TPyReturn Eval(const char* expr);
+CPYCPPYY_EXPORT const PyResult Eval(const std::string& expr);
 
 // enter an interactive python session (exit with ^D)
-    static void Prompt();
+CPYCPPYY_EXPORT void Prompt();
 
-// type verifiers for CPPInstance
-    static bool CPPInstance_Check(PyObject* pyobject);
-    static bool CPPInstance_CheckExact(PyObject* pyobject);
+// C++ Instance (python object proxy) to void* conversion
+void* Instance_AsVoidPtr(PyObject* pyobject);
 
-// type verifiers for CPPOverload
-    static bool CPPOverload_Check(PyObject* pyobject);
-    static bool CPPOverload_CheckExact(PyObject* pyobject);
+// void* to C++ Instance (python object proxy) conversion, returns a new reference
+PyObject* Instance_FromVoidPtr(
+    void* addr, const std::string& classname, bool python_owns = false);
 
-// object proxy to void* conversion
-    static void* CPPInstance_AsVoidPtr(PyObject* pyobject);
+// type verifiers for C++ Scope
+CPYCPPYY_EXPORT bool Scope_Check(PyObject* pyobject);
+CPYCPPYY_EXPORT bool Scope_CheckExact(PyObject* pyobject);
 
-// void* to object proxy conversion, returns a new reference
-    static PyObject* CPPInstance_FromVoidPtr(
-        void* addr, const char* classname, bool python_owns = false);
+// type verifiers for C++ Instance
+CPYCPPYY_EXPORT bool Instance_Check(PyObject* pyobject);
+CPYCPPYY_EXPORT bool Instance_CheckExact(PyObject* pyobject);
 
-    virtual ~TPython() { }
-};
+// type verifiers for C++ Overload
+CPYCPPYY_EXPORT bool Overload_Check(PyObject* pyobject);
+CPYCPPYY_EXPORT bool Overload_CheckExact(PyObject* pyobject);
 
-#endif // !CPYCPPYY_TPYTHON
+} // namespace CPyCppyy
+
+#endif // !CPYCPPYY_API_H

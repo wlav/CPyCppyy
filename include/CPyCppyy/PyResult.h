@@ -1,9 +1,9 @@
-#ifndef CPYCPPYY_TPYRETURN_H
-#define CPYCPPYY_TPYRETURN_H
+#ifndef CPYCPPYY_PYRESULT_H
+#define CPYCPPYY_PYRESULT_H
 
 //////////////////////////////////////////////////////////////////////////////
 //                                                                          //
-// TPyReturn                                                                //
+// TPyResult                                                                //
 //                                                                          //
 // Morphing return type from evaluating python expressions.                 //
 //                                                                          //
@@ -16,14 +16,15 @@ typedef _object PyObject;
 // Bindings
 #include "CPyCppyy/CommonDefs.h"
 
+namespace CPyCppyy {
 
-class CPYCPPYY_CLASS_EXPORT TPyReturn {
+class CPYCPPYY_CLASS_EXPORT PyResult {
 public:
-    TPyReturn();
-    TPyReturn(PyObject* pyobject);
-    TPyReturn(const TPyReturn&);
-    TPyReturn& operator=(const TPyReturn&);
-    virtual ~TPyReturn();
+    PyResult();
+    PyResult(PyObject* pyobject);
+    PyResult(const PyResult&);
+    PyResult& operator=(const PyResult&);
+    virtual ~PyResult();
 
 // conversions to standard types, may fail if unconvertible
     operator char*() const;
@@ -45,7 +46,7 @@ public:
     operator double() const;
     operator float() const { return (float)operator double(); }
 
-// used for both TObject and PyObject conversions
+// used for both general object type and PyObject conversions
     operator void*() const;
 
     template<class T>
@@ -58,4 +59,6 @@ private:
     PyObject* fPyObject;            //! actual python object
 };
 
-#endif // !CPYCPPYY_TPYRETURN_H
+} // namespace CPyCppyy
+
+#endif // !CPYCPPYY_PYRESULT_H
