@@ -23,14 +23,14 @@ namespace CPyCppyy {
 // import a python module, making its classes available to Cling
 CPYCPPYY_EXPORT bool Import(const std::string& name);
 
-// execute a python stand-alone script, with argv CLI arguments
-CPYCPPYY_EXPORT void ExecScript(const std::string& name, const std::vector<std::string>& args);
-
 // execute a python statement (e.g. "import sys")
 CPYCPPYY_EXPORT bool Exec(const std::string& cmd);
 
 // evaluate a python expression (e.g. "1+1")
 CPYCPPYY_EXPORT const PyResult Eval(const std::string& expr);
+
+// execute a python stand-alone script, with argv CLI arguments
+CPYCPPYY_EXPORT void ExecScript(const std::string& name, const std::vector<std::string>& args);
 
 // enter an interactive python session (exit with ^D)
 CPYCPPYY_EXPORT void Prompt();

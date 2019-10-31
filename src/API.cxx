@@ -182,8 +182,8 @@ void CPyCppyy::ExecScript(const std::string& name, const std::vector<std::string
     }
 
 // create and set (add progam name) the new command line
-    int argc = args.size() + 1;
 #if PY_VERSION_HEX < 0x03000000
+    int argc = args.size() + 1;
     const char** argv = new const char*[argc];
     for (int i = 1; i < argc; ++i) argv[i] = args[i-1].c_str();
     argv[0] = Py_GetProgramName();
