@@ -20,7 +20,7 @@ typedef _object PyObject;
 #include "CPyCppyy/CommonDefs.h"
 
 
-class CPYCPPYY_CLASS_EXPORT TPyArg {
+class CPYCPPYY_CLASS_EXTERN TPyArg {
 public:
 // converting constructors
     TPyArg(PyObject*);

@@ -16,9 +16,10 @@ typedef _object PyObject;
 // Bindings
 #include "CPyCppyy/CommonDefs.h"
 
+
 namespace CPyCppyy {
 
-class CPYCPPYY_CLASS_EXPORT PyResult {
+class CPYCPPYY_CLASS_EXTERN PyResult {
 public:
     PyResult();
     PyResult(PyObject* pyobject);

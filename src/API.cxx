@@ -1,6 +1,8 @@
 // Bindings
 #include "CPyCppyy.h"
+#define CPYCPPYY_INTERNAL 1
 #include "CPyCppyy/API.h"
+#undef CPYCPPYY_INTERNAL
 
 #include "CPPInstance.h"
 #include "CPPOverload.h"
@@ -31,7 +33,7 @@ namespace CPyCppyy {
 }
 
 
-//- static public members ----------------------------------------------------
+//- private helpers ----------------------------------------------------------
 namespace {
 
 static bool Initialize()
@@ -85,7 +87,107 @@ static bool Initialize()
 
 } // unnamed namespace
 
+
+//- C++ access to cppyy objects ---------------------------------------------
+void* CPyCppyy::Instance_AsVoidPtr(PyObject* pyobject)
+{
+// Extract the object pointer held by the CPPInstance pyobject.
+    if (!Initialize())
+        return nullptr;
+
+// check validity of cast
+    if (!CPPInstance_Check(pyobject))
+        return nullptr;
+
+// get held object (may be null)
+    return ((CPPInstance*)pyobject)->GetObject();
+}
+
 //-----------------------------------------------------------------------------
+PyObject* CPyCppyy::Instance_FromVoidPtr(
+    void* addr, const std::string& classname, bool python_owns)
+{
+// Bind the addr to a python object of class defined by classname.
+    if (!Initialize())
+        return nullptr;
+
+// perform cast (the call will check TClass and addr, and set python errors)
+    PyObject* pyobject = BindCppObjectNoCast(addr, Cppyy::GetScope(classname), false);
+
+// give ownership, for ref-counting, to the python side, if so requested
+    if (python_owns && CPPInstance_Check(pyobject))
+        ((CPPInstance*)pyobject)->PythonOwns();
+
+    return pyobject;
+}
+
+
+//-----------------------------------------------------------------------------
+bool CPyCppyy::Scope_Check(PyObject* pyobject)
+{
+// Test if the given object is of a CPPScope derived type.
+    if (!Initialize())
+        return false;
+
+    return CPPScope_Check(pyobject);
+}
+
+//-----------------------------------------------------------------------------
+bool CPyCppyy::Scope_CheckExact(PyObject* pyobject)
+{
+// Test if the given object is of a CPPScope type.
+    if (!Initialize())
+        return false;
+
+    return CPPScope_CheckExact(pyobject);
+}
+
+//-----------------------------------------------------------------------------
+bool CPyCppyy::Instance_Check(PyObject* pyobject)
+{
+// Test if the given pyobject is of CPPInstance derived type.
+    if (!Initialize())
+        return false;
+
+// detailed walk through inheritance hierarchy
+    return CPPInstance_Check(pyobject);
+}
+
+//-----------------------------------------------------------------------------
+bool CPyCppyy::Instance_CheckExact(PyObject* pyobject)
+{
+// Test if the given pyobject is of CPPInstance type.
+    if (!Initialize())
+        return false;
+
+// direct pointer comparison of type member
+    return CPPInstance_CheckExact(pyobject);
+}
+
+//-----------------------------------------------------------------------------
+bool CPyCppyy::Overload_Check(PyObject* pyobject)
+{
+// Test if the given pyobject is of CPPOverload derived type.
+    if (!Initialize())
+        return false;
+
+// detailed walk through inheritance hierarchy
+    return CPPOverload_Check(pyobject);
+}
+
+//-----------------------------------------------------------------------------
+bool CPyCppyy::Overload_CheckExact(PyObject* pyobject)
+{
+// Test if the given pyobject is of CPPOverload type.
+    if (!Initialize())
+        return false;
+
+// direct pointer comparison of type member
+    return CPPOverload_CheckExact(pyobject);
+}
+
+
+//- access to the python interpreter ----------------------------------------
 bool CPyCppyy::Import(const std::string& mod_name)
 {
 // Import the named python module and create Cling equivalents for its classes.
@@ -294,103 +396,4 @@ void CPyCppyy::Prompt() {
 
 // enter i/o interactive mode
     PyRun_InteractiveLoop(stdin, const_cast<char*>("\0"));
-}
-
-
-//-----------------------------------------------------------------------------
-void* CPyCppyy::Instance_AsVoidPtr(PyObject* pyobject)
-{
-// Extract the object pointer held by the CPPInstance pyobject.
-    if (!Initialize())
-        return nullptr;
-
-// check validity of cast
-    if (!CPPInstance_Check(pyobject))
-        return nullptr;
-
-// get held object (may be null)
-    return ((CPPInstance*)pyobject)->GetObject();
-}
-
-//-----------------------------------------------------------------------------
-PyObject* CPyCppyy::Instance_FromVoidPtr(
-    void* addr, const std::string& classname, bool python_owns)
-{
-// Bind the addr to a python object of class defined by classname.
-    if (!Initialize())
-        return nullptr;
-
-// perform cast (the call will check TClass and addr, and set python errors)
-    PyObject* pyobject = BindCppObjectNoCast(addr, Cppyy::GetScope(classname), false);
-
-// give ownership, for ref-counting, to the python side, if so requested
-    if (python_owns && CPPInstance_Check(pyobject))
-        ((CPPInstance*)pyobject)->PythonOwns();
-
-    return pyobject;
-}
-
-
-//-----------------------------------------------------------------------------
-bool CPyCppyy::Scope_Check(PyObject* pyobject)
-{
-// Test if the given object is of a CPPScope derived type.
-    if (!Initialize())
-        return false;
-
-    return CPPScope_Check(pyobject);
-}
-
-//-----------------------------------------------------------------------------
-bool CPyCppyy::Scope_CheckExact(PyObject* pyobject)
-{
-// Test if the given object is of a CPPScope type.
-    if (!Initialize())
-        return false;
-
-    return CPPScope_CheckExact(pyobject);
-}
-
-//-----------------------------------------------------------------------------
-bool CPyCppyy::Instance_Check(PyObject* pyobject)
-{
-// Test if the given pyobject is of CPPInstance derived type.
-    if (!Initialize())
-        return false;
-
-// detailed walk through inheritance hierarchy
-    return CPPInstance_Check(pyobject);
-}
-
-//-----------------------------------------------------------------------------
-bool CPyCppyy::Instance_CheckExact(PyObject* pyobject)
-{
-// Test if the given pyobject is of CPPInstance type.
-    if (!Initialize())
-        return false;
-
-// direct pointer comparison of type member
-    return CPPInstance_CheckExact(pyobject);
-}
-
-//-----------------------------------------------------------------------------
-bool CPyCppyy::Overload_Check(PyObject* pyobject)
-{
-// Test if the given pyobject is of CPPOverload derived type.
-    if (!Initialize())
-        return false;
-
-// detailed walk through inheritance hierarchy
-    return CPPOverload_Check(pyobject);
-}
-
-//-----------------------------------------------------------------------------
-bool CPyCppyy::Overload_CheckExact(PyObject* pyobject)
-{
-// Test if the given pyobject is of CPPOverload type.
-    if (!Initialize())
-        return false;
-
-// direct pointer comparison of type member
-    return CPPOverload_CheckExact(pyobject);
 }

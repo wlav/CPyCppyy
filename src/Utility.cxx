@@ -521,13 +521,13 @@ void CPyCppyy::Utility::ConstructCallbackPreamble(const std::string& retType,
     if (!isVoid)
         code << "    CPYCPPYY_STATIC std::unique_ptr<CPyCppyy::Converter, std::function<void(CPyCppyy::Converter*)>> "
                      "retconv{CPyCppyy::CreateConverter(\""
-             << retType << "\"), CPyCppyy::ConverterDeleter};\n";
+             << retType << "\"), CPyCppyy::DestroyConverter};\n";
     if (nArgs) {
         code << "    CPYCPPYY_STATIC std::vector<std::unique_ptr<CPyCppyy::Converter, std::function<void(CPyCppyy::Converter*)>>> argcvs;\n"
              << "    if (argcvs.empty()) {\n"
              << "      argcvs.reserve(" << nArgs << ");\n";
         for (int i = 0; i < nArgs; ++i)
-            code << "      argcvs.emplace_back(CPyCppyy::CreateConverter(\"" << argtypes[i] << "\"), CPyCppyy::ConverterDeleter);\n";
+            code << "      argcvs.emplace_back(CPyCppyy::CreateConverter(\"" << argtypes[i] << "\"), CPyCppyy::DestroyConverter);\n";
         code << "    }\n";
     }
 
@@ -549,7 +549,7 @@ void CPyCppyy::Utility::ConstructCallbackPreamble(const std::string& retType,
         }
         code << "    } catch(int) {\n"
              << "      for (auto pyarg : pyargs) Py_XDECREF(pyarg);\n"
-             << "      PyGILState_Release(state); throw CPyCppyy::TPyException{};\n"
+             << "      PyGILState_Release(state); throw CPyCppyy::PyException{};\n"
              << "    }\n";
     }
 }
@@ -568,7 +568,7 @@ void CPyCppyy::Utility::ConstructCallbackReturn(bool isVoid, int nArgs, std::ost
 #ifdef _WIN32
             " /* do nothing */ }\n"
 #else
-            " PyGILState_Release(state); throw CPyCppyy::TPyException{}; }\n"
+            " PyGILState_Release(state); throw CPyCppyy::PyException{}; }\n"
 #endif
             "    PyGILState_Release(state);\n"
             "    return";
@@ -912,53 +912,14 @@ bool CPyCppyy::Utility::IncludePython()
 {
 // setup Python API for callbacks
     if (!includesDone) {
-        bool okay = Cppyy::Compile("#ifdef _WIN32\n"
-            "#pragma warning (disable : 4275)\n"
-            "#pragma warning (disable : 4251)\n"
-            "#pragma warning (disable : 4800)\n"
-            "#endif\n"
-            "#if defined(linux)\n"
-            "#include <stdio.h>\n"
-            "#ifdef _POSIX_C_SOURCE\n"
-            "#undef _POSIX_C_SOURCE\n"
-            "#endif\n"
-            "#ifdef _FILE_OFFSET_BITS\n"
-            "#undef _FILE_OFFSET_BITS\n"
-            "#endif\n"
-            "#ifdef _XOPEN_SOURCE\n"
-            "#undef _XOPEN_SOURCE\n"
-            "#endif\n"
-            "#endif\n"
-            "#include \"Python.h\"\n"
-            "#ifdef _WIN32\n"
-            "#define CPYCPPYY_STATIC\n"
-            "#define CPYCPPYY_IMPORT extern __declspec(dllimport)\n"
-            "#define CPYCPPYY_CLASS_IMPORT __declspec(dllimport)\n"
-            "#else\n"
-            "#define CPYCPPYY_IMPORT extern\n"
-            "#define CPYCPPYY_STATIC static\n"
-            "#define CPYCPPYY_CLASS_IMPORT\n"
-            "#endif\n"
-
-        // the following really should live in a header ...
-            "namespace CPyCppyy {\n"
-            "struct Parameter; struct CallContext;\n"
-            "class CPYCPPYY_CLASS_IMPORT Converter {\n"
-            "public:\n"
-            "  virtual ~Converter() {}\n"
-            "  virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) = 0;\n"
-            "  virtual PyObject* FromMemory(void* address);\n"
-            "  virtual bool ToMemory(PyObject* value, void* address);\n"
-            "  virtual bool HasState() { return false; }\n"
-            "};\n"
-            "CPYCPPYY_IMPORT Converter* CreateConverter(const std::string& fullType, Py_ssize_t* dims = nullptr);\n"
-            "static void ConverterDeleter(Converter* p) { if (p && p->HasState()) delete p; }\n"
-            "}\n"
+        bool okay = Cppyy::Compile(
+        // basic API (converters etc.)
+            "#include \"CPyCppyy/API.h\"\n"
 
         // utilities from the CPyCppyy public API
             "#include \"CPyCppyy/DispatchPtr.h\"\n"
-            "#include \"CPyCppyy/TPyException.h\"\n"
-            );
+            "#include \"CPyCppyy/PyException.h\"\n"
+        );
         includesDone = okay;
     }
 

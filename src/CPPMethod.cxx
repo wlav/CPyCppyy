@@ -10,7 +10,7 @@
 #include "SignalTryCatch.h"
 #include "Utility.h"
 
-#include "CPyCppyy/TPyException.h"
+#include "CPyCppyy/PyException.h"
 
 // Standard
 #include <assert.h>
@@ -66,7 +66,7 @@ inline PyObject* CPyCppyy::CPPMethod::ExecuteFast(
 
     try {       // C++ try block
         result = fExecutor->Execute(fMethod, (Cppyy::TCppObject_t)((intptr_t)self+offset), ctxt);
-    } catch (TPyException&) {
+    } catch (PyException&) {
         result = nullptr;           // error already set
     } catch (std::exception& e) {
     /* TODO: figure out what this is about ... ?
@@ -109,7 +109,7 @@ inline PyObject* CPyCppyy::CPPMethod::ExecuteFast(
         result = nullptr;
     }
 
-// TODO: covers the TPyException throw case, which does not seem to work on Windows, so
+// TODO: covers the PyException throw case, which does not seem to work on Windows, so
 // instead leaves the error be
 #ifdef _WIN32
     if (PyErr_Occurred()) {

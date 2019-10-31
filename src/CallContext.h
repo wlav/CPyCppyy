@@ -12,29 +12,34 @@ namespace CPyCppyy {
 // small number that allows use of stack for argument passing
 const int SMALL_ARGS_N = 8;
 
+#ifndef CPYCPPYY_PARAMETER
+#define CPYCPPYY_PARAMETER
 // general place holder for function parameters
 struct Parameter {
     union Value {
-        bool           fBool;
-        int8_t         fInt8;
-        uint8_t        fUInt8;
-        short          fShort;
-        unsigned short fUShort;
-        Int_t          fInt;
-        UInt_t         fUInt;
-        Long_t         fLong;
-        intptr_t       fIntPtr;
-        ULong_t        fULong;
-        Long64_t       fLLong;
-        ULong64_t      fULLong;
-        float          fFloat;
-        double         fDouble;
-        LongDouble_t   fLDouble;
-        void*          fVoidp;
+        bool                 fBool;
+        int8_t               fInt8;
+        uint8_t              fUInt8;
+        short                fShort;
+        unsigned short       fUShort;
+        int                  fInt;
+        unsigned int         fUInt;
+        long                 fLong;
+        intptr_t             fIntPtr;
+        unsigned long        fULong;
+        long long            fLLong;
+        unsigned long long   fULLong;
+        int64_t              fInt64;
+        uint64_t             fUInt64;
+        float                fFloat;
+        double               fDouble;
+        long double          fLDouble;
+        void*                fVoidp;
     } fValue;
     void* fRef;
     char  fTypeCode;
 };
+#endif // CPYCPPYY_PARAMETER
 
 // extra call information
 struct CallContext {

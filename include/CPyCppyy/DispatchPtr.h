@@ -20,7 +20,7 @@
 
 namespace CPyCppyy {
 
-class CPYCPPYY_CLASS_EXPORT DispatchPtr {
+class CPYCPPYY_CLASS_EXTERN DispatchPtr {
 public:
 // Default constructor: only ever created from C++, as by definition, creation
 // from the Python side makes the relevant Python instance available. Calls to

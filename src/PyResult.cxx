@@ -1,6 +1,8 @@
 // Bindings
 #include "CPyCppyy.h"
+#define CPYCPPYY_INTERNAL 1
 #include "CPyCppyy/PyResult.h"
+#undef CPYCPPYY_INTERNAL
 
 #include "CPPInstance.h"
 

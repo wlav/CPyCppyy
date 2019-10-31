@@ -33,7 +33,6 @@
 namespace CPyCppyy {
 
 // factories
-    typedef Converter* (*cf_t)(dims_t d);
     typedef std::map<std::string, cf_t> ConvFactories_t;
     static ConvFactories_t gConvFactories;
     extern PyObject* gNullPtrObject;
@@ -397,6 +396,12 @@ static inline bool ConvertImplicit(Cppyy::TCppType_t klass,
 
 
 //- base converter implementation --------------------------------------------
+CPyCppyy::Converter::~Converter()
+{
+    /* empty */
+}
+
+//----------------------------------------------------------------------------
 PyObject* CPyCppyy::Converter::FromMemory(void*)
 {
 // could happen if no derived class override
@@ -2557,6 +2562,41 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, dims
 
     return result;
 }
+
+//----------------------------------------------------------------------------
+CPYCPPYY_EXPORT
+void CPyCppyy::DestroyConverter(Converter* p)
+{
+    if (p && p->HasState())
+        delete p;  // state-less converters are always shared
+}
+
+//----------------------------------------------------------------------------
+CPYCPPYY_EXPORT
+bool CPyCppyy::RegisterConverter(const std::string& name, cf_t fac)
+{
+// register a custom converter
+    auto f = gConvFactories.find(name);
+    if (f != gConvFactories.end())
+        return false;
+
+    gConvFactories[name] = fac;
+    return true;
+}
+
+//----------------------------------------------------------------------------
+CPYCPPYY_EXPORT
+bool CPyCppyy::UnregisterConverter(const std::string& name)
+{
+// remove a custom converter
+    auto f = gConvFactories.find(name);
+    if (f != gConvFactories.end()) {
+        gConvFactories.erase(f);
+        return true;
+    }
+    return false;
+}
+
 
 //----------------------------------------------------------------------------
 namespace {
