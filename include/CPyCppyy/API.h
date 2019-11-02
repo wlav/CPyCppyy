@@ -29,6 +29,18 @@
 #endif
 #include "Python.h"
 
+// Cppyy types
+namespace Cppyy {
+    typedef size_t      TCppScope_t;
+    typedef TCppScope_t TCppType_t;
+    typedef void*       TCppEnum_t;
+    typedef void*       TCppObject_t;
+    typedef intptr_t    TCppMethod_t;
+
+    typedef size_t      TCppIndex_t;
+    typedef void*       TCppFuncAddr_t;
+} // namespace Cppyy
+
 // Bindings
 #include "CPyCppyy/PyResult.h"
 #include "CPyCppyy/CommonDefs.h"
@@ -74,6 +86,7 @@ struct Parameter {
 // CallContext is not currently exposed
 struct CallContext;
 
+
 // type converter base class
 class CPYCPPYY_CLASS_EXTERN Converter {
 public:
@@ -104,6 +117,36 @@ CPYCPPYY_EXTERN bool RegisterConverter(const std::string& name, ConverterFactory
 
 // remove a custom converter
 CPYCPPYY_EXTERN bool UnregisterConverter(const std::string& name);
+
+
+// function executor base class
+class CPYCPPYY_CLASS_EXTERN Executor {
+public:
+    virtual ~Executor();
+
+// callback when executing a function from Python
+    virtual PyObject* Execute(
+        Cppyy::TCppMethod_t, Cppyy::TCppObject_t, CallContext*) = 0;
+
+// if an executor has state, it will be unique per function, shared otherwise
+    virtual bool HasState() { return false; }
+};
+
+// create an executor based on its full type name
+CPYCPPYY_EXTERN Executor* CreateExecutor(const std::string& name);
+
+// delete a previously created executor
+CPYCPPYY_EXTERN void DestroyConverter(Converter* p);
+
+// register a custom executor
+typedef Executor* (*ExecutorFactory_t)();
+CPYCPPYY_EXTERN bool RegisterExecutor(const std::string& name, ExecutorFactory_t);
+
+// remove a custom executor
+CPYCPPYY_EXTERN bool UnregisterExecutor(const std::string& name);
+
+// helper for calling into C++ from a custom executor
+CPYCPPYY_EXTERN void* CallVoidP(Cppyy::TCppMethod_t, Cppyy::TCppObject_t, CallContext*);
 
 
 //- C++ access to cppyy objects ---------------------------------------------

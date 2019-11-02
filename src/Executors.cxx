@@ -134,6 +134,12 @@ static inline PyObject* CPyCppyy_PyBool_FromLong(long b)
 }
 
 
+//- base executor implementation ---------------------------------------------
+CPyCppyy::Executor::~Executor()
+{
+    /* empty */
+}
+
 //- executors for built-ins --------------------------------------------------
 PyObject* CPyCppyy::BoolExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
@@ -771,6 +777,47 @@ CPyCppyy::Executor* CPyCppyy::CreateExecutor(const std::string& fullType)
         result = (h->second)();
 
    return result;                  // may still be null
+}
+
+//----------------------------------------------------------------------------
+CPYCPPYY_EXPORT
+void CPyCppyy::DestroyExecutor(Executor* p)
+{
+    if (p && p->HasState())
+        delete p;  // state-less executors are always shared
+}
+
+//----------------------------------------------------------------------------
+CPYCPPYY_EXPORT
+bool CPyCppyy::RegisterExecutor(const std::string& name, ef_t fac)
+{
+// register a custom executor
+    auto f = gExecFactories.find(name);
+    if (f != gExecFactories.end())
+        return false;
+
+    gExecFactories[name] = fac;
+    return true;
+}
+
+//----------------------------------------------------------------------------
+CPYCPPYY_EXPORT
+bool CPyCppyy::UnregisterExecutor(const std::string& name)
+{
+// remove a custom executor
+    auto f = gExecFactories.find(name);
+    if (f != gExecFactories.end()) {
+        gExecFactories.erase(f);
+        return true;
+    }
+    return false;
+}
+
+//----------------------------------------------------------------------------
+CPYCPPYY_EXPORT
+void* CPyCppyy::CallVoidP(Cppyy::TCppMethod_t meth, Cppyy::TCppObject_t obj, CallContext* ctxt)
+{
+     return GILCallR(meth, obj, ctxt);
 }
 
 
