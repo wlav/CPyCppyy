@@ -81,24 +81,27 @@ struct CPyCppyy_tagPyCArgObject {      // not public (but stable; note that olde
 #define ct_c_uint8       4
 #define ct_c_short       5
 #define ct_c_ushort      6
-#define ct_c_int         7
-#define ct_c_uint        8
-#define ct_c_long        9
-#define ct_c_ulong      10
-#define ct_c_longlong   11
-#define ct_c_ulonglong  12
-#define ct_c_float      13
-#define ct_c_double     14
-#define ct_c_longdouble 15
-#define ct_c_char_p     16
-#define ct_c_wchar_p    17
-#define ct_c_void_p     18
-#define ct_c_complex    19
-#define NTYPES          20
+#define ct_c_uint16      7
+#define ct_c_int         8
+#define ct_c_uint        9
+#define ct_c_uint32     10
+#define ct_c_long       11
+#define ct_c_ulong      12
+#define ct_c_longlong   13
+#define ct_c_ulonglong  14
+#define ct_c_float      15
+#define ct_c_double     16
+#define ct_c_longdouble 17
+#define ct_c_char_p     18
+#define ct_c_wchar_p    19
+#define ct_c_void_p     20
+#define ct_c_complex    21
+#define NTYPES          22
 
 static std::array<const char*, NTYPES> gCTypesNames = {
-    "c_bool", "c_char", "c_wchar", "c_byte", "c_ubyte", "c_short", "c_ushort", "c_int", "c_uint",
-    "c_long", "c_ulong", "c_longlong", "c_ulonglong", "c_float", "c_double", "c_longdouble",
+    "c_bool", "c_char", "c_wchar", "c_byte", "c_ubyte", "c_short", "c_ushort", "c_uint16",
+    "c_int", "c_uint", "c_uint32", "c_long", "c_ulong", "c_longlong", "c_ulonglong",
+    "c_float", "c_double", "c_longdouble",
     "c_char_p", "c_wchar_p", "c_void_p", "c_complex" };
 static std::array<PyTypeObject*, NTYPES> gCTypesTypes;
 static std::array<PyTypeObject*, NTYPES> gCTypesPtrTypes;
@@ -681,6 +684,8 @@ CPPYY_IMPL_REFCONVERTER_FROM_MEMORY(name, ctype)
 CPPYY_IMPL_REFCONVERTER(Bool,    c_bool,       bool,               'b');
 CPPYY_IMPL_REFCONVERTER(Char,    c_char,       char,               'b');
 CPPYY_IMPL_REFCONVERTER(WChar,   c_wchar,      wchar_t,            'u');
+CPPYY_IMPL_REFCONVERTER(Char16,  c_uint16,     char16_t,           'H');
+CPPYY_IMPL_REFCONVERTER(Char32,  c_uint32,     char32_t,           'I');
 CPPYY_IMPL_REFCONVERTER(SChar,   c_byte,       signed char,        'b');
 CPPYY_IMPL_REFCONVERTER(UChar,   c_ubyte,      unsigned char,      'B');
 CPPYY_IMPL_REFCONVERTER(Short,   c_short,      short,              'h');
@@ -746,6 +751,86 @@ bool CPyCppyy::WCharConverter::ToMemory(PyObject* value, void* address)
     if (res == -1)
         return false;
     *((wchar_t*)address) = val;
+    return true;
+}
+
+//----------------------------------------------------------------------------
+bool CPyCppyy::Char16Converter::SetArg(
+    PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)
+{
+// convert <pyobject> to C++ <char16_t>, set arg for call
+    if (!PyUnicode_Check(pyobject) || PyUnicode_GET_SIZE(pyobject) != 1) {
+        PyErr_SetString(PyExc_ValueError, "single char16_t character expected");
+        return false;
+    }
+
+    PyObject* bstr = PyUnicode_AsUTF16String(pyobject);
+    if (!bstr) return false;
+
+    char16_t val = *(char16_t*)(PyBytes_AS_STRING(bstr) + sizeof(char16_t) /*BOM*/);
+    Py_DECREF(bstr);
+    para.fValue.fLong = (long)val;
+    para.fTypeCode = 'U';
+    return true;
+}
+
+PyObject* CPyCppyy::Char16Converter::FromMemory(void* address)
+{
+    return PyUnicode_DecodeUTF16((const char*)address, sizeof(char16_t), nullptr, nullptr);
+}
+
+bool CPyCppyy::Char16Converter::ToMemory(PyObject* value, void* address)
+{
+    if (!PyUnicode_Check(value) || PyUnicode_GET_SIZE(value) != 1) {
+        PyErr_SetString(PyExc_ValueError, "single char16_t character expected");
+        return false;
+    }
+
+    PyObject* bstr = PyUnicode_AsUTF16String(value);
+    if (!bstr) return false;
+
+    *((char16_t*)address) = *(char16_t*)(PyBytes_AS_STRING(bstr) + sizeof(char16_t) /*BOM*/);
+    Py_DECREF(bstr);
+    return true;
+}
+
+//----------------------------------------------------------------------------
+bool CPyCppyy::Char32Converter::SetArg(
+    PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)
+{
+// convert <pyobject> to C++ <char32_t>, set arg for call
+    if (!PyUnicode_Check(pyobject) || 2 < PyUnicode_GET_SIZE(pyobject)) {
+        PyErr_SetString(PyExc_ValueError, "single char32_t character expected");
+        return false;
+    }
+
+    PyObject* bstr = PyUnicode_AsUTF32String(pyobject);
+    if (!bstr) return false;
+
+    char32_t val = *(char32_t*)(PyBytes_AS_STRING(bstr) + sizeof(char32_t) /*BOM*/);
+    Py_DECREF(bstr);
+    para.fValue.fLong = (long)val;
+    para.fTypeCode = 'U';
+    return true;
+}
+
+PyObject* CPyCppyy::Char32Converter::FromMemory(void* address)
+{
+    return PyUnicode_DecodeUTF32((const char*)address, sizeof(char32_t), nullptr, nullptr);
+}
+
+bool CPyCppyy::Char32Converter::ToMemory(PyObject* value, void* address)
+{
+    if (!PyUnicode_Check(value) || 2 < PyUnicode_GET_SIZE(value)) {
+        PyErr_SetString(PyExc_ValueError, "single char32_t character expected");
+        return false;
+    }
+
+    PyObject* bstr = PyUnicode_AsUTF32String(value);
+    if (!bstr) return false;
+
+    *((char32_t*)address) = *(char32_t*)(PyBytes_AS_STRING(bstr) + sizeof(char32_t) /*BOM*/);
+    Py_DECREF(bstr);
     return true;
 }
 
@@ -2625,6 +2710,8 @@ public:
         gf["unsigned char&"] =              (cf_t)+[](dims_t) { static UCharRefConverter c{};       return &c; };
         gf["UCharAsInt"] =                  (cf_t)+[](dims_t) { static UCharAsIntConverter c{};     return &c; };
         gf["wchar_t"] =                     (cf_t)+[](dims_t) { static WCharConverter c{};          return &c; };
+        gf["char16_t"] =                    (cf_t)+[](dims_t) { static Char16Converter c{};         return &c; };
+        gf["char32_t"] =                    (cf_t)+[](dims_t) { static Char32Converter c{};         return &c; };
         gf["wchar_t&"] =                    (cf_t)+[](dims_t) { static WCharRefConverter c{};       return &c; };
         gf["int8_t"] =                      (cf_t)+[](dims_t) { static Int8Converter c{};           return &c; };
         gf["uint8_t"] =                     (cf_t)+[](dims_t) { static UInt8Converter c{};          return &c; };

@@ -200,9 +200,29 @@ PyObject* CPyCppyy::WCharExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
 // execute <method> with argument <self, args>, construct python string return value
-// with the single char
+// with the single wide char
     wchar_t res = (wchar_t)GILCallL(method, self, ctxt);
     return PyUnicode_FromWideChar(&res, 1);
+}
+
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::Char16Executor::Execute(
+    Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
+{
+// execute <method> with argument <self, args>, construct python string return value
+// with the single char16
+    char16_t res = (char16_t)GILCallL(method, self, ctxt);
+    return PyUnicode_DecodeUTF16((const char*)&res, sizeof(char16_t), nullptr, nullptr);
+}
+
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::Char32Executor::Execute(
+    Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
+{
+// execute <method> with argument <self, args>, construct python string return value
+// with the single char32
+    char32_t res = (char32_t)GILCallL(method, self, ctxt);
+    return PyUnicode_DecodeUTF32((const char*)&res, sizeof(char32_t), nullptr, nullptr);
 }
 
 //----------------------------------------------------------------------------
@@ -848,6 +868,8 @@ public:
         gf["const signed char&"] =          gf["const char&"];
         gf["const unsigned char&"] =        (ef_t)+[]() { static UCharConstRefExecutor e{}; return &e; };
         gf["wchar_t"] =                     (ef_t)+[]() { static WCharExecutor e{};         return &e; };
+        gf["char16_t"] =                    (ef_t)+[]() { static Char16Executor e{};        return &e; };
+        gf["char32_t"] =                    (ef_t)+[]() { static Char32Executor e{};        return &e; };
         gf["int8_t"] =                      (ef_t)+[]() { static Int8Executor e{};          return &e; };
         gf["int8_t&"] =                     (ef_t)+[]() { return new Int8RefExecutor{}; };
         gf["const int8_t&"] =               (ef_t)+[]() { static Int8RefExecutor e{};       return &e; };
