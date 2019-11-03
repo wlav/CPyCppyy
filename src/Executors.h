@@ -9,7 +9,7 @@ namespace CPyCppyy {
 
 struct CallContext;
 
-class Executor {
+class CPYCPPYY_CLASS_EXPORT Executor {
 public:
     virtual ~Executor();
     virtual PyObject* Execute(
