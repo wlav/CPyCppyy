@@ -135,6 +135,7 @@ static inline PyObject* CPyCppyy_PyBool_FromLong(long b)
 
 
 //- base executor implementation ---------------------------------------------
+CPYCPPYY_EXPORT
 CPyCppyy::Executor::~Executor()
 {
     /* empty */
