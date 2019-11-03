@@ -439,6 +439,36 @@ PyObject* CPyCppyy::WCStringExecutor::Execute(
     return PyUnicode_FromWideChar(result, wcslen(result));
 }
 
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::CString16Executor::Execute(
+    Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
+{
+// execute <method> with argument <self, ctxt>, construct python unicode return value
+    char16_t* result = (char16_t*)GILCallR(method, self, ctxt);
+    if (!result) {
+        char16_t w = u'\0';
+        return PyUnicode_DecodeUTF16((const char*)&w, 0, nullptr, nullptr);
+    }
+
+    return PyUnicode_DecodeUTF16((const char*)result,
+        std::char_traits<char16_t>::length(result)*sizeof(char16_t), nullptr, nullptr);
+}
+
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::CString32Executor::Execute(
+    Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
+{
+// execute <method> with argument <self, ctxt>, construct python unicode return value
+    char32_t* result = (char32_t*)GILCallR(method, self, ctxt);
+    if (!result) {
+        char32_t w = U'\0';
+        return PyUnicode_DecodeUTF32((const char*)&w, 0, nullptr, nullptr);
+    }
+ 
+    return PyUnicode_DecodeUTF32((const char*)result,
+        std::char_traits<char32_t>::length(result)*sizeof(char32_t), nullptr, nullptr);
+}
+
 
 //- pointer/array executors --------------------------------------------------
 PyObject* CPyCppyy::VoidArrayExecutor::Execute(
@@ -944,6 +974,8 @@ public:
         gf["const signed char*"] =          gf["const char*"];
         gf["signed char*"] =                gf["char*"];
         gf["wchar_t*"] =                    (ef_t)+[]() { static WCStringExecutor e{};    return &e;};
+        gf["char16_t*"] =                   (ef_t)+[]() { static CString16Executor e{};    return &e;};
+        gf["char32_t*"] =                   (ef_t)+[]() { static CString32Executor e{};    return &e;};
         gf["std::string"] =                 (ef_t)+[]() { static STLStringExecutor e{};   return &e; };
         gf["string"] =                      gf["std::string"];
         gf["std::string&"] =                (ef_t)+[]() { return new STLStringRefExecutor{}; };

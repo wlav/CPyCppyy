@@ -162,6 +162,41 @@ protected:
     long fMaxSize;
 };
 
+class CString16Converter : public Converter {
+public:
+    CString16Converter(long maxSize = -1) : fBuffer(nullptr), fMaxSize(maxSize) {}
+    CString16Converter(const CString16Converter&) = delete;
+    CString16Converter& operator=(const CString16Converter&) = delete;
+    virtual ~CString16Converter() { free(fBuffer); }
+ 
+public:
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
+    virtual PyObject* FromMemory(void* address);
+    virtual bool ToMemory(PyObject* value, void* address);
+    virtual bool HasState() { return true; }
+ 
+protected:
+    char16_t* fBuffer;
+    long fMaxSize;
+};
+
+class CString32Converter : public Converter {
+public:
+    CString32Converter(long maxSize = -1) : fBuffer(nullptr), fMaxSize(maxSize) {}
+    CString32Converter(const CString32Converter&) = delete;
+    CString32Converter& operator=(const CString32Converter&) = delete;
+    virtual ~CString32Converter() { free(fBuffer); }
+
+public:
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
+    virtual PyObject* FromMemory(void* address);
+    virtual bool ToMemory(PyObject* value, void* address);
+    virtual bool HasState() { return true; }
+
+protected:
+    char32_t* fBuffer;
+    long fMaxSize;
+};
 
 // pointer/array conversions
 CPPYY_DECLARE_ARRAY_CONVERTER(Bool);

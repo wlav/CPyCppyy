@@ -1125,9 +1125,7 @@ bool CPyCppyy::WCStringConverter::SetArg(
     if (len == (Py_ssize_t)-1 && PyErr_Occurred())
         return false;
 
-// TODO: does it matter that realloc may copy?
     fBuffer = (wchar_t*)realloc(fBuffer, sizeof(wchar_t)*(len+1));
-
     Py_ssize_t res = CPyCppyy_PyUnicode_AsWideChar(pyobject, fBuffer, len);
     if (res == -1)
         return false;   // could free the buffer here
@@ -1163,7 +1161,7 @@ bool CPyCppyy::WCStringConverter::ToMemory(PyObject* value, void* address)
 
 // verify (too long string will cause truncation, no crash)
     if (fMaxSize != -1 && fMaxSize < len)
-        PyErr_Warn(PyExc_RuntimeWarning, (char*)"string too long for wchar array (truncated)");
+        PyErr_Warn(PyExc_RuntimeWarning, (char*)"string too long for wchar_t array (truncated)");
 
     Py_ssize_t res = -1;
     if (fMaxSize != -1)
@@ -1173,6 +1171,128 @@ bool CPyCppyy::WCStringConverter::ToMemory(PyObject* value, void* address)
         res = CPyCppyy_PyUnicode_AsWideChar(value, *(wchar_t**)address, len);
 
     if (res == -1) return false;
+    return true;
+}
+
+//----------------------------------------------------------------------------
+bool CPyCppyy::CString16Converter::SetArg(
+    PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)
+{
+// construct a new string and copy it in new memory
+    Py_ssize_t len = PyUnicode_GetSize(pyobject);
+    if (len == (Py_ssize_t)-1 && PyErr_Occurred())
+        return false;
+
+    PyObject* bstr = PyUnicode_AsUTF16String(pyobject);
+    if (!bstr) return false;
+
+    fBuffer = (char16_t*)realloc(fBuffer, sizeof(char16_t)*(len+1));
+    memcpy(fBuffer, PyBytes_AS_STRING(bstr) + sizeof(char16_t) /*BOM*/, len*sizeof(char16_t));
+    Py_DECREF(bstr);
+
+// set the value and declare success
+    fBuffer[len] = u'\0';
+    para.fValue.fVoidp = (void*)fBuffer;
+    para.fTypeCode = 'p';
+    return true;
+}
+
+PyObject* CPyCppyy::CString16Converter::FromMemory(void* address)
+{
+// construct python object from C++ wchar_t* read at <address>
+    if (address && *(char16_t**)address) {
+        if (fMaxSize != -1)        // need to prevent reading beyond boundary
+            return PyUnicode_DecodeUTF16(*(const char**)address, fMaxSize, nullptr, nullptr);
+    // with unknown size
+        return PyUnicode_DecodeUTF16(*(const char**)address,
+            std::char_traits<char16_t>::length(*(char16_t**)address)*sizeof(char16_t), nullptr, nullptr);
+    }
+
+// empty string in case there's no valid address
+    char16_t w = u'\0';
+    return PyUnicode_DecodeUTF16((const char*)&w, 0, nullptr, nullptr);
+}
+
+bool CPyCppyy::CString16Converter::ToMemory(PyObject* value, void* address)
+{
+// convert <value> to C++ char16_t*, write it at <address>
+    Py_ssize_t len = PyUnicode_GetSize(value);
+    if (len == (Py_ssize_t)-1 && PyErr_Occurred())
+        return false;
+
+// verify (too long string will cause truncation, no crash)
+    if (fMaxSize != -1 && fMaxSize < len) {
+        PyErr_Warn(PyExc_RuntimeWarning, (char*)"string too long for char16_t array (truncated)");
+        len = fMaxSize-1;
+    }
+
+    PyObject* bstr = PyUnicode_AsUTF16String(value);
+    if (!bstr) return false;
+
+    memcpy(*((void**)address), PyBytes_AS_STRING(bstr) + sizeof(char16_t) /*BOM*/, len*sizeof(char16_t));
+    Py_DECREF(bstr);
+    *((char16_t**)address)[len] = u'\0';
+    return true;
+}
+
+//----------------------------------------------------------------------------
+bool CPyCppyy::CString32Converter::SetArg(
+    PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)
+{
+// construct a new string and copy it in new memory
+    Py_ssize_t len = PyUnicode_GetSize(pyobject);
+    if (len == (Py_ssize_t)-1 && PyErr_Occurred())
+        return false;
+
+    PyObject* bstr = PyUnicode_AsUTF32String(pyobject);
+    if (!bstr) return false;
+
+    fBuffer = (char32_t*)realloc(fBuffer, sizeof(char32_t)*(len+1));
+    memcpy(fBuffer, PyBytes_AS_STRING(bstr) + sizeof(char32_t) /*BOM*/, len*sizeof(char32_t));
+    Py_DECREF(bstr);
+
+// set the value and declare success
+    fBuffer[len] = U'\0';
+    para.fValue.fVoidp = (void*)fBuffer;
+    para.fTypeCode = 'p';
+    return true;
+}
+
+PyObject* CPyCppyy::CString32Converter::FromMemory(void* address)
+{
+// construct python object from C++ wchar_t* read at <address>
+    if (address && *(char32_t**)address) {
+        if (fMaxSize != -1)        // need to prevent reading beyond boundary
+            return PyUnicode_DecodeUTF32(*(const char**)address, fMaxSize, nullptr, nullptr);
+    // with unknown size
+        return PyUnicode_DecodeUTF32(*(const char**)address,
+            std::char_traits<char32_t>::length(*(char32_t**)address)*sizeof(char32_t), nullptr, nullptr);
+    }
+
+// empty string in case there's no valid address
+    char32_t w = U'\0';
+    return PyUnicode_DecodeUTF32((const char*)&w, 0, nullptr, nullptr);
+}
+
+bool CPyCppyy::CString32Converter::ToMemory(PyObject* value, void* address)
+{
+// convert <value> to C++ char32_t*, write it at <address>
+    Py_ssize_t len = PyUnicode_GetSize(value);
+    if (len == (Py_ssize_t)-1 && PyErr_Occurred())
+        return false;
+
+// verify (too long string will cause truncation, no crash)
+    if (fMaxSize != -1 && fMaxSize < len) {
+        PyErr_Warn(PyExc_RuntimeWarning, (char*)"string too long for char32_t array (truncated)");
+        len = fMaxSize-1;
+    }
+
+    PyObject* bstr = PyUnicode_AsUTF32String(value);
+    if (!bstr) return false;
+
+    memcpy(*((void**)address), PyBytes_AS_STRING(bstr) + sizeof(char32_t) /*BOM*/, len*sizeof(char32_t));
+    Py_DECREF(bstr);
+    *((char32_t**)address)[len] = U'\0';
     return true;
 }
 
@@ -2713,6 +2833,8 @@ public:
         gf["char16_t"] =                    (cf_t)+[](dims_t) { static Char16Converter c{};         return &c; };
         gf["char32_t"] =                    (cf_t)+[](dims_t) { static Char32Converter c{};         return &c; };
         gf["wchar_t&"] =                    (cf_t)+[](dims_t) { static WCharRefConverter c{};       return &c; };
+        gf["char16_t&"] =                   (cf_t)+[](dims_t) { static Char16RefConverter c{};      return &c; };
+        gf["char32_t&"] =                   (cf_t)+[](dims_t) { static Char32RefConverter c{};      return &c; };
         gf["int8_t"] =                      (cf_t)+[](dims_t) { static Int8Converter c{};           return &c; };
         gf["uint8_t"] =                     (cf_t)+[](dims_t) { static UInt8Converter c{};          return &c; };
         gf["short"] =                       (cf_t)+[](dims_t) { static ShortConverter c{};          return &c; };
@@ -2820,15 +2942,11 @@ public:
         gf["char*"] =                       (cf_t)+[](dims_t) { return new NonConstCStringConverter{}; };
         gf["signed char*"] =                gf["char*"];
         gf["wchar_t*"] =                    (cf_t)+[](dims_t) { return new WCStringConverter{}; };
-// TODO: Figure out these char types (as well as char8_t coming in C++20) on all platforms; using wchar
-// isn't properly tested, but based on https://en.cppreference.com/w/cpp/language/types .
-#ifdef _WIN32
-        gf["char16_t*"] =                   gf["wchar_t*"];
-        gf["char32_t*"] =                   (cf_t)+[](dims_t) { static NotImplementedConverter c{}; return &c; };
-#else
-        gf["char16_t*"] =                   (cf_t)+[](dims_t) { static NotImplementedConverter c{}; return &c; };
-        gf["char32_t*"] =                   gf["wchar_t*"];
-#endif
+        gf["char16_t*"] =                   (cf_t)+[](dims_t) { return new CString16Converter{}; };
+        gf["char32_t*"] =                   (cf_t)+[](dims_t) { return new CString32Converter{}; };
+    // TODO: the following are handled incorrectly upstream (char16_t** where char16_t* intended)?!
+        gf["char16_t**"] =                  gf["char16_t*"];
+        gf["char32_t**"] =                  gf["char32_t*"];
         gf["const char**"] =                (cf_t)+[](dims_t d) { return new CStringArrayConverter{d}; };
         gf["std::string"] =                 (cf_t)+[](dims_t) { return new STLStringConverter{}; };
         gf["string"] =                      gf["std::string"];

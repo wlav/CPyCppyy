@@ -41,6 +41,8 @@ CPPYY_DECL_EXEC(LongDouble);
 CPPYY_DECL_EXEC(Void);
 CPPYY_DECL_EXEC(CString);
 CPPYY_DECL_EXEC(WCString);
+CPPYY_DECL_EXEC(CString16);
+CPPYY_DECL_EXEC(CString32);
 
 // pointer/array executors
 CPPYY_DECL_EXEC(VoidArray);
