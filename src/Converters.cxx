@@ -1199,7 +1199,7 @@ bool CPyCppyy::CString16Converter::SetArg(
 
 PyObject* CPyCppyy::CString16Converter::FromMemory(void* address)
 {
-// construct python object from C++ wchar_t* read at <address>
+// construct python object from C++ char16_t* read at <address>
     if (address && *(char16_t**)address) {
         if (fMaxSize != -1)        // need to prevent reading beyond boundary
             return PyUnicode_DecodeUTF16(*(const char**)address, fMaxSize, nullptr, nullptr);
@@ -1260,7 +1260,7 @@ bool CPyCppyy::CString32Converter::SetArg(
 
 PyObject* CPyCppyy::CString32Converter::FromMemory(void* address)
 {
-// construct python object from C++ wchar_t* read at <address>
+// construct python object from C++ char32_t* read at <address>
     if (address && *(char32_t**)address) {
         if (fMaxSize != -1)        // need to prevent reading beyond boundary
             return PyUnicode_DecodeUTF32(*(const char**)address, fMaxSize, nullptr, nullptr);
