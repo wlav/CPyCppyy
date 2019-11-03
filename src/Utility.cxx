@@ -828,6 +828,7 @@ CPyCppyy::Utility::PyOperators::~PyOperators()
     Py_XDECREF(fSub);
     Py_XDECREF(fLMul); Py_XDECREF(fRMul);
     Py_XDECREF(fDiv);
+    Py_XDECREF(fHash);
 }
 
 

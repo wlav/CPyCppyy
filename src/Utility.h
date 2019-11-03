@@ -56,7 +56,7 @@ std::string MapOperatorName(const std::string& name, bool bTakesParames);
 
 struct PyOperators {
     PyOperators() : fEq(nullptr), fNe(nullptr), fLAdd(nullptr), fRAdd(nullptr),
-        fSub(nullptr), fLMul(nullptr), fRMul(nullptr), fDiv(nullptr) {}
+        fSub(nullptr), fLMul(nullptr), fRMul(nullptr), fDiv(nullptr), fHash(nullptr) {}
     ~PyOperators();
 
     PyObject* fEq;
@@ -65,6 +65,7 @@ struct PyOperators {
     PyObject* fSub;
     PyObject *fLMul, *fRMul;
     PyObject* fDiv;
+    PyObject* fHash;
 };
 
 // meta information

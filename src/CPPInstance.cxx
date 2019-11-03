@@ -441,6 +441,49 @@ static PyObject* op_repr(CPPInstance* pyobj)
 }
 
 //----------------------------------------------------------------------------
+static Py_hash_t op_hash(CPPInstance* cppinst)
+{
+// Try to locate an std::hash for this type and use that if it exists
+    CPPClass* klass = (CPPClass*)Py_TYPE(cppinst);
+    if (klass->fOperators && klass->fOperators->fHash) {
+        Py_hash_t h = 0;
+        PyObject* hashval = PyObject_CallFunctionObjArgs(klass->fOperators->fHash, (PyObject*)cppinst, nullptr);
+        if (hashval) {
+            h = (Py_hash_t)PyLong_AsSsize_t(hashval);
+            Py_DECREF(hashval);
+        }
+        return h;
+    }
+
+    Cppyy::TCppScope_t stdhash = Cppyy::GetScope("std::hash<"+Cppyy::GetScopedFinalName(cppinst->ObjectIsA())+">");
+    if (stdhash) {
+        PyObject* hashcls = CreateScopeProxy(stdhash);
+        PyObject* dct = PyObject_GetAttr(hashcls, PyStrings::gDict);
+        bool isValid = PyMapping_HasKeyString(dct, (char*)"__call__");
+        Py_DECREF(dct);
+        if (isValid) {
+            PyObject* hashobj = PyObject_CallObject(hashcls, nullptr);
+            if (!klass->fOperators) klass->fOperators = new Utility::PyOperators{};
+            klass->fOperators->fHash = hashobj;
+            Py_DECREF(hashcls);
+
+            Py_hash_t h = 0;
+            PyObject* hashval = PyObject_CallFunctionObjArgs(hashobj, (PyObject*)cppinst, nullptr);
+            if (hashval) {
+                h = (Py_hash_t)PyLong_AsSsize_t(hashval);
+                Py_DECREF(hashval);
+            }
+            return h;
+        }
+        Py_DECREF(hashcls);
+    }
+
+// if not valid, simply reset the hash function so as to not kill performance
+    ((PyTypeObject*)Py_TYPE(cppinst))->tp_hash = PyBaseObject_Type.tp_hash;
+    return PyBaseObject_Type.tp_hash((PyObject*)cppinst);
+}
+
+//----------------------------------------------------------------------------
 static PyObject* op_str(CPPInstance* cppinst)
 {
 #ifndef _WIN64
@@ -678,7 +721,7 @@ PyTypeObject CPPInstance_Type = {
     &op_as_number,                 // tp_as_number
     0,                             // tp_as_sequence
     0,                             // tp_as_mapping
-    PyBaseObject_Type.tp_hash,     // tp_hash
+    (hashfunc)op_hash,             // tp_hash
     0,                             // tp_call
     (reprfunc)op_str,              // tp_str
     0,                             // tp_getattro
