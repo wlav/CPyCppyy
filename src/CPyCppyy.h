@@ -123,6 +123,8 @@ static inline void* CPyCppyy_PyCapsule_GetPointer(PyObject* capsule, const char*
 #define CPPYY__div__  "__div__"
 #define CPPYY__next__ "next"
 
+typedef long Py_hash_t;
+
 #endif  // ! 3.0
 
 // for 3.0 support (backwards compatibility, really)
