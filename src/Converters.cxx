@@ -1885,8 +1885,10 @@ bool CPyCppyy::InstanceMoveConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* ctxt)
 {
 // convert <pyobject> to C++ instance&&, set arg for call
-    if (!CPPInstance_Check(pyobject))
-        return false;
+    if (!CPPInstance_Check(pyobject)) {
+    // implicit conversion is fine as it the temporary by definition is moveable
+        return ConvertImplicit(fClass, pyobject, para, ctxt);
+    }
     CPPInstance* pyobj = (CPPInstance*)pyobject;
 
 // moving is same as by-ref, but have to check that move is allowed

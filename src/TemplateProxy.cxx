@@ -200,6 +200,25 @@ PyObject* TemplateProxy::Instantiate(const std::string& fname,
     // can add already existing overloads to the set of methods.
 
         std::string resname = Cppyy::GetMethodFullName(cppmeth);
+
+    // An initializer_list is preferred for the argument types, but should not leak into
+    // the argument types. If it did, replace with vector and lookup anew.
+        if (resname.find("initializer_list") != std::string::npos) {
+            auto pos = proto.find("initializer_list");
+	    while (pos != std::string::npos) {
+		proto.replace(pos, 16, "vector");
+		pos = proto.find("initializer_list", pos + 6);
+	    }
+
+            Cppyy::TCppMethod_t m2 = Cppyy::GetMethodTemplate(scope, fname, proto);
+            if (m2 && m2 != cppmeth) {
+            // replace if the new method with vector was found; otherwise just continue
+            // with the previously found method with initializer_list.
+                cppmeth = m2;
+                resname = Cppyy::GetMethodFullName(cppmeth);
+            }
+        }
+
         bool bExactMatch = fname == resname;
 
     // lookup on existing name in case this was an overload, not a caching, failure
