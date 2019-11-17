@@ -2093,7 +2093,7 @@ PyObject* CPyCppyy::VoidPtrPtrConverter::FromMemory(void* address)
         Py_INCREF(gNullPtrObject);
         return gNullPtrObject;
     }
-    return CreatePointerView(*(ptrdiff_t**)address);
+    return CreatePointerView(*(ptrdiff_t**)address, fSize);
 }
 
 //----------------------------------------------------------------------------
@@ -2760,7 +2760,7 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, dims
     else if (!result) {
     // default to something reasonable, assuming "user knows best"
         if (cpd.size() == 2 && cpd != "&&") // "**", "*[]", "*&"
-            result = new VoidPtrPtrConverter();
+            result = new VoidPtrPtrConverter(size);
         else if (!cpd.empty())
             result = new VoidArrayConverter();        // "user knows best"
         else
@@ -2971,8 +2971,8 @@ public:
         gf["const std::" WSTRING "&"] =     gf["std::wstring"];
         gf["const " WSTRING "&"] =          gf["std::wstring"];
         gf["void*&"] =                      (cf_t)+[](dims_t) { static VoidPtrRefConverter c{};     return &c; };
-        gf["void**"] =                      (cf_t)+[](dims_t) { static VoidPtrPtrConverter c{};     return &c; };
-        gf["void*[]"] =                     gf["void**"];
+        gf["void**"] =                      (cf_t)+[](dims_t d) { return new VoidPtrPtrConverter{size_t((d && d[0] != -1) ? d[1] : -1)}; };
+        gf["void*[]"] =                     (cf_t)+[](dims_t d) { return new VoidPtrPtrConverter{size_t((d && d[0] != -1) ? d[1] : -1)}; };
         gf["PyObject*"] =                   (cf_t)+[](dims_t) { static PyObjectConverter c{};       return &c; };
         gf["_object*"] =                    gf["PyObject*"];
         gf["FILE*"] =                       (cf_t)+[](dims_t) { return new VoidArrayConverter{}; };
