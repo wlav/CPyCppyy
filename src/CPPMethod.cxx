@@ -375,9 +375,13 @@ int CPyCppyy::CPPMethod::GetPriority()
         // GetScope() will have been called from the first), killing the stable_sort.
 
         // prefer more derived classes
-            Cppyy::TCppScope_t scope = Cppyy::GetScope(TypeManip::clean_type(aname, false));
+            const std::string& clean_name = TypeManip::clean_type(aname, false);
+            Cppyy::TCppScope_t scope = Cppyy::GetScope(clean_name);
             if (scope)
                 priority += (int)Cppyy::GetNumBases(scope);
+
+            if (Cppyy::IsEnum(clean_name))
+                priority -= 100;
 
         // a couple of special cases as explained above
             if (aname.find("initializer_list") != std::string::npos) {
