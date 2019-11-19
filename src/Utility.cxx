@@ -29,6 +29,7 @@ bool CPyCppyy::gDictLookupActive = false;
 typedef std::map<std::string, std::string> TC2POperatorMapping_t;
 static TC2POperatorMapping_t gC2POperatorMapping;
 static std::set<std::string> gOpSkip;
+static std::set<std::string> gOpRemove;
 
 namespace {
 
@@ -46,10 +47,10 @@ namespace {
             gOpSkip.insert("++");      // __postinc__ or __preinc__
             gOpSkip.insert("--");      // __postdec__ or __predec__
 
-            gOpSkip.insert("new");     // this and the following not handled at all
-            gOpSkip.insert("new[]");
-            gOpSkip.insert("delete");
-            gOpSkip.insert("delete[]");
+            gOpRemove.insert("new");   // this and the following not handled at all
+            gOpRemove.insert("new[]");
+            gOpRemove.insert("delete");
+            gOpRemove.insert("delete[]");
 
             gC2POperatorMapping["[]"]  = "__getitem__";
             gC2POperatorMapping["()"]  = "__call__";
@@ -59,9 +60,12 @@ namespace {
             gC2POperatorMapping["<<"]  = "__lshift__";
             gC2POperatorMapping[">>"]  = "__rshift__";
             gC2POperatorMapping["&"]   = "__and__";
+            gC2POperatorMapping["&&"]  = "__dand__";
             gC2POperatorMapping["|"]   = "__or__";
+            gC2POperatorMapping["||"]  = "__dor__";
             gC2POperatorMapping["^"]   = "__xor__";
             gC2POperatorMapping["~"]   = "__invert__";
+            gC2POperatorMapping[","]   = "__comma__";
             gC2POperatorMapping["+="]  = "__iadd__";
             gC2POperatorMapping["-="]  = "__isub__";
             gC2POperatorMapping["*="]  = "__imul__";
@@ -716,11 +720,16 @@ std::string CPyCppyy::Utility::MapOperatorName(const std::string& name, bool bTa
         std::string::size_type start = 0, end = op.size();
         while (start < end && isspace(op[start])) ++start;
         while (start < end && isspace(op[end-1])) --end;
+        op = op.substr(start, end - start);
+
+    // certain operators should be removed completely (e.g. operator delete & friends)
+        if (gOpRemove.find(op) != gOpRemove.end())
+            return "";
 
     // check first if none, to prevent spurious deserializing downstream
         TC2POperatorMapping_t::iterator pop = gC2POperatorMapping.find(op);
         if (pop == gC2POperatorMapping.end() && gOpSkip.find(op) == gOpSkip.end()) {
-            op = Cppyy::ResolveName(op.substr(start, end - start));
+            op = Cppyy::ResolveName(op);
             pop = gC2POperatorMapping.find(op);
         }
 

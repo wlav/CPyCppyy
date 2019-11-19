@@ -193,6 +193,8 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
 
     // translate operators
         std::string mtName = Utility::MapOperatorName(mtCppName, Cppyy::GetMethodNumArgs(method));
+        if (mtName.empty())
+            continue;
 
     // operator[]/() returning a reference type will be used for __setitem__
         bool isCall = mtName == "__call__";
