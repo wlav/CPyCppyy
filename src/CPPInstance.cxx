@@ -484,15 +484,34 @@ static Py_hash_t op_hash(CPPInstance* cppinst)
 }
 
 //----------------------------------------------------------------------------
+static PyObject* op_str_internal(PyObject* pyobj, PyObject* lshift, bool isBound)
+{
+    static Cppyy::TCppScope_t sOStringStreamID = Cppyy::GetScope("std::ostringstream");
+    std::ostringstream s;
+    PyObject* pys = BindCppObjectNoCast(&s, sOStringStreamID);
+    PyObject* res;
+    if (isBound) res = PyObject_CallFunctionObjArgs(lshift, pys, NULL);
+    else res = PyObject_CallFunctionObjArgs(lshift, pys, pyobj, NULL);
+    Py_DECREF(pys);
+    Py_DECREF(lshift);
+    if (res) {
+        Py_DECREF(res);
+        return CPyCppyy_PyText_FromString(s.str().c_str());
+    }
+    PyErr_Clear();
+    return nullptr;
+}
+
 static PyObject* op_str(CPPInstance* cppinst)
 {
 #ifndef _WIN64
 // Forward to C++ insertion operator if available, otherwise forward to repr.
+    PyObject* result = nullptr;
     PyObject* pyobj = (PyObject*)cppinst;
     PyObject* lshift = PyObject_GetAttr(pyobj, PyStrings::gLShift);
-    bool bound_method = (bool)lshift;
-    if (!lshift) {
-        PyErr_Clear();
+    if (lshift) result = op_str_internal(pyobj, lshift, true);
+
+    if (!result) {
         PyObject* pyclass = (PyObject*)Py_TYPE(pyobj);
         lshift = PyObject_GetAttr(pyclass, PyStrings::gLShiftC);
         if (!lshift) {
@@ -510,24 +529,11 @@ static PyObject* op_str(CPPInstance* cppinst)
             Py_DECREF(lshift);
             lshift = nullptr;
         }
-        bound_method = false;
+        if (lshift) result = op_str_internal(pyobj, lshift, false);
     }
 
-    if (lshift) {
-        static Cppyy::TCppScope_t sOStringStreamID = Cppyy::GetScope("std::ostringstream");
-        std::ostringstream s;
-        PyObject* pys = BindCppObjectNoCast(&s, sOStringStreamID);
-        PyObject* res;
-        if (bound_method) res = PyObject_CallFunctionObjArgs(lshift, pys, NULL);
-        else res = PyObject_CallFunctionObjArgs(lshift, pys, pyobj, NULL);
-        Py_DECREF(pys);
-        Py_DECREF(lshift);
-        if (res) {
-            Py_DECREF(res);
-            return CPyCppyy_PyText_FromString(s.str().c_str());
-        }
-        PyErr_Clear();
-    }
+    if (result)
+        return result;
 #endif  //!_WIN64
 
     return op_repr(cppinst);
