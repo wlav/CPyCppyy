@@ -52,13 +52,6 @@ typedef struct {
 static PyObject* CreateNewCppProxyClass(Cppyy::TCppScope_t klass, PyObject* pybases)
 {
 // Create a new python shadow class with the required hierarchy and meta-classes.
-    Py_XINCREF(pybases);
-    if (!pybases) {
-        pybases = PyTuple_New(1);
-        Py_INCREF((PyObject*)(void*)&CPPInstance_Type);
-        PyTuple_SET_ITEM(pybases, 0, (PyObject*)(void*)&CPPInstance_Type);
-    }
-
     PyObject* pymetabases = PyTuple_New(PyTuple_GET_SIZE(pybases));
     for (int i = 0; i < PyTuple_GET_SIZE(pybases); ++i) {
         PyObject* btype = (PyObject*)Py_TYPE(PyTuple_GetItem(pybases, i));
@@ -77,7 +70,6 @@ static PyObject* CreateNewCppProxyClass(Cppyy::TCppScope_t klass, PyObject* pyba
     Py_DECREF(args);
     if (!pymeta) {
         PyErr_Print();
-        Py_DECREF(pybases);
         return nullptr;
     }
 
@@ -92,7 +84,6 @@ static PyObject* CreateNewCppProxyClass(Cppyy::TCppScope_t klass, PyObject* pyba
 
     Py_DECREF(args);
     Py_DECREF(pymeta);
-    Py_DECREF(pybases);
 
     return pyclass;
 }

@@ -118,7 +118,11 @@ CPYCPPYY_IMPORT PyTypeObject CPPInstance_Type;
 template<typename T>
 inline bool CPPInstance_Check(T* object)
 {
-    return object && (PyObject*)object != Py_None && PyObject_TypeCheck(object, &CPPInstance_Type);
+// Short-circuit the type check by checking tp_new which all generated subclasses
+// of CPPInstance inherit.
+    return object && \
+        (Py_TYPE(object)->tp_new == CPPInstance_Type.tp_new || \
+         PyObject_TypeCheck(object, &CPPInstance_Type));
 }
 
 template<typename T>
