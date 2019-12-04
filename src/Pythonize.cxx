@@ -912,14 +912,31 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         PyObject* cppol = PyObject_GetAttr(pyclass, PyStrings::gEq);
         if (!klass->fOperators) klass->fOperators = new Utility::PyOperators();
         klass->fOperators->fEq = cppol;
-        PyObject_DelAttr(pyclass, PyStrings::gEq);
+    // re-insert the forwarding __eq__ from the CPPInstance in case there was a Python-side
+    // override in the base class
+        static PyObject* top_eq = nullptr;
+        if (!top_eq) {
+            PyObject* top_cls = PyObject_GetAttrString(gThisModule, "CPPInstance");
+            top_eq = PyObject_GetAttr(top_cls, PyStrings::gEq);
+            Py_DECREF(top_eq);    // make it borrowed
+            Py_DECREF(top_cls);
+        }
+        PyObject_SetAttr(pyclass, PyStrings::gEq, top_eq);
     }
 
     if (HasAttrDirect(pyclass, PyStrings::gNe, true)) {
         PyObject* cppol = PyObject_GetAttr(pyclass, PyStrings::gNe);
         if (!klass->fOperators) klass->fOperators = new Utility::PyOperators();
         klass->fOperators->fNe = cppol;
-        PyObject_DelAttr(pyclass, PyStrings::gNe);
+    // re-insert the forwarding __ne__ (same reason as above for __eq__)
+        static PyObject* top_ne = nullptr;
+        if (!top_ne) {
+            PyObject* top_cls = PyObject_GetAttrString(gThisModule, "CPPInstance");
+            top_ne = PyObject_GetAttr(top_cls, PyStrings::gNe);
+            Py_DECREF(top_ne);    // make it borrowed
+            Py_DECREF(top_cls);
+        }
+        PyObject_SetAttr(pyclass, PyStrings::gNe, top_ne);
     }
 
 
