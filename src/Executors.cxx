@@ -892,7 +892,7 @@ public:
         gf["signed char"] =                 gf["char"];
         gf["unsigned char"] =               (ef_t)+[]() { static UCharExecutor e{};         return &e; };
         gf["char&"] =                       (ef_t)+[]() { return new CharRefExecutor{}; };
-        gf["signed char&"] =                gf["signed char&"];
+        gf["signed char&"] =                gf["char&"];
         gf["unsigned char&"] =              (ef_t)+[]() { return new UCharRefExecutor{}; };
         gf["const char&"] =                 (ef_t)+[]() { static CharConstRefExecutor e{};  return &e; };
         gf["const signed char&"] =          gf["const char&"];
