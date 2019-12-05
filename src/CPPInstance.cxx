@@ -441,6 +441,15 @@ static PyObject* op_repr(CPPInstance* pyobj)
 }
 
 //----------------------------------------------------------------------------
+static inline Py_hash_t CPyCppyy_PyLong_AsHash_t(PyObject* obj)
+{
+// Cannot use PyLong_AsSize_t here, as it cuts of at PY_SSIZE_T_MAX, which is
+// only half of the max of std::size_t returned by the hash.
+    if (sizeof(unsigned long) >= sizeof(size_t))
+        return (Py_hash_t)PyLong_AsUnsignedLong(obj);
+    return (Py_hash_t)PyLong_AsUnsignedLongLong(obj);
+}
+
 static Py_hash_t op_hash(CPPInstance* cppinst)
 {
 // Try to locate an std::hash for this type and use that if it exists
@@ -449,7 +458,7 @@ static Py_hash_t op_hash(CPPInstance* cppinst)
         Py_hash_t h = 0;
         PyObject* hashval = PyObject_CallFunctionObjArgs(klass->fOperators->fHash, (PyObject*)cppinst, nullptr);
         if (hashval) {
-            h = (Py_hash_t)PyLong_AsSsize_t(hashval);
+            h = CPyCppyy_PyLong_AsHash_t(hashval);
             Py_DECREF(hashval);
         }
         return h;
@@ -470,7 +479,7 @@ static Py_hash_t op_hash(CPPInstance* cppinst)
             Py_hash_t h = 0;
             PyObject* hashval = PyObject_CallFunctionObjArgs(hashobj, (PyObject*)cppinst, nullptr);
             if (hashval) {
-                h = (Py_hash_t)PyLong_AsSsize_t(hashval);
+                h = CPyCppyy_PyLong_AsHash_t(hashval);
                 Py_DECREF(hashval);
             }
             return h;
