@@ -326,6 +326,7 @@ static PyObject* vector_iter(PyObject* v) {
 
     Py_INCREF(v);
     vi->ii_container = v;
+    vi->vi_flags = v->ob_refcnt <= 2 ? 1 : 0;    // 2, b/c of preceding INCREF
 
     PyObject* pyvalue_type = PyObject_GetAttrString((PyObject*)Py_TYPE(v), "value_type");
     PyObject* pyvalue_size = PyObject_GetAttrString((PyObject*)Py_TYPE(v), "value_size");

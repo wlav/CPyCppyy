@@ -90,6 +90,7 @@ struct vectoriterobject : public indexiterobject {
     Py_ssize_t               vi_stride;
     CPyCppyy::Converter*     vi_converter;
     Cppyy::TCppType_t        vi_klass;
+    int                      vi_flags;
 };
 
 extern PyTypeObject VectorIter_Type;

@@ -762,7 +762,7 @@ PyObject* CPyCppyy::BindCppObjectNoCast(Cppyy::TCppObject_t address,
             pyobj->SetSmart(smart_type);
 
     // do not register null pointers, references (?), or direct usage of smart pointers or iterators
-        if (address && !isRef && flags != CPPInstance::kNoWrapConv)
+        if (address && !isRef && !(flags & (CPPInstance::kNoWrapConv|CPPInstance::kNoMemReg)))
             MemoryRegulator::RegisterPyObject(pyobj, pyobj->GetObject());
     }
 

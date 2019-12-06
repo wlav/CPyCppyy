@@ -328,6 +328,8 @@ static PyObject* vectoriter_iternext(vectoriterobject* vi) {
     // (or at least not during the loop anyway). This gains 2x in performance.
         Cppyy::TCppObject_t cppobj = (Cppyy::TCppObject_t)((ptrdiff_t)vi->vi_data + vi->vi_stride * vi->ii_pos);
         result = CPyCppyy::BindCppObjectNoCast(cppobj, vi->vi_klass, CPyCppyy::CPPInstance::kNoMemReg);
+        if (vi->vi_flags && CPPInstance_Check(result))
+            PyObject_SetAttr(result, PyStrings::gLifeLine, vi->ii_container);
     } else {
         PyObject* pyindex = PyLong_FromSsize_t(vi->ii_pos);
         result = PyObject_CallMethodObjArgs((PyObject*)vi->ii_container, PyStrings::gGetNoCheck, pyindex, nullptr);
