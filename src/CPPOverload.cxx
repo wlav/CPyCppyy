@@ -555,12 +555,11 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
         if (PyDict_DelItem(kwds, PyStrings::gNoImplicit) == 0) {
             ctxt.fFlags |= CallContext::kNoImplicit;
             if (!PyDict_Size(kwds)) kwds = nullptr;
-            else {
-                PyErr_SetString(PyExc_TypeError, "keyword arguments are not yet supported");
-                return nullptr;
-            }
-        } else
-           PyErr_Clear();
+        }
+        if (kwds) {
+            PyErr_SetString(PyExc_TypeError, "keyword arguments are not yet supported");
+            return nullptr;
+        }
     }
 
 // simple case
