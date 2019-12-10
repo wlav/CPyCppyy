@@ -533,6 +533,11 @@ PyObject* CPyCppyy::CPPMethod::ProcessKeywords(PyObject*, PyObject* args, PyObje
 
     Py_ssize_t nKeys = PyDict_Size(kwds);
     Py_ssize_t nArgs = PyTuple_GET_SIZE(args);
+    if (nKeys+nArgs < fArgsRequired) {
+        SetPyError_(CPyCppyy_PyText_FromFormat(
+            "takes at least %d arguments (%ld given)", fArgsRequired, nKeys+nArgs));
+        return nullptr;
+    }
     PyObject* newArgs = PyTuple_New(nArgs+nKeys);
 
 // set all values to zero to be able to check them later (this also guarantees normal
@@ -552,8 +557,8 @@ PyObject* CPyCppyy::CPPMethod::ProcessKeywords(PyObject*, PyObject* args, PyObje
         }
         auto p = fArgIndices->find(ckey);
         if (p == fArgIndices->end()) {
-            PyErr_Format(PyExc_TypeError, "%s::%s got an unexpected keyword argument \'%s\'",
-                Cppyy::GetFinalName(fScope).c_str(), Cppyy::GetMethodName(fMethod).c_str(), ckey);
+            SetPyError_(CPyCppyy_PyText_FromFormat("%s::%s got an unexpected keyword argument \'%s\'",
+                Cppyy::GetFinalName(fScope).c_str(), Cppyy::GetMethodName(fMethod).c_str(), ckey));
             Py_DECREF(newArgs);
             return nullptr;
         }
@@ -564,8 +569,8 @@ PyObject* CPyCppyy::CPPMethod::ProcessKeywords(PyObject*, PyObject* args, PyObje
 // fill out the rest of the arguments
     for (Py_ssize_t i = 0; i < nArgs; ++i) {
         if (PyTuple_GET_ITEM(newArgs, i)) {
-            PyErr_Format(PyExc_TypeError, "%s::%s got multiple values for argument %d",
-                Cppyy::GetFinalName(fScope).c_str(), Cppyy::GetMethodName(fMethod).c_str(), (int)i+1);
+            SetPyError_(CPyCppyy_PyText_FromFormat("%s::%s got multiple values for argument %d",
+                Cppyy::GetFinalName(fScope).c_str(), Cppyy::GetMethodName(fMethod).c_str(), (int)i+1));
             Py_DECREF(newArgs);
             return nullptr;
         }
