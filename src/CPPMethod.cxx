@@ -518,9 +518,14 @@ bool CPyCppyy::CPPMethod::Initialize(CallContext* ctxt)
 }
 
 //----------------------------------------------------------------------------
-PyObject* CPyCppyy::CPPMethod::ProcessKeywords(PyObject*, PyObject* args, PyObject* kwds)
+PyObject* CPyCppyy::CPPMethod::ProcessKeywords(PyObject* self, PyObject* args, PyObject* kwds)
 {
-    if (!PyDict_CheckExact(kwds) || PyDict_Size(kwds) == 0) {
+    if (!PyDict_CheckExact(kwds)) {
+        SetPyError_(CPyCppyy_PyText_FromString("received unknown keyword arguments object"));
+        return nullptr;
+    }
+
+    if (PyDict_Size(kwds) == 0 && !self) {
         Py_INCREF(args);
         return args;
     }
@@ -532,12 +537,13 @@ PyObject* CPyCppyy::CPPMethod::ProcessKeywords(PyObject*, PyObject* args, PyObje
     }
 
     Py_ssize_t nKeys = PyDict_Size(kwds);
-    Py_ssize_t nArgs = PyTuple_GET_SIZE(args);
+    Py_ssize_t nArgs = PyTuple_GET_SIZE(args) + (self ? 1 : 0);
     if (nKeys+nArgs < fArgsRequired) {
         SetPyError_(CPyCppyy_PyText_FromFormat(
             "takes at least %d arguments (%ld given)", fArgsRequired, nKeys+nArgs));
         return nullptr;
     }
+
     PyObject* newArgs = PyTuple_New(nArgs+nKeys);
 
 // set all values to zero to be able to check them later (this also guarantees normal
@@ -567,13 +573,21 @@ PyObject* CPyCppyy::CPPMethod::ProcessKeywords(PyObject*, PyObject* args, PyObje
     }
 
 // fill out the rest of the arguments
-    for (Py_ssize_t i = 0; i < nArgs; ++i) {
+    Py_ssize_t start = 0;
+    if (self) {
+        Py_INCREF(self);
+        PyTuple_SET_ITEM(newArgs, 0, self);
+        start = 1;
+    }
+
+    for (Py_ssize_t i = start; i < nArgs; ++i) {
         if (PyTuple_GET_ITEM(newArgs, i)) {
             SetPyError_(CPyCppyy_PyText_FromFormat("%s::%s got multiple values for argument %d",
                 Cppyy::GetFinalName(fScope).c_str(), Cppyy::GetMethodName(fMethod).c_str(), (int)i+1));
             Py_DECREF(newArgs);
             return nullptr;
         }
+
         PyObject* item = PyTuple_GET_ITEM(args, i);
         Py_INCREF(item);
         PyTuple_SET_ITEM(newArgs, i, item);
