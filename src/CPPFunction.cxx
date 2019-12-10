@@ -6,7 +6,7 @@
 
 //- CPPFunction public members --------------------------------------------------
 PyObject* CPyCppyy::CPPFunction::PreProcessArgs(
-    CPPInstance*& self, PyObject* args, PyObject*)
+    CPPInstance*& self, PyObject* args, PyObject* kwds)
 {
 // add self as part of the function arguments (means bound member)
     Py_ssize_t sz = PyTuple_GET_SIZE(args);
@@ -28,7 +28,7 @@ PyObject* CPyCppyy::CPPFunction::Call(
     CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt)
 {
 // setup as necessary
-    if (!fIsInitialized && !this->Initialize(ctxt))
+    if (fArgsRequired == -1 && !this->Initialize(ctxt))
         return nullptr;
 
 // if function was attached to a class, self will be non-zero and should be
@@ -52,7 +52,7 @@ PyObject* CPyCppyy::CPPFunction::Call(
 PyObject* CPyCppyy::CPPReverseBinary::PreProcessArgs(
     CPPInstance*& self, PyObject* args, PyObject* kwds)
 {
-    if (self) {
+    if (self || kwds) {
     // add self as part of the function arguments (means bound member)
         args = this->CPPFunction::PreProcessArgs(self, args, kwds);
     }
@@ -73,7 +73,7 @@ PyObject* CPyCppyy::CPPReverseBinary::Call(
 // difference is that PreProcessArgs() is always called.
 
 // setup as necessary
-    if (!fIsInitialized && !this->Initialize(ctxt))
+    if (fArgsRequired == -1 && !this->Initialize(ctxt))
         return nullptr;
 
 // if function was attached to a class, self will be non-zero and should be

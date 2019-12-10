@@ -34,7 +34,7 @@ PyObject* CPyCppyy::CPPConstructor::Call(
     CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt)
 {
 // setup as necessary
-    if (!fIsInitialized && !this->Initialize(ctxt))
+    if (fArgsRequired == -1 && !this->Initialize(ctxt))
         return nullptr;                     // important: 0, not Py_None
 
 // fetch self, verify, and put the arguments in usable order

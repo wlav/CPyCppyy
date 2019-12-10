@@ -39,10 +39,8 @@ inline void CPyCppyy::CPPMethod::Copy_(const CPPMethod& /* other */)
 
 // do not copy caches
     fExecutor     = nullptr;
+    fArgIndices   = nullptr;
     fArgsRequired = -1;
-
-// being uninitialized will trigger setting up caches as appropriate
-    fIsInitialized = false;
 }
 
 //----------------------------------------------------------------------------
@@ -54,6 +52,8 @@ inline void CPyCppyy::CPPMethod::Destroy_() const
     for (auto p : fConverters) {
         if (p && p->HasState()) delete p;
     }
+
+    delete fArgIndices;
 }
 
 //----------------------------------------------------------------------------
@@ -265,8 +265,8 @@ void CPyCppyy::CPPMethod::SetPyError_(PyObject* msg)
 //- constructors and destructor ----------------------------------------------
 CPyCppyy::CPPMethod::CPPMethod(
         Cppyy::TCppScope_t scope, Cppyy::TCppMethod_t method) :
-    fMethod(method), fScope(scope), fExecutor(nullptr), fArgsRequired(-1),
-    fIsInitialized(false)
+    fMethod(method), fScope(scope), fExecutor(nullptr), fArgIndices(nullptr),
+    fArgsRequired(-1)
 {
    // empty
 }
@@ -502,7 +502,7 @@ Cppyy::TCppFuncAddr_t CPyCppyy::CPPMethod::GetFunctionAddress()
 bool CPyCppyy::CPPMethod::Initialize(CallContext* ctxt)
 {
 // done if cache is already setup
-    if (fIsInitialized == true)
+    if (fArgsRequired != -1)
         return true;
 
     if (!InitConverters_())
@@ -512,20 +512,78 @@ bool CPyCppyy::CPPMethod::Initialize(CallContext* ctxt)
         return false;
 
 // minimum number of arguments when calling
-    fArgsRequired = (bool)fMethod == true ? Cppyy::GetMethodReqArgs(fMethod) : 0;
-
-// init done
-    fIsInitialized = true;
+    fArgsRequired = (int)((bool)fMethod == true ? Cppyy::GetMethodReqArgs(fMethod) : 0);
 
     return true;
 }
 
 //----------------------------------------------------------------------------
+PyObject* CPyCppyy::CPPMethod::ProcessKeywords(PyObject*, PyObject* args, PyObject* kwds)
+{
+    if (!PyDict_CheckExact(kwds) || PyDict_Size(kwds) == 0) {
+        Py_INCREF(args);
+        return args;
+    }
+
+    if (!fArgIndices) {
+        fArgIndices = new std::map<std::string, int>{};
+        for (int iarg = 0; iarg < (int)Cppyy::GetMethodNumArgs(fMethod); ++iarg)
+            (*fArgIndices)[Cppyy::GetMethodArgName(fMethod, iarg)] = iarg;
+    }
+
+    Py_ssize_t nKeys = PyDict_Size(kwds);
+    Py_ssize_t nArgs = PyTuple_GET_SIZE(args);
+    PyObject* newArgs = PyTuple_New(nArgs+nKeys);
+
+// set all values to zero to be able to check them later (this also guarantees normal
+// cleanup by the tuple deallocation)
+    for (Py_ssize_t i = 0; i < nArgs+nKeys; ++i)
+        PyTuple_SET_ITEM(newArgs, i, nullptr);
+
+// next, insert the keyword values
+    PyObject *key, *value;
+    Py_ssize_t pos = 0;
+
+    while (PyDict_Next(kwds, &pos, &key, &value)) {
+        const char* ckey = CPyCppyy_PyText_AsStringChecked(key);
+        if (!ckey) {
+            Py_DECREF(newArgs);
+            return nullptr;
+        }
+        auto p = fArgIndices->find(ckey);
+        if (p == fArgIndices->end()) {
+            PyErr_Format(PyExc_TypeError, "%s::%s got an unexpected keyword argument \'%s\'",
+                Cppyy::GetFinalName(fScope).c_str(), Cppyy::GetMethodName(fMethod).c_str(), ckey);
+            Py_DECREF(newArgs);
+            return nullptr;
+        }
+        Py_INCREF(value);
+        PyTuple_SetItem(newArgs, (*fArgIndices)[ckey], value);
+    }
+
+// fill out the rest of the arguments
+    for (Py_ssize_t i = 0; i < nArgs; ++i) {
+        if (PyTuple_GET_ITEM(newArgs, i)) {
+            PyErr_Format(PyExc_TypeError, "%s::%s got multiple values for argument %d",
+                Cppyy::GetFinalName(fScope).c_str(), Cppyy::GetMethodName(fMethod).c_str(), (int)i+1);
+            Py_DECREF(newArgs);
+            return nullptr;
+        }
+        PyObject* item = PyTuple_GET_ITEM(args, i);
+        Py_INCREF(item);
+        PyTuple_SET_ITEM(newArgs, i, item);
+    }
+
+    return newArgs;
+}
+
+//----------------------------------------------------------------------------
 PyObject* CPyCppyy::CPPMethod::PreProcessArgs(
-    CPPInstance*& self, PyObject* args, PyObject*)
+    CPPInstance*& self, PyObject* args, PyObject* kwds)
 {
 // verify existence of self, return if ok
     if (self) {
+        if (kwds) return ProcessKeywords(nullptr, args, kwds);
         Py_INCREF(args);
         return args;
     }
@@ -545,7 +603,16 @@ PyObject* CPyCppyy::CPPMethod::PreProcessArgs(
             self = pyobj;
 
         // offset args by 1 (new ref)
-            return PyTuple_GetSlice(args, 1, PyTuple_GET_SIZE(args));
+            PyObject* newArgs = PyTuple_GetSlice(args, 1, PyTuple_GET_SIZE(args));
+
+        // put the keywords, if any, in their places in the arguments array
+            if (kwds) {
+                args = ProcessKeywords(nullptr, newArgs, kwds);
+                Py_DECREF(newArgs);
+                newArgs = args;
+            }
+
+            return newArgs;  // may be nullptr if kwds insertion failed
         }
     }
 
@@ -565,9 +632,9 @@ bool CPyCppyy::CPPMethod::ConvertAndSetArgs(PyObject* args, CallContext* ctxt)
 
     if (argMax != argc) {
     // argc must be between min and max number of arguments
-        if (argc < fArgsRequired) {
+        if (argc < (Py_ssize_t)fArgsRequired) {
             SetPyError_(CPyCppyy_PyText_FromFormat(
-                "takes at least %ld arguments (%ld given)", fArgsRequired, argc));
+                "takes at least %d arguments (%ld given)", fArgsRequired, argc));
             return false;
         } else if (argMax < argc) {
             SetPyError_(CPyCppyy_PyText_FromFormat(
@@ -629,7 +696,7 @@ PyObject* CPyCppyy::CPPMethod::Call(
     CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt)
 {
 // setup as necessary
-    if (!fIsInitialized && !Initialize(ctxt))
+    if (fArgsRequired == -1 && !Initialize(ctxt))
         return nullptr;
 
 // fetch self, verify, and put the arguments in usable order
