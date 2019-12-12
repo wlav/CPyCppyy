@@ -84,6 +84,7 @@ PyTypeObject CPPExcInstance_Type = {
     0,                             // tp_as_buffer
     Py_TPFLAGS_DEFAULT |
         Py_TPFLAGS_BASETYPE |
+        Py_TPFLAGS_BASE_EXC_SUBCLASS |
         Py_TPFLAGS_HAVE_GC |
         Py_TPFLAGS_CHECKTYPES,     // tp_flags
     (char*)"cppyy exception object proxy (internal)", // tp_doc
