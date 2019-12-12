@@ -4,6 +4,7 @@
 #include "CPPClassMethod.h"
 #include "CPPConstructor.h"
 #include "CPPDataMember.h"
+#include "CPPExcInstance.h"
 #include "CPPFunction.h"
 #include "CPPGetSetItem.h"
 #include "CPPInstance.h"
@@ -766,7 +767,12 @@ PyObject* CPyCppyy::BindCppObjectNoCast(Cppyy::TCppObject_t address,
             MemoryRegulator::RegisterPyObject(pyobj, pyobj->GetObject());
     }
 
-// successful completion
+// successful completion; wrap exception options to make them raiseable, normal return otherwise
+    if (((CPPClass*)pyclass)->fFlags & CPPScope::kIsException) {
+        PyObject* exc_obj = CPPExcInstance_Type.tp_new(&CPPExcInstance_Type, nullptr, nullptr);
+        ((CPPExcInstance*)exc_obj)->fCppInstance = (PyObject*)pyobj;
+        return exc_obj;
+    }
     return (PyObject*)pyobj;
 }
 

@@ -3,6 +3,7 @@
 #include "CallContext.h"
 #include "Converters.h"
 #include "CPPDataMember.h"
+#include "CPPExcInstance.h"
 #include "CPPInstance.h"
 #include "CPPOverload.h"
 #include "CPPScope.h"
@@ -844,6 +845,10 @@ extern "C" void initlibcppyy()
 
 // inject object proxy type
     if (!Utility::InitProxy(gThisModule, &CPPInstance_Type, "CPPInstance"))
+        CPYCPPYY_INIT_ERROR;
+
+// inject exception object proxy type
+    if (!Utility::InitProxy(gThisModule, &CPPExcInstance_Type, "CPPExcInstance"))
         CPYCPPYY_INIT_ERROR;
 
 // inject method proxy type

@@ -2,6 +2,7 @@
 #include "CPyCppyy.h"
 #include "CPPScope.h"
 #include "CPPDataMember.h"
+#include "CPPExcInstance.h"
 #include "CPPFunction.h"
 #include "CPPOverload.h"
 #include "CustomPyTypes.h"
@@ -272,9 +273,12 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
     }
 
 // maps for using namespaces and tracking objects
-    if (!Cppyy::IsNamespace(result->fCppType))
+    if (!Cppyy::IsNamespace(result->fCppType)) {
+        static Cppyy::TCppType_t exc_type = (Cppyy::TCppType_t)Cppyy::GetScope("std::exception");
+        if (Cppyy::IsSubtype(result->fCppType, exc_type))
+            result->fFlags |= CPPScope::kIsException;
         result->fImp.fCppObjects = new CppToPyMap_t;
-    else {
+    } else {
         result->fImp.fUsing = nullptr;
         result->fFlags |= CPPScope::kIsNamespace;
     }
@@ -284,6 +288,23 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
         return nullptr;
     }
     return (PyObject*)result;
+}
+
+//----------------------------------------------------------------------------
+static PyObject* meta_call(PyObject* pyclass, PyObject* args, PyObject* kwds)
+{
+// Python requires exceptions to derive from BaseException, to ensure it can
+// carry exception information. That makes it impossible to also use them as
+// proxy object (layout conflict). Thus, if a class is an exception class, its
+// objects are wrapped on creation/binding.
+
+    PyObject* pyobj = PyType_Type.tp_call(pyclass, args, kwds);
+    if (!(((CPPScope*)pyclass)->fFlags & CPPScope::kIsException))
+        return pyobj;
+
+    PyObject* exc_obj = CPPExcInstance_Type.tp_new(&CPPExcInstance_Type, nullptr, nullptr);
+    ((CPPExcInstance*)exc_obj)->fCppInstance = pyobj;
+    return exc_obj;
 }
 
 //----------------------------------------------------------------------------
@@ -607,7 +628,7 @@ PyTypeObject CPPScope_Type = {
     0,                             // tp_as_sequence
     0,                             // tp_as_mapping
     0,                             // tp_hash
-    0,                             // tp_call
+    (ternaryfunc)meta_call,        // tp_call
     0,                             // tp_str
     (getattrofunc)meta_getattro,   // tp_getattro
     (setattrofunc)meta_setattro,   // tp_setattro

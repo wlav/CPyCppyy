@@ -545,6 +545,7 @@ static PyObject* op_str(CPPInstance* cppinst)
         return result;
 #endif  //!_WIN64
 
+    PyErr_Clear();
     return op_repr(cppinst);
 }
 
@@ -746,7 +747,7 @@ PyTypeObject CPPInstance_Type = {
         Py_TPFLAGS_BASETYPE |
         Py_TPFLAGS_HAVE_GC |
         Py_TPFLAGS_CHECKTYPES,     // tp_flags
-    (char*)"cppyy object proxy (internal)",  // tp_doc
+    (char*)"cppyy object proxy (internal)", // tp_doc
     0,                             // tp_traverse
     (inquiry)op_clear,             // tp_clear
     (richcmpfunc)op_richcompare,   // tp_richcompare
