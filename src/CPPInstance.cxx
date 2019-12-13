@@ -521,6 +521,7 @@ static PyObject* op_str(CPPInstance* cppinst)
     if (lshift) result = op_str_internal(pyobj, lshift, true);
 
     if (!result) {
+        PyErr_Clear();
         PyObject* pyclass = (PyObject*)Py_TYPE(pyobj);
         lshift = PyObject_GetAttr(pyclass, PyStrings::gLShiftC);
         if (!lshift) {
@@ -545,7 +546,6 @@ static PyObject* op_str(CPPInstance* cppinst)
         return result;
 #endif  //!_WIN64
 
-    PyErr_Clear();
     return op_repr(cppinst);
 }
 

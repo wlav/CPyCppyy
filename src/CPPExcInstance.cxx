@@ -2,6 +2,7 @@
 #include "CPyCppyy.h"
 #include "CPPExcInstance.h"
 
+
 //______________________________________________________________________________
 //                     Python-side exception proxy objects
 //                     ===================================
@@ -14,10 +15,10 @@
 namespace CPyCppyy {
 
 //= CPyCppyy exception object proxy construction/destruction =================
-static PyObject* ep_new(PyTypeObject* subtype, PyObject*, PyObject*)
+static PyObject* ep_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
 {
 // Create a new exception object proxy (holder only).
-    PyObject* pyobj = subtype->tp_alloc(subtype, 0);
+    PyObject* pyobj = ((PyTypeObject*)PyExc_Exception)->tp_new(subtype, args, kwds);
     ((CPPExcInstance*)pyobj)->fCppInstance = nullptr;
 
     return pyobj;
