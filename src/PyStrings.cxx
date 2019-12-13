@@ -28,6 +28,8 @@ PyObject* CPyCppyy::PyStrings::gNe               = nullptr;
 PyObject* CPyCppyy::PyStrings::gTypeCode         = nullptr;
 PyObject* CPyCppyy::PyStrings::gCTypesType       = nullptr;
 
+PyObject* CPyCppyy::PyStrings::gUnderlying       = nullptr;
+
 PyObject* CPyCppyy::PyStrings::gAdd              = nullptr;
 PyObject* CPyCppyy::PyStrings::gSub              = nullptr;
 PyObject* CPyCppyy::PyStrings::gMul              = nullptr;
@@ -89,6 +91,8 @@ bool CPyCppyy::CreatePyStrings() {
     CPPYY_INITIALIZE_STRING(gTypeCode,       typecode);
     CPPYY_INITIALIZE_STRING(gCTypesType,     _type_);
 
+    CPPYY_INITIALIZE_STRING(gUnderlying,     __underlying);
+
     CPPYY_INITIALIZE_STRING(gAdd,            __add__);
     CPPYY_INITIALIZE_STRING(gSub,            __sub__);
     CPPYY_INITIALIZE_STRING(gMul,            __mul__);
@@ -145,6 +149,8 @@ PyObject* CPyCppyy::DestroyPyStrings() {
     Py_DECREF(PyStrings::gNe);          PyStrings::gNe          = nullptr;
     Py_DECREF(PyStrings::gTypeCode);    PyStrings::gTypeCode    = nullptr;
     Py_DECREF(PyStrings::gCTypesType);  PyStrings::gCTypesType  = nullptr;
+
+    Py_DECREF(PyStrings::gUnderlying);  PyStrings::gUnderlying  = nullptr;
 
     Py_DECREF(PyStrings::gAdd);         PyStrings::gAdd         = nullptr;
     Py_DECREF(PyStrings::gSub);         PyStrings::gSub         = nullptr;

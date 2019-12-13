@@ -1,6 +1,7 @@
 // Bindings
 #include "CPyCppyy.h"
 #include "CPPExcInstance.h"
+#include "PyStrings.h"
 
 
 //______________________________________________________________________________
@@ -18,8 +19,11 @@ namespace CPyCppyy {
 static PyObject* ep_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
 {
 // Create a new exception object proxy (holder only).
-    PyObject* pyobj = ((PyTypeObject*)PyExc_Exception)->tp_new(subtype, args, kwds);
-    ((CPPExcInstance*)pyobj)->fCppInstance = nullptr;
+    PyObject* pyobj = ((PyTypeObject*)PyExc_Exception)->tp_new(subtype, nullptr, nullptr);
+
+    PyObject* ulc = PyObject_GetAttr((PyObject*)subtype, PyStrings::gUnderlying);
+    ((CPPExcInstance*)pyobj)->fCppInstance = PyType_Type.tp_call(ulc, args, kwds);
+    Py_DECREF(ulc);
 
     return pyobj;
 }

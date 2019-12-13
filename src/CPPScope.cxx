@@ -290,22 +290,6 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
     return (PyObject*)result;
 }
 
-//----------------------------------------------------------------------------
-static PyObject* meta_call(PyObject* pyclass, PyObject* args, PyObject* kwds)
-{
-// Python requires exceptions to derive from BaseException, to ensure it can
-// carry exception information. That makes it impossible to also use them as
-// proxy object (layout conflict). Thus, if a class is an exception class, its
-// objects are wrapped on creation/binding.
-
-    PyObject* pyobj = PyType_Type.tp_call(pyclass, args, kwds);
-    if (!(((CPPScope*)pyclass)->fFlags & CPPScope::kIsException))
-        return pyobj;
-
-    PyObject* exc_obj = CPPExcInstance_Type.tp_new(&CPPExcInstance_Type, nullptr, nullptr);
-    ((CPPExcInstance*)exc_obj)->fCppInstance = pyobj;
-    return exc_obj;
-}
 
 //----------------------------------------------------------------------------
 static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
@@ -328,6 +312,21 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
     std::vector<Utility::PyError_t> errors;
     Utility::FetchError(errors);
     attr = CreateScopeProxy(name, pyclass);
+    if (CPPScope_Check(attr) && (((CPPScope*)attr)->fFlags & CPPScope::kIsException)) {
+    // Instead of teh CPPScope, return a fresh exception class derived from
+    // CPPExcInstance.
+        PyObject* pybases = PyTuple_New(1);
+        Py_INCREF(&CPPExcInstance_Type);
+        PyTuple_SET_ITEM(pybases, 0, (PyObject*)&CPPExcInstance_Type);
+        PyObject* args = Py_BuildValue((char*)"sO{}", name.c_str(), pybases);
+        PyDict_SetItem(PyTuple_GET_ITEM(args, 2), PyStrings::gUnderlying, attr);
+        attr = PyType_Type.tp_new(&PyType_Type, args, nullptr);
+        Py_DECREF(args);
+        Py_DECREF(pybases);
+    // cache the result for future lookups and return
+        PyType_Type.tp_setattro(pyclass, pyname, attr);
+        return attr;
+    }
 
     CPPScope* klass = ((CPPScope*)pyclass);
     if (!attr) {
@@ -628,7 +627,7 @@ PyTypeObject CPPScope_Type = {
     0,                             // tp_as_sequence
     0,                             // tp_as_mapping
     0,                             // tp_hash
-    (ternaryfunc)meta_call,        // tp_call
+    0,                             // tp_call
     0,                             // tp_str
     (getattrofunc)meta_getattro,   // tp_getattro
     (setattrofunc)meta_setattro,   // tp_setattro
