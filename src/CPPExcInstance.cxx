@@ -21,9 +21,13 @@ static PyObject* ep_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
 // Create a new exception object proxy (holder only).
     PyObject* pyobj = ((PyTypeObject*)PyExc_Exception)->tp_new(subtype, nullptr, nullptr);
 
-    PyObject* ulc = PyObject_GetAttr((PyObject*)subtype, PyStrings::gUnderlying);
-    ((CPPExcInstance*)pyobj)->fCppInstance = PyType_Type.tp_call(ulc, args, kwds);
-    Py_DECREF(ulc);
+    if (args) {
+        PyObject* ulc = PyObject_GetAttr((PyObject*)subtype, PyStrings::gUnderlying);
+        ((CPPExcInstance*)pyobj)->fCppInstance = PyType_Type.tp_call(ulc, args, kwds);
+        Py_DECREF(ulc);
+    } else {
+        ((CPPExcInstance*)pyobj)->fCppInstance = nullptr;
+    }
 
     return pyobj;
 }
@@ -52,6 +56,13 @@ static PyObject* ep_repr(CPPExcInstance* self)
     if (self->fCppInstance)
         return PyObject_Repr(self->fCppInstance);
     return PyType_Type.tp_repr((PyObject*)self);
+}
+
+//----------------------------------------------------------------------------
+static void ep_dealloc(CPPExcInstance* pyobj)
+{
+    PyObject_GC_UnTrack((PyObject*)pyobj);
+    Py_CLEAR(pyobj->fCppInstance);
 }
 
 //----------------------------------------------------------------------------
@@ -88,7 +99,7 @@ PyTypeObject CPPExcInstance_Type = {
     (char*)"cppyy.CPPExcInstance", // tp_name
     sizeof(CPPExcInstance),        // tp_basicsize
     0,                             // tp_itemsize
-    0,                             // tp_dealloc
+    (destructor)ep_dealloc,        // tp_dealloc
     0,                             // tp_print
     0,                             // tp_getattr
     0,                             // tp_setattr
