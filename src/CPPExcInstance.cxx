@@ -29,13 +29,29 @@ static PyObject* ep_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
 }
 
 //----------------------------------------------------------------------------
-static int ep_traverse(CPPExcInstance* self, visitproc visit, void* args)
+static int ep_traverse(CPPExcInstance* pyobj, visitproc visit, void* args)
 {
 // Garbage collector traverse of held python member objects.
-    if (self->fCppInstance)
-        return visit((PyObject*)self->fCppInstance, args);
+    if (pyobj->fCppInstance)
+        return visit(pyobj->fCppInstance, args);
 
     return 0;
+}
+
+//----------------------------------------------------------------------------
+static PyObject* ep_str(CPPExcInstance* self)
+{
+    if (self->fCppInstance)
+        return PyObject_Str(self->fCppInstance);
+    return PyType_Type.tp_str((PyObject*)self);
+}
+
+//----------------------------------------------------------------------------
+static PyObject* ep_repr(CPPExcInstance* self)
+{
+    if (self->fCppInstance)
+        return PyObject_Repr(self->fCppInstance);
+    return PyType_Type.tp_repr((PyObject*)self);
 }
 
 //----------------------------------------------------------------------------
@@ -77,13 +93,13 @@ PyTypeObject CPPExcInstance_Type = {
     0,                             // tp_getattr
     0,                             // tp_setattr
     0,                             // tp_compare
-    0,                             // tp_repr
+    (reprfunc)ep_repr,             // tp_repr
     0,                             // tp_as_number
     0,                             // tp_as_sequence
     0,                             // tp_as_mapping
     0,                             // tp_hash
     0,                             // tp_call
-    0,                             // tp_str
+    (reprfunc)ep_str,              // tp_str
     (getattrofunc)ep_getattro,     // tp_getattro
     (setattrofunc)ep_setattro,     // tp_setattro
     0,                             // tp_as_buffer

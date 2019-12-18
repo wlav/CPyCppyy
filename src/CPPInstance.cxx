@@ -412,28 +412,28 @@ static PyObject* op_richcompare(CPPInstance* self, PyObject* other, int op)
 }
 
 //----------------------------------------------------------------------------
-static PyObject* op_repr(CPPInstance* pyobj)
+static PyObject* op_repr(CPPInstance* self)
 {
 // Build a representation string of the object proxy that shows the address
 // of the C++ object that is held, as well as its type.
-    PyObject* pyclass = (PyObject*)Py_TYPE(pyobj);
+    PyObject* pyclass = (PyObject*)Py_TYPE(self);
     PyObject* modname = PyObject_GetAttr(pyclass, PyStrings::gModule);
 
-    Cppyy::TCppType_t klass = pyobj->ObjectIsA();
+    Cppyy::TCppType_t klass = self->ObjectIsA();
     std::string clName = klass ? Cppyy::GetFinalName(klass) : "<unknown>";
-    if (pyobj->fFlags & CPPInstance::kIsReference)
+    if (self->fFlags & CPPInstance::kIsReference)
         clName.append("*");
 
     PyObject* repr = nullptr;
-    if (pyobj->IsSmart()) {
-        std::string smartPtrName = Cppyy::GetScopedFinalName(SMART_TYPE(pyobj));
+    if (self->IsSmart()) {
+        std::string smartPtrName = Cppyy::GetScopedFinalName(SMART_TYPE(self));
         repr = CPyCppyy_PyText_FromFormat(
             const_cast<char*>("<%s.%s object at %p held by %s at %p>"),
             CPyCppyy_PyText_AsString(modname), clName.c_str(),
-            pyobj->GetObject(), smartPtrName.c_str(), pyobj->GetObjectRaw());
+            self->GetObject(), smartPtrName.c_str(), self->GetObjectRaw());
     } else {
         repr = CPyCppyy_PyText_FromFormat(const_cast<char*>("<%s.%s object at %p>"),
-            CPyCppyy_PyText_AsString(modname), clName.c_str(), pyobj->GetObject());
+            CPyCppyy_PyText_AsString(modname), clName.c_str(), self->GetObject());
     }
 
     Py_DECREF(modname);
@@ -450,13 +450,13 @@ static inline Py_hash_t CPyCppyy_PyLong_AsHash_t(PyObject* obj)
     return (Py_hash_t)PyLong_AsUnsignedLongLong(obj);
 }
 
-static Py_hash_t op_hash(CPPInstance* cppinst)
+static Py_hash_t op_hash(CPPInstance* self)
 {
 // Try to locate an std::hash for this type and use that if it exists
-    CPPClass* klass = (CPPClass*)Py_TYPE(cppinst);
+    CPPClass* klass = (CPPClass*)Py_TYPE(self);
     if (klass->fOperators && klass->fOperators->fHash) {
         Py_hash_t h = 0;
-        PyObject* hashval = PyObject_CallFunctionObjArgs(klass->fOperators->fHash, (PyObject*)cppinst, nullptr);
+        PyObject* hashval = PyObject_CallFunctionObjArgs(klass->fOperators->fHash, (PyObject*)self, nullptr);
         if (hashval) {
             h = CPyCppyy_PyLong_AsHash_t(hashval);
             Py_DECREF(hashval);
@@ -464,7 +464,7 @@ static Py_hash_t op_hash(CPPInstance* cppinst)
         return h;
     }
 
-    Cppyy::TCppScope_t stdhash = Cppyy::GetScope("std::hash<"+Cppyy::GetScopedFinalName(cppinst->ObjectIsA())+">");
+    Cppyy::TCppScope_t stdhash = Cppyy::GetScope("std::hash<"+Cppyy::GetScopedFinalName(self->ObjectIsA())+">");
     if (stdhash) {
         PyObject* hashcls = CreateScopeProxy(stdhash);
         PyObject* dct = PyObject_GetAttr(hashcls, PyStrings::gDict);
@@ -477,7 +477,7 @@ static Py_hash_t op_hash(CPPInstance* cppinst)
             Py_DECREF(hashcls);
 
             Py_hash_t h = 0;
-            PyObject* hashval = PyObject_CallFunctionObjArgs(hashobj, (PyObject*)cppinst, nullptr);
+            PyObject* hashval = PyObject_CallFunctionObjArgs(hashobj, (PyObject*)self, nullptr);
             if (hashval) {
                 h = CPyCppyy_PyLong_AsHash_t(hashval);
                 Py_DECREF(hashval);
@@ -488,8 +488,8 @@ static Py_hash_t op_hash(CPPInstance* cppinst)
     }
 
 // if not valid, simply reset the hash function so as to not kill performance
-    ((PyTypeObject*)Py_TYPE(cppinst))->tp_hash = PyBaseObject_Type.tp_hash;
-    return PyBaseObject_Type.tp_hash((PyObject*)cppinst);
+    ((PyTypeObject*)Py_TYPE(self))->tp_hash = PyBaseObject_Type.tp_hash;
+    return PyBaseObject_Type.tp_hash((PyObject*)self);
 }
 
 //----------------------------------------------------------------------------
@@ -511,12 +511,12 @@ static PyObject* op_str_internal(PyObject* pyobj, PyObject* lshift, bool isBound
     return nullptr;
 }
 
-static PyObject* op_str(CPPInstance* cppinst)
+static PyObject* op_str(CPPInstance* self)
 {
 #ifndef _WIN64
 // Forward to C++ insertion operator if available, otherwise forward to repr.
     PyObject* result = nullptr;
-    PyObject* pyobj = (PyObject*)cppinst;
+    PyObject* pyobj = (PyObject*)self;
     PyObject* lshift = PyObject_GetAttr(pyobj, PyStrings::gLShift);
     if (lshift) result = op_str_internal(pyobj, lshift, true);
 
@@ -546,7 +546,7 @@ static PyObject* op_str(CPPInstance* cppinst)
         return result;
 #endif  //!_WIN64
 
-    return op_repr(cppinst);
+    return op_repr(self);
 }
 
 //-----------------------------------------------------------------------------

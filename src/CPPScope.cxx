@@ -2,7 +2,6 @@
 #include "CPyCppyy.h"
 #include "CPPScope.h"
 #include "CPPDataMember.h"
-#include "CPPExcInstance.h"
 #include "CPPFunction.h"
 #include "CPPOverload.h"
 #include "CustomPyTypes.h"
@@ -313,19 +312,8 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
     Utility::FetchError(errors);
     attr = CreateScopeProxy(name, pyclass);
     if (CPPScope_Check(attr) && (((CPPScope*)attr)->fFlags & CPPScope::kIsException)) {
-    // Instead of teh CPPScope, return a fresh exception class derived from
-    // CPPExcInstance.
-        PyObject* pybases = PyTuple_New(1);
-        Py_INCREF(&CPPExcInstance_Type);
-        PyTuple_SET_ITEM(pybases, 0, (PyObject*)&CPPExcInstance_Type);
-        PyObject* args = Py_BuildValue((char*)"sO{}", name.c_str(), pybases);
-        PyDict_SetItem(PyTuple_GET_ITEM(args, 2), PyStrings::gUnderlying, attr);
-        attr = PyType_Type.tp_new(&PyType_Type, args, nullptr);
-        Py_DECREF(args);
-        Py_DECREF(pybases);
-    // cache the result for future lookups and return
-        PyType_Type.tp_setattro(pyclass, pyname, attr);
-        return attr;
+    // Instead of the CPPScope, return a fresh exception class derived from CPPExcInstance.
+        return CreateExcScopeProxy(attr, pyname, pyclass);
     }
 
     CPPScope* klass = ((CPPScope*)pyclass);

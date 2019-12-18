@@ -381,16 +381,13 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
 }
 
 //----------------------------------------------------------------------------
-static PyObject* BuildCppClassBases(Cppyy::TCppType_t klass)
+static void CollectUniqueBases(Cppyy::TCppType_t klass, std::deque<std::string>& uqb)
 {
-// Build a tuple of python proxy classes of all the bases of the given 'klass'.
-
-    size_t nbases = Cppyy::GetNumBases(klass);
-
 // collect bases in acceptable mro order, while removing duplicates (this may
 // break the overload resolution in esoteric cases, but otherwise the class can
 // not be used at all, as CPython will refuse the mro).
-    std::deque<std::string> uqb;
+    size_t nbases = Cppyy::GetNumBases(klass);
+
     std::deque<Cppyy::TCppType_t> bids;
     for (size_t ibase = 0; ibase < nbases; ++ibase) {
         const std::string& name = Cppyy::GetBaseName(klass, ibase);
@@ -419,9 +416,16 @@ static PyObject* BuildCppClassBases(Cppyy::TCppType_t klass)
         }
     // skipped if decision == 0 (not unique)
     }
+}
+
+static PyObject* BuildCppClassBases(Cppyy::TCppType_t klass)
+{
+// Build a tuple of python proxy classes of all the bases of the given 'klass'.
+    std::deque<std::string> uqb;
+    CollectUniqueBases(klass, uqb);
 
 // allocate a tuple for the base classes, special case for first base
-    nbases = uqb.size();
+    size_t nbases = uqb.size();
 
     PyObject* pybases = PyTuple_New(nbases ? nbases : 1);
     if (!pybases)
@@ -432,7 +436,7 @@ static PyObject* BuildCppClassBases(Cppyy::TCppType_t klass)
         Py_INCREF((PyObject*)(void*)&CPPInstance_Type);
         PyTuple_SET_ITEM(pybases, 0, (PyObject*)(void*)&CPPInstance_Type);
     } else {
-        for (std::vector<std::string>::size_type ibase = 0; ibase < nbases; ++ibase) {
+        for (std::deque<std::string>::size_type ibase = 0; ibase < nbases; ++ibase) {
             PyObject* pyclass = CreateScopeProxy(uqb[ibase]);
             if (!pyclass) {
                 Py_DECREF(pybases);
@@ -704,6 +708,69 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& name, PyObject* parent)
 // all done
     return pyscope;
 }
+
+
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::CreateExcScopeProxy(PyObject* pyscope, PyObject* pyname, PyObject* parent)
+{
+// To allow use of C++ exceptions in lieue of Python exceptions, they need to
+// derive from BaseException, which can not mix with the normal CPPInstance and
+// use of the meta-class. Instead, encapsulate them in a forwarding class that
+// derives from Pythons Exception class
+
+// start with creation of CPPExcInstance type base classes
+    std::deque<std::string> uqb;
+    CollectUniqueBases(((CPPScope*)pyscope)->fCppType, uqb);
+    size_t nbases = uqb.size();
+
+    PyObject* pybases = PyTuple_New(nbases ? nbases : 1);
+    if (nbases == 0) {
+        Py_INCREF((PyObject*)(void*)&CPPExcInstance_Type);
+        PyTuple_SET_ITEM(pybases, 0, (PyObject*)(void*)&CPPExcInstance_Type);
+    } else {
+        for (std::deque<std::string>::size_type ibase = 0; ibase < nbases; ++ibase) {
+        // retrieve bases through their enclosing scope to guarantee treatment as
+        // exception classes and proper caching
+            const std::string& finalname = Cppyy::GetScopedFinalName(Cppyy::GetScope(uqb[ibase]));
+            const std::string& parentname = TypeManip::extract_namespace(finalname);
+            PyObject* base_parent = CreateScopeProxy(parentname);
+            if (!base_parent) {
+                Py_DECREF(pybases);
+                return nullptr;
+            }
+
+            PyObject* excbase = PyObject_GetAttrString(base_parent,
+                parentname.empty() ? finalname.c_str() : finalname.substr(parentname.size()+2, std::string::npos).c_str());
+            Py_DECREF(base_parent);
+            if (!excbase) {
+                Py_DECREF(pybases);
+                return nullptr;
+            }
+
+            PyTuple_SET_ITEM(pybases, ibase, excbase);
+        }
+    }
+
+    PyObject* args = Py_BuildValue((char*)"OO{}", pyname, pybases);
+
+// meta-class attributes (__cpp_name__, etc.) can not be resolved lazily so add
+// them directly instead in case they are needed
+    PyObject* dct = PyTuple_GET_ITEM(args, 2);
+    PyDict_SetItem(dct, PyStrings::gUnderlying, pyscope);
+    PyDict_SetItem(dct, PyStrings::gName,    PyObject_GetAttr(pyscope, PyStrings::gName));
+    PyDict_SetItem(dct, PyStrings::gCppName, PyObject_GetAttr(pyscope, PyStrings::gCppName));
+    PyDict_SetItem(dct, PyStrings::gModule,  PyObject_GetAttr(pyscope, PyStrings::gModule));
+
+// create the actual exception class
+    PyObject* exc_pyscope = PyType_Type.tp_new(&PyType_Type, args, nullptr);
+    Py_DECREF(args);
+    Py_DECREF(pybases);
+
+// cache the result for future lookups and return
+    PyType_Type.tp_setattro(parent, pyname, exc_pyscope);
+    return exc_pyscope;
+}
+
 
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::BindCppObjectNoCast(Cppyy::TCppObject_t address,
