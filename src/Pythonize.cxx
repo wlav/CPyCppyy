@@ -389,7 +389,12 @@ PyObject* VectorGetItem(CPPInstance* self, PySliceObject* index)
 
         Py_ssize_t start, stop, step;
         PySlice_GetIndices((CPyCppyy_PySliceCast)index, PyObject_Length((PyObject*)self), &start, &stop, &step);
-        for (Py_ssize_t i = start; i < stop; i += step) {
+
+        if ((step > 0 && stop <= start) || (step < 0 && start <= stop))
+            return nseq;
+
+        const Py_ssize_t sign = step < 0 ? -1 : 1;
+        for (Py_ssize_t i = start; i*sign < stop*sign; i += step) {
             PyObject* pyidx = PyInt_FromSsize_t(i);
             PyObject* item = PyObject_CallMethodObjArgs((PyObject*)self, PyStrings::gGetNoCheck, pyidx, nullptr);
             CallPyObjMethod(nseq, "push_back", item);
