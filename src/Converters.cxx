@@ -374,7 +374,7 @@ static inline bool ConvertImplicit(Cppyy::TCppType_t klass,
 
 // call constructor of argument type to attempt implicit conversion
     CPPInstance* pytmp = (CPPInstance*)PyObject_Call(pyscope, args, kwds);
-    if (!pytmp && PyTuple_Check(pyobject)) {
+    if (!pytmp && PyTuple_CheckExact(pyobject)) {
     // special case: allow implicit conversion from given set of arguments in tuple
         PyErr_Clear();
         PyDict_SetItem(kwds, PyStrings::gNoImplicit, Py_True); // was deleted

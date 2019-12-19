@@ -211,12 +211,25 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
         if (PyTuple_CheckExact(fi) || PyList_CheckExact(fi)) {
         // use emplace_back to construct the vector entries one by one
             PyObject* eb_call = PyObject_GetAttrString(self, (char*)"emplace_back");
+            PyObject* vtype = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "value_type");
+            bool value_is_vector = false;
+            if (vtype && CPyCppyy_PyText_Check(vtype)) {
+                if (strnstr(CPyCppyy_PyText_AsString(vtype), "std::vector", 11))
+                    value_is_vector = true;
+                Py_DECREF(vtype);
+            } else
+                PyErr_Clear();
+
             if (eb_call) {
                 PyObject* eb_args;
                 for (Py_ssize_t i = 0; i < sz; ++i) {
                     PyObject* item = PySequence_GetItem(ll, i);
                     if (item) {
-                        if (PyTuple_CheckExact(item)) {
+                        if (value_is_vector && PySequence_Check(item)) {
+                            eb_args = PyTuple_New(1);
+                            Py_INCREF(item);
+                            PyTuple_SET_ITEM(eb_args, 0, item);
+                        } else if (PyTuple_CheckExact(item)) {
                             Py_INCREF(item);
                             eb_args = item;
                         } else if (PyList_CheckExact(item)) {
