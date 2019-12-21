@@ -1,6 +1,7 @@
 // Bindings
 #include "CPyCppyy.h"
 #include "CPPMethod.h"
+#include "CPPExcInstance.h"
 #include "CPPInstance.h"
 #include "Converters.h"
 #include "Executors.h"
@@ -69,40 +70,49 @@ inline PyObject* CPyCppyy::CPPMethod::ExecuteFast(
     } catch (PyException&) {
         result = nullptr;           // error already set
     } catch (std::exception& e) {
-    /* TODO: figure out what this is about ... ?
-        if (gInterpreter->DiagnoseIfInterpreterException(e)) {
-           return result;
+    // attempt to set the exception to the actual type, to allow catching with the Python C++ type
+        static Cppyy::TCppType_t exc_type = (Cppyy::TCppType_t)Cppyy::GetScope("std::exception");
+
+        PyObject* pyexc_type = nullptr;
+        PyObject* pyexc_obj  = nullptr;
+
+    // TODO: factor this code with the same in ProxyWrappers (and cache it there to be able to
+    // look up based on TCppType_t):
+        Cppyy::TCppType_t actual = Cppyy::GetActualClass(exc_type, &e);
+        const std::string& finalname = Cppyy::GetScopedFinalName(actual);
+        const std::string& parentname = TypeManip::extract_namespace(finalname);
+        PyObject* parent = CreateScopeProxy(parentname);
+        if (parent) {
+            pyexc_type = PyObject_GetAttrString(parent,
+                parentname.empty() ? finalname.c_str() : finalname.substr(parentname.size()+2, std::string::npos).c_str());
+            Py_DECREF(parent);
         }
 
-        // TODO: write w/o use of TClass
-
-    // map user exceptions .. this needs to move to Cppyy.cxx
-        TClass* cl = TClass::GetClass(typeid(e));
-
-        PyObject* pyUserExcepts = PyObject_GetAttrString(gThisModule, "UserExceptions");
-        std::string exception_type;
-        if (cl) exception_type = cl->GetName();
-        else {
-            int errorCode;
-            std::unique_ptr<char[]> demangled(TClassEdit::DemangleTypeIdName(typeid(e),errorCode));
-            if (errorCode) exception_type = typeid(e).name();
-            else exception_type = demangled.get();
+        if (pyexc_type) {
+        // create a copy of the exception (TODO: factor this code with the same in ProxyWrappers)
+            PyObject* pyclass = CPyCppyy::GetScopeProxy(actual);
+            PyObject* source = BindCppObjectNoCast(&e, actual);
+            PyObject* pyexc_copy = PyObject_CallFunctionObjArgs(pyclass, source, nullptr);
+            Py_DECREF(source);
+            Py_DECREF(pyclass);
+            if (pyexc_copy) {
+                pyexc_obj = CPPExcInstance_Type.tp_new(&CPPExcInstance_Type, nullptr, nullptr);
+                ((CPPExcInstance*)pyexc_obj)->fCppInstance = (PyObject*)pyexc_copy;
+            } else
+                PyErr_Print();
         }
-        PyObject* pyexc = PyDict_GetItemString(pyUserExcepts, exception_type.c_str());
-        if (!pyexc) {
-            PyErr_Clear();
-            pyexc = PyDict_GetItemString(pyUserExcepts, ("std::"+exception_type).c_str());
-        }
-        Py_DECREF(pyUserExcepts);
 
-        if (pyexc) {
-            PyErr_Format(pyexc, "%s", e.what());
+        if (pyexc_type && pyexc_obj) {
+            PyErr_SetObject(pyexc_type, pyexc_obj);
+            Py_DECREF(pyexc_obj);
+            Py_DECREF(pyexc_type);
         } else {
-            PyErr_Format(PyExc_Exception, "%s (C++ exception of type %s)", e.what(), exception_type.c_str());
+            PyErr_Print();
+            PyErr_Format(PyExc_Exception, "%s (C++ exception)", e.what());
+            Py_XDECREF(pyexc_obj);
+            Py_XDECREF(pyexc_type);
         }
-    */
 
-        PyErr_Format(PyExc_Exception, "%s (C++ exception)", e.what());
         result = nullptr;
     } catch (...) {
         PyErr_SetString(PyExc_Exception, "unhandled, unknown C++ exception");
