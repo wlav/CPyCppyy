@@ -45,8 +45,14 @@ static int ep_traverse(CPPExcInstance* pyobj, visitproc visit, void* args)
 //----------------------------------------------------------------------------
 static PyObject* ep_str(CPPExcInstance* self)
 {
-    if (self->fCppInstance)
+    if (self->fCppInstance) {
+        PyObject* what = PyObject_CallMethod((PyObject*)self, "what", nullptr);
+        if (what)
+            return what;
+
+        PyErr_Clear();
         return PyObject_Str(self->fCppInstance);
+    }
     return PyType_Type.tp_str((PyObject*)self);
 }
 
@@ -77,7 +83,12 @@ static int ep_clear(CPPExcInstance* pyobj)
 //= forwarding methods =======================================================
 static PyObject* ep_getattro(CPPExcInstance* self, PyObject* attr)
 {
-    return PyObject_GetAttr(self->fCppInstance, attr);
+    PyObject* res = PyObject_GetAttr(self->fCppInstance, attr);
+    if (!res) {
+        PyErr_Clear();
+        res = ((PyTypeObject*)PyExc_Exception)->tp_getattro((PyObject*)self, attr);
+    }
+    return res;
 }
 
 //----------------------------------------------------------------------------
