@@ -214,7 +214,8 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
             PyObject* vtype = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "value_type");
             bool value_is_vector = false;
             if (vtype && CPyCppyy_PyText_Check(vtype)) {
-                if (strnstr(CPyCppyy_PyText_AsString(vtype), "std::vector", 11))
+            // if the value_type is a vector, then allow for initialization from sequences
+                if (std::string(CPyCppyy_PyText_AsString(vtype)).rfind("std::vector", 0) != std::string::npos)
                     value_is_vector = true;
                 Py_DECREF(vtype);
             } else
