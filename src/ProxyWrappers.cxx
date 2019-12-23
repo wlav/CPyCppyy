@@ -723,11 +723,24 @@ PyObject* CPyCppyy::CreateExcScopeProxy(PyObject* pyscope, PyObject* pyname, PyO
     CollectUniqueBases(((CPPScope*)pyscope)->fCppType, uqb);
     size_t nbases = uqb.size();
 
-    PyObject* pybases = PyTuple_New(nbases ? nbases : 1);
+// Support for multiple bases actually can not actually work as-is: the reason
+// for deriving from BaseException is to guarantee the layout needed for storing
+// traces. If some other base is std::exception (as e.g. boost::bad_any_cast) or
+// also derives from std::exception, then there are two trace locations. OTOH,
+// if the other class is a non-exception type, then the exception class does not
+// need to derive from it because it can never be caught as that type forwarding
+// to the proxy will work as expected, through, which is good enough).
+//
+// The code below restricts the hierarchy to a single base class, picking the
+// "best" by filtering std::exception and non-exception bases.
+
+    PyObject* pybases = PyTuple_New(1);
     if (nbases == 0) {
         Py_INCREF((PyObject*)(void*)&CPPExcInstance_Type);
         PyTuple_SET_ITEM(pybases, 0, (PyObject*)(void*)&CPPExcInstance_Type);
     } else {
+        PyObject* best_base = nullptr;
+
         for (std::deque<std::string>::size_type ibase = 0; ibase < nbases; ++ibase) {
         // retrieve bases through their enclosing scope to guarantee treatment as
         // exception classes and proper caching
@@ -747,8 +760,18 @@ PyObject* CPyCppyy::CreateExcScopeProxy(PyObject* pyscope, PyObject* pyname, PyO
                 return nullptr;
             }
 
-            PyTuple_SET_ITEM(pybases, ibase, excbase);
+            if (PyType_IsSubtype((PyTypeObject*)excbase, &CPPExcInstance_Type)) {
+                Py_XDECREF(best_base);
+                best_base = excbase;
+                if (finalname != "std::exception")
+                    break;
+            } else {
+            // just skip: there will be at least one exception derived base class
+                Py_DECREF(excbase);
+            }
         }
+
+        PyTuple_SET_ITEM(pybases, 0, best_base);
     }
 
     PyObject* args = Py_BuildValue((char*)"OO{}", pyname, pybases);
