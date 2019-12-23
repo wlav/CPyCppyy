@@ -128,6 +128,7 @@ PyObject* DeRefGetAttr(PyObject* self, PyObject* name)
     // TODO: these calls come from TemplateProxy and are unlikely to be needed in practice,
     // whereas as-is, they can accidentally dereference the result of end() on some STL
     // containers. Obviously, this is a dumb hack that should be resolved more fundamentally.
+        PyErr_SetString(PyExc_AttributeError, CPyCppyy_PyText_AsString(name));
         return nullptr;
     }
 
