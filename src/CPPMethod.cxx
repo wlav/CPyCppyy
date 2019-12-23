@@ -99,15 +99,15 @@ inline PyObject* CPyCppyy::CPPMethod::ExecuteFast(
                 pyexc_obj = CPPExcInstance_Type.tp_new(&CPPExcInstance_Type, nullptr, nullptr);
                 ((CPPExcInstance*)pyexc_obj)->fCppInstance = (PyObject*)pyexc_copy;
             } else
-                PyErr_Print();
-        }
+                PyErr_Clear();
+        } else
+            PyErr_Clear();
 
         if (pyexc_type && pyexc_obj) {
             PyErr_SetObject(pyexc_type, pyexc_obj);
             Py_DECREF(pyexc_obj);
             Py_DECREF(pyexc_type);
         } else {
-            PyErr_Print();
             PyErr_Format(PyExc_Exception, "%s (C++ exception)", e.what());
             Py_XDECREF(pyexc_obj);
             Py_XDECREF(pyexc_type);
