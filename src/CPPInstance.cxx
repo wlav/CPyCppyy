@@ -214,6 +214,9 @@ void CPyCppyy::op_dealloc_nofree(CPPInstance* pyobj) {
         if (cppobj) Cppyy::Destruct(klass, cppobj);
     }
     cppobj = nullptr;
+
+    if (pyobj->IsExtended()) delete (ExtendedData*)pyobj->fObject;
+    pyobj->fFlags = CPPInstance::kNoWrapConv;
 }
 
 
@@ -308,9 +311,9 @@ static CPPInstance* op_new(PyTypeObject* subtype, PyObject*, PyObject*)
 static void op_dealloc(CPPInstance* pyobj)
 {
 // Remove (Python-side) memory held by the object proxy.
+    PyObject_GC_UnTrack((PyObject*)pyobj);
     op_dealloc_nofree(pyobj);
-    if (pyobj->fFlags & CPPInstance::kIsExtended) delete (ExtendedData*)pyobj->fObject;
-    Py_TYPE(pyobj)->tp_free((PyObject*)pyobj);
+    PyObject_GC_Del((PyObject*)pyobj);
 }
 
 //----------------------------------------------------------------------------
