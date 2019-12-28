@@ -24,28 +24,25 @@ static PyObject* ep_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
         return nullptr;
 
     CPPExcInstance* excobj = (CPPExcInstance*)pyobj;
+    excobj->fTopMessage = nullptr;
     if (args) {
         PyObject* ulc = PyObject_GetAttr((PyObject*)subtype, PyStrings::gUnderlying);
         excobj->fCppInstance = PyType_Type.tp_call(ulc, args, kwds);
         if (!excobj->fCppInstance) {
-        // if this fails, then the contruction may have been from PyErr_Format, in
-        // which case the argument is simply the message, so drop the proxy (which
-        // is only used for type matching at that point) and use only the message
+        // if this fails, then the contruction may have been attempted from a string
+        // (e.g. from PyErr_Format); if so, drop the proxy and use fTopMessage instead
             PyErr_Clear();
             if (PyTuple_GET_SIZE(args) == 1) {
                 PyObject* msg = PyTuple_GET_ITEM(args, 0);
                 if (CPyCppyy_PyText_Check(msg)) {
                     Py_INCREF(msg);
-                    excobj->fAltMessage = msg;
+                    excobj->fTopMessage = msg;
                 }
             }
-        } else
-            excobj->fAltMessage = nullptr;
+        }
         Py_DECREF(ulc);
-    } else {
+    } else
         excobj->fCppInstance = nullptr;
-        excobj->fAltMessage  = nullptr;
-    }
 
     return pyobj;
 }
@@ -54,11 +51,13 @@ static PyObject* ep_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
 static int ep_traverse(CPPExcInstance* pyobj, visitproc visit, void* args)
 {
 // Garbage collector traverse of held python member objects.
+    ((PyTypeObject*)PyExc_Exception)->tp_traverse((PyObject*)pyobj, visit, args);
+
     if (pyobj->fCppInstance)
         visit(pyobj->fCppInstance, args);
 
-    if (pyobj->fAltMessage)
-        visit(pyobj->fAltMessage, args);
+    if (pyobj->fTopMessage)
+        visit(pyobj->fTopMessage, args);
 
     return 0;
 }
@@ -67,16 +66,24 @@ static int ep_traverse(CPPExcInstance* pyobj, visitproc visit, void* args)
 static PyObject* ep_str(CPPExcInstance* self)
 {
     if (self->fCppInstance) {
-        PyObject* what = PyObject_CallMethod((PyObject*)self, "what", nullptr);
-        if (what)
+        PyObject* what = PyObject_CallMethod((PyObject*)self, (char*)"what", nullptr);
+        if (what) {
+            if (self->fTopMessage) {
+                Py_INCREF(self->fTopMessage);
+                PyObject* top = self->fTopMessage;
+                CPyCppyy_PyText_Append(&top, what);
+                Py_DECREF(what);
+                what = top;
+            }
             return what;
+        }
         PyErr_Clear();
         return PyObject_Str(self->fCppInstance);
     }
 
-    if (self->fAltMessage) {
-        Py_INCREF(self->fAltMessage);
-        return self->fAltMessage;
+    if (self->fTopMessage) {
+        Py_INCREF(self->fTopMessage);
+        return self->fTopMessage;
     }
 
     return PyType_Type.tp_str((PyObject*)self);
@@ -93,17 +100,22 @@ static PyObject* ep_repr(CPPExcInstance* self)
 //----------------------------------------------------------------------------
 static void ep_dealloc(CPPExcInstance* pyobj)
 {
-    PyObject_GC_UnTrack((PyObject*)pyobj);
-    Py_CLEAR(pyobj->fCppInstance);
-    Py_CLEAR(pyobj->fAltMessage);
+    PyObject* tmp1 = pyobj->fCppInstance;
+    PyObject* tmp2 = pyobj->fTopMessage;
+
+    ((PyTypeObject*)PyExc_Exception)->tp_dealloc((PyObject*)pyobj);
+    Py_CLEAR(tmp1);
+    Py_CLEAR(tmp2);
 }
 
 //----------------------------------------------------------------------------
 static int ep_clear(CPPExcInstance* pyobj)
 {
 // Garbage collector clear of held python member objects.
+    ((PyTypeObject*)PyExc_Exception)->tp_clear((PyObject*)pyobj);
+
     Py_CLEAR(pyobj->fCppInstance);
-    Py_CLEAR(pyobj->fAltMessage);
+    Py_CLEAR(pyobj->fTopMessage);
 
     return 0;
 }

@@ -15,7 +15,7 @@ class CPPExcInstance {
 public:
     PyBaseExceptionObject fBase;
     PyObject*             fCppInstance;
-    PyObject*             fAltMessage;
+    PyObject*             fTopMessage;
 };
 
 

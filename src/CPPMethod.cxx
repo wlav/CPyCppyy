@@ -96,7 +96,7 @@ inline PyObject* CPyCppyy::CPPMethod::ExecuteFast(
             Py_DECREF(source);
             Py_DECREF(pyclass);
             if (pyexc_copy) {
-                pyexc_obj = CPPExcInstance_Type.tp_new(&CPPExcInstance_Type, nullptr, nullptr);
+                pyexc_obj = CPPExcInstance_Type.tp_new((PyTypeObject*)pyexc_type, nullptr, nullptr);
                 ((CPPExcInstance*)pyexc_obj)->fCppInstance = (PyObject*)pyexc_copy;
             } else
                 PyErr_Clear();
@@ -231,9 +231,10 @@ void CPyCppyy::CPPMethod::SetPyError_(PyObject* msg)
 // helper to report errors in a consistent format (derefs msg)
     std::string details{};
 
-    PyObject* etype = nullptr;
+    PyObject *etype = nullptr, *evalue = nullptr;
     if (PyErr_Occurred()) {
-        PyObject *evalue = nullptr, *etrace = nullptr;
+        PyObject* etrace = nullptr;
+
         PyErr_Fetch(&etype, &evalue, &etrace);
 
         if (evalue) {
@@ -244,7 +245,7 @@ void CPyCppyy::CPPMethod::SetPyError_(PyObject* msg)
             }
         }
 
-        Py_XDECREF(evalue); Py_XDECREF(etrace);
+        Py_XDECREF(etrace);
     }
 
     PyObject* doc = GetDocString();
@@ -254,19 +255,32 @@ void CPyCppyy::CPPMethod::SetPyError_(PyObject* msg)
     PyObject* pyname = PyObject_GetAttr(errtype, PyStrings::gName);
     const char* cname = pyname ? CPyCppyy_PyText_AsString(pyname) : "Exception";
 
-    if (details.empty()) {
-        PyErr_Format(errtype, "%s =>\n    %s: %s", CPyCppyy_PyText_AsString(doc),
-            cname, msg ? CPyCppyy_PyText_AsString(msg) : "");
-    } else if (msg) {
-        PyErr_Format(errtype, "%s =>\n    %s: %s (%s)",
-            CPyCppyy_PyText_AsString(doc), cname, CPyCppyy_PyText_AsString(msg),
-            details.c_str());
+    if (!PyType_IsSubtype((PyTypeObject*)errtype, &CPPExcInstance_Type)) {
+        if (details.empty()) {
+            PyErr_Format(errtype, "%s =>\n    %s: %s", CPyCppyy_PyText_AsString(doc),
+                 cname, msg ? CPyCppyy_PyText_AsString(msg) : "");
+        } else if (msg) {
+            PyErr_Format(errtype, "%s =>\n    %s: %s (%s)",
+                CPyCppyy_PyText_AsString(doc), cname, CPyCppyy_PyText_AsString(msg),
+                details.c_str());
+        } else {
+            PyErr_Format(errtype, "%s =>\n    %s: %s",
+                CPyCppyy_PyText_AsString(doc), cname, details.c_str());
+        }
     } else {
-        PyErr_Format(errtype, "%s =>\n    %s: %s",
-            CPyCppyy_PyText_AsString(doc), cname, details.c_str());
+        Py_XDECREF(((CPPExcInstance*)evalue)->fTopMessage);
+        if (msg) {
+            ((CPPExcInstance*)evalue)->fTopMessage = CPyCppyy_PyText_FromFormat(\
+                "%s =>\n    %s: %s | ", CPyCppyy_PyText_AsString(doc), cname, CPyCppyy_PyText_AsString(msg));
+        } else {
+            ((CPPExcInstance*)evalue)->fTopMessage = CPyCppyy_PyText_FromFormat(\
+                 "%s =>\n    %s: ", CPyCppyy_PyText_AsString(doc), cname);
+        }
+        PyErr_SetObject(errtype, evalue);
     }
 
     Py_XDECREF(pyname);
+    Py_XDECREF(evalue);
     Py_XDECREF(etype);
     Py_DECREF(doc);
     Py_XDECREF(msg);
