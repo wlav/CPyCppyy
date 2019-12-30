@@ -103,6 +103,21 @@ PyObject* PyStyleIndex(PyObject* self, PyObject* index)
 }
 
 //-----------------------------------------------------------------------------
+inline bool AdjustSlice(const Py_ssize_t nlen, Py_ssize_t& start, Py_ssize_t& stop, Py_ssize_t& step)
+{
+// Helper; modify slice range to match the container.
+    if ((step > 0 && stop <= start) || (step < 0 && start <= stop))
+        return false;
+
+    if (start < 0) start = 0;
+    if (start >= nlen) start = nlen-1;
+    if (step >= nlen) step = nlen;
+
+    stop = step > 0 ? std::min(nlen, stop) : (stop >= 0 ? stop : -1);
+    return true;
+}
+
+//-----------------------------------------------------------------------------
 inline PyObject* CallSelfIndex(CPPInstance* self, PyObject* idx, PyObject* pymeth)
 {
 // Helper; call method with signature: meth(pyindex).
@@ -392,7 +407,8 @@ PyObject* VectorGetItem(CPPInstance* self, PySliceObject* index)
         Py_ssize_t start, stop, step;
         PySlice_GetIndices((CPyCppyy_PySliceCast)index, PyObject_Length((PyObject*)self), &start, &stop, &step);
 
-        if ((step > 0 && stop <= start) || (step < 0 && start <= stop))
+        const Py_ssize_t nlen = PySequence_Size((PyObject*)self);
+        if (!AdjustSlice(nlen, start, stop, step))
             return nseq;
 
         const Py_ssize_t sign = step < 0 ? -1 : 1;
@@ -435,7 +451,12 @@ PyObject* VectorBoolGetItem(CPPInstance* self, PyObject* idx)
 
         Py_ssize_t start, stop, step;
         PySlice_GetIndices((CPyCppyy_PySliceCast)idx, PyObject_Length((PyObject*)self), &start, &stop, &step);
-        for (Py_ssize_t i = start; i < stop; i += step) {
+        const Py_ssize_t nlen = PySequence_Size((PyObject*)self);
+        if (!AdjustSlice(nlen, start, stop, step))
+            return nseq;
+
+        const Py_ssize_t sign = step < 0 ? -1 : 1;
+        for (Py_ssize_t i = start; i*sign < stop*sign; i += step) {
             PyObject* pyidx = PyInt_FromSsize_t(i);
             PyObject* item = PyObject_CallMethodObjArgs((PyObject*)self, PyStrings::gGetItem, pyidx, nullptr);
             CallPyObjMethod(nseq, "push_back", item);
