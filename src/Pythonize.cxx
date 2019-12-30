@@ -216,8 +216,13 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
         if (!sz)
             return result;
 
-        PyObject* res = PyObject_CallMethod(self, (char*)"reserve", (char*)"n", sz);
-        Py_DECREF(res);
+        if (sz < 0) {
+            PyErr_Clear();
+            sz = PY_SSIZE_T_MAX;       // loop until StopIteration
+        } else {
+            PyObject* res = PyObject_CallMethod(self, (char*)"reserve", (char*)"n", sz);
+            Py_DECREF(res);
+        }
 
         bool fill_ok = true;
 
@@ -295,7 +300,10 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
                         }
                         Py_DECREF(pbres);
                     } else {
-                        fill_ok = false;
+                        if (!(PyErr_ExceptionMatches(PyExc_IndexError) ||
+                              PyErr_ExceptionMatches(PyExc_StopIteration)))
+                            fill_ok = false;
+                        else { PyErr_Clear(); }
                         break;
                     }
                 }
