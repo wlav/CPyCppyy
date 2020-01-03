@@ -191,45 +191,69 @@ PyObject* FollowGetAttr(PyObject* self, PyObject* name)
 
 
 //- vector behavior as primitives ----------------------------------------------
+#if PY_VERSION_HEX < 0x03040000
+#define PyObject_LengthHint _PyObject_LengthHint
+#endif
+
 PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 {
-// using initializer_list is possible, but error-prone; since it's so common for
-// std::vector, this implements construction from python iterables directly, except
-// for arrays, which can be passed wholesale, and strings, which shouldn't be used
-    if (PyTuple_GET_SIZE(args) == 1 &&                              \
-            (CPyCppyy_PyText_Check(PyTuple_GET_ITEM(args, 0)) || \
-             PyBytes_Check(PyTuple_GET_ITEM(args, 0)))) {
-        PyErr_SetString(PyExc_TypeError, "can not convert string to vector");
-        return 0;
+// Specialized vector constructor to allow construction from containers; allowing
+// such construction from initializer_list instead would possible, but can be
+// error-prone. This use case is common enough for std::vector to implement it
+// directly, except for arrays (which can be passed wholesale) and strings (which
+// won't convert properly as they'll be seen as buffers)
+
+    PyObject* iter = nullptr;
+    if (PyTuple_GET_SIZE(args) == 1) {
+        PyObject* fi = PyTuple_GET_ITEM(args, 0);
+        if (CPyCppyy_PyText_Check(fi) || PyBytes_Check(fi)) {
+            PyErr_SetString(PyExc_TypeError, "can not convert string to vector");
+            return nullptr;
+        }
+        if (!Py_TYPE(fi)->tp_as_buffer) {
+            iter = PyObject_GetIter(fi);
+            if (!iter) PyErr_Clear();
+        }
     }
 
-    if (PyTuple_GET_SIZE(args) == 1 && PySequence_Check(PyTuple_GET_ITEM(args, 0)) && \
-            !Py_TYPE(PyTuple_GET_ITEM(args, 0))->tp_as_buffer) {
+    if (iter) {
+    // construct an empty vector, then back-fill it
         PyObject* mname = CPyCppyy_PyText_FromString("__real_init");
         PyObject* result = PyObject_CallMethodObjArgs(self, mname, nullptr);
         Py_DECREF(mname);
-        if (!result)
+        if (!result) {
+            Py_DECREF(iter);
             return result;
+        }
 
         PyObject* ll = PyTuple_GET_ITEM(args, 0);
         Py_ssize_t sz = PySequence_Size(ll);
-        if (!sz)
-            return result;
-
         if (sz < 0) {
             PyErr_Clear();
-            sz = PY_SSIZE_T_MAX;       // loop until StopIteration
-        } else {
+            sz = PyObject_LengthHint(iter, 8);
+            if (sz < 0) {
+                Py_DECREF(iter);
+                return NULL;
+            }
+        }
+
+    // reserve memory as appliable
+        if (0 < sz) {
             PyObject* res = PyObject_CallMethod(self, (char*)"reserve", (char*)"n", sz);
             Py_DECREF(res);
+        } else { // empty container
+            Py_DECREF(iter);
+            return result;
         }
 
         bool fill_ok = true;
+        auto iternext = *(Py_TYPE(iter)->tp_iternext);
 
     // two main options: a list of lists (or tuples), or a list of objects; the former
     // are emplace_back'ed, the latter push_back'ed
         PyObject* fi = PySequence_GetItem(ll, 0);
-        if (PyTuple_CheckExact(fi) || PyList_CheckExact(fi)) {
+        if (!fi) PyErr_Clear();
+        if (fi && (PyTuple_CheckExact(fi) || PyList_CheckExact(fi))) {
         // use emplace_back to construct the vector entries one by one
             PyObject* eb_call = PyObject_GetAttrString(self, (char*)"emplace_back");
             PyObject* vtype = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "value_type");
@@ -238,21 +262,19 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
             // if the value_type is a vector, then allow for initialization from sequences
                 if (std::string(CPyCppyy_PyText_AsString(vtype)).rfind("std::vector", 0) != std::string::npos)
                     value_is_vector = true;
-                Py_DECREF(vtype);
             } else
                 PyErr_Clear();
+            Py_XDECREF(vtype);
 
             if (eb_call) {
                 PyObject* eb_args;
-                for (Py_ssize_t i = 0; i < sz; ++i) {
-                    PyObject* item = PySequence_GetItem(ll, i);
+                for (int i = 0; /* until break */; ++i) {
+                    PyObject* item = iternext(iter);
                     if (item) {
                         if (value_is_vector && PySequence_Check(item)) {
                             eb_args = PyTuple_New(1);
-                            Py_INCREF(item);
                             PyTuple_SET_ITEM(eb_args, 0, item);
                         } else if (PyTuple_CheckExact(item)) {
-                            Py_INCREF(item);
                             eb_args = item;
                         } else if (PyList_CheckExact(item)) {
                             Py_ssize_t isz = PyList_GET_SIZE(item);
@@ -262,14 +284,14 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
                                 Py_INCREF(iarg);
                                 PyTuple_SET_ITEM(eb_args, j, iarg);
                             }
+                            Py_DECREF(item);
                         } else {
                             Py_DECREF(item);
-                            PyErr_Format(PyExc_TypeError, "argument %d is not a tuple or list", (int)i);
+                            PyErr_Format(PyExc_TypeError, "argument %d is not a tuple or list", i);
                             fill_ok = false;
                             break;
                         }
                         PyObject* ebres = PyObject_CallObject(eb_call, eb_args);
-                        Py_DECREF(item);
                         Py_DECREF(eb_args);
                         if (!ebres) {
                             fill_ok = false;
@@ -277,7 +299,12 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
                         }
                         Py_DECREF(ebres);
                     } else {
-                        fill_ok = false;
+                        if (PyErr_Occurred()) {
+                            if (!(PyErr_ExceptionMatches(PyExc_IndexError) ||
+                                  PyErr_ExceptionMatches(PyExc_StopIteration)))
+                                fill_ok = false;
+                            else { PyErr_Clear(); }
+                        }
                         break;
                     }
                 }
@@ -287,12 +314,10 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
         // use push_back to add the vector entries one by one
             PyObject* pb_call = PyObject_GetAttrString(self, (char*)"push_back");
             if (pb_call) {
-                PyObject* pb_args = PyTuple_New(1);
-                for (Py_ssize_t i = 0; i < sz; ++i) {
-                    PyObject* item = PySequence_GetItem(ll, i);
+                for (;;) {
+                    PyObject* item = iternext(iter);
                     if (item) {
-                        PyTuple_SET_ITEM(pb_args, 0, item);
-                        PyObject* pbres = PyObject_CallObject(pb_call, pb_args);
+                        PyObject* pbres = PyObject_CallFunctionObjArgs(pb_call, item, nullptr);
                         Py_DECREF(item);
                         if (!pbres) {
                             fill_ok = false;
@@ -300,19 +325,20 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
                         }
                         Py_DECREF(pbres);
                     } else {
-                        if (!(PyErr_ExceptionMatches(PyExc_IndexError) ||
-                              PyErr_ExceptionMatches(PyExc_StopIteration)))
-                            fill_ok = false;
-                        else { PyErr_Clear(); }
+                        if (PyErr_Occurred()) {
+                            if (!(PyErr_ExceptionMatches(PyExc_IndexError) ||
+                                  PyErr_ExceptionMatches(PyExc_StopIteration)))
+                                fill_ok = false;
+                            else { PyErr_Clear(); }
+                        }
                         break;
                     }
                 }
-                PyTuple_SET_ITEM(pb_args, 0, nullptr);
-                Py_DECREF(pb_args);
                 Py_DECREF(pb_call);
             }
         }
-        Py_DECREF(fi);
+        Py_XDECREF(fi);
+        Py_DECREF(iter);
 
         if (!fill_ok) {
             Py_DECREF(result);
@@ -322,6 +348,7 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
         return result;
     }
 
+// The given argument wasn't iterable: simply forward to regular constructor
     PyObject* realInit = PyObject_GetAttrString(self, "__real_init");
     if (realInit) {
         PyObject* result = PyObject_Call(realInit, args, nullptr);
