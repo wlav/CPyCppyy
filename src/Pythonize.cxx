@@ -13,6 +13,7 @@
 #include "Utility.h"
 
 // Standard
+#include <algorithm>
 #include <complex>
 #include <set>
 #include <stdexcept>
