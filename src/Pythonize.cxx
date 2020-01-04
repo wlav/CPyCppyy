@@ -195,6 +195,67 @@ PyObject* FollowGetAttr(PyObject* self, PyObject* name)
 #define PyObject_LengthHint _PyObject_LengthHint
 #endif
 
+// TODO: can probably use the below getters in the InitializerListConverter
+struct ItemGetter {
+    ItemGetter(PyObject* pyobj) : fPyObject(pyobj) { Py_INCREF(fPyObject); }
+    virtual ~ItemGetter() { Py_DECREF(fPyObject); }
+    virtual Py_ssize_t size() = 0;
+    virtual PyObject* get() = 0;
+    PyObject* fPyObject;
+};
+
+struct CountedItemGetter : public ItemGetter {
+    CountedItemGetter(PyObject* pyobj) : ItemGetter(pyobj), fCur(0) {}
+    Py_ssize_t fCur;
+};
+
+struct TupleItemGetter : public CountedItemGetter {
+    using CountedItemGetter::CountedItemGetter;
+    virtual Py_ssize_t size() { return PyTuple_GET_SIZE(fPyObject); }
+    virtual PyObject* get() {
+        if (fCur < PyTuple_GET_SIZE(fPyObject)) {
+            PyObject* item = PyTuple_GET_ITEM(fPyObject, fCur++);
+            Py_INCREF(item);
+            return item;
+        }
+        PyErr_SetString(PyExc_StopIteration, "end of tuple");
+        return nullptr;
+    }
+};
+
+struct ListItemGetter : public CountedItemGetter {
+    using CountedItemGetter::CountedItemGetter;
+    virtual Py_ssize_t size() { return PyList_GET_SIZE(fPyObject); }
+    virtual PyObject* get() {
+        if (fCur < PyList_GET_SIZE(fPyObject)) {
+            PyObject* item = PyList_GET_ITEM(fPyObject, fCur++);
+            Py_INCREF(item);
+            return item;
+        }
+        PyErr_SetString(PyExc_StopIteration, "end of list");
+        return nullptr;
+    }
+};
+
+struct SequenceItemGetter : public CountedItemGetter {
+    using CountedItemGetter::CountedItemGetter;
+    virtual Py_ssize_t size() {
+        Py_ssize_t sz = PySequence_Size(fPyObject);
+        if (sz < 0) {
+            PyErr_Clear();
+            return PyObject_LengthHint(fPyObject, 8);
+        }
+        return sz;
+    }
+    virtual PyObject* get() { return PySequence_GetItem(fPyObject, fCur++); }
+};
+
+struct IterItemGetter : public ItemGetter {
+    using ItemGetter::ItemGetter;
+    virtual Py_ssize_t size() { return PyObject_LengthHint(fPyObject, 8); }
+    virtual PyObject* get() { return (*(Py_TYPE(fPyObject)->tp_iternext))(fPyObject); }
+};
+
 PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 {
 // Specialized vector constructor to allow construction from containers; allowing
@@ -203,38 +264,48 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 // directly, except for arrays (which can be passed wholesale) and strings (which
 // won't convert properly as they'll be seen as buffers)
 
-    PyObject* iter = nullptr;
+    ItemGetter* getter = nullptr;
     if (PyTuple_GET_SIZE(args) == 1) {
         PyObject* fi = PyTuple_GET_ITEM(args, 0);
         if (CPyCppyy_PyText_Check(fi) || PyBytes_Check(fi)) {
             PyErr_SetString(PyExc_TypeError, "can not convert string to vector");
             return nullptr;
         }
-        if (!Py_TYPE(fi)->tp_as_buffer) {
-            iter = PyObject_GetIter(fi);
-            if (!iter) PyErr_Clear();
+    // TODO: this only tests for new-style buffers, which is too strict, but a
+    // generic check for Py_TYPE(fi)->tp_as_buffer is too loose (note that the
+    // main use case is numpy, which offers the new interface)
+        if (!PyObject_CheckBuffer(fi)) {
+            if (PyTuple_CheckExact(fi))
+                getter = new TupleItemGetter(fi);
+            else if (PyList_CheckExact(fi))
+                getter = new ListItemGetter(fi);
+            else if (PySequence_Check(fi))
+                getter = new SequenceItemGetter(fi);
+            else {
+                PyObject* iter = PyObject_GetIter(fi);
+                if (iter) {
+                    getter = new IterItemGetter{iter};
+                    Py_DECREF(iter);
+                }
+                else PyErr_Clear();
+            }
         }
     }
 
-    if (iter) {
+    if (getter) {
     // construct an empty vector, then back-fill it
         PyObject* mname = CPyCppyy_PyText_FromString("__real_init");
         PyObject* result = PyObject_CallMethodObjArgs(self, mname, nullptr);
         Py_DECREF(mname);
         if (!result) {
-            Py_DECREF(iter);
+            delete getter;
             return result;
         }
 
-        PyObject* ll = PyTuple_GET_ITEM(args, 0);
-        Py_ssize_t sz = PySequence_Size(ll);
+        Py_ssize_t sz = getter->size();
         if (sz < 0) {
-            PyErr_Clear();
-            sz = PyObject_LengthHint(iter, 8);
-            if (sz < 0) {
-                Py_DECREF(iter);
-                return NULL;
-            }
+            delete getter;
+            return nullptr;
         }
 
     // reserve memory as appliable
@@ -242,16 +313,15 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
             PyObject* res = PyObject_CallMethod(self, (char*)"reserve", (char*)"n", sz);
             Py_DECREF(res);
         } else { // empty container
-            Py_DECREF(iter);
+            delete getter;
             return result;
         }
 
         bool fill_ok = true;
-        auto iternext = *(Py_TYPE(iter)->tp_iternext);
 
     // two main options: a list of lists (or tuples), or a list of objects; the former
     // are emplace_back'ed, the latter push_back'ed
-        PyObject* fi = PySequence_GetItem(ll, 0);
+        PyObject* fi = PySequence_GetItem(PyTuple_GET_ITEM(args, 0), 0);
         if (!fi) PyErr_Clear();
         if (fi && (PyTuple_CheckExact(fi) || PyList_CheckExact(fi))) {
         // use emplace_back to construct the vector entries one by one
@@ -269,7 +339,7 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
             if (eb_call) {
                 PyObject* eb_args;
                 for (int i = 0; /* until break */; ++i) {
-                    PyObject* item = iternext(iter);
+                    PyObject* item = getter->get();
                     if (item) {
                         if (value_is_vector && PySequence_Check(item)) {
                             eb_args = PyTuple_New(1);
@@ -315,7 +385,7 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
             PyObject* pb_call = PyObject_GetAttrString(self, (char*)"push_back");
             if (pb_call) {
                 for (;;) {
-                    PyObject* item = iternext(iter);
+                    PyObject* item = getter->get();
                     if (item) {
                         PyObject* pbres = PyObject_CallFunctionObjArgs(pb_call, item, nullptr);
                         Py_DECREF(item);
@@ -338,7 +408,7 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
             }
         }
         Py_XDECREF(fi);
-        Py_DECREF(iter);
+        delete getter;
 
         if (!fill_ok) {
             Py_DECREF(result);

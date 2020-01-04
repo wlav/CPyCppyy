@@ -2559,7 +2559,8 @@ bool CPyCppyy::InitializerListConverter::SetArg(
                     convert_ok = fConverter->ToMemory(item, (char*)fake->_M_array + i*fValueSize);
 
                 Py_DECREF(item);
-            }
+            } else
+                PyErr_Format(PyExc_TypeError, "failed to get item %d from sequence", i);
 
             if (!convert_ok) {
                 free((void*)fake);
