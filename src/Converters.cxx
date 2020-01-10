@@ -1083,6 +1083,10 @@ bool CPyCppyy::CStringConverter::SetArg(
     if (CPyCppyy_PyText_Check(pyobject)) {
         auto strAndSize = getStringAndSize(pyobject);
         fBuffer = std::string(std::get<0>(strAndSize), std::get<1>(strAndSize));
+    } else if (PyBytes_Check(pyobject)) {
+        auto s = PyBytes_AsString(pyobject);
+        auto size = PyBytes_GET_SIZE(pyobject);
+        fBuffer = std::string(s, size);
     } else {
     // special case: allow ctypes c_char_p
         if (Py_TYPE(pyobject) == GetCTypesType(ct_c_char_p)) {
@@ -1613,6 +1617,15 @@ bool CPyCppyy::name##Converter::SetArg(                                      \
     if (CPyCppyy_PyText_Check(pyobject)) {                                   \
         auto strAndSize = getStringAndSize(pyobject);                        \
         fBuffer = type(std::get<0>(strAndSize), std::get<1>(strAndSize));    \
+        para.fValue.fVoidp = &fBuffer;                                       \
+        para.fTypeCode = 'V';                                                \
+        return true;                                                         \
+    }                                                                        \
+                                                                             \
+    if (PyBytes_Check(pyobject)) {                                           \
+        auto s = PyBytes_AsString(pyobject);                                 \
+        auto size = PyBytes_GET_SIZE(pyobject);                              \
+        fBuffer = type(s, size);                                             \
         para.fValue.fVoidp = &fBuffer;                                       \
         para.fTypeCode = 'V';                                                \
         return true;                                                         \
