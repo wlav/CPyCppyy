@@ -564,7 +564,7 @@ PyObject* CPyCppyy::CPPMethod::ProcessKeywords(PyObject* self, PyObject* args, P
     Py_ssize_t nArgs = PyTuple_GET_SIZE(args) + (self ? 1 : 0);
     if (nKeys+nArgs < fArgsRequired) {
         SetPyError_(CPyCppyy_PyText_FromFormat(
-            "takes at least %d arguments (%ld given)", fArgsRequired, nKeys+nArgs));
+            "takes at least %d arguments (%zd given)", fArgsRequired, nKeys+nArgs));
         return nullptr;
     }
 
@@ -677,11 +677,11 @@ bool CPyCppyy::CPPMethod::ConvertAndSetArgs(PyObject* args, CallContext* ctxt)
     // argc must be between min and max number of arguments
         if (argc < (Py_ssize_t)fArgsRequired) {
             SetPyError_(CPyCppyy_PyText_FromFormat(
-                "takes at least %d arguments (%ld given)", fArgsRequired, argc));
+                "takes at least %d arguments (%zd given)", fArgsRequired, argc));
             return false;
         } else if (argMax < argc) {
             SetPyError_(CPyCppyy_PyText_FromFormat(
-                "takes at most %ld arguments (%ld given)", argMax, argc));
+                "takes at most %zd arguments (%zd given)", argMax, argc));
             return false;
         }
     }
