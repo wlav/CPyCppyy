@@ -2513,8 +2513,10 @@ bool CPyCppyy::InitializerListConverter::SetArg(
 #ifdef NO_KNOWN_INITIALIZER_LIST
     return false;
 #else
-// convert the given argument to an initializer list temporary
-    if (!PySequence_Check(pyobject) || CPyCppyy_PyText_Check(pyobject)
+// convert the given argument to an initializer list temporary; this is purely meant
+// to be a syntactic thing, so only _python_ sequences are allowed; bound C++ proxies
+// are therefore rejected (should go through eg. a copy constructor etc.)
+    if (CPPInstance_Check(pyobject) || !PySequence_Check(pyobject) || CPyCppyy_PyText_Check(pyobject)
 #if PY_VERSION_HEX >= 0x03000000
         || PyBytes_Check(pyobject)
 #endif
@@ -2560,7 +2562,7 @@ bool CPyCppyy::InitializerListConverter::SetArg(
 
                 Py_DECREF(item);
             } else
-                PyErr_Format(PyExc_TypeError, "failed to get item %d from sequence", i);
+                PyErr_Format(PyExc_TypeError, "failed to get item %d from sequence", (int)i);
 
             if (!convert_ok) {
                 free((void*)fake);

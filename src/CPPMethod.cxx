@@ -350,8 +350,10 @@ int CPyCppyy::CPPMethod::GetPriority()
 // Further, all integer types are preferred over floating point b/c int to float
 // is allowed implicitly, float to int is not.
 //
-// Special cases that are disliked include void*, initializer_list, and
-// unknown/incomplete types. Finally, moves are preferred over references.
+// Special cases that are disliked include void* and unknown/incomplete types.
+// Also, moves are preferred over references. std::initializer_list is not a nice
+// conversion candidate either, but needs to be higher priority to mix well with
+// implicit conversions.
 // TODO: extend this to favour classes that are not bases.
 // TODO: profile this method (it's expensive, but should be called too often)
 
@@ -409,7 +411,7 @@ int CPyCppyy::CPPMethod::GetPriority()
 
         // a couple of special cases as explained above
             if (aname.find("initializer_list") != std::string::npos) {
-                priority +=  -500;     // difficult/expensive conversion
+                priority +=   150;     // needed for proper implicit conversion rules
             } else if (aname.rfind("&&", aname.size()-2) != std::string::npos) {
                 priority +=   100;     // prefer moves over other ref/ptr
             } else if (!aname.empty() && !Cppyy::IsComplete(aname)) {
