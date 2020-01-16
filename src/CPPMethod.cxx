@@ -520,7 +520,7 @@ PyObject* CPyCppyy::CPPMethod::GetScopeProxy()
 Cppyy::TCppFuncAddr_t CPyCppyy::CPPMethod::GetFunctionAddress()
 {
 // Return the C++ pointer of this function
-    return Cppyy::GetFunctionAddress(fMethod);
+    return Cppyy::GetFunctionAddress(fMethod, false /* don't check fast path envar */);
 }
 
 

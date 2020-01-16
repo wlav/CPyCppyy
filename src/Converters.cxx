@@ -2210,7 +2210,7 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
         Cppyy::TCppScope_t scope = ((CPPClass*)pytmpl->fTI->fPyClass)->fCppType;
         Cppyy::TCppMethod_t cppmeth = Cppyy::GetMethodTemplate(scope, fullname, fSignature);
         if (cppmeth) {
-            para.fValue.fVoidp = (void*)Cppyy::GetFunctionAddress(cppmeth);
+            para.fValue.fVoidp = (void*)Cppyy::GetFunctionAddress(cppmeth, false);
             if (para.fValue.fVoidp) {
                 para.fTypeCode = 'p';
                 return true;
@@ -2296,7 +2296,7 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
         // TODO: is there no easier way?
             static Cppyy::TCppScope_t scope = Cppyy::GetScope("__cppyy_internal");
             const auto& idx = Cppyy::GetMethodIndicesFromName(scope, wname.str());
-            wpraddress = Cppyy::GetFunctionAddress(Cppyy::GetMethod(scope, idx[0]));
+            wpraddress = Cppyy::GetFunctionAddress(Cppyy::GetMethod(scope, idx[0]), false);
             sWrapperReference[wpraddress] = ref;
 
         // cache the new wrapper
