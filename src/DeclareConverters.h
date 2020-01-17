@@ -376,6 +376,7 @@ public:
 public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
     virtual PyObject* FromMemory(void* address);
+    virtual bool ToMemory(PyObject*, void*);
     virtual bool HasState() { return true; }
 
 protected:

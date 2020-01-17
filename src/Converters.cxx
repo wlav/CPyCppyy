@@ -2175,27 +2175,28 @@ static PyMethodDef gWrapperCacheEraserMethodDef = {
     METH_O, nullptr
 };
 
-bool CPyCppyy::FunctionPointerConverter::SetArg(
-    PyObject* pyobject, Parameter& para, CallContext* /*ctxt*/)
+static void* PyFunction_AsCPointer(PyObject* pyobject,
+    const std::string& rettype, const std::string& signature)
 {
+// Convert a bound C++ function pointer or callable python object to a C-style
+// function pointer. The former is direct, the latter involves a JIT-ed wrapper.
     static PyObject* sWrapperCacheEraser = PyCFunction_New(&gWrapperCacheEraserMethodDef, nullptr);
+
+    using namespace CPyCppyy;
 
     if (CPPOverload_Check(pyobject)) {
         CPPOverload* ol = (CPPOverload*)pyobject;
         if (!ol->fMethodInfo || ol->fMethodInfo->fMethods.empty())
-            return false;
+            return nullptr;
 
     // find the overload with matching signature
         for (auto& m : ol->fMethodInfo->fMethods) {
             PyObject* sig = m->GetSignature(false);
-            bool found = fSignature == CPyCppyy_PyText_AsString(sig);
+            bool found = signature == CPyCppyy_PyText_AsString(sig);
             Py_DECREF(sig);
             if (found) {
-                para.fValue.fVoidp = (void*)m->GetFunctionAddress();
-                if (para.fValue.fVoidp) {
-                    para.fTypeCode = 'p';
-                    return true;
-                }
+                void* fptr = (void*)m->GetFunctionAddress();
+                if (fptr) return fptr;
                 break;  // fall-through, with calling through Python
             }
         }
@@ -2208,13 +2209,10 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
         if (pytmpl->fTemplateArgs)
             fullname += CPyCppyy_PyText_AsString(pytmpl->fTemplateArgs);
         Cppyy::TCppScope_t scope = ((CPPClass*)pytmpl->fTI->fPyClass)->fCppType;
-        Cppyy::TCppMethod_t cppmeth = Cppyy::GetMethodTemplate(scope, fullname, fSignature);
+        Cppyy::TCppMethod_t cppmeth = Cppyy::GetMethodTemplate(scope, fullname, signature);
         if (cppmeth) {
-            para.fValue.fVoidp = (void*)Cppyy::GetFunctionAddress(cppmeth, false);
-            if (para.fValue.fVoidp) {
-                para.fTypeCode = 'p';
-                return true;
-            }
+            void* fptr = (void*)Cppyy::GetFunctionAddress(cppmeth, false);
+            if (fptr) return fptr;
         }
         // fall-through, with calling through Python
     }
@@ -2224,7 +2222,7 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
         void* wpraddress = nullptr;
 
     // re-use existing wrapper if possible
-        auto key = std::make_pair(fRetType, fSignature);
+        auto key = std::make_pair(rettype, signature);
         const auto& lookup = sWrapperLookup.find(key);
         if (lookup != sWrapperLookup.end()) {
             const auto& existing = lookup->second.find(pyobject);
@@ -2248,10 +2246,10 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
      // create wrapper if no re-use possible
         if (!wpraddress) {
             if (!Utility::IncludePython())
-                return false;
+                return nullptr;
 
         // extract argument types
-            const std::vector<std::string>& argtypes = TypeManip::extract_arg_types(fSignature);
+            const std::vector<std::string>& argtypes = TypeManip::extract_arg_types(signature);
             int nArgs = (int)argtypes.size();
 
         // wrapper name
@@ -2261,7 +2259,7 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
        // build wrapper function code
             std::ostringstream code;
             code << "namespace __cppyy_internal {\n  "
-                 << fRetType << " " << wname.str() << "(";
+                 << rettype << " " << wname.str() << "(";
             for (int i = 0; i < nArgs; ++i) {
                 code << argtypes[i] << " arg" << i;
                 if (i != nArgs-1) code << ", ";
@@ -2269,7 +2267,7 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
             code << ") {\n";
 
         // start function body
-            Utility::ConstructCallbackPreamble(fRetType, argtypes, code);
+            Utility::ConstructCallbackPreamble(rettype, argtypes, code);
 
         // create a referencable pointer
             PyObject** ref = new PyObject*{pyobject};
@@ -2284,14 +2282,14 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
                     "    else PyErr_SetString(PyExc_TypeError, \"callable was deleted\");\n";
 
         // close
-            Utility::ConstructCallbackReturn(fRetType == "void", nArgs, code);
+            Utility::ConstructCallbackReturn(rettype == "void", nArgs, code);
 
         // end of namespace
             code << "}";
 
         // finally, compile the code
             if (!Cppyy::Compile(code.str()))
-                return false;
+                return nullptr;
 
         // TODO: is there no easier way?
             static Cppyy::TCppScope_t scope = Cppyy::GetScope("__cppyy_internal");
@@ -2306,12 +2304,29 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
             else PyErr_Clear();     // happens for builtins which don't need this
         }
 
-    // now pass the pointer to the wrapper function
-        if (wpraddress) {
-            para.fValue.fVoidp = wpraddress;
-            para.fTypeCode = 'p';
-            return true;
-        }
+    // now pass the pointer to the wrapper function (may be null)
+        return wpraddress;
+    }
+
+    return nullptr;
+}
+
+bool CPyCppyy::FunctionPointerConverter::SetArg(
+    PyObject* pyobject, Parameter& para, CallContext* /*ctxt*/)
+{
+// special case: allow nullptr singleton:
+    if (gNullPtrObject == pyobject) {
+        para.fValue.fVoidp = nullptr;
+        para.fTypeCode = 'p';
+        return true;
+    }
+
+// normal case, get a function pointer
+    void* fptr = PyFunction_AsCPointer(pyobject, fRetType, fSignature);
+    if (fptr) {
+        para.fValue.fVoidp = fptr;
+        para.fTypeCode = 'p';
+        return true;
     }
 
     return false;
@@ -2360,6 +2375,24 @@ PyObject* CPyCppyy::FunctionPointerConverter::FromMemory(void* address)
     Py_DECREF(pyscope);
 
     return func;
+}
+
+bool CPyCppyy::FunctionPointerConverter::ToMemory(PyObject* pyobject, void* address)
+{
+// special case: allow nullptr singleton:
+    if (gNullPtrObject == pyobject) {
+        *((void**)address) = nullptr;
+        return true;
+    }
+
+// normal case, get a function pointer
+    void* fptr = PyFunction_AsCPointer(pyobject, fRetType, fSignature);
+    if (fptr) {
+        *((void**)address) = fptr;
+        return true;
+    }
+
+    return false;
 }
 
 
