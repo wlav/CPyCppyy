@@ -2794,10 +2794,11 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, dims
                (resolvedType.find("::*)") != std::string::npos)) {
     // this is a function function pointer
     // TODO: find better way of finding the type
-        auto pos1 = resolvedType.find("(");
+        auto pos1 = resolvedType.find('(');
         auto pos2 = resolvedType.find("*)");
+        auto pos3 = resolvedType.rfind(')');
         result = new FunctionPointerConverter(
-            resolvedType.substr(0, pos1), resolvedType.substr(pos2+2));
+            resolvedType.substr(0, pos1), resolvedType.substr(pos2+2, pos3-pos2-1));
     }
 
     if (!result && cpd == "&&") {

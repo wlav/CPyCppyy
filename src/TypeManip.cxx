@@ -208,7 +208,7 @@ std::vector<std::string> CPyCppyy::TypeManip::extract_arg_types(const std::strin
     }
 
 // add last type
-    result.push_back(sig.substr(start, sig.size()-1-start));
+    result.push_back(sig.substr(start, sig.rfind(")")-start));
 
     return result;
 }
