@@ -4,6 +4,11 @@
 #include <complex>
 #include <stddef.h>
 
+#if __cplusplus > 201402L
+#include <cstddef>
+#endif
+
+
 namespace CPyCppyy {
 
 class Converter;
@@ -27,6 +32,9 @@ public:
 CPPYY_DECL_VIEW_CREATOR(bool);
 CPPYY_DECL_VIEW_CREATOR(signed char);
 CPPYY_DECL_VIEW_CREATOR(unsigned char);
+#if __cplusplus > 201402L
+CPPYY_DECL_VIEW_CREATOR(std::byte);
+#endif
 CPPYY_DECL_VIEW_CREATOR(short);
 CPPYY_DECL_VIEW_CREATOR(unsigned short);
 CPPYY_DECL_VIEW_CREATOR(int);

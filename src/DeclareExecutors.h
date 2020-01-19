@@ -5,6 +5,10 @@
 #include "Executors.h"
 #include "CallContext.h"
 
+#if __cplusplus > 201402L
+#include <cstddef>
+#endif
+
 
 namespace CPyCppyy {
 
@@ -48,6 +52,9 @@ CPPYY_DECL_EXEC(CString32);
 CPPYY_DECL_EXEC(VoidArray);
 CPPYY_DECL_EXEC(BoolArray);
 CPPYY_DECL_EXEC(UCharArray);
+#if __cplusplus > 201402L
+CPPYY_DECL_EXEC(ByteArray);
+#endif
 CPPYY_DECL_EXEC(ShortArray);
 CPPYY_DECL_EXEC(UShortArray);
 CPPYY_DECL_EXEC(IntArray);

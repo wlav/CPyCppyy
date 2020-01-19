@@ -23,6 +23,7 @@
 #include <utility>
 #include <sstream>
 #if __cplusplus > 201402L
+#include <cstddef>
 #include <string_view>
 #endif
 
@@ -628,6 +629,8 @@ CPPYY_IMPL_BASIC_CONST_CHAR_REFCONVERTER(Char,  char,          c_char,  CHAR_MIN
 CPPYY_IMPL_BASIC_CONST_CHAR_REFCONVERTER(UChar, unsigned char, c_uchar,        0, UCHAR_MAX)
 
 CPPYY_IMPL_BASIC_CONST_REFCONVERTER(Bool,   bool,           c_bool,      CPyCppyy_PyLong_AsBool)
+CPPYY_IMPL_BASIC_CONST_REFCONVERTER(Int8,   int8_t,         c_int8,      CPyCppyy_PyLong_AsInt8)
+CPPYY_IMPL_BASIC_CONST_REFCONVERTER(UInt8,  uint8_t,        c_uint8,     CPyCppyy_PyLong_AsUInt8)
 CPPYY_IMPL_BASIC_CONST_REFCONVERTER(Short,  short,          c_short,     CPyCppyy_PyLong_AsShort)
 CPPYY_IMPL_BASIC_CONST_REFCONVERTER(UShort, unsigned short, c_ushort,    CPyCppyy_PyLong_AsUShort)
 CPPYY_IMPL_BASIC_CONST_REFCONVERTER(Int,    int,            c_int,       CPyCppyy_PyLong_AsStrictInt)
@@ -701,6 +704,8 @@ CPPYY_IMPL_REFCONVERTER(Char16,  c_uint16,     char16_t,           'H');
 CPPYY_IMPL_REFCONVERTER(Char32,  c_uint32,     char32_t,           'I');
 CPPYY_IMPL_REFCONVERTER(SChar,   c_byte,       signed char,        'b');
 CPPYY_IMPL_REFCONVERTER(UChar,   c_ubyte,      unsigned char,      'B');
+CPPYY_IMPL_REFCONVERTER(Int8,    c_int8,       int8_t,             'b');
+CPPYY_IMPL_REFCONVERTER(UInt8,   c_uint8,      uint8_t,            'B');
 CPPYY_IMPL_REFCONVERTER(Short,   c_short,      short,              'h');
 CPPYY_IMPL_REFCONVERTER(UShort,  c_ushort,     unsigned short,     'H');
 CPPYY_IMPL_REFCONVERTER_FROM_MEMORY(Int, c_int);
@@ -1550,6 +1555,9 @@ bool CPyCppyy::name##ArrayPtrConverter::SetArg(                              \
 CPPYY_IMPL_ARRAY_CONVERTER(Bool,     c_bool,       bool,                 'b') // signed char
 CPPYY_IMPL_ARRAY_CONVERTER(SChar,    c_char,       signed char,          'b')
 CPPYY_IMPL_ARRAY_CONVERTER(UChar,    c_ubyte,      unsigned char,        'B')
+#if __cplusplus > 201402L
+CPPYY_IMPL_ARRAY_CONVERTER(Byte,     c_ubyte,      std::byte,            'B')
+#endif
 CPPYY_IMPL_ARRAY_CONVERTER(Short,    c_short,      short,                'h')
 CPPYY_IMPL_ARRAY_CONVERTER(UShort,   c_ushort,     unsigned short,       'H')
 CPPYY_IMPL_ARRAY_CONVERTER(Int,      c_int,        int,                  'i')
@@ -2894,7 +2902,11 @@ public:
         gf["char16_t&"] =                   (cf_t)+[](dims_t) { static Char16RefConverter c{};      return &c; };
         gf["char32_t&"] =                   (cf_t)+[](dims_t) { static Char32RefConverter c{};      return &c; };
         gf["int8_t"] =                      (cf_t)+[](dims_t) { static Int8Converter c{};           return &c; };
+        gf["int8_t&"] =                     (cf_t)+[](dims_t) { static Int8RefConverter c{};        return &c; };
+        gf["const int8_t&"] =               (cf_t)+[](dims_t) { static ConstInt8RefConverter c{};   return &c; };
         gf["uint8_t"] =                     (cf_t)+[](dims_t) { static UInt8Converter c{};          return &c; };
+        gf["const uint8_t&"] =              (cf_t)+[](dims_t) { static ConstUInt8RefConverter c{};  return &c; };
+        gf["uint8_t&"] =                    (cf_t)+[](dims_t) { static UInt8RefConverter c{};       return &c; };
         gf["short"] =                       (cf_t)+[](dims_t) { static ShortConverter c{};          return &c; };
         gf["const short&"] =                (cf_t)+[](dims_t) { static ConstShortRefConverter c{};  return &c; };
         gf["short&"] =                      (cf_t)+[](dims_t) { static ShortRefConverter c{};       return &c; };
@@ -2945,6 +2957,10 @@ public:
         gf["unsigned char*"] =              (cf_t)+[](dims_t d) { return new UCharArrayConverter{d}; };
         gf["UCharAsInt*"] =                 (cf_t)+[](dims_t d) { return new UCharArrayConverter{d}; };
         gf["unsigned char**"] =             (cf_t)+[](dims_t d) { return new UCharArrayPtrConverter{d}; };
+#if __cplusplus > 201402L
+        gf["byte*"] =                       (cf_t)+[](dims_t d) { return new ByteArrayConverter{d}; };
+        gf["byte**"] =                      (cf_t)+[](dims_t d) { return new ByteArrayPtrConverter{d}; };
+#endif
         gf["short*"] =                      (cf_t)+[](dims_t d) { return new ShortArrayConverter{d}; };
         gf["short**"] =                     (cf_t)+[](dims_t d) { return new ShortArrayPtrConverter{d}; };
         gf["unsigned short*"] =             (cf_t)+[](dims_t d) { return new UShortArrayConverter{d}; };
@@ -2975,6 +2991,11 @@ public:
     // aliases
         gf["signed char"] =                 gf["char"];
         gf["const signed char&"] =          gf["const char&"];
+#if __cplusplus > 201402L
+        gf["byte"] =                        gf["uint8_t"];
+        gf["const byte&"] =                 gf["const uint8_t&"];
+        gf["byte&"] =                       gf["uint8&"];
+#endif
         gf["internal_enum_type_t"] =        gf["int"];
         gf["internal_enum_type_t&"] =       gf["int&"];
         gf["const internal_enum_type_t&"] = gf["const int&"];

@@ -493,6 +493,9 @@ PyObject* CPyCppyy::name##ArrayExecutor::Execute(                            \
 
 CPPYY_IMPL_ARRAY_EXEC(Bool,     bool)
 CPPYY_IMPL_ARRAY_EXEC(UChar,    unsigned char)
+#if __cplusplus > 201402L
+CPPYY_IMPL_ARRAY_EXEC(Byte,     std::byte)
+#endif
 CPPYY_IMPL_ARRAY_EXEC(Short,    short)
 CPPYY_IMPL_ARRAY_EXEC(UShort,   unsigned short)
 CPPYY_IMPL_ARRAY_EXEC(Int,      int)
@@ -938,6 +941,10 @@ public:
         gf["bool*"] =                       (ef_t)+[]() { static BoolArrayExecutor e{};     return &e; };
         gf["unsigned char*"] =              (ef_t)+[]() { static UCharArrayExecutor e{};    return &e; };
         gf["const unsigned char*"] =        gf["unsigned char*"];
+#if __cplusplus > 201402L
+        gf["byte*"] =                       (ef_t)+[]() { static ByteArrayExecutor e{};    return &e; };
+        gf["const byte*"] =                 gf["byte*"];
+#endif
         gf["short*"] =                      (ef_t)+[]() { static ShortArrayExecutor e{};    return &e; };
         gf["unsigned short*"] =             (ef_t)+[]() { static UShortArrayExecutor e{};   return &e; };
         gf["int*"] =                        (ef_t)+[]() { static IntArrayExecutor e{};      return &e; };
@@ -957,6 +964,11 @@ public:
         gf["internal_enum_type_t"] =        gf["int"];
         gf["internal_enum_type_t&"] =       gf["int&"];
         gf["internal_enum_type_t*"] =       gf["int*"];
+#if __cplusplus > 201402L
+        gf["byte"] =                        gf["uint8_t"];
+        gf["byte&"] =                       gf["uint8_t&"];
+        gf["const byte&"] =                 gf["const uint8_t&"];
+#endif
         gf["Long64_t"] =                    gf["long long"];
         gf["Long64_t&"] =                   gf["long long&"];
         gf["Long64_t*"] =                   gf["long long*"];
