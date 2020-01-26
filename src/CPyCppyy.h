@@ -172,6 +172,11 @@ typedef long Py_hash_t;
 #define PyBuffer_Type   PyMemoryView_Type
 #endif  // ! 3.0
 
+#if PY_VERSION_HEX >= 0x03030000
+// Support non-ASCII strings
+#define CPyCppyy_PyText_AsStringAndSize  _PyUnicode_AsStringAndSize
+#endif  // >= 3.3
+
 #if PY_VERSION_HEX >= 0x03020000
 #define CPyCppyy_PySliceCast   PyObject*
 #define PyUnicode_GetSize      PyUnicode_GetLength

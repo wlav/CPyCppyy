@@ -1064,26 +1064,38 @@ bool CPyCppyy::ULLongConverter::ToMemory(PyObject* value, void* address)
 }
 
 //----------------------------------------------------------------------------
+static std::pair<const char*,Py_ssize_t> getStringAndSize(PyObject* pyobject) {
+#if PY_VERSION_HEX >= 0x03030000
+// Support non-ASCII strings (get the right length in bytes)
+    Py_ssize_t size = 0;
+    auto charArr = CPyCppyy_PyText_AsStringAndSize(pyobject, &size);
+#else
+    auto charArr = CPyCppyy_PyText_AsStringChecked(pyobject);
+    auto size = CPyCppyy_PyText_GET_SIZE(pyobject);
+#endif
+    return std::make_pair(charArr, size);
+}
+
 bool CPyCppyy::CStringConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)
 {
 // construct a new string and copy it in new memory
-    const char* s = CPyCppyy_PyText_AsStringChecked(pyobject);
-    if (PyErr_Occurred()) {
+    if (CPyCppyy_PyText_Check(pyobject)) {
+        auto strAndSize = getStringAndSize(pyobject);
+        fBuffer = std::string(std::get<0>(strAndSize), std::get<1>(strAndSize));
+    } else if (PyBytes_Check(pyobject)) {
+        auto s = PyBytes_AsString(pyobject);
+        auto size = PyBytes_GET_SIZE(pyobject);
+        fBuffer = std::string(s, size);
+    } else {
     // special case: allow ctypes c_char_p
-        PyObject* pytype = 0, *pyvalue = 0, *pytrace = 0;
-        PyErr_Fetch(&pytype, &pyvalue, &pytrace);
         if (Py_TYPE(pyobject) == GetCTypesType(ct_c_char_p)) {
             para.fValue.fVoidp = (void*)((CPyCppyy_tagCDataObject*)pyobject)->b_ptr;
             para.fTypeCode = 'V';
-            Py_XDECREF(pytype); Py_XDECREF(pyvalue); Py_XDECREF(pytrace);
             return true;
         }
-        PyErr_Restore(pytype, pyvalue, pytrace);
         return false;
     }
-
-    fBuffer = std::string(s, CPyCppyy_PyText_GET_SIZE(pyobject));
 
 // verify (too long string will cause truncation, no crash)
     if (fMaxSize != -1 && fMaxSize < (long)fBuffer.size())
@@ -1603,8 +1615,17 @@ bool CPyCppyy::name##Converter::SetArg(                                      \
     PyObject* pyobject, Parameter& para, CallContext* ctxt)                  \
 {                                                                            \
     if (CPyCppyy_PyText_Check(pyobject)) {                                   \
-        fBuffer = type(CPyCppyy_PyText_AsString(pyobject),                   \
-                       CPyCppyy_PyText_GET_SIZE(pyobject));                  \
+        auto strAndSize = getStringAndSize(pyobject);                        \
+        fBuffer = type(std::get<0>(strAndSize), std::get<1>(strAndSize));    \
+        para.fValue.fVoidp = &fBuffer;                                       \
+        para.fTypeCode = 'V';                                                \
+        return true;                                                         \
+    }                                                                        \
+                                                                             \
+    if (PyBytes_Check(pyobject)) {                                           \
+        auto s = PyBytes_AsString(pyobject);                                 \
+        auto size = PyBytes_GET_SIZE(pyobject);                              \
+        fBuffer = type(s, size);                                             \
         para.fValue.fVoidp = &fBuffer;                                       \
         para.fTypeCode = 'V';                                                \
         return true;                                                         \
