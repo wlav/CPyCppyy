@@ -105,6 +105,13 @@ typedef dim_t* dims_t;
 #define CPyCppyy_PyText_AppendAndDel          PyString_ConcatAndDel
 #define CPyCppyy_PyText_FromStringAndSize     PyString_FromStringAndSize
 
+static inline const char* CPyCppyy_PyText_AsStringAndSize(PyObject* pystr, Py_ssize_t* size)
+{
+    const char* cstr = CPyCppyy_PyText_AsStringChecked(pystr);
+    if (cstr) *size = CPyCppyy_PyText_GetSize(pystr);
+    return cstr;
+}
+
 #define CPyCppyy_PyText_Type PyString_Type
 
 static inline PyObject* CPyCppyy_PyCapsule_New(
@@ -141,6 +148,12 @@ typedef long Py_hash_t;
 #define CPyCppyy_PyText_Append             PyUnicode_Append
 #define CPyCppyy_PyText_AppendAndDel       PyUnicode_AppendAndDel
 #define CPyCppyy_PyText_FromStringAndSize  PyUnicode_FromStringAndSize
+
+#if PY_VERSION_HEX >= 0x03030000
+#define CPyCppyy_PyText_AsStringAndSize    PyUnicode_AsUTF8AndSize
+#else
+#define CPyCppyy_PyText_AsStringAndSize    PyUnicode_AsStringAndSize
+#endif  // >= 3.3
 
 #define CPyCppyy_PyText_Type PyUnicode_Type
 
