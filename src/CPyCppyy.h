@@ -138,8 +138,8 @@ typedef long Py_hash_t;
 #if PY_VERSION_HEX >= 0x03000000
 #define CPyCppyy_PyText_Check              PyUnicode_Check
 #define CPyCppyy_PyText_CheckExact         PyUnicode_CheckExact
-#define CPyCppyy_PyText_AsString           _PyUnicode_AsString
-#define CPyCppyy_PyText_AsStringChecked    _PyUnicode_AsString
+#define CPyCppyy_PyText_AsString           PyUnicode_AsUTF8
+#define CPyCppyy_PyText_AsStringChecked    PyUnicode_AsUTF8
 #define CPyCppyy_PyText_GetSize            PyUnicode_GetSize
 #define CPyCppyy_PyText_GET_SIZE           PyUnicode_GET_SIZE
 #define CPyCppyy_PyText_FromFormat         PyUnicode_FromFormat
