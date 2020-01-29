@@ -150,10 +150,20 @@ typedef long Py_hash_t;
 #define CPyCppyy_PyText_FromStringAndSize  PyUnicode_FromStringAndSize
 
 #if PY_VERSION_HEX >= 0x03030000
-#define CPyCppyy_PyText_AsStringAndSize    PyUnicode_AsUTF8AndSize
+#define _CPyCppyy_PyText_AsStringAndSize   PyUnicode_AsUTF8AndSize
 #else
-#define CPyCppyy_PyText_AsStringAndSize    PyUnicode_AsStringAndSize
+#define _CPyCppyy_PyText_AsStringAndSize   PyUnicode_AsStringAndSize
 #endif  // >= 3.3
+
+static inline const char* CPyCppyy_PyText_AsStringAndSize(PyObject* pystr, Py_ssize_t* size)
+{
+    const char* cstr = _CPyCppyy_PyText_AsStringAndSize(pystr, size);
+    if (!cstr && PyBytes_CheckExact(pystr)) {
+        PyErr_Clear();
+        PyBytes_AsStringAndSize(pystr, (char**)&cstr, size);
+    }
+    return cstr;
+}
 
 #define CPyCppyy_PyText_Type PyUnicode_Type
 
