@@ -223,11 +223,27 @@ void CPyCppyy::op_dealloc_nofree(CPPInstance* pyobj) {
 namespace CPyCppyy {
 
 //= CPyCppyy object proxy null-ness checking =================================
-static PyObject* op_nonzero(CPPInstance* self)
+static int op_nonzero(CPPInstance* self)
 {
 // Null of the proxy is determined by null-ness of the held C++ object.
-    PyObject* result = self->GetObject() ? Py_True : Py_False;
-    Py_INCREF(result);
+    if (!self->GetObject())
+        return 0;
+
+// If the object is valid, then the normal Python behavior is to allow __len__
+// to determine truth. However, that function is defined in typeobject.c and only
+// installed if tp_as_number exists w/o the nb_nonzero/nb_bool slot filled in, so
+// it can not be called directly. Instead, since we're only ever dealing with
+// CPPInstance derived objects, ignore length from sequence or mapping and call
+// the __len__ method, if any, directly.
+
+    PyObject* pylen = PyObject_CallMethodObjArgs((PyObject*)self, PyStrings::gLen, NULL);
+    if (!pylen) {
+        PyErr_Clear();
+        return 1;       // since it's still a valid object
+    }
+
+    int result = PyObject_IsTrue(pylen);
+    Py_DECREF(pylen);
     return result;
 }
 
@@ -285,8 +301,6 @@ static PyObject* op_get_smartptr(CPPInstance* self)
 
 //----------------------------------------------------------------------------
 static PyMethodDef op_methods[] = {
-    {(char*)"__nonzero__",  (PyCFunction)op_nonzero,  METH_NOARGS, nullptr},
-    {(char*)"__bool__",     (PyCFunction)op_nonzero,  METH_NOARGS, nullptr}, // for p3
     {(char*)"__destruct__", (PyCFunction)op_destruct, METH_NOARGS, nullptr},
     {(char*)"__dispatch__", (PyCFunction)op_dispatch, METH_VARARGS,
       (char*)"dispatch to selected overload"},
@@ -675,7 +689,7 @@ static PyNumberMethods op_as_number = {
     (unaryfunc)op_neg_stub,        // nb_negative
     (unaryfunc)op_pos_stub,        // nb_positive
     0,                             // nb_absolute
-    0,                             // no_bool (nb_nonzero in p2)
+    (inquiry)op_nonzero,           // nb_bool (nb_nonzero in p2)
     (unaryfunc)op_invert_stub,     // nb_invert
     0,                             // nb_lshift
     0,                             // nb_rshift
