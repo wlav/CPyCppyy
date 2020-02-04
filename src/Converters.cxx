@@ -26,6 +26,9 @@
 #include <cstddef>
 #include <string_view>
 #endif
+#if PY_VERSION_HEX < 0x03000000
+#include <codecvt>
+#endif
 
 #define UNKNOWN_SIZE         -1
 #define UNKNOWN_ARRAY_SIZE   -2
@@ -1681,6 +1684,15 @@ bool CPyCppyy::STLWStringConverter::SetArg(
         para.fTypeCode = 'V';
         return true;
     }
+#if PY_VERSION_HEX < 0x03000000
+    else if (PyString_Check(pyobject)) {
+        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> cnv;
+        fBuffer = cnv.from_bytes(PyString_AS_STRING(pyobject));
+        para.fValue.fVoidp = &fBuffer;
+        para.fTypeCode = 'V';
+        return true;
+    }
+#endif
 
     if (!(PyInt_Check(pyobject) || PyLong_Check(pyobject))) {
         bool result = InstancePtrConverter::SetArg(pyobject, para, ctxt);
