@@ -41,6 +41,13 @@ PyObject* CPyCppyy::CPPConstructor::Call(
     if (!(args = this->PreProcessArgs(self, args, kwds)))
         return nullptr;
 
+    if (self->GetObject()) {
+        Py_DECREF(args);
+        PyErr_SetString(PyExc_ReferenceError,
+            "object already constructed; use __assign__ instead of __init__");
+        return nullptr;
+    }
+
 // translate the arguments
     if (!this->ConvertAndSetArgs(args, ctxt)) {
         Py_DECREF(args);
