@@ -91,6 +91,11 @@ struct vectoriterobject : public indexiterobject {
     CPyCppyy::Converter*     vi_converter;
     Cppyy::TCppType_t        vi_klass;
     int                      vi_flags;
+
+    enum EFlags {
+        kDefault        = 0x0000,
+        kNeedLifeLine   = 0x0001,
+    };
 };
 
 extern PyTypeObject VectorIter_Type;

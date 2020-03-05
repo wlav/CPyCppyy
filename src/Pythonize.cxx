@@ -462,7 +462,11 @@ static PyObject* vector_iter(PyObject* v) {
 
     Py_INCREF(v);
     vi->ii_container = v;
-    vi->vi_flags = v->ob_refcnt <= 2 ? 1 : 0;    // 2, b/c of preceding INCREF
+
+// tell the iterator code to set a life line if this container is a temporary
+    vi->vi_flags = vectoriterobject::kDefault;
+    if (v->ob_refcnt <= 2 || (((CPPInstance*)v)->fFlags & CPPInstance::kIsValue))
+        vi->vi_flags = vectoriterobject::kNeedLifeLine;
 
     PyObject* pyvalue_type = PyObject_GetAttrString((PyObject*)Py_TYPE(v), "value_type");
     PyObject* pyvalue_size = PyObject_GetAttrString((PyObject*)Py_TYPE(v), "value_size");
@@ -479,8 +483,17 @@ static PyObject* vector_iter(PyObject* v) {
         }
         Py_XDECREF(pydata);
 
-        vi->vi_converter = vi->vi_klass ? nullptr : CPyCppyy::CreateConverter(CPyCppyy_PyText_AsString(pyvalue_type));
+        std::string value_type = CPyCppyy_PyText_AsString(pyvalue_type);
+        vi->vi_converter = vi->vi_klass ? nullptr : CPyCppyy::CreateConverter(value_type);
         vi->vi_stride    = PyLong_AsLong(pyvalue_size);
+
+        if (!vi->vi_flags && vi->vi_klass) {
+        // set a lifeline when iterating over a container of objects
+            value_type = Cppyy::ResolveName(value_type);
+            if (value_type.back() != '*')   // meaning, object stored by-value
+                vi->vi_flags = vectoriterobject::kNeedLifeLine;
+        }
+
     } else {
         PyErr_Clear();
         vi->vi_data      = nullptr;
