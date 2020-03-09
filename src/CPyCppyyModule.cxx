@@ -621,6 +621,34 @@ static PyObject* RemovePythonization(PyObject*, PyObject* args)
 }
 
 //----------------------------------------------------------------------------
+static PyObject* PinType(PyObject*, PyObject* pyclass)
+{
+// Add a pinning so that objects of type `derived' are interpreted as
+// objects of type `base'.
+    if (!CPPScope_Check(pyclass)) {
+        PyErr_SetString(PyExc_TypeError, "C++ class expected");
+        return nullptr;
+    }
+
+    gPinnedTypes.insert(((CPPClass*)pyclass)->fCppType);
+
+    Py_RETURN_NONE;
+}
+
+//----------------------------------------------------------------------------
+static PyObject* AddTypeReducer(PyObject*, PyObject* args)
+{
+// Add a type reducer to map type2 to type2 on function returns.
+    const char *reducable, *reduced;
+    if (!PyArg_ParseTuple(args, const_cast<char*>("ss"), &reducable, &reduced))
+        return nullptr;
+
+    Cppyy::AddTypeReducer(reducable, reduced);
+
+    Py_RETURN_NONE;
+}
+
+//----------------------------------------------------------------------------
 static PyObject* SetMemoryPolicy(PyObject*, PyObject* args)
 {
 // Set the global memory policy, which affects object ownership when objects
@@ -681,37 +709,6 @@ static PyObject* AddSmartPtrType(PyObject*, PyObject* args)
     Py_RETURN_NONE;
 }
 
-//----------------------------------------------------------------------------
-static PyObject* PinType(PyObject*, PyObject* pyclass)
-{
-// Add a pinning so that objects of type `derived' are interpreted as
-// objects of type `base'.
-    if (!CPPScope_Check(pyclass)) {
-        PyErr_SetString(PyExc_TypeError, "C++ class expected");
-        return nullptr;
-    }
-
-    gPinnedTypes.insert(((CPPClass*)pyclass)->fCppType);
-
-    Py_RETURN_NONE;
-}
-
-//----------------------------------------------------------------------------
-static PyObject* Cast(PyObject*, PyObject* args)
-{
-// Cast `obj' to type `type'.
-    CPPInstance* obj = nullptr;
-    CPPClass* type = nullptr;
-    if (!PyArg_ParseTuple(args, const_cast<char*>("O!O!"),
-                          &CPPInstance_Type, &obj,
-                          &CPPScope_Type, &type))
-        return nullptr;
-// TODO: this misses an offset calculation, and reference type must not
-// be cast ...
-    return BindCppObjectNoCast(obj->GetObject(), type->fCppType,
-                               obj->fFlags & CPPInstance::kIsReference);
-}
-
 } // unnamed namespace
 
 
@@ -741,6 +738,10 @@ static PyMethodDef gCPyCppyyMethods[] = {
       METH_VARARGS, (char*)"Add a pythonizor."},
     {(char*) "remove_pythonization", (PyCFunction)RemovePythonization,
       METH_VARARGS, (char*)"Remove a pythonizor."},
+    {(char*) "_pin_type", (PyCFunction)PinType,
+      METH_O, (char*)"Install a type pinning."},
+    {(char*) "_add_type_reducer", (PyCFunction)AddTypeReducer,
+      METH_VARARGS, (char*)"Add a type reducer."},
     {(char*) "SetMemoryPolicy", (PyCFunction)SetMemoryPolicy,
       METH_VARARGS, (char*)"Determines object ownership model."},
     {(char*) "SetGlobalSignalPolicy", (PyCFunction)SetGlobalSignalPolicy,
@@ -749,10 +750,6 @@ static PyMethodDef gCPyCppyyMethods[] = {
       METH_VARARGS, (char*)"Modify held C++ object ownership."},
     {(char*) "AddSmartPtrType", (PyCFunction)AddSmartPtrType,
       METH_VARARGS, (char*) "Add a smart pointer to the list of known smart pointer types."},
-    {(char*) "_pin_type", (PyCFunction)PinType,
-      METH_O, (char*)"Install a type pinning."},
-    {(char*) "Cast", (PyCFunction)Cast,
-      METH_VARARGS, (char*)"Cast the given object to the given type"},
     {nullptr, nullptr, 0, nullptr}
 };
 
