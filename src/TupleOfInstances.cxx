@@ -16,7 +16,7 @@ typedef struct {
 } ia_iterobject;
 
 static PyObject* ia_iternext(ia_iterobject* ia) {
-    if (ia->ia_len != -1 && ia->ia_pos >= ia->ia_len) {
+    if (ia->ia_len != (Py_ssize_t)-1 && ia->ia_pos >= ia->ia_len) {
         ia->ia_pos = 0;      // debatable, but since the iterator is cached, this
         return nullptr;      //   allows for multiple conversions to e.g. a tuple
     } else if (ia->ia_stride == 0 && ia->ia_pos != 0) {
@@ -51,6 +51,36 @@ static PyGetSetDef ia_getset[] = {
     {(char*)nullptr, nullptr, nullptr, nullptr, nullptr}
 };
 
+
+static Py_ssize_t ia_length(ia_iterobject* ia)
+{
+    return ia->ia_len;
+}
+
+static PyObject* ia_subscript(ia_iterobject* ia, PyObject* pyidx)
+{
+// Subscripting the iterator allows direct access through indexing on arrays
+// that do not have a defined length. This way, the return from accessing such
+// an array as a data member can both be used in a loop and directly.
+    Py_ssize_t idx = PyInt_AsSsize_t(pyidx);
+    if (idx == (Py_ssize_t)-1 && PyErr_Occurred())
+        return nullptr;
+
+    if (ia->ia_len != (Py_ssize_t)-1 && (idx < 0 || ia->ia_len <= idx)) {
+        PyErr_SetString(PyExc_IndexError, "index out of range");
+        return nullptr;
+    }
+
+    return CPyCppyy::BindCppObjectNoCast(
+        (char*)ia->ia_array_start + ia->ia_pos*ia->ia_stride, ia->ia_klass);
+}
+
+static PyMappingMethods ia_as_mapping = {
+    (lenfunc)      ia_length,      // mp_length
+    (binaryfunc)   ia_subscript,   // mp_subscript
+    (objobjargproc)nullptr,        // mp_ass_subscript
+};
+
 } // unnamed namespace
 
 
@@ -62,7 +92,9 @@ PyTypeObject InstanceArrayIter_Type = {
     sizeof(ia_iterobject),        // tp_basicsize
     0,
     (destructor)PyObject_GC_Del,  // tp_dealloc
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 
+    &ia_as_mapping,               // tp_as_mapping
+    0, 0, 0, 0, 0, 0,
     Py_TPFLAGS_DEFAULT |
         Py_TPFLAGS_HAVE_GC,       // tp_flags
     0,
@@ -70,9 +102,9 @@ PyTypeObject InstanceArrayIter_Type = {
     0, 0, 0,
     PyObject_SelfIter,            // tp_iter
     (iternextfunc)ia_iternext,    // tp_iternext
-    0, 0, ia_getset, 0, 0, 0, 0,
-    0,                   // tp_getset
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    0, 0,
+    ia_getset,                    // tp_getset
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 #if PY_VERSION_HEX >= 0x02030000
     , 0                           // tp_del
 #endif

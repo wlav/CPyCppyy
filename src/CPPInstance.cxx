@@ -298,14 +298,45 @@ static PyObject* op_get_smartptr(CPPInstance* self)
     return CPyCppyy::BindCppObjectNoCast(self->GetSmartObject(), SMART_TYPE(self), CPPInstance::kNoWrapConv);
 }
 
+//= pointer-as-array support for legacy C code ===============================
+static PyObject* op_getitem(CPPInstance* self, PyObject* pyidx)
+{
+// In C, it is common to represent an array of structs as a pointer to the first
+// object in the array. If the caller indexes a pointer to an object that does not
+// define indexing, then highly likely such C-style indexing is the goal. Just
+// like C, this is potentially unsafe, so caveat emptor.
+
+    if (!(self->fFlags & CPPInstance::kIsReference)) {
+        PyErr_Format(PyExc_TypeError, "%s object does not support indexing", self->ob_type->tp_name);
+        return nullptr;
+    }
+
+    Py_ssize_t idx = PyInt_AsSsize_t(pyidx);
+    if (idx == (size_t)-1 && PyErr_Occurred())
+        return nullptr;
+
+    if (idx < 0) {
+    // this is debatable, and probably should not care, but the use case is pretty
+    // circumscribed anyway, so might as well keep the functionality simple
+        PyErr_SetString(PyExc_IndexError, "negative indices not supported for array of structs");
+        return nullptr;
+    }
+
+    size_t sz = Cppyy::SizeOf(((CPPClass*)Py_TYPE(self))->fCppType);
+    void* indexed_obj = (void*)((uintptr_t)self->GetObject()+(uintptr_t)(idx*sz));
+    return BindCppObjectNoCast(indexed_obj, ((CPPClass*)Py_TYPE(self))->fCppType);
+}
 
 //----------------------------------------------------------------------------
 static PyMethodDef op_methods[] = {
-    {(char*)"__destruct__", (PyCFunction)op_destruct, METH_NOARGS, nullptr},
+    {(char*)"__destruct__", (PyCFunction)op_destruct, METH_NOARGS,
+      (char*)"call the C++ destructor"},
     {(char*)"__dispatch__", (PyCFunction)op_dispatch, METH_VARARGS,
       (char*)"dispatch to selected overload"},
     {(char*)"__smartptr__", (PyCFunction)op_get_smartptr, METH_NOARGS,
       (char*)"get associated smart pointer, if any"},
+    {(char*)"__getitem__",  (PyCFunction)op_getitem, METH_O,
+      (char*)"pointer dereferencing"},
     {(char*)nullptr, nullptr, 0, nullptr}
 };
 
