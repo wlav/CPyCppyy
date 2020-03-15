@@ -307,12 +307,12 @@ static PyObject* op_getitem(CPPInstance* self, PyObject* pyidx)
 // like C, this is potentially unsafe, so caveat emptor.
 
     if (!(self->fFlags & CPPInstance::kIsReference)) {
-        PyErr_Format(PyExc_TypeError, "%s object does not support indexing", self->ob_type->tp_name);
+        PyErr_Format(PyExc_TypeError, "%s object does not support indexing", Py_TYPE(self)->tp_name);
         return nullptr;
     }
 
     Py_ssize_t idx = PyInt_AsSsize_t(pyidx);
-    if (idx == (size_t)-1 && PyErr_Occurred())
+    if (idx == (Py_ssize_t)-1 && PyErr_Occurred())
         return nullptr;
 
     if (idx < 0) {
