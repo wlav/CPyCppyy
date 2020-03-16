@@ -454,6 +454,8 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
                 PyType_Type.tp_setattro((PyObject*)Py_TYPE(pyclass), pyname, attr);
                 Py_DECREF(attr);
                 attr = PyType_Type.tp_getattro(pyclass, pyname);
+                if (!attr && PyErr_Occurred())
+                    Utility::FetchError(errors);
             } else
                 PyType_Type.tp_setattro(pyclass, pyname, attr);
 
