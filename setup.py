@@ -15,7 +15,7 @@ if '--force-bdist' in sys.argv:
     force_bdist = True
     sys.argv.remove('--force-bdist')
 
-requirements = ['cppyy-cling==6.18.2.*', 'cppyy-backend==1.10.*']
+requirements = ['cppyy-cling==6.20.2.*', 'cppyy-backend==1.11.*']
 setup_requirements = ['wheel']
 if 'build' in sys.argv or 'install' in sys.argv:
     setup_requirements += requirements
@@ -118,7 +118,7 @@ class MyDistribution(Distribution):
 
 setup(
     name='CPyCppyy',
-    version='1.10.2',
+    version='1.10.3',
     description='Cling-based Python-C++ bindings for CPython',
     long_description=long_description,
 
