@@ -159,7 +159,7 @@ void CPyCppyy::CPPInstance::PythonOwns()
 //----------------------------------------------------------------------------
 void CPyCppyy::CPPInstance::CppOwns()
 {
-    fFlags &= ~kIsOwner;
+    fFlags &= ~(kIsOwner | kIsValue);
     if ((fFlags & kIsExtended) && DISPATCHPTR(this))
         DISPATCHPTR(this)->CppOwns();
 }
