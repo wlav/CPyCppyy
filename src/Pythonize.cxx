@@ -756,16 +756,18 @@ PyObject* ReturnTwo(CPPInstance*, PyObject*) {
 }
 
 
-//- shared_ptr behavior --------------------------------------------------------
-PyObject* SharedPtrInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
+//- shared/unique_ptr behavior -----------------------------------------------
+PyObject* SmartPtrInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 {
-// since the shared pointer will take ownership, we need to relinquish it
+// since the shared/unique pointer will take ownership, we need to relinquish it
     PyObject* realInit = PyObject_GetAttrString(self, "__real_init");
     if (realInit) {
         PyObject* result = PyObject_Call(realInit, args, nullptr);
         Py_DECREF(realInit);
-        if (result && PyTuple_GET_SIZE(args) == 1 && CPPInstance_Check(PyTuple_GET_ITEM(args, 0)))
-            PyObject_SetAttrString(PyTuple_GET_ITEM(args, 0), "__python_owns__", Py_False);
+        if (result && PyTuple_GET_SIZE(args) == 1 && CPPInstance_Check(PyTuple_GET_ITEM(args, 0))) {
+            CPPInstance* cppinst = (CPPInstance*)PyTuple_GET_ITEM(args, 0);
+            if (!(cppinst->fFlags & CPPInstance::kIsSmartPtr)) cppinst->CppOwns();
+        }
         return result;
     }
     return nullptr;
@@ -1162,9 +1164,9 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         Utility::AddToClass(pyclass, "__len__", (PyCFunction)ReturnTwo, METH_NOARGS);
     }
 
-    if (IsTemplatedSTLClass(name, "shared_ptr")) {
+    if (IsTemplatedSTLClass(name, "shared_ptr") || IsTemplatedSTLClass(name, "unique_ptr")) {
         Utility::AddToClass(pyclass, "__real_init", "__init__");
-        Utility::AddToClass(pyclass, "__init__", (PyCFunction)SharedPtrInit, METH_VARARGS | METH_KEYWORDS);
+        Utility::AddToClass(pyclass, "__init__", (PyCFunction)SmartPtrInit, METH_VARARGS | METH_KEYWORDS);
     }
 
     else if (name.find("iterator") != std::string::npos || gIteratorTypes.find(name) != gIteratorTypes.end()) {

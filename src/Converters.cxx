@@ -405,7 +405,7 @@ static inline bool ConvertImplicit(Cppyy::TCppType_t klass,
     if (pytmp) {
     // implicit conversion succeeded!
         ctxt->AddTemporary((PyObject*)pytmp);
-        para.fValue.fVoidp = pytmp->GetObject();
+        para.fValue.fVoidp = pytmp->GetObjectRaw();
         para.fTypeCode = 'V';
         return true;
     }
@@ -1735,7 +1735,7 @@ bool CPyCppyy::STLStringMoveConverter::SetArg(
         if (pyobj->fFlags & CPPInstance::kIsRValue) {
             pyobj->fFlags &= ~CPPInstance::kIsRValue;
             moveit_reason = 2;
-        } else if (pyobject->ob_refcnt == MOVE_REFCOUNT_CUTOFF) {
+        } else if (pyobject->ob_refcnt <= MOVE_REFCOUNT_CUTOFF) {
             moveit_reason = 1;
         } else
             moveit_reason = 0;
@@ -1769,6 +1769,11 @@ bool CPyCppyy::InstancePtrConverter::SetArg(
         return false;
     }
 
+    // smart pointers should only extract the pointer if this is NOT an implicit
+    // conversion to another smart pointer
+    if (pyobj->IsSmart() && IsConstructor(ctxt->fFlags) && Cppyy::IsSmartPtr(ctxt->fCurScope))
+        return false;
+
     if (pyobj->ObjectIsA() && Cppyy::IsSubtype(pyobj->ObjectIsA(), fClass)) {
     // depending on memory policy, some objects need releasing when passed into functions
         if (!KeepControl() && !UseStrictOwnership(ctxt))
@@ -1781,7 +1786,7 @@ bool CPyCppyy::InstancePtrConverter::SetArg(
                 pyobj->ObjectIsA(), fClass, para.fValue.fVoidp, 1 /* up-cast */);
         }
 
-   // set pointer (may be null) and declare success
+    // set pointer (may be null) and declare success
         para.fTypeCode = 'p';
         return true;
     }
@@ -1893,12 +1898,37 @@ bool CPyCppyy::InstanceRefConverter::SetArg(
         if (pyobj->fFlags & CPPInstance::kIsRValue)
             return false;
 
-        if (pyobj->ObjectIsA() && Cppyy::IsSubtype(pyobj->ObjectIsA(), fClass)) {
+    // smart pointers can end up here in case of a move, so preferentially match
+    // the smart type directly
+        bool argset = false;
+        Cppyy::TCppType_t cls = 0;
+        if (pyobj->IsSmart()) {
+            cls = pyobj->ObjectIsA(false);
+            if (cls && Cppyy::IsSubtype(cls, fClass)) {
+                para.fValue.fVoidp = pyobj->GetObjectRaw();
+                argset = true;
+            }
+        }
+
+        if (!argset) {
+            cls = pyobj->ObjectIsA();
+            if (cls && Cppyy::IsSubtype(cls, fClass)) {
+                para.fValue.fVoidp = pyobj->GetObject();
+                argset = true;
+            }
+        }
+
+        if (argset) {
+        // do not allow null pointers through references
+            if (!para.fValue.fVoidp) {
+                PyErr_SetString(PyExc_ReferenceError, "attempt to access a null-pointer");
+                return false;
+            }
+
         // calculate offset between formal and actual arguments
-            para.fValue.fVoidp = pyobj->GetObject();
-            if (pyobj->ObjectIsA() != fClass) {
+            if (cls != fClass) {
                 para.fValue.fIntPtr += Cppyy::GetBaseOffset(
-                    pyobj->ObjectIsA(), fClass, para.fValue.fVoidp, 1 /* up-cast */);
+                    cls, fClass, para.fValue.fVoidp, 1 /* up-cast */);
             }
 
             para.fTypeCode = 'V';
@@ -1934,7 +1964,7 @@ bool CPyCppyy::InstanceMoveConverter::SetArg(
     if (pyobj->fFlags & CPPInstance::kIsRValue) {
         pyobj->fFlags &= ~CPPInstance::kIsRValue;
         moveit_reason = 2;
-    } else if (pyobject->ob_refcnt == MOVE_REFCOUNT_CUTOFF) {
+    } else if (pyobject->ob_refcnt <= MOVE_REFCOUNT_CUTOFF) {
         moveit_reason = 1;
     }
 
@@ -2483,7 +2513,7 @@ bool CPyCppyy::SmartPtrConverter::SetArg(
     if (Cppyy::TCppType_t tsmart = pyobj->GetSmartIsA()) {
         if (Cppyy::IsSubtype(tsmart, fSmartPtrType)) {
         // depending on memory policy, some objects need releasing when passed into functions
-            if (fKeepControl && !UseStrictOwnership(ctxt))
+            if (!fKeepControl && !UseStrictOwnership(ctxt))
                 ((CPPInstance*)pyobject)->CppOwns();
 
         // calculate offset between formal and actual arguments
