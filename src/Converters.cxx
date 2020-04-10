@@ -45,13 +45,13 @@ namespace CPyCppyy {
 }
 
 #if PY_VERSION_HEX < 0x03000000
-const size_t MOVE_REFCOUNT_CUTOFF = 1;
+const Py_ssize_t MOVE_REFCOUNT_CUTOFF = 1;
 #else
 // p3 has at least 2 ref-counts, as contrary to p2, it will create a descriptor
 // copy for the method holding self in the case of __init__; but there can also
 // be a reference held by the frame object, which is indistinguishable from a
 // local variable reference, so the cut-off has to remain 2.
-const size_t MOVE_REFCOUNT_CUTOFF = 2;
+const Py_ssize_t MOVE_REFCOUNT_CUTOFF = 2;
 #endif
 
 //- pretend-ctypes helpers ---------------------------------------------------
