@@ -882,13 +882,11 @@ PyObject* CPyCppyy::BindCppObject(Cppyy::TCppObject_t address,
 
     bool isRef = flags & CPPInstance::kIsReference;
 
-// get actual class for recycling checking and/or downcasting
-    Cppyy::TCppType_t clActual = isRef ? 0 : Cppyy::GetActualClass(klass, address);
-
 // downcast to real class for object returns, unless pinned
-    if (clActual && klass != clActual) {
-        auto pci = gPinnedTypes.find(klass);
-        if (pci == gPinnedTypes.end()) {
+    if (!isRef && (gPinnedTypes.empty() || gPinnedTypes.find(klass) == gPinnedTypes.end())) {
+        Cppyy::TCppType_t clActual = Cppyy::GetActualClass(klass, address);
+
+        if (clActual && clActual != klass) {
             intptr_t offset = Cppyy::GetBaseOffset(
                 clActual, klass, address, -1 /* down-cast */, true /* report errors */);
             if (offset != -1) {   // may fail if clActual not fully defined
