@@ -879,7 +879,7 @@ namespace {
 
 using namespace CPyCppyy;
 
-#define WSTRING "basic_string<wchar_t,char_traits<wchar_t>,allocator<wchar_t> >"
+#define WSTRING "std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >"
 
 struct InitExecFactories_t {
 public:
@@ -942,8 +942,8 @@ public:
         gf["unsigned char*"] =              (ef_t)+[]() { static UCharArrayExecutor e{};    return &e; };
         gf["const unsigned char*"] =        gf["unsigned char*"];
 #if __cplusplus > 201402L
-        gf["byte*"] =                       (ef_t)+[]() { static ByteArrayExecutor e{};    return &e; };
-        gf["const byte*"] =                 gf["byte*"];
+        gf["std::byte*"] =                  (ef_t)+[]() { static ByteArrayExecutor e{};    return &e; };
+        gf["const std::byte*"] =            gf["std::byte*"];
 #endif
         gf["short*"] =                      (ef_t)+[]() { static ShortArrayExecutor e{};    return &e; };
         gf["unsigned short*"] =             (ef_t)+[]() { static UShortArrayExecutor e{};   return &e; };
@@ -955,20 +955,26 @@ public:
         gf["unsigned long long*"] =         (ef_t)+[]() { static ULLongArrayExecutor e{};   return &e; };
         gf["float*"] =                      (ef_t)+[]() { static FloatArrayExecutor e{};    return &e; };
         gf["double*"] =                     (ef_t)+[]() { static DoubleArrayExecutor e{};   return &e; };
-        gf["complex<float>*"] =             (ef_t)+[]() { static ComplexFArrayExecutor e{}; return &e; };
-        gf["complex<double>*"] =            (ef_t)+[]() { static ComplexDArrayExecutor e{}; return &e; };
-        gf["complex<int>*"] =               (ef_t)+[]() { static ComplexIArrayExecutor e{}; return &e; };
-        gf["complex<long>*"] =              (ef_t)+[]() { static ComplexLArrayExecutor e{}; return &e; };
+        gf["std::complex<float>*"] =        (ef_t)+[]() { static ComplexFArrayExecutor e{}; return &e; };
+        gf["std::complex<double>*"] =       (ef_t)+[]() { static ComplexDArrayExecutor e{}; return &e; };
+        gf["std::complex<int>*"] =          (ef_t)+[]() { static ComplexIArrayExecutor e{}; return &e; };
+        gf["std::complex<long>*"] =         (ef_t)+[]() { static ComplexLArrayExecutor e{}; return &e; };
 
     // aliases
         gf["internal_enum_type_t"] =        gf["int"];
         gf["internal_enum_type_t&"] =       gf["int&"];
         gf["internal_enum_type_t*"] =       gf["int*"];
 #if __cplusplus > 201402L
-        gf["byte"] =                        gf["uint8_t"];
-        gf["byte&"] =                       gf["uint8_t&"];
-        gf["const byte&"] =                 gf["const uint8_t&"];
+        gf["std::byte"] =                   gf["uint8_t"];
+        gf["std::byte&"] =                  gf["uint8_t&"];
+        gf["const std::byte&"] =            gf["const uint8_t&"];
 #endif
+        gf["std::int8_t"] =                 gf["int8_t"];
+        gf["std::int8_t&"] =                gf["int8_t&"];
+        gf["const std::int8_t&"] =          gf["const int8_t&"];
+        gf["std::uint8_t"] =                gf["uint8_t"];
+        gf["std::uint8_t&"] =               gf["uint8_t&"];
+        gf["const std::uint8_t&"] =         gf["const uint8_t&"];
         gf["Long64_t"] =                    gf["long long"];
         gf["Long64_t&"] =                   gf["long long&"];
         gf["Long64_t*"] =                   gf["long long*"];
@@ -989,14 +995,11 @@ public:
         gf["char16_t*"] =                   (ef_t)+[]() { static CString16Executor e{};   return &e;};
         gf["char32_t*"] =                   (ef_t)+[]() { static CString32Executor e{};   return &e;};
         gf["std::string"] =                 (ef_t)+[]() { static STLStringExecutor e{};   return &e; };
-        gf["string"] =                      gf["std::string"];
         gf["std::string&"] =                (ef_t)+[]() { return new STLStringRefExecutor{}; };
-        gf["string&"] =                     gf["std::string&"];
         gf["std::wstring"] =                (ef_t)+[]() { static STLWStringExecutor e{};  return &e; };
-        gf["std::" WSTRING] =               gf["std::wstring"];
         gf[WSTRING] =                       gf["std::wstring"];
-        gf["complex<double>"] =             (ef_t)+[]() { static ComplexDExecutor e{};    return &e; };
-        gf["complex<double>&"] =            (ef_t)+[]() { return new ComplexDRefExecutor{}; };
+        gf["std::complex<double>"] =        (ef_t)+[]() { static ComplexDExecutor e{};    return &e; };
+        gf["std::complex<double>&"] =       (ef_t)+[]() { return new ComplexDRefExecutor{}; };
         gf["__init__"] =                    (ef_t)+[]() { static ConstructorExecutor e{}; return &e; };
         gf["PyObject*"] =                   (ef_t)+[]() { static PyObjectExecutor e{};    return &e; };
         gf["_object*"] =                    gf["PyObject*"];

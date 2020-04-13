@@ -55,7 +55,7 @@ bool HasAttrDirect(PyObject* pyclass, PyObject* pyname, bool mustBeCPyCppyy = fa
 inline bool IsTemplatedSTLClass(const std::string& name, const std::string& klass) {
 // Scan the name of the class and determine whether it is a template instantiation.
     auto pos = name.find(klass);
-    return (pos == 0 || pos == 5) && name.find("::", name.rfind(">")) == std::string::npos;
+    return pos == 5 && name.rfind("std::", 0, 5) == 0  && name.find("::", name.rfind(">")) == std::string::npos;
 }
 
 // to prevent compiler warnings about const char* -> char*
@@ -1174,7 +1174,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         Utility::AddToClass(pyclass, CPPYY__next__, (PyCFunction)StlIterNext, METH_NOARGS);
     }
 
-    else if (name == "string" || name == "std::string") { // TODO: ask backend as well
+    else if (name == "std::string") { // TODO: ask backend as well
         Utility::AddToClass(pyclass, "__repr__", (PyCFunction)StlStringRepr,    METH_NOARGS);
         Utility::AddToClass(pyclass, "__str__",  (PyCFunction)StlStringGetData, METH_NOARGS);
         Utility::AddToClass(pyclass, "__cmp__",  (PyCFunction)StlStringCompare, METH_O);
@@ -1183,8 +1183,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         ((PyTypeObject*)pyclass)->tp_hash = (hashfunc)StlStringHash;
     }
 
-    else if (name == "basic_string<wchar_t,char_traits<wchar_t>,allocator<wchar_t> >" || \
-             name == "std::basic_string<wchar_t,char_traits<wchar_t>,allocator<wchar_t> >") {
+    else if (name == "std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >") {
         Utility::AddToClass(pyclass, "__repr__", (PyCFunction)StlWStringRepr,    METH_NOARGS);
         Utility::AddToClass(pyclass, "__str__",  (PyCFunction)StlWStringGetData, METH_NOARGS);
         Utility::AddToClass(pyclass, "__cmp__",  (PyCFunction)StlWStringCompare, METH_O);
