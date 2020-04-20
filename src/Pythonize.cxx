@@ -867,15 +867,6 @@ Py_hash_t StlStringHash(PyObject* self)
 }
 
 
-//- Return self --------------------------------------------------------------
-// Required for example for __iter__ of an iterator which returns itself
-PyObject* ReturnSelf(PyObject* self)
-{
-    Py_INCREF(self);
-    return self;
-}
-
-
 //- STL iterator behavior ----------------------------------------------------
 PyObject* StlIterNext(PyObject* self)
 {
@@ -1181,8 +1172,6 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
     else if (name.find("iterator") != std::string::npos || gIteratorTypes.find(name) != gIteratorTypes.end()) {
         ((PyTypeObject*)pyclass)->tp_iternext = (iternextfunc)StlIterNext;
         Utility::AddToClass(pyclass, CPPYY__next__, (PyCFunction)StlIterNext, METH_NOARGS);
-        ((PyTypeObject*)pyclass)->tp_iter = (getiterfunc)ReturnSelf;
-        Utility::AddToClass(pyclass, "__iter__", (PyCFunction)ReturnSelf, METH_NOARGS);
     }
 
     else if (name == "std::string") { // TODO: ask backend as well
