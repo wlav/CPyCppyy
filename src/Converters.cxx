@@ -356,14 +356,14 @@ static inline bool CArraySetArg(PyObject* pyobject, CPyCppyy::Parameter& para, c
 
 
 //- helper for implicit conversions ------------------------------------------
-static inline bool ConvertImplicit(Cppyy::TCppType_t klass,
-    PyObject* pyobject, CPyCppyy::Parameter& para, CPyCppyy::CallContext* ctxt)
+static inline PyObject* ConvertImplicit(Cppyy::TCppType_t klass,
+    PyObject* pyobject, CPyCppyy::Parameter& para, CPyCppyy::CallContext* ctxt, bool manage=true)
 {
     using namespace CPyCppyy;
 
 // filter out copy and move constructors
     if (IsConstructor(ctxt->fFlags) && klass == ctxt->fCurScope && ctxt->GetSize() == 1)
-        return false;
+        return nullptr;
 
 // only proceed if implicit conversions are allowed (in "round 2") or if the
 // argument is exactly a tuple or list, as these are the equivalent of
@@ -372,7 +372,7 @@ static inline bool ConvertImplicit(Cppyy::TCppType_t klass,
         PyTypeObject* pytype = (PyTypeObject*)Py_TYPE(pyobject);
         if (!(pytype == &PyList_Type || pytype == &PyTuple_Type)) {
             if (!NoImplicit(ctxt)) ctxt->fFlags |= CallContext::kHaveImplicit;
-            return false;
+            return nullptr;
         }
     }
 
@@ -380,7 +380,7 @@ static inline bool ConvertImplicit(Cppyy::TCppType_t klass,
     PyObject* pyscope = CreateScopeProxy(klass);
     if (!CPPScope_Check(pyscope)) {
         Py_XDECREF(pyscope);
-        return false;
+        return nullptr;
     }
 
 // add a pseudo-keyword argument to prevent recursion
@@ -404,14 +404,14 @@ static inline bool ConvertImplicit(Cppyy::TCppType_t klass,
 
     if (pytmp) {
     // implicit conversion succeeded!
-        ctxt->AddTemporary((PyObject*)pytmp);
+        if (manage) ctxt->AddTemporary((PyObject*)pytmp);
         para.fValue.fVoidp = pytmp->GetObjectRaw();
         para.fTypeCode = 'V';
-        return true;
+        return (PyObject*)pytmp;
     }
 
     PyErr_Clear();
-    return false;
+    return nullptr;
 }
 
 
@@ -1861,7 +1861,7 @@ bool CPyCppyy::InstanceConverter::SetArg(
         }
     }
 
-    return ConvertImplicit(fClass, pyobject, para, ctxt);
+    return (bool)ConvertImplicit(fClass, pyobject, para, ctxt);
 }
 
 //----------------------------------------------------------------------------
@@ -1939,7 +1939,7 @@ bool CPyCppyy::InstanceRefConverter::SetArg(
     if (!fIsConst)      // no implicit conversion possible
         return false;
 
-    return ConvertImplicit(fClass, pyobject, para, ctxt);
+    return (bool)ConvertImplicit(fClass, pyobject, para, ctxt);
 }
 
 //----------------------------------------------------------------------------
@@ -1956,7 +1956,7 @@ bool CPyCppyy::InstanceMoveConverter::SetArg(
     CPPInstance* pyobj = GetCppInstance(pyobject);
     if (!pyobj) {
     // implicit conversion is fine as it the temporary by definition is moveable
-        return ConvertImplicit(fClass, pyobject, para, ctxt);
+        return (bool)ConvertImplicit(fClass, pyobject, para, ctxt);
     }
 
 // moving is same as by-ref, but have to check that move is allowed
@@ -2540,6 +2540,25 @@ bool CPyCppyy::SmartPtrConverter::SetArg(
 
     // set pointer (may be null) and declare success
         para.fTypeCode = typeCode;
+        return true;
+    }
+
+// for the case where we have an ordinary object to convert
+    if (!pyobj->IsSmart() && Cppyy::IsSubtype(pyobj->ObjectIsA(), fUnderlyingType)) {
+    // create the relevant smart pointer and make the pyobject "smart"
+        CPPInstance* pysmart = (CPPInstance*)ConvertImplicit(fSmartPtrType, pyobject, para, ctxt, false);
+        if (!CPPInstance_Check(pysmart)) {
+            Py_XDECREF(pysmart);
+            return false;
+        }
+
+    // copy internals from the fresh smart object to the original, making it smart
+        pyobj->GetObjectRaw() = pysmart->GetSmartObject();
+        pyobj->SetSmart(CreateScopeProxy(fSmartPtrType)); //(PyObject*)Py_TYPE(pysmart));
+        pyobj->PythonOwns();
+        pysmart->CppOwns();
+        Py_DECREF(pysmart);
+
         return true;
     }
 
