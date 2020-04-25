@@ -639,6 +639,58 @@ PyObject* VectorBoolSetItem(CPPInstance* self, PyObject* args)
 }
 
 //- map behavior as primitives ------------------------------------------------
+PyObject* MapInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
+{
+// Specialized map constructor to allow construction from mapping containers.
+    if (PyTuple_GET_SIZE(args) == 1 && PyMapping_Check(PyTuple_GET_ITEM(args, 0))) {
+        PyObject* assoc = PyTuple_GET_ITEM(args, 0);
+#if PY_VERSION_HEX < 0x03000000
+    // to prevent warning about literal string, expand macro
+        PyObject* items = PyObject_CallMethod(assoc, (char*)"items", nullptr);
+#else
+    // in p3, PyMapping_Items isn't a macro, but a function that short-circuits dict
+        PyObject* items = PyMapping_Items(assoc);
+#endif
+        if (items && PySequence_Check(items)) {
+        // construct an empty map, then fill it
+            PyObject* mname = CPyCppyy_PyText_FromString("__real_init");
+            PyObject* result = PyObject_CallMethodObjArgs(self, mname, nullptr);
+            Py_DECREF(mname);
+            if (!result) {
+                Py_DECREF(items);
+                return result;
+            }
+
+            PyObject* si_call = PyObject_GetAttr(self, PyStrings::gSetItem);
+            for (Py_ssize_t i = 0; i < PySequence_Size(items); ++i) {
+                PyObject* item = PySequence_GetItem(items, i);
+                PyObject* sires = PyObject_CallFunctionObjArgs(
+                    si_call, PyTuple_GET_ITEM(item, 0), PyTuple_GET_ITEM(item, 1), nullptr);
+                if (!sires) {
+                    Py_DECREF(si_call);
+                    Py_DECREF(result);
+                    Py_DECREF(items);
+                    return nullptr;
+                } else
+                    Py_DECREF(sires);
+            }
+
+            return result;
+        } else
+            PyErr_Clear();
+    }
+
+// The given argument wasn't iterable: simply forward to regular constructor
+    PyObject* realInit = PyObject_GetAttrString(self, "__real_init");
+    if (realInit) {
+        PyObject* result = PyObject_Call(realInit, args, nullptr);
+        Py_DECREF(realInit);
+        return result;
+    }
+
+    return nullptr;
+}
+
 PyObject* MapContains(PyObject* self, PyObject* obj)
 {
 // Implement python's __contains__ for std::map<>s
@@ -1156,6 +1208,10 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
     }
 
     else if (IsTemplatedSTLClass(name, "map")) {
+    // constructor that takes python associative collections
+        Utility::AddToClass(pyclass, "__real_init", "__init__");
+        Utility::AddToClass(pyclass, "__init__", (PyCFunction)MapInit, METH_VARARGS | METH_KEYWORDS);
+
         Utility::AddToClass(pyclass, "__contains__", (PyCFunction)MapContains, METH_O);
     }
 
