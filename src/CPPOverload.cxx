@@ -798,10 +798,14 @@ static PyObject* mp_overload(CPPOverload* pymeth, PyObject* args, PyObject* /* k
         return nullptr;
     want_const = PyTuple_GET_SIZE(args) == 1 ? -1 : want_const;
 
-    std::string sig1{"("}; sig1.append(sigarg); sig1.append(")");
-    sig1.erase(std::remove(sig1.begin(), sig1.end(), ' '), std::end(sig1));
-
     bool accept_any = strcmp(sigarg, ":any:") == 0;
+    CPPOverload* newmeth = nullptr;
+
+    std::string sig1{"("};
+    if (!accept_any) {
+        sig1.append(sigarg); sig1.append(")");
+        sig1.erase(std::remove(sig1.begin(), sig1.end(), ' '), std::end(sig1));
+    }
 
     CPPOverload::Methods_t& methods = pymeth->fMethodInfo->fMethods;
     for (auto& meth : methods) {
@@ -830,22 +834,28 @@ static PyObject* mp_overload(CPPOverload* pymeth, PyObject* args, PyObject* /* k
         }
 
         if (found) {
-            CPPOverload* newmeth = mp_new(nullptr, nullptr, nullptr);
-            CPPOverload::Methods_t vec; vec.push_back(meth->Clone());
-            newmeth->Set(pymeth->fMethodInfo->fName, vec);
+            if (!newmeth) {
+                newmeth = mp_new(nullptr, nullptr, nullptr);
+                CPPOverload::Methods_t vec; vec.push_back(meth->Clone());
+                newmeth->Set(pymeth->fMethodInfo->fName, vec);
 
-            if (pymeth->fSelf) {
-                Py_INCREF(pymeth->fSelf);
-                newmeth->fSelf = pymeth->fSelf;
-            }
-            newmeth->fMethodInfo->fFlags = pymeth->fMethodInfo->fFlags;
+                if (pymeth->fSelf) {
+                    Py_INCREF(pymeth->fSelf);
+                    newmeth->fSelf = pymeth->fSelf;
+                }
+                newmeth->fMethodInfo->fFlags = pymeth->fMethodInfo->fFlags;
+            } else
+                newmeth->AdoptMethod(meth->Clone());
 
-            return (PyObject*)newmeth;
+            if (!accept_any)
+                return (PyObject*)newmeth;
         }
     }
 
-    PyErr_Format(PyExc_LookupError, "signature \"%s\" not found", sigarg);
-    return nullptr;
+    if (!newmeth)
+        PyErr_Format(PyExc_LookupError, "signature \"%s\" not found", sigarg);
+
+    return (PyObject*)newmeth;
 }
 
 //= CPyCppyy method proxy access to internals ================================
