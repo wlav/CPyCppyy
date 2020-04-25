@@ -25,12 +25,15 @@ public:
 public:
     virtual PyObject* GetSignature(bool show_formalargs = true);
     virtual PyObject* GetPrototype(bool show_formalargs = true);
+
     virtual int       GetPriority();
     virtual bool IsGreedy();
 
     virtual int       GetMaxArgs();
     virtual PyObject* GetCoVarNames();
     virtual PyObject* GetArgDefault(int iarg);
+    virtual bool IsConst();
+
     virtual PyObject* GetScopeProxy();
     virtual Cppyy::TCppFuncAddr_t GetFunctionAddress();
 

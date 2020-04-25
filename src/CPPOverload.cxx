@@ -789,35 +789,44 @@ static PyObject* mp_richcompare(CPPOverload* self, CPPOverload* other, int op)
 
 
 //= CPyCppyy method proxy access to internals ================================
-static PyObject* mp_overload(CPPOverload* pymeth, PyObject* sigarg)
+static PyObject* mp_overload(CPPOverload* pymeth, PyObject* args, PyObject* /* kwds */)
 {
 // Select and call a specific C++ overload, based on its signature.
-    if (!CPyCppyy_PyText_Check(sigarg)) {
-        PyErr_Format(PyExc_TypeError, "__overload__() argument 1 must be string, not %.50s",
-            sigarg == Py_None ? "None" : Py_TYPE(sigarg)->tp_name);
+    const char* sigarg = nullptr;
+    int want_const = -1;
+    if (!PyArg_ParseTuple(args, const_cast<char*>("s*|i:__overload__"), &sigarg, &want_const))
         return nullptr;
-    }
+    want_const = PyTuple_GET_SIZE(args) == 1 ? -1 : want_const;
 
-    std::string sig1{"("}; sig1.append(CPyCppyy_PyText_AsString(sigarg)); sig1.append(")");
+    std::string sig1{"("}; sig1.append(sigarg); sig1.append(")");
     sig1.erase(std::remove(sig1.begin(), sig1.end(), ' '), std::end(sig1));
+
+    bool accept_any = strcmp(sigarg, ":any:") == 0;
 
     CPPOverload::Methods_t& methods = pymeth->fMethodInfo->fMethods;
     for (auto& meth : methods) {
 
-        bool found = false;
-
-        PyObject* pysig2 = meth->GetSignature(false);
-        std::string sig2(CPyCppyy_PyText_AsString(pysig2));
-        sig2.erase(std::remove(sig2.begin(), sig2.end(), ' '), std::end(sig2));
-        Py_DECREF(pysig2);
-        if (sig1 == sig2) found = true;
-
+        bool found = accept_any;
         if (!found) {
-            pysig2 = meth->GetSignature(true);
-            std::string sig3(CPyCppyy_PyText_AsString(pysig2));
-            sig3.erase(std::remove(sig3.begin(), sig3.end(), ' '), std::end(sig3));
+            PyObject* pysig2 = meth->GetSignature(false);
+            std::string sig2(CPyCppyy_PyText_AsString(pysig2));
+            sig2.erase(std::remove(sig2.begin(), sig2.end(), ' '), std::end(sig2));
             Py_DECREF(pysig2);
-            if (sig1 == sig3) found = true;
+            if (sig1 == sig2) found = true;
+
+            if (!found) {
+                pysig2 = meth->GetSignature(true);
+                std::string sig3(CPyCppyy_PyText_AsString(pysig2));
+                sig3.erase(std::remove(sig3.begin(), sig3.end(), ' '), std::end(sig3));
+                Py_DECREF(pysig2);
+                if (sig1 == sig3) found = true;
+            }
+        }
+
+        if (found && 0 <= want_const) {
+            bool isconst = meth->IsConst();
+            if (!((want_const && isconst) || (!want_const && !isconst)))
+                found = false;
         }
 
         if (found) {
@@ -835,8 +844,7 @@ static PyObject* mp_overload(CPPOverload* pymeth, PyObject* sigarg)
         }
     }
 
-    PyErr_Format(PyExc_LookupError,
-        "signature \"%s\" not found", CPyCppyy_PyText_AsString(sigarg));
+    PyErr_Format(PyExc_LookupError, "signature \"%s\" not found", sigarg);
     return nullptr;
 }
 
@@ -849,7 +857,7 @@ static PyObject* mp_add_overload(CPPOverload* pymeth, PyObject* new_overload)
 }
 
 static PyMethodDef mp_methods[] = {
-    {(char*)"__overload__",     (PyCFunction)mp_overload, METH_O,
+    {(char*)"__overload__",     (PyCFunction)mp_overload, METH_VARARGS,
       (char*)"select overload for dispatch" },
     {(char*)"__add_overload__", (PyCFunction)mp_add_overload, METH_O,
       (char*)"add a new overload" },
