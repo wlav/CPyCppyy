@@ -33,6 +33,7 @@ namespace PyStrings {
     extern PyObject* gCTypesType;
 
     extern PyObject* gUnderlying;
+    extern PyObject* gRealInit;
 
     extern PyObject* gAdd;
     extern PyObject* gSub;
