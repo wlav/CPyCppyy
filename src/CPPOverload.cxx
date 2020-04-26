@@ -789,12 +789,12 @@ static PyObject* mp_richcompare(CPPOverload* self, CPPOverload* other, int op)
 
 
 //= CPyCppyy method proxy access to internals ================================
-static PyObject* mp_overload(CPPOverload* pymeth, PyObject* args, PyObject* /* kwds */)
+static PyObject* mp_overload(CPPOverload* pymeth, PyObject* args)
 {
 // Select and call a specific C++ overload, based on its signature.
     const char* sigarg = nullptr;
     int want_const = -1;
-    if (!PyArg_ParseTuple(args, const_cast<char*>("s*|i:__overload__"), &sigarg, &want_const))
+    if (!PyArg_ParseTuple(args, const_cast<char*>("s|i:__overload__"), &sigarg, &want_const))
         return nullptr;
     want_const = PyTuple_GET_SIZE(args) == 1 ? -1 : want_const;
 
