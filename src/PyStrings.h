@@ -20,6 +20,7 @@ namespace PyStrings {
     extern PyObject* gFollow;
     extern PyObject* gGetItem;
     extern PyObject* gGetNoCheck;
+    extern PyObject* gSetItem;
     extern PyObject* gInit;
     extern PyObject* gIter;
     extern PyObject* gLen;
@@ -32,6 +33,7 @@ namespace PyStrings {
     extern PyObject* gCTypesType;
 
     extern PyObject* gUnderlying;
+    extern PyObject* gRealInit;
 
     extern PyObject* gAdd;
     extern PyObject* gSub;

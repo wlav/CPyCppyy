@@ -17,6 +17,7 @@ PyObject* CPyCppyy::PyStrings::gEq               = nullptr;
 PyObject* CPyCppyy::PyStrings::gFollow           = nullptr;
 PyObject* CPyCppyy::PyStrings::gGetItem          = nullptr;
 PyObject* CPyCppyy::PyStrings::gGetNoCheck       = nullptr;
+PyObject* CPyCppyy::PyStrings::gSetItem          = nullptr;
 PyObject* CPyCppyy::PyStrings::gInit             = nullptr;
 PyObject* CPyCppyy::PyStrings::gIter             = nullptr;
 PyObject* CPyCppyy::PyStrings::gLen              = nullptr;
@@ -29,6 +30,7 @@ PyObject* CPyCppyy::PyStrings::gTypeCode         = nullptr;
 PyObject* CPyCppyy::PyStrings::gCTypesType       = nullptr;
 
 PyObject* CPyCppyy::PyStrings::gUnderlying       = nullptr;
+PyObject* CPyCppyy::PyStrings::gRealInit         = nullptr;
 
 PyObject* CPyCppyy::PyStrings::gAdd              = nullptr;
 PyObject* CPyCppyy::PyStrings::gSub              = nullptr;
@@ -80,6 +82,7 @@ bool CPyCppyy::CreatePyStrings() {
     CPPYY_INITIALIZE_STRING(gFollow,         __follow__);
     CPPYY_INITIALIZE_STRING(gGetItem,        __getitem__);
     CPPYY_INITIALIZE_STRING(gGetNoCheck,     _getitem__unchecked);
+    CPPYY_INITIALIZE_STRING(gSetItem,        __setitem__);
     CPPYY_INITIALIZE_STRING(gInit,           __init__);
     CPPYY_INITIALIZE_STRING(gIter,           __iter__);
     CPPYY_INITIALIZE_STRING(gLen,            __len__);
@@ -92,6 +95,7 @@ bool CPyCppyy::CreatePyStrings() {
     CPPYY_INITIALIZE_STRING(gCTypesType,     _type_);
 
     CPPYY_INITIALIZE_STRING(gUnderlying,     __underlying);
+    CPPYY_INITIALIZE_STRING(gRealInit,       __real_init);
 
     CPPYY_INITIALIZE_STRING(gAdd,            __add__);
     CPPYY_INITIALIZE_STRING(gSub,            __sub__);
@@ -139,6 +143,7 @@ PyObject* CPyCppyy::DestroyPyStrings() {
     Py_DECREF(PyStrings::gFollow);      PyStrings::gFollow      = nullptr;
     Py_DECREF(PyStrings::gGetItem);     PyStrings::gGetItem     = nullptr;
     Py_DECREF(PyStrings::gGetNoCheck);  PyStrings::gGetNoCheck  = nullptr;
+    Py_DECREF(PyStrings::gSetItem);     PyStrings::gSetItem     = nullptr;
     Py_DECREF(PyStrings::gInit);        PyStrings::gInit        = nullptr;
     Py_DECREF(PyStrings::gIter);        PyStrings::gIter        = nullptr;
     Py_DECREF(PyStrings::gLen);         PyStrings::gLen         = nullptr;
@@ -151,6 +156,7 @@ PyObject* CPyCppyy::DestroyPyStrings() {
     Py_DECREF(PyStrings::gCTypesType);  PyStrings::gCTypesType  = nullptr;
 
     Py_DECREF(PyStrings::gUnderlying);  PyStrings::gUnderlying  = nullptr;
+    Py_DECREF(PyStrings::gRealInit);    PyStrings::gRealInit    = nullptr;
 
     Py_DECREF(PyStrings::gAdd);         PyStrings::gAdd         = nullptr;
     Py_DECREF(PyStrings::gSub);         PyStrings::gSub         = nullptr;

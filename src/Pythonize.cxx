@@ -295,16 +295,15 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 
     if (getter) {
     // construct an empty vector, then back-fill it
-        PyObject* mname = CPyCppyy_PyText_FromString("__real_init");
-        PyObject* result = PyObject_CallMethodObjArgs(self, mname, nullptr);
-        Py_DECREF(mname);
+        PyObject* result = PyObject_CallMethodObjArgs(self, PyStrings::gRealInit, nullptr);
         if (!result) {
             delete getter;
-            return result;
+            return nullptr;
         }
 
         Py_ssize_t sz = getter->size();
         if (sz < 0) {
+            Py_DECREF(result);
             delete getter;
             return nullptr;
         }
@@ -314,6 +313,7 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
             PyObject* res = PyObject_CallMethod(self, (char*)"reserve", (char*)"n", sz);
             Py_DECREF(res);
         } else { // empty container
+            Py_DECREF(result);
             delete getter;
             return result;
         }
@@ -420,7 +420,7 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
     }
 
 // The given argument wasn't iterable: simply forward to regular constructor
-    PyObject* realInit = PyObject_GetAttrString(self, "__real_init");
+    PyObject* realInit = PyObject_GetAttr(self, PyStrings::gRealInit);
     if (realInit) {
         PyObject* result = PyObject_Call(realInit, args, nullptr);
         Py_DECREF(realInit);
@@ -639,6 +639,58 @@ PyObject* VectorBoolSetItem(CPPInstance* self, PyObject* args)
 }
 
 //- map behavior as primitives ------------------------------------------------
+PyObject* MapInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
+{
+// Specialized map constructor to allow construction from mapping containers.
+    if (PyTuple_GET_SIZE(args) == 1 && PyMapping_Check(PyTuple_GET_ITEM(args, 0))) {
+        PyObject* assoc = PyTuple_GET_ITEM(args, 0);
+#if PY_VERSION_HEX < 0x03000000
+    // to prevent warning about literal string, expand macro
+        PyObject* items = PyObject_CallMethod(assoc, (char*)"items", nullptr);
+#else
+    // in p3, PyMapping_Items isn't a macro, but a function that short-circuits dict
+        PyObject* items = PyMapping_Items(assoc);
+#endif
+        if (items && PySequence_Check(items)) {
+        // construct an empty map, then fill it
+            PyObject* result = PyObject_CallMethodObjArgs(self, PyStrings::gRealInit, nullptr);
+            if (!result) {
+                Py_DECREF(items);
+                return nullptr;
+            }
+
+            PyObject* si_call = PyObject_GetAttr(self, PyStrings::gSetItem);
+            for (Py_ssize_t i = 0; i < PySequence_Size(items); ++i) {
+                PyObject* item = PySequence_GetItem(items, i);
+                PyObject* sires = PyObject_CallFunctionObjArgs(
+                    si_call, PyTuple_GET_ITEM(item, 0), PyTuple_GET_ITEM(item, 1), nullptr);
+                Py_DECREF(item);
+                if (!sires) {
+                    Py_DECREF(si_call);
+                    Py_DECREF(result);
+                    Py_DECREF(items);
+                    return nullptr;
+                } else
+                    Py_DECREF(sires);
+            }
+            Py_DECREF(si_call);
+
+            return result;
+        } else
+            PyErr_Clear();
+    }
+
+// The given argument wasn't iterable: simply forward to regular constructor
+    PyObject* realInit = PyObject_GetAttr(self, PyStrings::gRealInit);
+    if (realInit) {
+        PyObject* result = PyObject_Call(realInit, args, nullptr);
+        Py_DECREF(realInit);
+        return result;
+    }
+
+    return nullptr;
+}
+
 PyObject* MapContains(PyObject* self, PyObject* obj)
 {
 // Implement python's __contains__ for std::map<>s
@@ -665,6 +717,56 @@ PyObject* MapContains(PyObject* self, PyObject* obj)
 
     return result;
 }
+
+
+//- set behavior as primitives ------------------------------------------------
+PyObject* SetInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
+{
+// Specialized set constructor to allow construction from Python sets.
+    if (PyTuple_GET_SIZE(args) == 1 && PySet_Check(PyTuple_GET_ITEM(args, 0))) {
+        PyObject* pyset = PyTuple_GET_ITEM(args, 0);
+
+    // construct an empty set, then fill it
+        PyObject* result = PyObject_CallMethodObjArgs(self, PyStrings::gRealInit, nullptr);
+        if (!result)
+            return nullptr;
+
+        PyObject* iter = PyObject_GetIter(pyset);
+        if (iter) {
+            PyObject* ins_call = PyObject_GetAttrString(self, (char*)"insert");
+
+            IterItemGetter getter{iter};
+            Py_DECREF(iter);
+
+            PyObject* item = getter.get();
+            while (item) {
+                PyObject* insres = PyObject_CallFunctionObjArgs(ins_call, item, nullptr);
+                Py_DECREF(item);
+                if (!insres) {
+                    Py_DECREF(ins_call);
+                    Py_DECREF(result);
+                    return nullptr;
+                } else
+                    Py_DECREF(insres);
+                item = getter.get();
+            }
+            Py_DECREF(ins_call);
+        }
+
+        return result;
+    }
+
+// The given argument wasn't iterable: simply forward to regular constructor
+    PyObject* realInit = PyObject_GetAttr(self, PyStrings::gRealInit);
+    if (realInit) {
+        PyObject* result = PyObject_Call(realInit, args, nullptr);
+        Py_DECREF(realInit);
+        return result;
+    }
+
+    return nullptr;
+}
+
 
 //- STL container iterator support --------------------------------------------
 PyObject* StlSequenceIter(PyObject* self)
@@ -760,7 +862,7 @@ PyObject* ReturnTwo(CPPInstance*, PyObject*) {
 PyObject* SmartPtrInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 {
 // since the shared/unique pointer will take ownership, we need to relinquish it
-    PyObject* realInit = PyObject_GetAttrString(self, "__real_init");
+    PyObject* realInit = PyObject_GetAttr(self, PyStrings::gRealInit);
     if (realInit) {
         PyObject* result = PyObject_Call(realInit, args, nullptr);
         Py_DECREF(realInit);
@@ -1156,7 +1258,17 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
     }
 
     else if (IsTemplatedSTLClass(name, "map")) {
+    // constructor that takes python associative collections
+        Utility::AddToClass(pyclass, "__real_init", "__init__");
+        Utility::AddToClass(pyclass, "__init__", (PyCFunction)MapInit, METH_VARARGS | METH_KEYWORDS);
+
         Utility::AddToClass(pyclass, "__contains__", (PyCFunction)MapContains, METH_O);
+    }
+
+    else if (IsTemplatedSTLClass(name, "set")) {
+    // constructor that takes python associative collections
+        Utility::AddToClass(pyclass, "__real_init", "__init__");
+        Utility::AddToClass(pyclass, "__init__", (PyCFunction)SetInit, METH_VARARGS | METH_KEYWORDS);
     }
 
     else if (IsTemplatedSTLClass(name, "pair")) {
