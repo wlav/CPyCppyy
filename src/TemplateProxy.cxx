@@ -569,7 +569,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
         pymeth = pytmpl->Instantiate(
             CPyCppyy_PyText_AsString(pyfullname), args, Utility::kNone);
         if (pymeth) {
-        // attempt actuall call; same as above, allow implicit conversion of arguments
+        // attempt actual call; same as above, allow implicit conversion of arguments
             result = CallMethodImp(pytmpl, pymeth, args, kwds, true, sighash);
             if (result) {
                 Py_DECREF(pyfullname);
@@ -628,7 +628,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
         pymeth = pytmpl->Instantiate(
             CPyCppyy_PyText_AsString(pytmpl->fTI->fCppName), args, pref, &pcnt);
         if (pymeth) {
-        // attempt actuall call; argument based, so do not allow implicit conversions
+        // attempt actual call; argument based, so do not allow implicit conversions
             result = CallMethodImp(pytmpl, pymeth, args, kwds, false, sighash);
             if (result) TPPCALL_RETURN;
         }
