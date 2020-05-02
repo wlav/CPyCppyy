@@ -184,6 +184,14 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
 
 // destructor: default is fine
 
+// pull in data members that are protected
+    Cppyy::TCppIndex_t nData = Cppyy::GetNumDatamembers(klass->fCppType);
+    if (nData) code << "public:\n";
+    for (Cppyy::TCppIndex_t idata = 0; idata < nData; ++idata) {
+        if (Cppyy::IsProtectedData(klass->fCppType, idata))
+            code << "  using " << baseName << "::" << Cppyy::GetDatamemberName(klass->fCppType, idata) << ";\n";
+    }
+
 // finish class declaration
     code << "};\n}";
 
