@@ -106,6 +106,10 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
     if (PyDict_DelItem(clbs, PyStrings::gInit) != 0)
         PyErr_Clear();
 
+// protected methods and data need their access changed in the C++ trampoline and then
+// exposed on the Python side; so, collect their names as we go along
+    std::vector<std::string> protected_names;
+
 // simple case: methods from current class
     bool has_default = false;
     bool has_cctor = false;
@@ -132,6 +136,13 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
         if (contains == -1) PyErr_Clear();
         if (contains != 1) {
             Py_DECREF(key);
+
+        // if the method is protected, we expose it with a 'using'
+            if (Cppyy::IsProtectedMethod(method)) {
+                protected_names.push_back(mtCppName);
+                code << "  using " << baseName << "::" << mtCppName << ";\n";
+            }
+
             continue;
         }
 
@@ -185,7 +196,6 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
 // destructor: default is fine
 
 // pull in data members that are protected
-    std::vector<std::string> protected_names;
     Cppyy::TCppIndex_t nData = Cppyy::GetNumDatamembers(klass->fCppType);
     if (nData) code << "public:\n";
     for (Cppyy::TCppIndex_t idata = 0; idata < nData; ++idata) {
@@ -218,9 +228,9 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
 // Python class to keep the inheritance tree intact)
     for (const auto& name : protected_names) {
          PyObject* disp_dct = PyObject_GetAttr(disp_proxy, PyStrings::gDict);
-         PyObject* pydm = PyMapping_GetItemString(disp_dct, (char*)name.c_str());
-         if (pydm) {
-             PyObject_SetAttrString((PyObject*)klass, (char*)name.c_str(), pydm);
+         PyObject* pyf = PyMapping_GetItemString(disp_dct, (char*)name.c_str());
+         if (pyf) {
+             PyObject_SetAttrString((PyObject*)klass, (char*)name.c_str(), pyf);
              Py_DECREF(pydm);
          }
          Py_DECREF(disp_dct);
