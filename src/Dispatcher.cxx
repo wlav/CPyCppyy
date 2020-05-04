@@ -231,7 +231,7 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
          PyObject* pyf = PyMapping_GetItemString(disp_dct, (char*)name.c_str());
          if (pyf) {
              PyObject_SetAttrString((PyObject*)klass, (char*)name.c_str(), pyf);
-             Py_DECREF(pydm);
+             Py_DECREF(pyf);
          }
          Py_DECREF(disp_dct);
     }
