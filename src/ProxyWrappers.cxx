@@ -299,8 +299,9 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass)
             ((CPPScope*)pyclass)->fFlags |= CPPScope::kIsInComplete;
             defctor = new CPPIncompleteClassConstructor(scope, (Cppyy::TCppMethod_t)0);
         } else
-            defctor = new CPPConstructor(scope, (Cppyy::TCppMethod_t)0);
-        cache["__init__"].push_back(defctor);
+            defctor = nullptr;
+        if (defctor)
+            cache["__init__"].push_back(defctor);
     }
 
 // map __call__ to __getitem__ if also mapped to __setitem__
