@@ -1600,7 +1600,7 @@ bool CPyCppyy::NullptrConverter::SetArg(PyObject* pyobject, Parameter& para, Cal
 //----------------------------------------------------------------------------
 #define CPPYY_IMPL_STRING_AS_PRIMITIVE_CONVERTER(name, type, F1, F2)         \
 CPyCppyy::name##Converter::name##Converter(bool keepControl) :               \
-    InstancePtrConverter(Cppyy::GetScope(#type), keepControl) {}             \
+    InstanceConverter(Cppyy::GetScope(#type), keepControl) {}                \
                                                                              \
 bool CPyCppyy::name##Converter::SetArg(                                      \
     PyObject* pyobject, Parameter& para, CallContext* ctxt)                  \
@@ -1616,7 +1616,7 @@ bool CPyCppyy::name##Converter::SetArg(                                      \
                                                                              \
     PyErr_Clear();                                                           \
     if (!(PyInt_Check(pyobject) || PyLong_Check(pyobject))) {                \
-        bool result = InstancePtrConverter::SetArg(pyobject, para, ctxt);    \
+        bool result = InstanceConverter::SetArg(pyobject, para, ctxt);       \
         para.fTypeCode = 'V';                                                \
         return result;                                                       \
     }                                                                        \
@@ -1638,7 +1638,7 @@ bool CPyCppyy::name##Converter::ToMemory(PyObject* value, void* address)     \
         return true;                                                         \
     }                                                                        \
                                                                              \
-    return InstancePtrConverter::ToMemory(value, address);                   \
+    return InstanceConverter::ToMemory(value, address);                      \
 }
 
 CPPYY_IMPL_STRING_AS_PRIMITIVE_CONVERTER(STLString, std::string, c_str, size)
@@ -1671,7 +1671,7 @@ bool CPyCppyy::STLStringViewConverter::SetArg(
 #endif
 
 CPyCppyy::STLWStringConverter::STLWStringConverter(bool keepControl) :
-    InstancePtrConverter(Cppyy::GetScope("std::wstring"), keepControl) {}
+    InstanceConverter(Cppyy::GetScope("std::wstring"), keepControl) {}
 
 bool CPyCppyy::STLWStringConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* ctxt)
@@ -1721,7 +1721,7 @@ bool CPyCppyy::STLWStringConverter::ToMemory(PyObject* value, void* address)
         delete[] buf;
         return true;
     }
-    return InstancePtrConverter::ToMemory(value, address);
+    return InstanceConverter::ToMemory(value, address);
 }
 
 
@@ -1798,7 +1798,7 @@ bool CPyCppyy::InstancePtrConverter::SetArg(
 PyObject* CPyCppyy::InstancePtrConverter::FromMemory(void* address)
 {
 // construct python object from C++ instance read at <address>
-    return BindCppObject(address, fClass);
+    return BindCppObject(address, fClass, CPPInstance::kIsReference);
 }
 
 //----------------------------------------------------------------------------
@@ -1822,15 +1822,8 @@ bool CPyCppyy::InstancePtrConverter::ToMemory(PyObject* value, void* address)
         if (!KeepControl() && CallContext::sMemoryPolicy != CallContext::kUseStrict)
             ((CPPInstance*)value)->CppOwns();
 
-    // call assignment operator through a temporarily wrapped object proxy
-        PyObject* pyobject = BindCppObjectNoCast(address, fClass);
-        pyobj->CppOwns();       // TODO: might be recycled (?)
-        PyObject* result = PyObject_CallMethod(pyobject, (char*)"__assign__", (char*)"O", value);
-        Py_DECREF(pyobject);
-        if (result) {
-            Py_DECREF(result);
-            return true;
-        }
+        *(void**)address = pyobj->GetObject();
+        return true;
     }
 
     return false;
@@ -2794,11 +2787,10 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, dims
     }
 
 //-- special case: initializer list
-    auto pos = realType.find("initializer_list");
-    if (pos == 0 /* no std:: */ || pos == 5 /* with std:: */) {
+    if (realType.compare(0, 21, "std::initializer_list") == 0) {
     // get the type of the list and create a converter (TODO: get hold of value_type?)
-        auto pos2 = realType.find('<');
-        std::string value_type = realType.substr(pos2+1, realType.size()-pos2-2);
+        auto pos = realType.find('<');
+        std::string value_type = realType.substr(pos+1, realType.size()-pos-2);
         Converter* cnv = nullptr; bool use_byte_cnv = false;
         if (cpd == "" && Cppyy::GetScope(value_type)) {
         // initializer list of object values does not work as the target is raw
@@ -2816,7 +2808,7 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, dims
     bool control = cpd == "&" || isConst;
 
 //-- special case: std::function
-    pos = resolvedType.find("std::function<");
+    auto pos = resolvedType.find("std::function<");
     if (pos == 0 /* std:: */ || pos == 6 /* const std:: */ ) {
 
     // get actual converter for normal passing
@@ -3098,6 +3090,9 @@ public:
         gf["char16_t**"] =                  gf["char16_t*"];
         gf["char32_t**"] =                  gf["char32_t*"];
         gf["const char**"] =                (cf_t)+[](dims_t d) { return new CStringArrayConverter{d}; };
+        gf["char**"] =                      gf["const char**"];
+        gf["const char*[]"] =               gf["const char**"];
+        gf["char*[]"] =                     gf["const char*[]"];
         gf["std::string"] =                 (cf_t)+[](dims_t) { return new STLStringConverter{}; };
         gf["const std::string&"] =          gf["std::string"];
         gf["std::string&&"] =               (cf_t)+[](dims_t) { return new STLStringMoveConverter{}; };
