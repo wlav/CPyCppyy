@@ -2327,7 +2327,7 @@ static void* PyFunction_AsCPointer(PyObject* pyobject,
                     "    else PyErr_SetString(PyExc_TypeError, \"callable was deleted\");\n";
 
         // close
-            Utility::ConstructCallbackReturn(rettype == "void", nArgs, code);
+            Utility::ConstructCallbackReturn(rettype, nArgs, code);
 
         // end of namespace
             code << "}";
