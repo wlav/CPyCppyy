@@ -1103,12 +1103,14 @@ bool CPyCppyy::CStringConverter::SetArg(
 PyObject* CPyCppyy::CStringConverter::FromMemory(void* address)
 {
 // construct python object from C++ const char* read at <address>
-    if (address && *(char**)address) {
-        if (fMaxSize != -1) {      // need to prevent reading beyond boundary
-            std::string buf(*(char**)address, fMaxSize);    // cut on fMaxSize
-            return CPyCppyy_PyText_FromString(buf.c_str());   // cut on \0
-        }
+    if (address && *(void**)address) {
+        if (fMaxSize != -1)        // need to prevent reading beyond boundary
+            return CPyCppyy_PyText_FromStringAndSize(*(char**)address, fMaxSize);
 
+        if (*(void**)address == (void*)fBuffer.data())     // if we're buffering, we know the size
+            return CPyCppyy_PyText_FromStringAndSize((char*)fBuffer.data(), fBuffer.size());
+
+    // no idea about lentgth: cut on \0
         return CPyCppyy_PyText_FromString(*(char**)address);
     }
 
@@ -1128,6 +1130,17 @@ bool CPyCppyy::CStringConverter::ToMemory(PyObject* value, void* address)
     if (fMaxSize != -1 && fMaxSize < (long)len)
         PyErr_Warn(PyExc_RuntimeWarning, (char*)"string too long for char array (truncated)");
 
+// is address is available, and it wasn't set by this converter, assume a byte-wise copy;
+// otherwise assume a pointer copy (this relies on the converter to be used for properties,
+// or for argument passing, but not both at the same time; this is currently the case)
+    void* ptrval = *(void**)address;
+    if (!ptrval || ptrval == (void*)fBuffer.data()) {
+        fBuffer = std::string(cstr, len);
+        *(void**)address = (void*)fBuffer.data();
+        return true;
+    }
+
+// the pointer value is non-zero or not ours: assume byte copy
     if (fMaxSize != -1)
         strncpy(*(char**)address, cstr, fMaxSize);    // padds remainder
     else
