@@ -167,7 +167,7 @@ bool CPyCppyy::Instance_CheckExact(PyObject* pyobject)
 //-----------------------------------------------------------------------------
 bool CPyCppyy::Instance_IsLively(PyObject* pyobject)
 {
-// Test whether the given instance can safely return to C++, or whether
+// Test whether the given instance can safely return to C++
     if (!CPPInstance_Check(pyobject))
         return true;    // simply don't know
 
