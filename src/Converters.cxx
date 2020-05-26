@@ -1545,7 +1545,7 @@ bool CPyCppyy::name##ArrayConverter::ToMemory(PyObject* value, void* address)\
 }                                                                            \
                                                                              \
 bool CPyCppyy::name##ArrayPtrConverter::SetArg(                              \
-    PyObject* pyobject, Parameter& para, CallContext* ctxt )                 \
+    PyObject* pyobject, Parameter& para, CallContext* ctxt)                  \
 {                                                                            \
     if (Py_TYPE(pyobject) == GetCTypesPtrType(ct_##ctype)) {                 \
         para.fValue.fVoidp = (void*)((CPyCppyy_tagCDataObject*)pyobject)->b_ptr;\
@@ -1586,6 +1586,52 @@ CPPYY_IMPL_ARRAY_CONVERTER(Float,    c_float,      float,                'f')
 CPPYY_IMPL_ARRAY_CONVERTER(Double,   c_double,     double,               'd')
 CPPYY_IMPL_ARRAY_CONVERTER(LDouble,  c_longdouble, long double,          'D')
 CPPYY_IMPL_ARRAY_CONVERTER(ComplexD, c_complex,    std::complex<double>, 'Z')
+
+
+//----------------------------------------------------------------------------
+bool CPyCppyy::CStringArrayConverter::SetArg(
+    PyObject* pyobject, Parameter& para, CallContext* ctxt)
+{
+    if (Py_TYPE(pyobject) == GetCTypesPtrType(ct_c_char_p)) {
+        para.fValue.fVoidp = (void*)((CPyCppyy_tagCDataObject*)pyobject)->b_ptr;
+        para.fTypeCode = 'V';
+        return true;
+
+    } else if (PySequence_Check(pyobject) && !CPyCppyy_PyText_Check(pyobject)
+#if PY_VERSION_HEX >= 0x03000000
+        && !PyBytes_Check(pyobject)
+#endif
+    ) {
+        //for (auto& p : fBuffer) free(p);
+        fBuffer.clear();
+
+        size_t len = (size_t)PySequence_Size(pyobject);
+        fBuffer.reserve(len);
+
+        for (size_t i = 0; i < len; ++i) {
+            PyObject* item = PySequence_GetItem(pyobject, i);
+            if (item) {
+                Py_ssize_t sz;
+                const char* p = CPyCppyy_PyText_AsStringAndSize(item, &sz);
+                Py_DECREF(item);
+
+                if (p) fBuffer.push_back(p);
+                else {
+                    PyErr_Format(PyExc_TypeError, "could not convert item %d to string", (int)i);
+                    return false;
+                }
+
+            } else
+                return false;
+        }
+
+        para.fValue.fVoidp = (void*)fBuffer.data();
+        para.fTypeCode = 'p';
+        return true;
+    }
+
+    return SCharArrayPtrConverter::SetArg(pyobject, para, ctxt);
+}
 
 
 //----------------------------------------------------------------------------

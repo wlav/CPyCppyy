@@ -223,7 +223,11 @@ CPPYY_DECLARE_ARRAY_CONVERTER(ComplexD);
 class CStringArrayConverter : public SCharArrayPtrConverter {
 public:
     using SCharArrayPtrConverter::SCharArrayPtrConverter;
+    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
     virtual PyObject* FromMemory(void* address);
+
+private:
+    std::vector<const char*> fBuffer;
 };
 
 
