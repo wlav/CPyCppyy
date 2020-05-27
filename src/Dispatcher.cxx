@@ -118,7 +118,7 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* dct)
     for (Cppyy::TCppIndex_t imeth = 0; imeth < nMethods; ++imeth) {
         Cppyy::TCppMethod_t method = Cppyy::GetMethod(klass->fCppType, imeth);
 
-        if (Cppyy::IsConstructor(method)) {
+        if (Cppyy::IsConstructor(method) && (Cppyy::IsPublicMethod(method) || Cppyy::IsProtectedMethod(method))) {
             has_constructors = true;
             Cppyy::TCppIndex_t nreq = Cppyy::GetMethodReqArgs(method);
             if (nreq == 0)
