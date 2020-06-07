@@ -23,7 +23,7 @@ public:
 
     virtual int GetMaxArgs() = 0;
     virtual PyObject* GetCoVarNames() = 0;
-    virtual PyObject* GetArgDefault(int /* iarg */) = 0;
+    virtual PyObject* GetArgDefault(int /* iarg */, bool silent=true) = 0;
     virtual bool IsConst() { return false; }
 
     virtual PyObject* GetScopeProxy() = 0;

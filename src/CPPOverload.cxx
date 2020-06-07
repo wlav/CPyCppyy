@@ -76,8 +76,8 @@ public:
     virtual PyObject* GetCoVarNames() { // TODO: pick these up from the callable
         Py_RETURN_NONE;
     }
-    virtual PyObject* GetArgDefault(int /* iarg */) { // TODO: pick these up from the callable
-        Py_RETURN_NONE;
+    virtual PyObject* GetArgDefault(int /* iarg */, bool /* silent */ =true) {
+        Py_RETURN_NONE;      // TODO: pick these up from the callable
     }
 
     virtual PyObject* GetScopeProxy() { // should this be the module ??

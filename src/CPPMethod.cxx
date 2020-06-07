@@ -485,24 +485,40 @@ PyObject* CPyCppyy::CPPMethod::GetCoVarNames()
     return co_varnames;
 }
 
-PyObject* CPyCppyy::CPPMethod::GetArgDefault(int iarg)
+PyObject* CPyCppyy::CPPMethod::GetArgDefault(int iarg, bool silent)
 {
-// get the default value (if any) of argument iarg of this method
+// get and evaluate the default value (if any) of argument iarg of this method
     if (iarg >= (int)GetMaxArgs())
         return nullptr;
 
-    const std::string& defvalue = Cppyy::GetMethodArgDefault(fMethod, iarg);
-    if (!defvalue.empty()) {
+// borrowed reference to cppyy.gbl module to use its dictionary to eval in
+    static PyObject* gbl = PyDict_GetItemString(PySys_GetObject((char*)"modules"), "cppyy.gbl");
 
-    // attempt to evaluate the string representation (will work for all builtin types)
-        PyObject* pyval = (PyObject*)PyRun_String(
-            (char*)defvalue.c_str(), Py_eval_input, gThisModule, gThisModule);
-        if (!pyval && PyErr_Occurred()) {
-            PyErr_Clear();
-            return CPyCppyy_PyText_FromString(defvalue.c_str());
+    std::string defvalue = Cppyy::GetMethodArgDefault(fMethod, iarg);
+    if (!defvalue.empty()) {
+        PyObject* gdct = PyObject_GetAttr(gbl, PyStrings::gDict);
+        PyObject* scope = nullptr;
+
+        if (defvalue.find("::") != std::string::npos) {
+        // try to tickle scope creation, just in case
+            scope = CreateScopeProxy(defvalue.substr(0, defvalue.rfind('(')));
+            if (!scope) PyErr_Clear();
+
+        // rename '::' -> '.'
+            TypeManip::cppscope_to_pyscope(defvalue);
         }
 
-        return pyval;
+    // attempt to evaluate the string representation
+        PyObject* pyval = (PyObject*)PyRun_String((char*)defvalue.c_str(), Py_eval_input, gdct, gdct);
+
+        if (!pyval && PyErr_Occurred() && silent) {
+            PyErr_Clear();
+            pyval =  CPyCppyy_PyText_FromString(defvalue.c_str());
+        }
+
+        Py_XDECREF(scope);
+        Py_DECREF(gdct);
+        return pyval;        // may be nullptr
     }
 
     return nullptr;
@@ -576,35 +592,40 @@ PyObject* CPyCppyy::CPPMethod::ProcessKeywords(PyObject* self, PyObject* args, P
         return nullptr;
     }
 
-    PyObject* newArgs = PyTuple_New(nArgs+nKeys);
-
-// set all values to zero to be able to check them later (this also guarantees normal
-// cleanup by the tuple deallocation)
-    for (Py_ssize_t i = 0; i < nArgs+nKeys; ++i)
-        PyTuple_SET_ITEM(newArgs, i, nullptr);
+    std::vector<PyObject*> vArgs{fConverters.size()};
 
 // next, insert the keyword values
     PyObject *key, *value;
     Py_ssize_t pos = 0;
 
+    Py_ssize_t maxpos = -1;
     while (PyDict_Next(kwds, &pos, &key, &value)) {
         const char* ckey = CPyCppyy_PyText_AsStringChecked(key);
-        if (!ckey) {
-            Py_DECREF(newArgs);
+        if (!ckey)
             return nullptr;
-        }
+
         auto p = fArgIndices->find(ckey);
         if (p == fArgIndices->end()) {
             SetPyError_(CPyCppyy_PyText_FromFormat("%s::%s got an unexpected keyword argument \'%s\'",
                 Cppyy::GetFinalName(fScope).c_str(), Cppyy::GetMethodName(fMethod).c_str(), ckey));
-            Py_DECREF(newArgs);
             return nullptr;
         }
-        Py_INCREF(value);
-        PyTuple_SetItem(newArgs, (*fArgIndices)[ckey], value);
+
+        maxpos = p->second > maxpos ? p->second : maxpos;
+        vArgs[p->second] = value;      // no INCREF yet for simple cleanup in case of error
     }
 
-// fill out the rest of the arguments
+// if maxpos < nArgs, it will be detected & reported as a duplicate below
+
+    Py_ssize_t maxargs = maxpos + 1;
+    PyObject* newArgs = PyTuple_New(maxargs);// + (self ? 1 : 0));
+
+// set all values to zero to be able to check them later (this also guarantees normal
+// cleanup by the tuple deallocation)
+    for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(newArgs); ++i)
+        PyTuple_SET_ITEM(newArgs, i, nullptr);
+
+// fill out the positional arguments
     Py_ssize_t start = 0;
     if (self) {
         Py_INCREF(self);
@@ -613,7 +634,7 @@ PyObject* CPyCppyy::CPPMethod::ProcessKeywords(PyObject* self, PyObject* args, P
     }
 
     for (Py_ssize_t i = start; i < nArgs; ++i) {
-        if (PyTuple_GET_ITEM(newArgs, i)) {
+        if (vArgs[i]) {
             SetPyError_(CPyCppyy_PyText_FromFormat("%s::%s got multiple values for argument %d",
                 Cppyy::GetFinalName(fScope).c_str(), Cppyy::GetMethodName(fMethod).c_str(), (int)i+1));
             Py_DECREF(newArgs);
@@ -623,6 +644,23 @@ PyObject* CPyCppyy::CPPMethod::ProcessKeywords(PyObject* self, PyObject* args, P
         PyObject* item = PyTuple_GET_ITEM(args, i);
         Py_INCREF(item);
         PyTuple_SET_ITEM(newArgs, i, item);
+    }
+
+// fill out the keyword arguments
+    for (Py_ssize_t i = nArgs; i < maxargs; ++i) {
+        PyObject* item = vArgs[i];
+        if (item) {
+            Py_INCREF(item);
+            PyTuple_SET_ITEM(newArgs, i, item);
+        } else {
+        // try retrieving the default
+            item = GetArgDefault((int)i, false);
+            if (!item) {
+                Py_DECREF(newArgs);
+                return nullptr;
+            }
+            PyTuple_SET_ITEM(newArgs, i, item);
+        }
     }
 
     return newArgs;

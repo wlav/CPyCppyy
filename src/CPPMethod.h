@@ -31,7 +31,7 @@ public:
 
     virtual int       GetMaxArgs();
     virtual PyObject* GetCoVarNames();
-    virtual PyObject* GetArgDefault(int iarg);
+    virtual PyObject* GetArgDefault(int iarg, bool silent=true);
     virtual bool IsConst();
 
     virtual PyObject* GetScopeProxy();
