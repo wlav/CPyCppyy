@@ -185,6 +185,10 @@ static PyObject* meta_repr(CPPScope* scope)
         return PyType_Type.tp_repr((PyObject*)scope);
     }
 
+// skip in case some Python-side derived meta class
+    if (!CPPScope_Check(scope) || !scope->fCppType)
+        return PyType_Type.tp_repr((PyObject*)scope);
+
 // printing of C++ classes
     PyObject* modname = meta_getmodule(scope, nullptr);
     std::string clName = Cppyy::GetFinalName(scope->fCppType);
@@ -216,7 +220,36 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
         if (Cppyy::GetSmartPtrInfo(Cppyy::GetScopedFinalName(((CPPScope*)subtype)->fCppType), &raw, &deref))
             subtype->tp_basicsize = sizeof(CPPSmartClass);
     }
-    CPPScope* result = (CPPScope*)PyType_Type.tp_new(subtype, args, kwds);
+
+    CPPScope* result = nullptr;
+
+    if (3 <= PyTuple_GET_SIZE(args) && 1 < PyTuple_GET_SIZE(PyTuple_GET_ITEM(args, 1)) &&
+            CPPScope_CheckExact(subtype)) {
+    // multiple inheritance from C++ classes: first resolve the metaclass conflict
+        PyObject* bases = PyTuple_GET_ITEM(args, 1);
+        PyObject* meta_bases = PyTuple_New(PyTuple_GET_SIZE(bases));
+        for (Py_ssize_t ib = 0; ib < PyTuple_GET_SIZE(bases); ++ib) {
+             PyObject* t = (PyObject*)Py_TYPE(PyTuple_GET_ITEM(bases, ib));
+             Py_INCREF(t);
+             PyTuple_SET_ITEM(meta_bases, ib, t);
+        }
+
+        const std::string name = CPyCppyy_PyText_AsString(PyTuple_GET_ITEM(args, 0));
+        PyObject* meta_args = Py_BuildValue((char*)"sO{}", (name+"_meta").c_str(), meta_bases);
+        Py_DECREF(meta_bases);
+
+        PyTypeObject* pymeta = (PyTypeObject*)PyType_Type.tp_new(&PyType_Type, meta_args, nullptr);
+        Py_DECREF(meta_args);
+
+        if (!pymeta)
+            return nullptr;
+
+        result = (CPPScope*)PyType_Type.tp_new(pymeta, args, kwds);
+    } else {
+    // normal case of single inheritance
+       result = (CPPScope*)PyType_Type.tp_new(subtype, args, kwds);
+    }
+
     if (!result)
         return nullptr;
 
@@ -270,6 +303,11 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
                 PyErr_Clear();
         }
     }
+
+// if the user messed with the metaclass, then we may not have a C++ type,
+// simply return here before more damage gets done
+    if (!result->fCppType)
+        return (PyObject*)result;
 
 // maps for using namespaces and tracking objects
     if (!Cppyy::IsNamespace(result->fCppType)) {

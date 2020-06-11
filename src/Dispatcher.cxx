@@ -56,6 +56,11 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct)
 {
 // Scan all methods in dct and where it overloads base methods in klass, create
 // dispatchers on the C++ side. Then interject the dispatcher class.
+    if (!klass->fCppType) {
+        PyErr_SetString(PyExc_TypeError, "incomplete C++ class");
+        return false;
+    }
+
     if (Cppyy::IsNamespace(klass->fCppType) || !PyDict_Check(dct)) {
         PyErr_Format(PyExc_TypeError,
             "%s not an acceptable base: is namespace or has no dict", Cppyy::GetScopedFinalName(klass->fCppType).c_str());

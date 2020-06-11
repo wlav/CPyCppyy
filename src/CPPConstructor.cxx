@@ -67,6 +67,14 @@ PyObject* CPyCppyy::CPPConstructor::Call(
     if (GetScope() != disp) {
     // happens for Python derived types, which have a dispatcher inserted that
     // is not otherwise user-visible: temporarily reset fMethod
+
+    // first, check whether we at least had a proper meta class, or whether that
+    // was also replaced user-side
+        if (!GetScope() || !disp) {
+            PyErr_SetString(PyExc_TypeError, "can not construct incomplete C++ class");
+            return nullptr;
+        }
+
     // TODO: these lookups are slow and need caching
         const std::string& dispName = Cppyy::GetFinalName(disp);
     // select proper overload based on signature match
