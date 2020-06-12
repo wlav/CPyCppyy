@@ -726,7 +726,12 @@ static PyObject* EndCaptureStderr(PyObject*, PyObject*)
 {
     std::cerr.rdbuf(gOldErrorBuffer);
 
-    return Py_BuildValue("s", std::move(gCapturedError).str().c_str());
+    std::string capturedError = std::move(gCapturedError).str();
+
+    gCapturedError.str("");
+    gCapturedError.clear();
+
+    return Py_BuildValue("s", capturedError.c_str());
 }
 } // unnamed namespace
 
