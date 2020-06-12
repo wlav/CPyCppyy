@@ -21,6 +21,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <iostream>
 #include <sstream>
 #include <utility>
 #include <vector>
@@ -169,6 +170,8 @@ namespace CPyCppyy {
     PyObject* gAbrtException = nullptr;
     std::map<std::string, std::vector<PyObject*>> gPythonizations;
     std::set<Cppyy::TCppType_t> gPinnedTypes;
+    std::ostringstream gCapturedError;
+    std::streambuf* gOldErrorBuffer = nullptr;
 }
 
 
@@ -709,6 +712,22 @@ static PyObject* AddSmartPtrType(PyObject*, PyObject* args)
     Py_RETURN_NONE;
 }
 
+//----------------------------------------------------------------------------
+static PyObject* BeginCaptureStderr(PyObject*, PyObject*)
+{
+    gOldErrorBuffer = std::cerr.rdbuf();
+    std::cerr.rdbuf(gCapturedError.rdbuf());
+
+    Py_RETURN_NONE;
+}
+
+//----------------------------------------------------------------------------
+static PyObject* EndCaptureStderr(PyObject*, PyObject*)
+{
+    std::cerr.rdbuf(gOldErrorBuffer);
+
+    return Py_BuildValue("s", std::move(gCapturedError).str().c_str());
+}
 } // unnamed namespace
 
 
@@ -750,6 +769,10 @@ static PyMethodDef gCPyCppyyMethods[] = {
       METH_VARARGS, (char*)"Modify held C++ object ownership."},
     {(char*) "AddSmartPtrType", (PyCFunction)AddSmartPtrType,
       METH_VARARGS, (char*) "Add a smart pointer to the list of known smart pointer types."},
+    {(char*) "_begin_capture_stderr", (PyCFunction)BeginCaptureStderr,
+      METH_NOARGS, (char*) "Begin capturing stderr to a in memory buffer."},
+    {(char*) "_end_capture_stderr", (PyCFunction)EndCaptureStderr,
+      METH_NOARGS, (char*) "End capturing stderr and returns the captured buffer."},
     {nullptr, nullptr, 0, nullptr}
 };
 
