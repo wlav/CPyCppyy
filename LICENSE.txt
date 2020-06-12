@@ -48,6 +48,6 @@ the same conditions (except for some compatible licenses as retained in the
 source code):
 
   CERN
+  Lucio Asnaghi
   Toby StClere-Smithe
   Mac Kolin
-  Lucio Asnaghi
