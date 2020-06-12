@@ -638,6 +638,61 @@ PyObject* VectorBoolSetItem(CPPInstance* self, PyObject* args)
     Py_RETURN_NONE;
 }
 
+
+//- array behavior as primitives ----------------------------------------------
+PyObject* ArrayInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
+{
+// std::array is normally only constructed using aggregate initialization, which
+// is a concept that does not exist in python, so use this custom constructor to
+// to fill the array using setitem
+
+    if (args && PyTuple_GET_SIZE(args) == 1 && PySequence_Check(PyTuple_GET_ITEM(args, 0))) {
+    // construct the empty array, then fill it
+        PyObject* result = PyObject_CallMethodObjArgs(self, PyStrings::gRealInit, nullptr);
+        if (!result)
+            return nullptr;
+
+        PyObject* items = PyTuple_GET_ITEM(args, 0);
+        Py_ssize_t fillsz = PySequence_Size(items);
+        if (PySequence_Size(self) != fillsz) {
+            PyErr_Format(PyExc_ValueError, "received sequence of size %zd where %zd expected",
+                         fillsz, PySequence_Size(self));
+            Py_DECREF(result);
+            return nullptr;
+        }
+ 
+        PyObject* si_call = PyObject_GetAttr(self, PyStrings::gSetItem);
+        for (Py_ssize_t i = 0; i < fillsz; ++i) {
+            PyObject* item = PySequence_GetItem(items, i);
+            PyObject* index = PyInt_FromSsize_t(i);
+            PyObject* sires = PyObject_CallFunctionObjArgs(si_call, index, item, nullptr);
+            Py_DECREF(index);
+            Py_DECREF(item);
+            if (!sires) {
+                Py_DECREF(si_call);
+                Py_DECREF(result);
+                return nullptr;
+            } else
+                Py_DECREF(sires);
+        }
+        Py_DECREF(si_call);
+
+        return result;
+    } else
+        PyErr_Clear();
+
+// The given argument wasn't iterable: simply forward to regular constructor
+    PyObject* realInit = PyObject_GetAttr(self, PyStrings::gRealInit);
+    if (realInit) {
+        PyObject* result = PyObject_Call(realInit, args, nullptr);
+        Py_DECREF(realInit);
+        return result;
+    }
+
+    return nullptr;
+}
+
+
 //- map behavior as primitives ------------------------------------------------
 PyObject* MapInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 {
@@ -828,6 +883,7 @@ PyObject* CheckedGetItem(PyObject* self, PyObject* obj)
 
     return nullptr;
 }*/
+
 
 //- pair as sequence to allow tuple unpacking --------------------------------
 PyObject* PairUnpack(PyObject* self, PyObject* pyindex)
@@ -1255,6 +1311,12 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
                 Py_DECREF(pyvalue_type);
             }
         }
+    }
+
+    else if (IsTemplatedSTLClass(name, "array")) {
+    // constructor that takes python associative collections
+        Utility::AddToClass(pyclass, "__real_init", "__init__");
+        Utility::AddToClass(pyclass, "__init__", (PyCFunction)ArrayInit, METH_VARARGS | METH_KEYWORDS);
     }
 
     else if (IsTemplatedSTLClass(name, "map")) {
