@@ -52,29 +52,32 @@ static inline void InjectMethod(Cppyy::TCppMethod_t method, const std::string& m
 }
 
 //----------------------------------------------------------------------------
-bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct)
+bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct, std::ostringstream& err)
 {
 // Scan all methods in dct and where it overloads base methods in klass, create
 // dispatchers on the C++ side. Then interject the dispatcher class.
     if (!klass->fCppType) {
-        PyErr_SetString(PyExc_TypeError, "incomplete C++ class");
+        err << Cppyy::GetScopedFinalName(klass->fCppType)
+            << "is incomplete";
         return false;
     }
 
     if (Cppyy::IsNamespace(klass->fCppType) || !PyDict_Check(dct)) {
-        PyErr_Format(PyExc_TypeError,
-            "%s not an acceptable base: is namespace or has no dict", Cppyy::GetScopedFinalName(klass->fCppType).c_str());
+        err << Cppyy::GetScopedFinalName(klass->fCppType)
+            << " is a namespace or has no dict";
         return false;
     }
 
     if (!Cppyy::HasVirtualDestructor(klass->fCppType)) {
-        PyErr_Format(PyExc_TypeError,
-            "%s not an acceptable base: no virtual destructor", Cppyy::GetScopedFinalName(klass->fCppType).c_str());
+        err << Cppyy::GetScopedFinalName(klass->fCppType)
+            << " has no virtual destructor";
         return false;
     }
 
-    if (!Utility::IncludePython())
+    if (!Utility::IncludePython()) {
+        err << "failed to include Python.h";
         return false;
+    }
 
     Cppyy::TCppType_t basetype;
     if ((klass->fFlags & CPPScope::kIsPython) && PyTuple_Check(bases) && PyTuple_GET_SIZE(bases)) {
@@ -237,13 +240,18 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct)
     code << "};\n}";
 
 // finally, compile the code
-    if (!Cppyy::Compile(code.str()))
+    if (!Cppyy::Compile(code.str())) {
+        err << "failed to compile the dispatcher code";
         return false;
+    }
 
 // keep track internally of the actual C++ type (this is used in
 // CPPConstructor to call the dispatcher's one instead of the base)
     Cppyy::TCppScope_t disp = Cppyy::GetScope("__cppyy_internal::"+derivedName);
-    if (!disp) return false;
+    if (!disp) {
+        err << "failed to retrieve the internal dispatcher";
+        return false;
+    }
     klass->fCppType = disp;
 
 // at this point, the dispatcher only lives in C++, as opposed to regular classes
