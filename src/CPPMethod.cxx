@@ -496,7 +496,11 @@ PyObject* CPyCppyy::CPPMethod::GetArgDefault(int iarg, bool silent)
 
     std::string defvalue = Cppyy::GetMethodArgDefault(fMethod, iarg);
     if (!defvalue.empty()) {
-        PyObject* gdct = PyObject_GetAttr(gbl, PyStrings::gDict);
+        PyObject** dctptr = _PyObject_GetDictPtr(gbl);
+        if (!(dctptr && *dctptr))
+            return nullptr;
+
+        PyObject* gdct = *dctptr;
         PyObject* scope = nullptr;
 
         if (defvalue.find("::") != std::string::npos) {
@@ -513,11 +517,10 @@ PyObject* CPyCppyy::CPPMethod::GetArgDefault(int iarg, bool silent)
 
         if (!pyval && PyErr_Occurred() && silent) {
             PyErr_Clear();
-            pyval =  CPyCppyy_PyText_FromString(defvalue.c_str());
+            pyval = CPyCppyy_PyText_FromString(defvalue.c_str());
         }
 
         Py_XDECREF(scope);
-        Py_DECREF(gdct);
         return pyval;        // may be nullptr
     }
 
