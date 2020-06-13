@@ -724,16 +724,14 @@ static PyObject* BeginCaptureStderr(PyObject*, PyObject*)
 //----------------------------------------------------------------------------
 static PyObject* EndCaptureStderr(PyObject*, PyObject*)
 {
+// restore old rdbuf and return captured result
     std::cerr.rdbuf(gOldErrorBuffer);
+    gOldErrorBuffer = nullptr;
 
     std::string capturedError = std::move(gCapturedError).str();
 
     gCapturedError.str("");
     gCapturedError.clear();
-
-// restore old rdbuf
-    std::cerr.rdbuf(gOldErrorBuffer);
-    gOldErrorBuffer = nullptr;
 
     return Py_BuildValue("s", capturedError.c_str());
 }
