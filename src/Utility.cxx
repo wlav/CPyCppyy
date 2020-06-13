@@ -311,7 +311,6 @@ CPyCppyy::PyCallable* CPyCppyy::Utility::FindBinaryOperator(
 
     PyCallable* pyfunc = 0;
 
-    const std::string& lnsname = TypeManip::extract_namespace(lcname);
     if (!scope) {
         if (lcname == "str" || lcname == "unicode") scope = Cppyy::GetScope("std");
         else scope = Cppyy::GetScope(TypeManip::extract_namespace(lcname));
