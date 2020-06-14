@@ -247,7 +247,7 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
         result = (CPPScope*)PyType_Type.tp_new(pymeta, args, kwds);
     } else {
     // normal case of single inheritance
-       result = (CPPScope*)PyType_Type.tp_new(subtype, args, kwds);
+        result = (CPPScope*)PyType_Type.tp_new(subtype, args, kwds);
     }
 
     if (!result)
@@ -289,8 +289,8 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
                 result->fFlags |= CPPScope::kIsPython;
                 std::ostringstream errmsg;
                 if (!InsertDispatcher(result, PyTuple_GET_ITEM(args, 1), dct, errmsg)) {
-                     std::string msg{"no python-side overrides supported: "};
-                     PyErr_Warn(PyExc_RuntimeWarning, (char*)(msg+errmsg.str()).c_str());
+                    PyErr_Format(PyExc_TypeError, "no python-side overrides supported (%s)", errmsg.str().c_str());
+                    return nullptr;
                 } else {
                 // the direct base can be useful for some templates, such as shared_ptrs,
                 // so make it accessible (the __cpp_cross__ data member also signals that
