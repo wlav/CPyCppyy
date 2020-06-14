@@ -57,8 +57,7 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
 // Scan all methods in dct and where it overloads base methods in klass, create
 // dispatchers on the C++ side. Then interject the dispatcher class.
     if (!klass->fCppType) {
-        err << Cppyy::GetScopedFinalName(klass->fCppType)
-            << "is incomplete";
+        err << "class is incomplete";
         return false;
     }
 
