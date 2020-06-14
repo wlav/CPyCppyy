@@ -56,28 +56,6 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
 {
 // Scan all methods in dct and where it overloads base methods in klass, create
 // dispatchers on the C++ side. Then interject the dispatcher class.
-    if (!klass->fCppType) {
-        err << "class is incomplete";
-        return false;
-    }
-
-    if (Cppyy::IsNamespace(klass->fCppType) || !PyDict_Check(dct)) {
-        err << Cppyy::GetScopedFinalName(klass->fCppType)
-            << " is a namespace or has no dict";
-        return false;
-    }
-
-    if (!Cppyy::HasVirtualDestructor(klass->fCppType)) {
-        err << Cppyy::GetScopedFinalName(klass->fCppType)
-            << " has no virtual destructor";
-        return false;
-    }
-
-    if (!Utility::IncludePython()) {
-        err << "failed to include Python.h";
-        return false;
-    }
-
     Cppyy::TCppType_t basetype;
     if ((klass->fFlags & CPPScope::kIsPython) && PyTuple_Check(bases) && PyTuple_GET_SIZE(bases)) {
     // dispatchers are not part of the Python hierarchy but are of C++, so need to check
@@ -87,7 +65,33 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
     // normal case: deriving from a bound C++ class
         basetype = klass->fCppType;
     }
-    bool isDeepHierarchy = basetype != klass->fCppType;
+
+    if (!basetype) {
+        err << "base class is incomplete";
+        return false;
+    }
+
+    if (Cppyy::IsNamespace(basetype)) {
+        err << Cppyy::GetScopedFinalName(basetype) << " is a namespace";
+        return false;
+    }
+
+    if (!dct || !PyDict_Check(dct)) {
+        err << "internal error: no proper dictionary";
+        return false;
+    }
+
+    if (!Cppyy::HasVirtualDestructor(basetype)) {
+        err << Cppyy::GetScopedFinalName(klass->fCppType) << " has no virtual destructor";
+        return false;
+    }
+
+    if (!Utility::IncludePython()) {
+        err << "failed to include Python.h";
+        return false;
+    }
+
+    bool isDeepHierarchy = klass->fCppType && basetype != klass->fCppType;
 
     const std::string& baseName = TypeManip::template_base(Cppyy::GetFinalName(basetype));
     const std::string& baseNameScoped = Cppyy::GetScopedFinalName(basetype);

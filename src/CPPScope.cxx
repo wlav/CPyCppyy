@@ -221,37 +221,11 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
             subtype->tp_basicsize = sizeof(CPPSmartClass);
     }
 
-    CPPScope* result = nullptr;
-
-    if (3 <= PyTuple_GET_SIZE(args) && 1 < PyTuple_GET_SIZE(PyTuple_GET_ITEM(args, 1)) &&
-            CPPScope_CheckExact(subtype)) {
-    // multiple inheritance from C++ classes: first resolve the metaclass conflict
-        PyObject* bases = PyTuple_GET_ITEM(args, 1);
-        PyObject* meta_bases = PyTuple_New(PyTuple_GET_SIZE(bases));
-        for (Py_ssize_t ib = 0; ib < PyTuple_GET_SIZE(bases); ++ib) {
-             PyObject* t = (PyObject*)Py_TYPE(PyTuple_GET_ITEM(bases, ib));
-             Py_INCREF(t);
-             PyTuple_SET_ITEM(meta_bases, ib, t);
-        }
-
-        const std::string name = CPyCppyy_PyText_AsString(PyTuple_GET_ITEM(args, 0));
-        PyObject* meta_args = Py_BuildValue((char*)"sO{}", (name+"_meta").c_str(), meta_bases);
-        Py_DECREF(meta_bases);
-
-        PyTypeObject* pymeta = (PyTypeObject*)PyType_Type.tp_new(&PyType_Type, meta_args, nullptr);
-        Py_DECREF(meta_args);
-
-        if (!pymeta)
-            return nullptr;
-
-        result = (CPPScope*)PyType_Type.tp_new(pymeta, args, kwds);
-    } else {
-    // normal case of single inheritance
-        result = (CPPScope*)PyType_Type.tp_new(subtype, args, kwds);
-    }
-
-    if (!result)
+    CPPScope* result = (CPPScope*)PyType_Type.tp_new(subtype, args, kwds);
+    if (!CPPScope_Check(result)) {
+    // either failed or custom user-side metaclass that can't be handled here
         return nullptr;
+    }
 
     result->fFlags      = CPPScope::kNone;
     result->fOperators  = nullptr;
@@ -264,8 +238,7 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
     }
 
 // initialization of class (based on metatype)
-    const char* mp = strstr(subtype->tp_name, "_meta");
-    if (!mp || !CPPScope_CheckExact(subtype)) {
+    if (!CPPScope_CheckExact(subtype) || !strstr(subtype->tp_name, "_meta") /* convention */) {
     // there has been a user meta class override in a derived class, so do
     // the consistent thing, thus allowing user control over naming
         result->fCppType = Cppyy::GetScope(
