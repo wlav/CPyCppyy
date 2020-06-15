@@ -102,10 +102,10 @@ PyObject* CPyCppyy::CPPConstructor::Call(
     // restore the original constructor
         SetMethod(curMethod);
 
-    // set m_self (TODO: get this from the compiler in case of some unorthodox padding
-    // or if the inheritance hierarchy extends back into C++ land)
+    // set _internal_self (TODO: get this from the compiler in case of some unorthodox
+    // padding or if the inheritance hierarchy extends back into C++ land)
         if (address) {
-            ptrdiff_t self_address = address + Cppyy::SizeOf(GetScope());
+            ptrdiff_t self_address = address + Cppyy::SizeOf(disp) - sizeof(DispatchPtr);
             new ((void*)self_address) DispatchPtr{(PyObject*)self};
         }
     }
