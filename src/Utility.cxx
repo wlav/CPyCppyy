@@ -577,7 +577,7 @@ void CPyCppyy::Utility::ConstructCallbackReturn(const std::string& retType, int 
                 "        ret = nullptr;\n"
                 "      else {\n";
     }
-    code << (isVoid ? "" : "        cOk = retconv->ToMemory(pyresult, &ret);\n")
+    code << (isVoid ? "" : "        cOk = retconv->ToMemory(pyresult, (void*)&ret);\n")
          <<                "        Py_DECREF(pyresult);\n    }\n";
     if (isPtr) code << "  }\n";
     code << "    if (!cOk) {"     // assume error set when converter failed
