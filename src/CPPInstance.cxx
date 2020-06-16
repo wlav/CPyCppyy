@@ -465,6 +465,8 @@ static PyObject* op_repr(CPPInstance* self)
 // Build a representation string of the object proxy that shows the address
 // of the C++ object that is held, as well as its type.
     PyObject* pyclass = (PyObject*)Py_TYPE(self);
+    if (CPPScope_Check(pyclass) && (((CPPScope*)pyclass)->fFlags & CPPScope::kIsPython))
+        return PyBaseObject_Type.tp_repr((PyObject*)self);
     PyObject* modname = PyObject_GetAttr(pyclass, PyStrings::gModule);
 
     Cppyy::TCppType_t klass = self->ObjectIsA();
