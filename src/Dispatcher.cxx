@@ -52,6 +52,16 @@ static inline void InjectMethod(Cppyy::TCppMethod_t method, const std::string& m
 }
 
 //----------------------------------------------------------------------------
+namespace {
+    struct BaseInfo {
+        BaseInfo(Cppyy::TCppType_t t, std::string&& bn, std::string&& bns) :
+            btype(t), bname(bn), bname_scoped(bns) {}
+        Cppyy::TCppType_t btype;
+        std::string bname;
+        std::string bname_scoped;
+    };
+} // unnamed namespace
+
 bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct, std::ostringstream& err)
 {
 // Scan all methods in dct and where it overloads base methods in klass, create
@@ -69,8 +79,8 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
 
     const Py_ssize_t nBases = PyTuple_GET_SIZE(bases);
 
-    std::vector<Cppyy::TCppType_t> basetypes;
-    basetypes.reserve(std::vector<Cppyy::TCppType_t>::size_type(nBases));
+    std::vector<BaseInfo> base_infos;
+    base_infos.reserve(std::vector<BaseInfo>::size_type(nBases));
     for (Py_ssize_t ibase = 0; ibase < nBases; ++ibase) {
         Cppyy::TCppType_t basetype = ((CPPScope*)PyTuple_GET_ITEM(bases, ibase))->fCppType;
 
@@ -89,14 +99,15 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
             PyErr_Warn(PyExc_RuntimeWarning, (char*)("class \""+bname+"\" has no virtual destructor").c_str());
         }
 
-        basetypes.push_back(basetype);
+        base_infos.emplace_back(
+            basetype, TypeManip::template_base(Cppyy::GetFinalName(basetype)), Cppyy::GetScopedFinalName(basetype));
     }
 
-    if ((Py_ssize_t)basetypes.size() != nBases)
+    if ((Py_ssize_t)base_infos.size() != nBases)
         return false;
 
 // TODO: check deep hierarchy for multiple inheritance
-    bool isDeepHierarchy = klass->fCppType && basetypes.front() != klass->fCppType;
+    bool isDeepHierarchy = klass->fCppType && base_infos.front().btype != klass->fCppType;
 
 // once classes can be extended, should consider re-use; for now, since derived
 // python classes can differ in what they override, simply use different shims
@@ -111,9 +122,9 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
 // start class declaration
     code << "namespace __cppyy_internal {\n"
          << "class " << derivedName << " : ";
-    for (std::vector<Cppyy::TCppType_t>::size_type ibase = 0; ibase < basetypes.size(); ++ibase) {
+    for (std::vector<BaseInfo>::size_type ibase = 0; ibase < base_infos.size(); ++ibase) {
         if (ibase != 0) code << ", ";
-        code << "public ::" << Cppyy::GetScopedFinalName(basetypes[ibase]);
+        code << "public ::" << base_infos[ibase].bname_scoped;
     }
     code << " {\n";
     if (!isDeepHierarchy)
@@ -144,13 +155,11 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
     bool has_default = false;
     int has_cctor = 0;
     bool has_constructors = false;
-    for (auto basetype : basetypes) {
-        const std::string& baseNameScoped = Cppyy::GetScopedFinalName(basetype);
-        const std::string& baseName = TypeManip::template_base(Cppyy::GetFinalName(basetype));
-        const Cppyy::TCppIndex_t nMethods = Cppyy::GetNumMethods(basetype);
+    for (const auto& binfo : base_infos) {
+        const Cppyy::TCppIndex_t nMethods = Cppyy::GetNumMethods(binfo.btype);
         bool has_cctor_found = false;
         for (Cppyy::TCppIndex_t imeth = 0; imeth < nMethods; ++imeth) {
-            Cppyy::TCppMethod_t method = Cppyy::GetMethod(basetype, imeth);
+            Cppyy::TCppMethod_t method = Cppyy::GetMethod(binfo.btype, imeth);
 
             if (Cppyy::IsConstructor(method) && (Cppyy::IsPublicMethod(method) || Cppyy::IsProtectedMethod(method))) {
                 has_constructors = true;
@@ -158,7 +167,7 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
                 if (nreq == 0)
                     has_default = true;
                 else if (!has_cctor_found && nreq == 1) {
-                    if (TypeManip::clean_type(Cppyy::GetMethodArgType(method, 0), false) == baseNameScoped) {
+                    if (TypeManip::clean_type(Cppyy::GetMethodArgType(method, 0), false) == binfo.bname_scoped) {
                         has_cctor += 1;
                         has_cctor_found = true;
                     }
@@ -176,7 +185,7 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
             // if the method is protected, we expose it with a 'using'
                 if (Cppyy::IsProtectedMethod(method)) {
                     protected_names.push_back(mtCppName);
-                    code << "  using " << baseName << "::" << mtCppName << ";\n";
+                    code << "  using " << binfo.bname << "::" << mtCppName << ";\n";
                 }
 
                 continue;
@@ -191,12 +200,12 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
     }
 
 // try to locate left-overs in base classes
-    for (auto basetype : basetypes) {
+    for (const auto& binfo : base_infos) {
         if (PyDict_Size(clbs)) {
-            size_t nbases = Cppyy::GetNumBases(basetype);
+            size_t nbases = Cppyy::GetNumBases(binfo.btype);
             for (size_t ibase = 0; ibase < nbases; ++ibase) {
                 Cppyy::TCppScope_t tbase = (Cppyy::TCppScope_t)Cppyy::GetScope( \
-                    Cppyy::GetBaseName(basetype, ibase));
+                    Cppyy::GetBaseName(binfo.btype, ibase));
 
                 PyObject* keys = PyDict_Keys(clbs);
                 for (Py_ssize_t i = 0; i < PyList_GET_SIZE(keys); ++i) {
@@ -218,7 +227,7 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
 
 // constructors: most are simply inherited, for use by the Python derived class
     if (nBases == 1) {
-        const std::string& baseName = TypeManip::template_base(Cppyy::GetFinalName(basetypes.front()));
+        const std::string& baseName = base_infos.front().bname;
         code << "  using " << baseName << "::" << baseName << ";\n";
     }
 
@@ -228,16 +237,16 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
     if (has_default || !has_constructors) {
         code << "  " << derivedName << "() {}\n"
              << "  " << derivedName << "(PyObject* pyobj) : "
-                     << (isDeepHierarchy ? TypeManip::template_base(Cppyy::GetFinalName(basetypes.front())) : "_internal_self")
+                     << (isDeepHierarchy ? base_infos.front().bname : "_internal_self")
                      << "(pyobj) {}\n";
     }
     if (has_cctor == nBases || !has_constructors) {
         code << "  " << derivedName << "(const " << derivedName << "& other)";
         if (has_cctor == nBases) {
             code << " : ";
-            for (std::vector<Cppyy::TCppType_t>::size_type ibase = 0; ibase < basetypes.size(); ++ibase) {
+            for (std::vector<BaseInfo>::size_type ibase = 0; ibase < base_infos.size(); ++ibase) {
                 if (ibase != 0) code << ", ";
-                code << TypeManip::template_base(Cppyy::GetFinalName(basetypes[ibase])) << "(other)";
+                code << base_infos[ibase].bname << "(other)";
             }
         }
         if (!isDeepHierarchy) {
@@ -252,19 +261,18 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
 
 // pull in data members that are protected
     bool setPublic = false;
-    for (auto basetype : basetypes) {
-        const std::string& baseName = TypeManip::template_base(Cppyy::GetFinalName(basetype));
-        Cppyy::TCppIndex_t nData = Cppyy::GetNumDatamembers(basetype);
+    for (const auto& binfo : base_infos) {
+        Cppyy::TCppIndex_t nData = Cppyy::GetNumDatamembers(binfo.btype);
         for (Cppyy::TCppIndex_t idata = 0; idata < nData; ++idata) {
-            if (Cppyy::IsProtectedData(basetype, idata)) {
-                const std::string dm_name = Cppyy::GetDatamemberName(basetype, idata);
+            if (Cppyy::IsProtectedData(binfo.btype, idata)) {
+                const std::string dm_name = Cppyy::GetDatamemberName(binfo.btype, idata);
                 if (dm_name != "_internal_self") {
-                    protected_names.push_back(Cppyy::GetDatamemberName(basetype, idata));
+                    protected_names.push_back(Cppyy::GetDatamemberName(binfo.btype, idata));
                     if (!setPublic) {
                         code << "public:\n";
                         setPublic = true;
                     }
-                    code << "  using " << baseName << "::" << protected_names.back() << ";\n";
+                    code << "  using " << binfo.bname << "::" << protected_names.back() << ";\n";
                 }
             }
         }
