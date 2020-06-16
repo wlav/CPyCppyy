@@ -260,6 +260,8 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
             Py_ssize_t sz = PyDict_Size(dct);
             if (0 < sz && !Cppyy::IsNamespace(result->fCppType)) {
                 result->fFlags |= CPPScope::kIsPython;
+                if (1 < PyTuple_GET_SIZE(PyTuple_GET_ITEM(args, 1)))
+                    result->fFlags |= CPPScope::kIsMultiCross;
                 std::ostringstream errmsg;
                 if (!InsertDispatcher(result, PyTuple_GET_ITEM(args, 1), dct, errmsg)) {
                     PyErr_Format(PyExc_TypeError, "no python-side overrides supported (%s)", errmsg.str().c_str());

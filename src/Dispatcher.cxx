@@ -299,7 +299,9 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
 // at this point, the dispatcher only lives in C++, as opposed to regular classes
 // that are part of the hierarchy in Python, so create it, which will cache it for
 // later use by e.g. the MemoryRegulator
-    PyObject* disp_proxy = CPyCppyy::CreateScopeProxy(disp);
+    unsigned int flags = (unsigned int)(klass->fFlags & CPPScope::kIsMultiCross);
+    PyObject* disp_proxy = CPyCppyy::CreateScopeProxy(disp, flags);
+    if (flags) ((CPPScope*)disp_proxy)->fFlags |= CPPScope::kIsMultiCross;
 
 // finally, to expose protected members, copy them over from the C++ dispatcher base
 // to the Python dictionary (the C++ dispatcher's Python proxy is not a base of the

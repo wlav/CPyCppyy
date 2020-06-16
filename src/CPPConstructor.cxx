@@ -63,10 +63,10 @@ PyObject* CPyCppyy::CPPConstructor::Call(
 
 // perform the call, nullptr 'this' makes the other side allocate the memory
     Cppyy::TCppScope_t disp = self->ObjectIsA(false /* check_smart */);
-    Cppyy::TCppMethod_t curMethod = GetMethod();
+    ptrdiff_t address = 0;
     if (GetScope() != disp) {
     // happens for Python derived types, which have a dispatcher inserted that
-    // is not otherwise user-visible: temporarily reset fMethod
+    // is not otherwise user-visible: call it instead
 
     // first, check whether we at least had a proper meta class, or whether that
     // was also replaced user-side
@@ -75,39 +75,30 @@ PyObject* CPyCppyy::CPPConstructor::Call(
             return nullptr;
         }
 
-    // TODO: these lookups are slow and need caching
-        const std::string& dispName = Cppyy::GetFinalName(disp);
-    // select proper overload based on signature match
-        const std::string& sig =
-            (curMethod && PyTuple_GET_SIZE(args)) ? Cppyy::GetMethodSignature(curMethod, false, PyTuple_GET_SIZE(args)) : "()";
-        Cppyy::TCppMethod_t method = (Cppyy::TCppMethod_t)0;
-        const auto& v = Cppyy::GetMethodIndicesFromName(disp, dispName);
-        for (auto idx : v) {
-            Cppyy::TCppMethod_t mm = Cppyy::GetMethod(disp, idx);
-            if (Cppyy::GetMethodSignature(mm, false) == sig) {
-                method = mm;
-                break;
-            }
-        }
-
-        if (method) SetMethod(method);
-        else {
-            PyErr_Format(PyExc_TypeError, "no constructor available for \'%s\'",
-                Cppyy::GetScopedFinalName(this->GetScope()).c_str());
+    // get the dispatcher class
+        PyObject* dispproxy = CPyCppyy::GetScopeProxy(disp);
+        if (!dispproxy) {
+            PyErr_SetString(PyExc_TypeError, "dispatcher proxy was never created");
             return nullptr;
         }
-    }
-    ptrdiff_t address = (ptrdiff_t)this->Execute(nullptr, 0, ctxt);
-    if (GetMethod() != curMethod) {
-    // restore the original constructor
-        SetMethod(curMethod);
 
-    // set _internal_self (TODO: get this from the compiler in case of some unorthodox
-    // padding or if the inheritance hierarchy extends back into C++ land)
+        PyObject* pyobj = PyObject_Call(dispproxy, args, kwds);
+        if (!pyobj)
+            return nullptr;
+        Py_DECREF(dispproxy);
+
+    // retrieve the actual pointer, take over control, and set set _internal_self (TODO: get
+    // this from the compiler in case of some unorthodox padding or if the inheritance
+    //  hierarchy extends back into C++ land)
+        address = (ptrdiff_t)((CPPInstance*)pyobj)->GetObject();
         if (address) {
+            ((CPPInstance*)pyobj)->CppOwns();
             ptrdiff_t self_address = address + Cppyy::SizeOf(disp) - sizeof(DispatchPtr);
             new ((void*)self_address) DispatchPtr{(PyObject*)self};
         }
+        Py_DECREF(pyobj);
+    } else {
+        address = (ptrdiff_t)this->Execute(nullptr, 0, ctxt);
     }
 
 // done with filtered args
@@ -152,6 +143,40 @@ PyObject* CPyCppyy::CPPConstructor::Call(
 
 
 //----------------------------------------------------------------------------
+CPyCppyy::CPPMultiConstructor::CPPMultiConstructor(Cppyy::TCppScope_t scope, Cppyy::TCppMethod_t method) :
+    CPPConstructor(scope, method)
+{
+    fNumBases = Cppyy::GetNumBases(scope);
+}
+
+//----------------------------------------------------------------------------
+CPyCppyy::CPPMultiConstructor::CPPMultiConstructor(const CPPMultiConstructor& s) :
+    CPPConstructor(s), fNumBases(s.fNumBases)
+{
+}
+
+//----------------------------------------------------------------------------
+CPyCppyy::CPPMultiConstructor& CPyCppyy::CPPMultiConstructor::operator=(const CPPMultiConstructor& s)
+{
+    if (this != &s) {
+        CPPConstructor::operator=(s);
+        fNumBases = s.fNumBases;
+    }
+    return *this;
+}
+
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::CPPMultiConstructor::Call(
+    CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt)
+{
+// By convention, initialization parameters of multiple base classes are grouped
+// by target base class. Here, we disambiguate and put in "sentinel" parameters
+// that allow the dispatcher to propagate them.
+    return CPPConstructor::Call(self, args, kwds, ctxt);
+}
+
+
+//----------------------------------------------------------------------------
 PyObject* CPyCppyy::CPPAbstractClassConstructor::Call(
     CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt)
 {
@@ -167,6 +192,7 @@ PyObject* CPyCppyy::CPPAbstractClassConstructor::Call(
     return nullptr;
 }
 
+
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::CPPNamespaceConstructor::Call(
     CPPInstance*&, PyObject*, PyObject*, CallContext*)
@@ -176,6 +202,7 @@ PyObject* CPyCppyy::CPPNamespaceConstructor::Call(
         Cppyy::GetScopedFinalName(this->GetScope()).c_str());
     return nullptr;
 }
+
 
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::CPPIncompleteClassConstructor::Call(
