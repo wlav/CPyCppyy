@@ -79,8 +79,7 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
 
     const Py_ssize_t nBases = PyTuple_GET_SIZE(bases);
 
-    std::vector<BaseInfo> base_infos;
-    base_infos.reserve(std::vector<BaseInfo>::size_type(nBases));
+    std::vector<BaseInfo> base_infos; base_infos.reserve(nBases);
     for (Py_ssize_t ibase = 0; ibase < nBases; ++ibase) {
         Cppyy::TCppType_t basetype = ((CPPScope*)PyTuple_GET_ITEM(bases, ibase))->fCppType;
 
@@ -151,26 +150,29 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
 // exposed on the Python side; so, collect their names as we go along
     std::vector<std::string> protected_names;
 
-// simple case: methods from current class
-    bool has_default = false;
+// simple case: methods from current class (collect constructors along the way)
+    int has_default = 0;
     int has_cctor = 0;
     bool has_constructors = false;
-    for (const auto& binfo : base_infos) {
+    std::vector<std::vector<Cppyy::TCppMethod_t>> ctors{base_infos.size()};
+    for (std::vector<BaseInfo>::size_type ibase = 0; ibase < base_infos.size(); ++ibase) {
+        const auto& binfo = base_infos[ibase];
+
         const Cppyy::TCppIndex_t nMethods = Cppyy::GetNumMethods(binfo.btype);
-        bool has_cctor_found = false;
+        bool cctor_found = false, default_found = false;
         for (Cppyy::TCppIndex_t imeth = 0; imeth < nMethods; ++imeth) {
             Cppyy::TCppMethod_t method = Cppyy::GetMethod(binfo.btype, imeth);
 
-            if (Cppyy::IsConstructor(method) && (Cppyy::IsPublicMethod(method) || Cppyy::IsProtectedMethod(method))) {
+            if (Cppyy::IsConstructor(method)) {
                 has_constructors = true;
-                Cppyy::TCppIndex_t nreq = Cppyy::GetMethodReqArgs(method);
-                if (nreq == 0)
-                    has_default = true;
-                else if (!has_cctor_found && nreq == 1) {
-                    if (TypeManip::clean_type(Cppyy::GetMethodArgType(method, 0), false) == binfo.bname_scoped) {
-                        has_cctor += 1;
-                        has_cctor_found = true;
+                if (Cppyy::IsPublicMethod(method) || Cppyy::IsProtectedMethod(method)) {
+                    Cppyy::TCppIndex_t nreq = Cppyy::GetMethodReqArgs(method);
+                    if (nreq == 0) default_found = true;
+                    else if (!cctor_found && nreq == 1) {
+                        if (TypeManip::clean_type(Cppyy::GetMethodArgType(method, 0), false) == binfo.bname_scoped)
+                            cctor_found = true;
                     }
+                    ctors[ibase].push_back(method);
                 }
                 continue;
             }
@@ -197,6 +199,10 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
                 PyErr_Clear();        // happens for overloads
             Py_DECREF(key);
         }
+
+    // count the cctors and default ctors to determine whether each base has one
+        if (cctor_found)   has_cctor   += 1;
+        if (default_found) has_default += 1;
     }
 
 // try to locate left-overs in base classes
@@ -229,25 +235,48 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
     if (nBases == 1) {
         const std::string& baseName = base_infos.front().bname;
         code << "  using " << baseName << "::" << baseName << ";\n";
+    } else if (1 < nBases) {
+    // TODO: make recursive to support N bases
+        for (const auto& method1 : ctors[0]) {
+            for (const auto& method2 : ctors[1]) {
+                code << "  " << derivedName << "(";
+                for (int i = 0; i < Cppyy::GetMethodNumArgs(method1); ++i) {
+                    if (i != 0) code << ", ";
+                    code << Cppyy::GetMethodArgType(method1, i) << " a" << i;
+                }
+                if (Cppyy::GetMethodNumArgs(method1)) code << ", ";
+                code << "__cppyy_internal::Sentinel*";
+                for (int i = 0; i < Cppyy::GetMethodNumArgs(method2); ++i) {
+                    code << ", ";
+                    code << Cppyy::GetMethodArgType(method2, i) << " a" << (i+Cppyy::GetMethodNumArgs(method1));
+                }
+
+                code << ") : ";
+                for (std::vector<BaseInfo>::size_type ibase = 0; ibase < base_infos.size(); ++ibase) {
+                    if (ibase != 0) code << ", ";
+                    code << base_infos[ibase].bname << "(";
+                    auto meth = ibase == 0 ? method1 : method2;
+                    for (int i = 0; i < Cppyy::GetMethodNumArgs(meth); ++i) {
+                        if (i != 0) code << ", ";
+                        code << "a" << i + (meth == method2 ? Cppyy::GetMethodNumArgs(method1) : 0);
+                    }
+                    code << ")";
+                }
+                code << " {}\n";
+            }
+        }
     }
 
 // for working with C++ templates, additional constructors are needed to make
 // sure the python object is properly carried, but they can only be generated
 // if the base class supports them
-    if (has_default || !has_constructors) {
-        code << "  " << derivedName << "() {}\n"
-             << "  " << derivedName << "(PyObject* pyobj) : "
-                     << (isDeepHierarchy ? base_infos.front().bname : "_internal_self")
-                     << "(pyobj) {}\n";
-    }
-    if (has_cctor == nBases || !has_constructors) {
-        code << "  " << derivedName << "(const " << derivedName << "& other)";
-        if (has_cctor == nBases) {
-            code << " : ";
-            for (std::vector<BaseInfo>::size_type ibase = 0; ibase < base_infos.size(); ++ibase) {
-                if (ibase != 0) code << ", ";
-                code << base_infos[ibase].bname << "(other)";
-            }
+    if (!has_constructors || (has_cctor == nBases && has_default == nBases))
+        code << "  " << derivedName << "() {}\n";
+    if (!has_constructors || has_cctor == nBases) {
+        code << "  " << derivedName << "(const " << derivedName << "& other) : ";
+        for (std::vector<BaseInfo>::size_type ibase = 0; ibase < base_infos.size(); ++ibase) {
+            if (ibase != 0) code << ", ";
+            code << base_infos[ibase].bname << "(other)";
         }
         if (!isDeepHierarchy) {
             if (has_cctor) code << ", ";

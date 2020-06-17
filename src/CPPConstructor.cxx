@@ -12,6 +12,12 @@
 #include <string>
 
 
+//- data _____________________________________________________________________
+namespace CPyCppyy {
+    extern PyObject* gNullPtrObject;
+}
+
+
 //- protected members --------------------------------------------------------
 bool CPyCppyy::CPPConstructor::InitExecutor_(Executor*& executor, CallContext*)
 {
@@ -41,23 +47,17 @@ PyObject* CPyCppyy::CPPConstructor::Call(
     if (!(args = this->PreProcessArgs(self, args, kwds)))
         return nullptr;
 
-    if (self->GetObject()) {
-        Py_DECREF(args);
-        PyErr_SetString(PyExc_ReferenceError,
-            "object already constructed; use __assign__ instead of __init__");
-        return nullptr;
-    }
-
-// translate the arguments
-    if (!this->ConvertAndSetArgs(args, ctxt)) {
-        Py_DECREF(args);
-        return nullptr;
-    }
-
 // verify existence of self (i.e. tp_new called)
     if (!self) {
         PyErr_Print();
         PyErr_SetString(PyExc_ReferenceError, "no python object allocated");
+        return nullptr;
+    }
+
+    if (self->GetObject()) {
+        Py_DECREF(args);
+        PyErr_SetString(PyExc_ReferenceError,
+            "object already constructed; use __assign__ instead of __init__");
         return nullptr;
     }
 
@@ -97,7 +97,14 @@ PyObject* CPyCppyy::CPPConstructor::Call(
             new ((void*)self_address) DispatchPtr{(PyObject*)self};
         }
         Py_DECREF(pyobj);
+
     } else {
+    // translate the arguments
+        if (!this->ConvertAndSetArgs(args, ctxt)) {
+            Py_DECREF(args);
+            return nullptr;
+        }
+
         address = (ptrdiff_t)this->Execute(nullptr, 0, ctxt);
     }
 
@@ -167,12 +174,84 @@ CPyCppyy::CPPMultiConstructor& CPyCppyy::CPPMultiConstructor::operator=(const CP
 
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::CPPMultiConstructor::Call(
-    CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt)
+    CPPInstance*& self, PyObject* _args, PyObject* kwds, CallContext* ctxt)
 {
 // By convention, initialization parameters of multiple base classes are grouped
 // by target base class. Here, we disambiguate and put in "sentinel" parameters
 // that allow the dispatcher to propagate them.
-    return CPPConstructor::Call(self, args, kwds, ctxt);
+
+// Three options supported:
+//  0. empty args: default constructor call
+//  1. fNumBases tuples, each handed to individual constructors
+//  2. less than fNumBases, assuming (void) for the missing base constructors
+//  3. normal arguments, going to the first base only
+
+    Py_INCREF(_args);
+    PyObject* args = _args;
+
+    if (PyTuple_CheckExact(args) && PyTuple_GET_SIZE(args)) {   // case 0. falls through
+        Py_ssize_t nArgs = PyTuple_GET_SIZE(args);
+
+        bool isAllTuples = true;
+        Py_ssize_t nArgsTot = 0;
+        for (Py_ssize_t i = 0; i < nArgs; ++i) {
+            PyObject* argi = PyTuple_GET_ITEM(args, i);
+            if (!PyTuple_CheckExact(argi)) {
+                isAllTuples = false;
+                break;
+            }
+            nArgsTot += PyTuple_GET_SIZE(argi);
+        }
+
+        if (isAllTuples) {
+        // copy over the arguments, while filling in the sentinels (case 1. & 2.), with
+        // just sentinels for the remaining (void) calls (case 2.)
+            PyObject* newArgs = PyTuple_New(nArgsTot + fNumBases - 1);
+            Py_ssize_t idx = 0;
+            for (Py_ssize_t i = 0; i < nArgs; ++i) {
+                PyObject* argi = PyTuple_GET_ITEM(args, i);
+                for (Py_ssize_t j = 0; j < PyTuple_GET_SIZE(argi); ++j) {
+                    PyObject* item = PyTuple_GET_ITEM(argi, j);
+                    Py_INCREF(item);
+                    PyTuple_SET_ITEM(newArgs, idx, item);
+                    idx += 1;
+                }
+
+            // add sentinel
+                Py_INCREF(gNullPtrObject);
+                PyTuple_SET_ITEM(newArgs, idx, gNullPtrObject);
+                idx += 1;
+            }
+
+        // add final sentinels as needed
+            while (idx <= nArgsTot) {
+                Py_INCREF(gNullPtrObject);
+                PyTuple_SET_ITEM(newArgs, idx, gNullPtrObject);
+                idx += 1;
+            }
+
+            Py_DECREF(args);
+            args = newArgs;
+        } else {                                               // case 3. add sentinels
+        // copy arguments as-is, then add sentinels at the end
+            PyObject* newArgs = PyTuple_New(PyTuple_GET_SIZE(args) + fNumBases - 1);
+            for (Py_ssize_t i = 0; i < nArgs; ++i) {
+                PyObject* item = PyTuple_GET_ITEM(args, i);
+                Py_INCREF(item);
+                PyTuple_SET_ITEM(newArgs, i, item);
+            }
+            for (Py_ssize_t i = 0; i < fNumBases - 1; ++i) {
+                Py_INCREF(gNullPtrObject);
+                PyTuple_SET_ITEM(newArgs, i+nArgs, gNullPtrObject);
+            }
+            Py_DECREF(args);
+            args = newArgs;
+        }
+    }
+
+    PyObject* result = CPPConstructor::Call(self, args, kwds, ctxt);
+    Py_DECREF(args);
+    return result;
 }
 
 
