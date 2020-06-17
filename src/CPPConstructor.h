@@ -35,7 +35,7 @@ public:
     virtual PyObject* Call(CPPInstance*&, PyObject*, PyObject*, CallContext* = nullptr);
 
 private:
-    size_t fNumBases;
+    Py_ssize_t fNumBases;
 };
 
 

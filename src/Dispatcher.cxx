@@ -240,13 +240,13 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
         for (const auto& method1 : ctors[0]) {
             for (const auto& method2 : ctors[1]) {
                 code << "  " << derivedName << "(";
-                for (int i = 0; i < Cppyy::GetMethodNumArgs(method1); ++i) {
+                for (size_t i = 0; i < Cppyy::GetMethodNumArgs(method1); ++i) {
                     if (i != 0) code << ", ";
                     code << Cppyy::GetMethodArgType(method1, i) << " a" << i;
                 }
                 if (Cppyy::GetMethodNumArgs(method1)) code << ", ";
                 code << "__cppyy_internal::Sentinel*";
-                for (int i = 0; i < Cppyy::GetMethodNumArgs(method2); ++i) {
+                for (size_t i = 0; i < Cppyy::GetMethodNumArgs(method2); ++i) {
                     code << ", ";
                     code << Cppyy::GetMethodArgType(method2, i) << " a" << (i+Cppyy::GetMethodNumArgs(method1));
                 }
@@ -256,7 +256,7 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
                     if (ibase != 0) code << ", ";
                     code << base_infos[ibase].bname << "(";
                     auto meth = ibase == 0 ? method1 : method2;
-                    for (int i = 0; i < Cppyy::GetMethodNumArgs(meth); ++i) {
+                    for (size_t i = 0; i < Cppyy::GetMethodNumArgs(meth); ++i) {
                         if (i != 0) code << ", ";
                         code << "a" << i + (meth == method2 ? Cppyy::GetMethodNumArgs(method1) : 0);
                     }
