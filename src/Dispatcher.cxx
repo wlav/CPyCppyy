@@ -60,7 +60,57 @@ namespace {
         std::string bname;
         std::string bname_scoped;
     };
+
+    typedef std::vector<BaseInfo> BaseInfos_t;
+    typedef std::vector<Cppyy::TCppMethod_t> Ctors_t;
+    typedef std::vector<Ctors_t> AllCtors_t;
 } // unnamed namespace
+
+static void build_constructors(
+    const std::string& derivedName, const BaseInfos_t& base_infos, const AllCtors_t& ctors,
+    std::ostringstream& code, const Ctors_t& methods = Ctors_t{}, int idx = 0)
+{
+    if (idx < ctors.size()) {
+        for (const auto& method : ctors[idx]) {
+             Ctors_t methods1{methods};
+             methods1.push_back(method);
+             build_constructors(derivedName, base_infos, ctors, code, methods1, idx+1);
+        }
+    } else {
+    // this is as deep as we go; start writing
+        code << "  " << derivedName << "(";
+
+    // declare arguments
+        std::vector<size_t> arg_tots; arg_tots.reserve(methods.size());
+        for (Ctors_t::size_type i = 0; i < methods.size(); ++i) {
+            auto method = methods[i];
+            if (i != 0 && (arg_tots.back() || 1 < arg_tots.size())) code << ", ";
+            size_t nArgs = (size_t)Cppyy::GetMethodNumArgs(method);
+            arg_tots.push_back(i == 0 ? nArgs : nArgs+arg_tots.back());
+
+            if (i != 0) code << "__cppyy_internal::Sep*";
+            size_t offset = (i != 0 ? arg_tots[i-1] : 0);
+            for (size_t j = 0; j < nArgs; ++j) {
+                if (i != 0 || j != 0) code << ", ";
+                code << Cppyy::GetMethodArgType(method, j) << " a" << (j+offset);
+            }
+        }
+        code << ") : ";
+
+    // pass arguments to base constructors
+        for (BaseInfos_t::size_type i = 0; i < base_infos.size(); ++i) {
+            if (i != 0) code << ", ";
+            code << base_infos[i].bname << "(";
+            size_t first = (i != 0 ? arg_tots[i-1] : 0);
+            for (size_t j = first; j < arg_tots[i]; ++j) {
+                if (j != first) code << ", ";
+                code << "a" << j;
+            }
+            code << ")";
+        }
+        code << " {}\n";
+    }
+}
 
 bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct, std::ostringstream& err)
 {
@@ -77,9 +127,9 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
         return false;
     }
 
+// collect all bases, error checking the hierarchy along the way
     const Py_ssize_t nBases = PyTuple_GET_SIZE(bases);
-
-    std::vector<BaseInfo> base_infos; base_infos.reserve(nBases);
+    BaseInfos_t base_infos; base_infos.reserve(nBases);
     for (Py_ssize_t ibase = 0; ibase < nBases; ++ibase) {
         Cppyy::TCppType_t basetype = ((CPPScope*)PyTuple_GET_ITEM(bases, ibase))->fCppType;
 
@@ -121,7 +171,7 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
 // start class declaration
     code << "namespace __cppyy_internal {\n"
          << "class " << derivedName << " : ";
-    for (std::vector<BaseInfo>::size_type ibase = 0; ibase < base_infos.size(); ++ibase) {
+    for (BaseInfos_t::size_type ibase = 0; ibase < base_infos.size(); ++ibase) {
         if (ibase != 0) code << ", ";
         code << "public ::" << base_infos[ibase].bname_scoped;
     }
@@ -154,8 +204,8 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
     int has_default = 0;
     int has_cctor = 0;
     bool has_constructors = false;
-    std::vector<std::vector<Cppyy::TCppMethod_t>> ctors{base_infos.size()};
-    for (std::vector<BaseInfo>::size_type ibase = 0; ibase < base_infos.size(); ++ibase) {
+    AllCtors_t ctors{base_infos.size()};
+    for (BaseInfos_t::size_type ibase = 0; ibase < base_infos.size(); ++ibase) {
         const auto& binfo = base_infos[ibase];
 
         const Cppyy::TCppIndex_t nMethods = Cppyy::GetNumMethods(binfo.btype);
@@ -236,35 +286,8 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
         const std::string& baseName = base_infos.front().bname;
         code << "  using " << baseName << "::" << baseName << ";\n";
     } else if (1 < nBases) {
-    // TODO: make recursive to support N bases
-        for (const auto& method1 : ctors[0]) {
-            for (const auto& method2 : ctors[1]) {
-                code << "  " << derivedName << "(";
-                for (size_t i = 0; i < Cppyy::GetMethodNumArgs(method1); ++i) {
-                    if (i != 0) code << ", ";
-                    code << Cppyy::GetMethodArgType(method1, i) << " a" << i;
-                }
-                if (Cppyy::GetMethodNumArgs(method1)) code << ", ";
-                code << "__cppyy_internal::Sentinel*";
-                for (size_t i = 0; i < Cppyy::GetMethodNumArgs(method2); ++i) {
-                    code << ", ";
-                    code << Cppyy::GetMethodArgType(method2, i) << " a" << (i+Cppyy::GetMethodNumArgs(method1));
-                }
-
-                code << ") : ";
-                for (std::vector<BaseInfo>::size_type ibase = 0; ibase < base_infos.size(); ++ibase) {
-                    if (ibase != 0) code << ", ";
-                    code << base_infos[ibase].bname << "(";
-                    auto meth = ibase == 0 ? method1 : method2;
-                    for (size_t i = 0; i < Cppyy::GetMethodNumArgs(meth); ++i) {
-                        if (i != 0) code << ", ";
-                        code << "a" << i + (meth == method2 ? Cppyy::GetMethodNumArgs(method1) : 0);
-                    }
-                    code << ")";
-                }
-                code << " {}\n";
-            }
-        }
+    // run recursive code, collecting all combinatorics
+        build_constructors(derivedName, base_infos, ctors, code);
     }
 
 // for working with C++ templates, additional constructors are needed to make
@@ -274,7 +297,7 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
         code << "  " << derivedName << "() {}\n";
     if (!has_constructors || has_cctor == nBases) {
         code << "  " << derivedName << "(const " << derivedName << "& other) : ";
-        for (std::vector<BaseInfo>::size_type ibase = 0; ibase < base_infos.size(); ++ibase) {
+        for (BaseInfos_t::size_type ibase = 0; ibase < base_infos.size(); ++ibase) {
             if (ibase != 0) code << ", ";
             code << base_infos[ibase].bname << "(other)";
         }

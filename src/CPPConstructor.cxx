@@ -209,6 +209,13 @@ PyObject* CPyCppyy::CPPMultiConstructor::Call(
             PyObject* newArgs = PyTuple_New(nArgsTot + fNumBases - 1);
             Py_ssize_t idx = 0;
             for (Py_ssize_t i = 0; i < nArgs; ++i) {
+                if (i != 0) {
+                // add sentinel
+                    Py_INCREF(gNullPtrObject);
+                    PyTuple_SET_ITEM(newArgs, idx, gNullPtrObject);
+                    idx += 1;
+                }
+
                 PyObject* argi = PyTuple_GET_ITEM(args, i);
                 for (Py_ssize_t j = 0; j < PyTuple_GET_SIZE(argi); ++j) {
                     PyObject* item = PyTuple_GET_ITEM(argi, j);
@@ -216,15 +223,10 @@ PyObject* CPyCppyy::CPPMultiConstructor::Call(
                     PyTuple_SET_ITEM(newArgs, idx, item);
                     idx += 1;
                 }
-
-            // add sentinel
-                Py_INCREF(gNullPtrObject);
-                PyTuple_SET_ITEM(newArgs, idx, gNullPtrObject);
-                idx += 1;
             }
 
         // add final sentinels as needed
-            while (idx <= nArgsTot) {
+            while (idx < (nArgsTot+fNumBases-1)) {
                 Py_INCREF(gNullPtrObject);
                 PyTuple_SET_ITEM(newArgs, idx, gNullPtrObject);
                 idx += 1;
