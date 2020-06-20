@@ -69,7 +69,7 @@ namespace {
 
 static void build_constructors(
     const std::string& derivedName, const BaseInfos_t& base_infos, const AllCtors_t& ctors,
-    std::ostringstream& code, const CtorInfos_t& methods = CtorInfos_t{}, int idx = 0)
+    std::ostringstream& code, const CtorInfos_t& methods = CtorInfos_t{}, size_t idx = 0)
 {
     if (idx < ctors.size()) {
         for (const auto& method : ctors[idx]) {
