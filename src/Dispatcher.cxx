@@ -64,17 +64,22 @@ namespace {
     typedef std::vector<BaseInfo> BaseInfos_t;
     typedef std::vector<Cppyy::TCppMethod_t> Ctors_t;
     typedef std::vector<Ctors_t> AllCtors_t;
+    typedef std::vector<std::pair<Cppyy::TCppMethod_t, size_t>> CtorInfos_t;
 } // unnamed namespace
 
 static void build_constructors(
     const std::string& derivedName, const BaseInfos_t& base_infos, const AllCtors_t& ctors,
-    std::ostringstream& code, const Ctors_t& methods = Ctors_t{}, int idx = 0)
+    std::ostringstream& code, const CtorInfos_t& methods = CtorInfos_t{}, int idx = 0)
 {
     if (idx < ctors.size()) {
         for (const auto& method : ctors[idx]) {
-             Ctors_t methods1{methods};
-             methods1.push_back(method);
-             build_constructors(derivedName, base_infos, ctors, code, methods1, idx+1);
+             size_t argsmin = (size_t)Cppyy::GetMethodReqArgs(method);
+             size_t argsmax = (size_t)Cppyy::GetMethodNumArgs(method);
+             for (size_t i = argsmin; i <= argsmax; ++i) {
+                 CtorInfos_t methods1{methods};
+                 methods1.emplace_back(method, i);
+                 build_constructors(derivedName, base_infos, ctors, code, methods1, idx+1);
+             }
         }
     } else {
     // this is as deep as we go; start writing
@@ -83,16 +88,16 @@ static void build_constructors(
     // declare arguments
         std::vector<size_t> arg_tots; arg_tots.reserve(methods.size());
         for (Ctors_t::size_type i = 0; i < methods.size(); ++i) {
-            auto method = methods[i];
+            const auto& cinfo = methods[i];
             if (i != 0 && (arg_tots.back() || 1 < arg_tots.size())) code << ", ";
-            size_t nArgs = (size_t)Cppyy::GetMethodNumArgs(method);
+            size_t nArgs = cinfo.second;
             arg_tots.push_back(i == 0 ? nArgs : nArgs+arg_tots.back());
 
             if (i != 0) code << "__cppyy_internal::Sep*";
             size_t offset = (i != 0 ? arg_tots[i-1] : 0);
             for (size_t j = 0; j < nArgs; ++j) {
                 if (i != 0 || j != 0) code << ", ";
-                code << Cppyy::GetMethodArgType(method, j) << " a" << (j+offset);
+                code << Cppyy::GetMethodArgType(cinfo.first, j) << " a" << (j+offset);
             }
         }
         code << ") : ";
