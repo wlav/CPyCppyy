@@ -109,7 +109,11 @@ static void build_constructors(
             size_t first = (i != 0 ? arg_tots[i-1] : 0);
             for (size_t j = first; j < arg_tots[i]; ++j) {
                 if (j != first) code << ", ";
+                bool isRValue = CPyCppyy::Utility::Compound(\
+                    Cppyy::GetMethodArgType(methods[i].first, j-first)) == "&&";
+                if (isRValue) code << "std::move(";
                 code << "a" << j;
+                if (isRValue) code << ")";
             }
             code << ")";
         }
@@ -224,7 +228,8 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
                     Cppyy::TCppIndex_t nreq = Cppyy::GetMethodReqArgs(method);
                     if (nreq == 0) default_found = true;
                     else if (!cctor_found && nreq == 1) {
-                        if (TypeManip::clean_type(Cppyy::GetMethodArgType(method, 0), false) == binfo.bname_scoped)
+                        const std::string& argtype = Cppyy::GetMethodArgType(method, 0);
+                        if (Utility::Compound(argtype) == "&" && TypeManip::clean_type(argtype, false) == binfo.bname_scoped)
                             cctor_found = true;
                     }
                     ctors[ibase].push_back(method);
@@ -286,19 +291,15 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
     }
     Py_DECREF(clbs);
 
-// constructors: most are simply inherited, for use by the Python derived class
-    if (nBases == 1) {
-        const std::string& baseName = base_infos.front().bname;
-        code << "  using " << baseName << "::" << baseName << ";\n";
-    } else if (1 < nBases) {
-    // run recursive code, collecting all combinatorics
-        build_constructors(derivedName, base_infos, ctors, code);
-    }
+// constructors: build up from the argument types of the base class, for use by the Python
+// derived class (inheriting with/ "using" does not work b/c base class constructors may
+// have been deleted),
+    build_constructors(derivedName, base_infos, ctors, code);
 
 // for working with C++ templates, additional constructors are needed to make
 // sure the python object is properly carried, but they can only be generated
 // if the base class supports them
-    if (!has_constructors || (has_cctor == nBases && has_default == nBases))
+    if (1 < nBases && (!has_constructors || (has_cctor == nBases && has_default == nBases)))
         code << "  " << derivedName << "() {}\n";
     if (!has_constructors || has_cctor == nBases) {
         code << "  " << derivedName << "(const " << derivedName << "& other) : ";
