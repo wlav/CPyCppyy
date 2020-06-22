@@ -218,12 +218,12 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
         const auto& binfo = base_infos[ibase];
 
         const Cppyy::TCppIndex_t nMethods = Cppyy::GetNumMethods(binfo.btype);
-        bool cctor_found = false, default_found = false;
+        bool cctor_found = false, default_found = false, any_ctor_found = false;
         for (Cppyy::TCppIndex_t imeth = 0; imeth < nMethods; ++imeth) {
             Cppyy::TCppMethod_t method = Cppyy::GetMethod(binfo.btype, imeth);
 
             if (Cppyy::IsConstructor(method)) {
-                has_constructors = true;
+                any_ctor_found = true;
                 if (Cppyy::IsPublicMethod(method) || Cppyy::IsProtectedMethod(method)) {
                     Cppyy::TCppIndex_t nreq = Cppyy::GetMethodReqArgs(method);
                     if (nreq == 0) default_found = true;
@@ -261,8 +261,9 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
         }
 
     // count the cctors and default ctors to determine whether each base has one
-        if (cctor_found)   has_cctor   += 1;
-        if (default_found) has_default += 1;
+        if (cctor_found   || (!cctor_found && !any_ctor_found))   has_cctor   += 1;
+        if (default_found || (!default_found && !any_ctor_found)) has_default += 1;
+        if (any_ctor_found) has_constructors = true;
     }
 
 // try to locate left-overs in base classes
@@ -299,7 +300,7 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
 // for working with C++ templates, additional constructors are needed to make
 // sure the python object is properly carried, but they can only be generated
 // if the base class supports them
-    if (1 < nBases && (!has_constructors || (has_cctor == nBases && has_default == nBases)))
+    if (1 < nBases && (!has_constructors || has_default == nBases))
         code << "  " << derivedName << "() {}\n";
     if (!has_constructors || has_cctor == nBases) {
         code << "  " << derivedName << "(const " << derivedName << "& other) : ";
