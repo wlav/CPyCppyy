@@ -384,7 +384,7 @@ static bool AddTypeName(std::string& tmpl_name, PyObject* tn, PyObject* arg,
              if (ll == (PY_LONG_LONG)-1 && PyErr_Occurred()) {
                  PyErr_Clear();
                  PY_ULONG_LONG ull = PyLong_AsUnsignedLongLong(arg);
-                 if (ull == (UPY_ULONG_LONG)-1 && PyErr_Occurred()) {
+                 if (ull == (PY_ULONG_LONG)-1 && PyErr_Occurred()) {
                      PyErr_Clear();
                      tmpl_name.append("int");    // still out of range, will fail later
                  } else
