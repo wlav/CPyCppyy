@@ -16,7 +16,7 @@ extern bool gDictLookupActive;
 
 // additional converter functions
 unsigned long PyLongOrInt_AsULong(PyObject* pyobject);
-ULong64_t     PyLongOrInt_AsULong64(PyObject* pyobject);
+PY_ULONG_LONG PyLongOrInt_AsULong64(PyObject* pyobject);
 
 namespace Utility {
 

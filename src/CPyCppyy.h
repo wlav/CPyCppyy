@@ -35,32 +35,6 @@
 #include "Python.h"
 #include <sys/types.h>
 
-// selected ROOT types from RtypesCore.h
-#ifdef R__INT16
-typedef long           Int_t;       //Signed integer 4 bytes
-typedef unsigned long  UInt_t;      //Unsigned integer 4 bytes
-#else
-typedef int            Int_t;       //Signed integer 4 bytes (int)
-typedef unsigned int   UInt_t;      //Unsigned integer 4 bytes (unsigned int)
-#endif
-#ifdef R__B64    // Note: Long_t and ULong_t are currently not portable types
-typedef long           Long_t;      //Signed long integer 8 bytes (long)
-typedef unsigned long  ULong_t;     //Unsigned long integer 8 bytes (unsigned long)
-#else
-typedef long           Long_t;      //Signed long integer 4 bytes (long)
-typedef unsigned long  ULong_t;     //Unsigned long integer 4 bytes (unsigned long)
-#endif
-typedef float          Float16_t;   //Float 4 bytes written with a truncated mantissa
-typedef double         Double32_t;  //Double 8 bytes in memory, written as a 4 bytes float
-typedef long double    LongDouble_t;//Long Double
-#ifdef _WIN32
-typedef __int64          Long64_t;  //Portable signed long integer 8 bytes
-typedef unsigned __int64 ULong64_t; //Portable unsigned long integer 8 bytes
-#else
-typedef long long          Long64_t; //Portable signed long integer 8 bytes
-typedef unsigned long long ULong64_t;//Portable unsigned long integer 8 bytes
-#endif
-
 typedef Py_ssize_t dim_t;
 typedef dim_t* dims_t;
 

@@ -15,6 +15,27 @@
 #define CPPYY_IMPORT extern
 #endif
 
+// some more types; assumes Cppyy.h follows Python.h
+#ifndef PY_LONG_LONG
+#ifdef _WIN32
+typedef __int64 PY_LONG_LONG;
+#else
+typedef long long PY_LONG_LONG;
+#endif
+#endif
+
+#ifndef PY_ULONG_LONG
+#ifdef _WIN32
+typedef unsigned __int64   PY_ULONG_LONG;
+#else
+typedef unsigned long long PY_ULONG_LONG;
+#endif
+#endif
+
+#ifndef PY_LONG_DOUBLE
+typedef long double PY_LONG_DOUBLE;
+#endif
+
 
 namespace Cppyy {
 
@@ -77,13 +98,13 @@ namespace Cppyy {
     CPPYY_IMPORT
     long          CallL(TCppMethod_t method, TCppObject_t self, size_t nargs, void* args);
     CPPYY_IMPORT
-    Long64_t      CallLL(TCppMethod_t method, TCppObject_t self, size_t nargs, void* args);
+    PY_LONG_LONG  CallLL(TCppMethod_t method, TCppObject_t self, size_t nargs, void* args);
     CPPYY_IMPORT
     float         CallF(TCppMethod_t method, TCppObject_t self, size_t nargs, void* args);
     CPPYY_IMPORT
     double        CallD(TCppMethod_t method, TCppObject_t self, size_t nargs, void* args);
     CPPYY_IMPORT
-    LongDouble_t  CallLD(TCppMethod_t method, TCppObject_t self, size_t nargs, void* args);
+    PY_LONG_DOUBLE CallLD(TCppMethod_t method, TCppObject_t self, size_t nargs, void* args);
     CPPYY_IMPORT
     void*         CallR(TCppMethod_t method, TCppObject_t self, size_t nargs, void* args);
     CPPYY_IMPORT

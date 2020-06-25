@@ -65,17 +65,17 @@ static inline rtype GILCall##tcode(                                          \
 }
 #endif
 
-CPPYY_IMPL_GILCALL(void,          V)
-CPPYY_IMPL_GILCALL(unsigned char, B)
-CPPYY_IMPL_GILCALL(char,          C)
-CPPYY_IMPL_GILCALL(short,         H)
-CPPYY_IMPL_GILCALL(Int_t,         I)
-CPPYY_IMPL_GILCALL(Long_t,        L)
-CPPYY_IMPL_GILCALL(Long64_t,      LL)
-CPPYY_IMPL_GILCALL(float,         F)
-CPPYY_IMPL_GILCALL(double,        D)
-CPPYY_IMPL_GILCALL(LongDouble_t,  LD)
-CPPYY_IMPL_GILCALL(void*,         R)
+CPPYY_IMPL_GILCALL(void,           V)
+CPPYY_IMPL_GILCALL(unsigned char,  B)
+CPPYY_IMPL_GILCALL(char,           C)
+CPPYY_IMPL_GILCALL(short,          H)
+CPPYY_IMPL_GILCALL(int,            I)
+CPPYY_IMPL_GILCALL(long,           L)
+CPPYY_IMPL_GILCALL(PY_LONG_LONG,   LL)
+CPPYY_IMPL_GILCALL(float,          F)
+CPPYY_IMPL_GILCALL(double,         D)
+CPPYY_IMPL_GILCALL(PY_LONG_DOUBLE, LD)
+CPPYY_IMPL_GILCALL(void*,          R)
 
 static inline Cppyy::TCppObject_t GILCallO(Cppyy::TCppMethod_t method,
     Cppyy::TCppObject_t self, CPyCppyy::CallContext* ctxt, Cppyy::TCppType_t klass)
@@ -262,7 +262,7 @@ PyObject* CPyCppyy::LongExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python long return value
-    return PyLong_FromLong((Long_t)GILCallL(method, self, ctxt));
+    return PyLong_FromLong((long)GILCallL(method, self, ctxt));
 }
 
 //----------------------------------------------------------------------------
@@ -270,7 +270,7 @@ PyObject* CPyCppyy::ULongExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python unsigned long return value
-    return PyLong_FromUnsignedLong((ULong_t)GILCallLL(method, self, ctxt));
+    return PyLong_FromUnsignedLong((unsigned long)GILCallLL(method, self, ctxt));
 }
 
 //----------------------------------------------------------------------------
@@ -278,7 +278,7 @@ PyObject* CPyCppyy::LongLongExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python long long return value
-    Long64_t result = GILCallLL(method, self, ctxt);
+    PY_LONG_LONG result = GILCallLL(method, self, ctxt);
     return PyLong_FromLongLong(result);
 }
 
@@ -287,7 +287,7 @@ PyObject* CPyCppyy::ULongLongExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python unsigned long long return value
-    ULong64_t result = (ULong64_t)GILCallLL(method, self, ctxt);
+    PY_ULONG_LONG result = (PY_ULONG_LONG)GILCallLL(method, self, ctxt);
     return PyLong_FromUnsignedLongLong(result);
 }
 
@@ -352,22 +352,22 @@ PyObject* CPyCppyy::name##RefExecutor::Execute(                              \
     }                                                                        \
 }
 
-CPPYY_IMPL_REFEXEC(Bool,   bool,   Long_t,   CPyCppyy_PyBool_FromLong, PyLong_AsLong)
-CPPYY_IMPL_REFEXEC(Char,   char,   Long_t,   CPyCppyy_PyText_FromLong, PyLong_AsLong)
-CPPYY_IMPL_REFEXEC(UChar,  unsigned char,  ULong_t,  CPyCppyy_PyText_FromULong, PyLongOrInt_AsULong)
-CPPYY_IMPL_REFEXEC(Int8,   int8_t,  Long_t,  PyInt_FromLong, PyLong_AsLong)
-CPPYY_IMPL_REFEXEC(UInt8,  uint8_t, ULong_t, PyInt_FromLong, PyLongOrInt_AsULong)
-CPPYY_IMPL_REFEXEC(Short,  short,          Long_t,   PyInt_FromLong,     PyLong_AsLong)
-CPPYY_IMPL_REFEXEC(UShort, unsigned short, ULong_t,  PyInt_FromLong,     PyLongOrInt_AsULong)
-CPPYY_IMPL_REFEXEC(Int,    Int_t,    Long_t,   PyInt_FromLong,     PyLong_AsLong)
-CPPYY_IMPL_REFEXEC(UInt,   UInt_t,   ULong_t,  PyLong_FromUnsignedLong, PyLongOrInt_AsULong)
-CPPYY_IMPL_REFEXEC(Long,   Long_t,   Long_t,   PyLong_FromLong,    PyLong_AsLong)
-CPPYY_IMPL_REFEXEC(ULong,  ULong_t,  ULong_t,  PyLong_FromUnsignedLong, PyLongOrInt_AsULong)
-CPPYY_IMPL_REFEXEC(LongLong,  Long64_t,  Long64_t,   PyLong_FromLongLong,         PyLong_AsLongLong)
-CPPYY_IMPL_REFEXEC(ULongLong, ULong64_t, ULong64_t,  PyLong_FromUnsignedLongLong, PyLongOrInt_AsULong64)
-CPPYY_IMPL_REFEXEC(Float,  float,  double, PyFloat_FromDouble, PyFloat_AsDouble)
-CPPYY_IMPL_REFEXEC(Double, double, double, PyFloat_FromDouble, PyFloat_AsDouble)
-CPPYY_IMPL_REFEXEC(LongDouble, LongDouble_t, LongDouble_t, PyFloat_FromDouble, PyFloat_AsDouble)
+CPPYY_IMPL_REFEXEC(Bool,       bool,           long,           CPyCppyy_PyBool_FromLong,    PyLong_AsLong)
+CPPYY_IMPL_REFEXEC(Char,       char,           long,           CPyCppyy_PyText_FromLong,    PyLong_AsLong)
+CPPYY_IMPL_REFEXEC(UChar,      unsigned char,  unsigned long,  CPyCppyy_PyText_FromULong,   PyLongOrInt_AsULong)
+CPPYY_IMPL_REFEXEC(Int8,       int8_t,         long,           PyInt_FromLong,              PyLong_AsLong)
+CPPYY_IMPL_REFEXEC(UInt8,      uint8_t,        unsigned long,  PyInt_FromLong,              PyLongOrInt_AsULong)
+CPPYY_IMPL_REFEXEC(Short,      short,          long,           PyInt_FromLong,              PyLong_AsLong)
+CPPYY_IMPL_REFEXEC(UShort,     unsigned short, unsigned long,  PyInt_FromLong,              PyLongOrInt_AsULong)
+CPPYY_IMPL_REFEXEC(Int,        int,            long,           PyInt_FromLong,              PyLong_AsLong)
+CPPYY_IMPL_REFEXEC(UInt,       unsigned int,   unsigned long,  PyLong_FromUnsignedLong,     PyLongOrInt_AsULong)
+CPPYY_IMPL_REFEXEC(Long,       long,           long,           PyLong_FromLong,             PyLong_AsLong)
+CPPYY_IMPL_REFEXEC(ULong,      unsigned long,  unsigned long,  PyLong_FromUnsignedLong,     PyLongOrInt_AsULong)
+CPPYY_IMPL_REFEXEC(LongLong,   PY_LONG_LONG,   PY_LONG_LONG,   PyLong_FromLongLong,         PyLong_AsLongLong)
+CPPYY_IMPL_REFEXEC(ULongLong,  PY_ULONG_LONG,  PY_ULONG_LONG,  PyLong_FromUnsignedLongLong, PyLongOrInt_AsULong64)
+CPPYY_IMPL_REFEXEC(Float,      float,          double,         PyFloat_FromDouble,          PyFloat_AsDouble)
+CPPYY_IMPL_REFEXEC(Double,     double,         double,         PyFloat_FromDouble,          PyFloat_AsDouble)
+CPPYY_IMPL_REFEXEC(LongDouble, PY_LONG_DOUBLE, PY_LONG_DOUBLE, PyFloat_FromDouble,          PyFloat_AsDouble)
 
 template<typename T>
 static inline PyObject* PyComplex_FromComplex(const std::complex<T>& c) {
@@ -475,7 +475,7 @@ PyObject* CPyCppyy::VoidArrayExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, construct python long return value
-    Long_t* result = (Long_t*)GILCallR(method, self, ctxt);
+    intptr_t* result = (intptr_t*)GILCallR(method, self, ctxt);
     if (!result) {
         Py_INCREF(gNullPtrObject);
         return gNullPtrObject;

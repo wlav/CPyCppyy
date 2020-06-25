@@ -147,15 +147,15 @@ unsigned long CPyCppyy::PyLongOrInt_AsULong(PyObject* pyobject)
 }
 
 //----------------------------------------------------------------------------
-ULong64_t CPyCppyy::PyLongOrInt_AsULong64(PyObject* pyobject)
+PY_ULONG_LONG CPyCppyy::PyLongOrInt_AsULong64(PyObject* pyobject)
 {
 // Convert <pyobject> to C++ unsigned long long, with bounds checking.
-    ULong64_t ull = PyLong_AsUnsignedLongLong(pyobject);
+    PY_ULONG_LONG ull = PyLong_AsUnsignedLongLong(pyobject);
     if (PyErr_Occurred() && PyInt_Check(pyobject)) {
         PyErr_Clear();
         long i = PyInt_AS_LONG(pyobject);
         if (0 <= i) {
-            ull = (ULong64_t)i;
+            ull = (PY_ULONG_LONG)i;
         } else {
             PyErr_SetString(PyExc_ValueError,
                 "can\'t convert negative value to unsigned long long");
@@ -380,35 +380,35 @@ static bool AddTypeName(std::string& tmpl_name, PyObject* tn, PyObject* arg,
             long l = PyInt_AS_LONG(arg);
             tmpl_name.append((l < INT_MIN || INT_MAX < l) ? "long" : "int");
 #else
-             Long64_t ll = PyLong_AsLongLong(arg);
-             if (ll == (Long64_t)-1 && PyErr_Occurred()) {
+             PY_LONG_LONG ll = PyLong_AsLongLong(arg);
+             if (ll == (PY_LONG_LONG)-1 && PyErr_Occurred()) {
                  PyErr_Clear();
-                 ULong64_t ull = PyLong_AsUnsignedLongLong(arg);
-                 if (ull == (ULong64_t)-1 && PyErr_Occurred()) {
+                 PY_ULONG_LONG ull = PyLong_AsUnsignedLongLong(arg);
+                 if (ull == (UPY_ULONG_LONG)-1 && PyErr_Occurred()) {
                      PyErr_Clear();
                      tmpl_name.append("int");    // still out of range, will fail later
                  } else
-                     tmpl_name.append("ULong64_t");   // since already failed long long
+                     tmpl_name.append("unsigned long longt");   // since already failed long long
              } else
                  tmpl_name.append((ll < INT_MIN || INT_MAX < ll) ? \
-                     ((ll < LONG_MIN || LONG_MAX < ll) ? "Long64_t" : "long") : "int");
+                     ((ll < LONG_MIN || LONG_MAX < ll) ? "long long" : "long") : "int");
 #endif
         } else
             tmpl_name.append("int");
 #if PY_VERSION_HEX < 0x03000000
     } else if (tn == (PyObject*)&PyLong_Type) {
         if (arg) {
-             Long64_t ll = PyLong_AsLongLong(arg);
-             if (ll == (Long64_t)-1 && PyErr_Occurred()) {
+             PY_LONG_LONG ll = PyLong_AsLongLong(arg);
+             if (ll == (PY_LONG_LONG)-1 && PyErr_Occurred()) {
                  PyErr_Clear();
-                 ULong64_t ull = PyLong_AsUnsignedLongLong(arg);
-                 if (ull == (ULong64_t)-1 && PyErr_Occurred()) {
+                 PY_ULONG_LONG ull = PyLong_AsUnsignedLongLong(arg);
+                 if (ull == (PY_ULONG_LONG)-1 && PyErr_Occurred()) {
                      PyErr_Clear();
                      tmpl_name.append("long");   // still out of range, will fail later
                  } else
-                     tmpl_name.append("ULong64_t");   // since already failed long long
+                     tmpl_name.append("unsigned long long");    // since already failed long long
              } else
-                 tmpl_name.append((ll < LONG_MIN || LONG_MAX < ll) ? "Long64_t" : "long");
+                 tmpl_name.append((ll < LONG_MIN || LONG_MAX < ll) ? "long long" : "long");
         } else
             tmpl_name.append("long");
 #endif
@@ -712,7 +712,7 @@ Py_ssize_t CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, v
                 PyObject* pyvalue2 = CPyCppyy_PyText_FromFormat(
                     (char*)"%s and given element size (%ld) do not match needed (%d)",
                     CPyCppyy_PyText_AsString(pyvalue),
-                    seqmeths->sq_length ? (Long_t)(buflen/(*(seqmeths->sq_length))(pyobject)) : (Long_t)buflen,
+                    seqmeths->sq_length ? (long)(buflen/(*(seqmeths->sq_length))(pyobject)) : (long)buflen,
                     size);
                 Py_DECREF(pyvalue);
                 PyErr_Restore(pytype, pyvalue2, pytrace);

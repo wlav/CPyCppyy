@@ -639,8 +639,8 @@ CPPYY_IMPL_BASIC_CONST_REFCONVERTER(Int,    int,            c_int,       CPyCppy
 CPPYY_IMPL_BASIC_CONST_REFCONVERTER(UInt,   unsigned int,   c_uint,      PyLongOrInt_AsULong)
 CPPYY_IMPL_BASIC_CONST_REFCONVERTER(Long,   long,           c_long,      CPyCppyy_PyLong_AsStrictLong)
 CPPYY_IMPL_BASIC_CONST_REFCONVERTER(ULong,  unsigned long,  c_ulong,     PyLongOrInt_AsULong)
-CPPYY_IMPL_BASIC_CONST_REFCONVERTER(LLong,  Long64_t,       c_longlong,  PyLong_AsLongLong)
-CPPYY_IMPL_BASIC_CONST_REFCONVERTER(ULLong, ULong64_t,      c_ulonglong, PyLongOrInt_AsULong64)
+CPPYY_IMPL_BASIC_CONST_REFCONVERTER(LLong,  PY_LONG_LONG,   c_longlong,  PyLong_AsLongLong)
+CPPYY_IMPL_BASIC_CONST_REFCONVERTER(ULLong, PY_ULONG_LONG,  c_ulonglong, PyLongOrInt_AsULong64)
 
 //----------------------------------------------------------------------------
 bool CPyCppyy::IntRefConverter::SetArg(
@@ -718,7 +718,7 @@ CPPYY_IMPL_REFCONVERTER(LLong,   c_longlong,   long long,          'q');
 CPPYY_IMPL_REFCONVERTER(ULLong,  c_ulonglong,  unsigned long long, 'Q');
 CPPYY_IMPL_REFCONVERTER(Float,   c_float,      float,              'f');
 CPPYY_IMPL_REFCONVERTER_FROM_MEMORY(Double, c_double);
-CPPYY_IMPL_REFCONVERTER(LDouble, c_longdouble, LongDouble_t,       'D');
+CPPYY_IMPL_REFCONVERTER(LDouble, c_longdouble, PY_LONG_DOUBLE,     'D');
 
 
 //----------------------------------------------------------------------------
@@ -898,22 +898,22 @@ bool CPyCppyy::ULongConverter::ToMemory(PyObject* value, void* address)
 PyObject* CPyCppyy::UIntConverter::FromMemory(void* address)
 {
 // construct python object from C++ unsigned int read at <address>
-    return PyLong_FromUnsignedLong(*((UInt_t*)address));
+    return PyLong_FromUnsignedLong(*((unsigned int*)address));
 }
 
 bool CPyCppyy::UIntConverter::ToMemory(PyObject* value, void* address)
 {
 // convert <value> to C++ unsigned int, write it at <address>
-    ULong_t u = PyLongOrInt_AsULong(value);
+    unsigned long u = PyLongOrInt_AsULong(value);
     if (u == (unsigned long)-1 && PyErr_Occurred())
         return false;
 
-    if (u > (ULong_t)UINT_MAX) {
+    if (u > (unsigned long)UINT_MAX) {
         PyErr_SetString(PyExc_OverflowError, "value too large for unsigned int");
         return false;
     }
 
-    *((UInt_t*)address) = (UInt_t)u;
+    *((unsigned int*)address) = (unsigned int)u;
     return true;
 }
 
@@ -924,7 +924,7 @@ CPPYY_IMPL_BASIC_CONVERTER(
     Double, double, double, c_double, PyFloat_FromDouble, PyFloat_AsDouble, 'd')
 
 CPPYY_IMPL_BASIC_CONVERTER(
-    LDouble, LongDouble_t, LongDouble_t, c_longdouble, PyFloat_FromDouble, PyFloat_AsDouble, 'g')
+    LDouble, PY_LONG_DOUBLE, PY_LONG_DOUBLE, c_longdouble, PyFloat_FromDouble, PyFloat_AsDouble, 'g')
 
 CPyCppyy::ComplexDConverter::ComplexDConverter(bool keepControl) :
     InstanceConverter(Cppyy::GetScope("std::complex<double>"), keepControl) {}
@@ -990,9 +990,9 @@ bool CPyCppyy::DoubleRefConverter::SetArg(
 }
 
 //----------------------------------------------------------------------------
-CPPYY_IMPL_BASIC_CONST_REFCONVERTER(Float,   float,        c_float,      PyFloat_AsDouble)
-CPPYY_IMPL_BASIC_CONST_REFCONVERTER(Double,  double,       c_double,     PyFloat_AsDouble)
-CPPYY_IMPL_BASIC_CONST_REFCONVERTER(LDouble, LongDouble_t, c_longdouble, PyFloat_AsDouble)
+CPPYY_IMPL_BASIC_CONST_REFCONVERTER(Float,   float,          c_float,      PyFloat_AsDouble)
+CPPYY_IMPL_BASIC_CONST_REFCONVERTER(Double,  double,         c_double,     PyFloat_AsDouble)
+CPPYY_IMPL_BASIC_CONST_REFCONVERTER(LDouble, PY_LONG_DOUBLE, c_longdouble, PyFloat_AsDouble)
 
 //----------------------------------------------------------------------------
 bool CPyCppyy::VoidConverter::SetArg(PyObject*, Parameter&, CallContext*)
@@ -1024,16 +1024,16 @@ bool CPyCppyy::LLongConverter::SetArg(
 PyObject* CPyCppyy::LLongConverter::FromMemory(void* address)
 {
 // construct python object from C++ long long read at <address>
-    return PyLong_FromLongLong(*(Long64_t*)address);
+    return PyLong_FromLongLong(*(PY_LONG_LONG*)address);
 }
 
 bool CPyCppyy::LLongConverter::ToMemory(PyObject* value, void* address)
 {
 // convert <value> to C++ long long, write it at <address>
-    Long64_t ll = PyLong_AsLongLong(value);
+    PY_LONG_LONG ll = PyLong_AsLongLong(value);
     if (ll == -1 && PyErr_Occurred())
         return false;
-    *((Long64_t*)address) = ll;
+    *((PY_LONG_LONG*)address) = ll;
     return true;
 }
 
@@ -1052,16 +1052,16 @@ bool CPyCppyy::ULLongConverter::SetArg(
 PyObject* CPyCppyy::ULLongConverter::FromMemory(void* address)
 {
 // construct python object from C++ unsigned long long read at <address>
-    return PyLong_FromUnsignedLongLong(*(ULong64_t*)address);
+    return PyLong_FromUnsignedLongLong(*(PY_ULONG_LONG*)address);
 }
 
 bool CPyCppyy::ULLongConverter::ToMemory(PyObject* value, void* address)
 {
 // convert <value> to C++ unsigned long long, write it at <address>
-    Long64_t ull = PyLongOrInt_AsULong64(value);
+    PY_ULONG_LONG ull = PyLongOrInt_AsULong64(value);
     if (PyErr_Occurred())
         return false;
-    *((ULong64_t*)address) = ull;
+    *((PY_ULONG_LONG*)address) = ull;
     return true;
 }
 
