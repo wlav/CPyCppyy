@@ -3129,11 +3129,6 @@ public:
         gf["ULong64_t*"] =                  gf["unsigned long long*"];
         gf["ULong64_t&"] =                  gf["unsigned long long&"];
         gf["const ULong64_t&"] =            gf["const unsigned long long&"];
-        gf["Float16_t"] =                   gf["float"];
-        gf["const Float16_t&"] =            gf["const float&"];
-        gf["Double32_t"] =                  gf["double"];
-        gf["Double32_t&"] =                 gf["double&"];
-        gf["const Double32_t&"] =           gf["const double&"];
 
     // factories for special cases
         gf["nullptr_t"] =                   (cf_t)+[](dims_t) { static NullptrConverter c{};        return &c;};

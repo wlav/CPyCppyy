@@ -981,10 +981,6 @@ public:
         gf["ULong64_t"] =                   gf["unsigned long long"];
         gf["ULong64_t&"] =                  gf["unsigned long long&"];
         gf["ULong64_t*"] =                  gf["unsigned long long*"];
-        gf["Float16_t"] =                   gf["float"];
-        gf["Float16_t&"] =                  gf["float&"];
-        gf["Double32_t"] =                  gf["double"];
-        gf["Double32_t&"] =                 gf["double&"];
 
     // factories for special cases
         gf["const char*"] =                 (ef_t)+[]() { static CStringExecutor e{};     return &e; };
