@@ -39,7 +39,7 @@ def is_manylinux():
 
 def _get_link_libraries():
     if 'win32' in sys.platform:
-        return ['libcppyy_backend', 'libCore']
+        return ['libcppyy_backend', 'libCoreLegacy']
     return []
 
 def _get_link_dirs():
