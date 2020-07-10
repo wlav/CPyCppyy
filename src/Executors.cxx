@@ -975,6 +975,14 @@ public:
         gf["std::uint8_t"] =                gf["uint8_t"];
         gf["std::uint8_t&"] =               gf["uint8_t&"];
         gf["const std::uint8_t&"] =         gf["const uint8_t&"];
+#ifdef _WIN32
+        gf["__int64"] =                     gf["long long"];
+        gf["__int64&"] =                    gf["long long&"];
+        gf["__int64*"] =                    gf["long long*"];
+        gf["unsigned __int64"] =            gf["unsigned long long"];
+        gf["unsigned __int64&"] =           gf["unsigned long long&"];
+        gf["unsigned __int64*"] =           gf["unsigned long long*"];
+#endif
 
     // factories for special cases
         gf["const char*"] =                 (ef_t)+[]() { static CStringExecutor e{};     return &e; };

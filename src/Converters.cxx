@@ -3121,6 +3121,18 @@ public:
         gf["internal_enum_type_t"] =        gf["int"];
         gf["internal_enum_type_t&"] =       gf["int&"];
         gf["const internal_enum_type_t&"] = gf["const int&"];
+#ifdef _WIN32
+        gf["__int64"] =                     gf["long long"];
+        gf["const __int64&"] =              gf["const long long&"];
+        gf["__int64&"] =                    gf["long long&"];
+        gf["__int64*"] =                    gf["long long*"];
+        gf["__int64**"] =                   gf["long long**"];
+        gf["unsigned __int64"] =            gf["unsigned long long"];
+        gf["const unsigned __int64&"] =     gf["const unsigned long long&"];
+        gf["unsigned __int64&"] =           gf["unsigned long long&"];
+        gf["unsigned __int64*"] =           gf["unsigned long long*"];
+        gf["unsigned __int64**"] =          gf["unsigned long long**"];
+#endif
 
     // factories for special cases
         gf["nullptr_t"] =                   (cf_t)+[](dims_t) { static NullptrConverter c{};        return &c;};
