@@ -18,6 +18,7 @@
 #define NEED_SIGJMP 1
 #endif
 
+namespace CppyyLegacy {
 struct ExceptionContext_t {
 #ifdef NEED_SIGJMP
     sigjmp_buf fBuf;
@@ -25,6 +26,7 @@ struct ExceptionContext_t {
     jmp_buf fBuf;
 #endif
 };
+}
 
 #ifdef NEED_SIGJMP
 # define SETJMP(buf) sigsetjmp(buf,1)
@@ -34,14 +36,14 @@ struct ExceptionContext_t {
 
 #define RETRY \
     { \
-        static ExceptionContext_t R__curr, *R__old = gException; \
+        static CppyyLegacy::ExceptionContext_t R__curr, *R__old = gException; \
         int R__code; \
         gException = &R__curr; \
         R__code = SETJMP(gException->fBuf); if (R__code) { }; {
 
 #define TRY \
     { \
-        static ExceptionContext_t R__curr, *R__old = gException; \
+        static CppyyLegacy::ExceptionContext_t R__curr, *R__old = gException; \
         int R__code; \
         gException = &R__curr; \
         if ((R__code = SETJMP(gException->fBuf)) == 0) {
@@ -57,6 +59,6 @@ struct ExceptionContext_t {
         gException = R__old; \
     }
 
-CPYCPPYY_IMPORT ExceptionContext_t *gException;
+CPYCPPYY_IMPORT CppyyLegacy::ExceptionContext_t *gException;
 
 #endif
