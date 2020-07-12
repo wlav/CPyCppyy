@@ -563,7 +563,6 @@ static PyObject* op_str_internal(PyObject* pyobj, PyObject* lshift, bool isBound
 
 static PyObject* op_str(CPPInstance* self)
 {
-#ifndef _WIN64
 // Forward to C++ insertion operator if available, otherwise forward to repr.
     PyObject* result = nullptr;
     PyObject* pyobj = (PyObject*)self;
@@ -594,7 +593,6 @@ static PyObject* op_str(CPPInstance* self)
 
     if (result)
         return result;
-#endif  //!_WIN64
 
     return op_repr(self);
 }
