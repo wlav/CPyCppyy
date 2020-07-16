@@ -2038,8 +2038,15 @@ bool CPyCppyy::InstancePtrPtrConverter<ISREFERENCE>::SetArg(
 {
 // convert <pyobject> to C++ instance**, set arg for call
     CPPInstance* pyobj = GetCppInstance(pyobject);
-    if (!pyobj)
+    if (!pyobj) {
+        if (!ISREFERENCE && ((void*)pyobject == (void*)gNullPtrObject)) {
+        // allow nullptr as a special case
+            para.fValue.fVoidp = nullptr;
+            para.fTypeCode = 'p';
+            return true;
+        }
         return false;              // not a cppyy object (TODO: handle SWIG etc.)
+    }
 
     if (Cppyy::IsSubtype(pyobj->ObjectIsA(), fClass)) {
     // depending on memory policy, some objects need releasing when passed into functions
@@ -2072,8 +2079,14 @@ bool CPyCppyy::InstancePtrPtrConverter<ISREFERENCE>::ToMemory(PyObject* value, v
 {
 // convert <value> to C++ instance*, write it at <address>
     CPPInstance* pyobj = GetCppInstance(value);
-    if (!pyobj)
+    if (!pyobj) {
+        if ((void*)value == (void*)gNullPtrObject) {
+        // allow nullptr as a special case
+            *(void**)address = nullptr;
+            return true;
+        }
         return false;              // not a cppyy object (TODO: handle SWIG etc.)
+    }
 
     if (Cppyy::IsSubtype(pyobj->ObjectIsA(), fClass)) {
     // depending on memory policy, some objects need releasing when passed into functions
