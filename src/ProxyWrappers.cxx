@@ -848,8 +848,8 @@ PyObject* CPyCppyy::BindCppObjectNoCast(Cppyy::TCppObject_t address,
 
 // bind, register and return if successful
     if (pyobj != 0) { // fill proxy value?
-        unsigned objflags =
-            (isRef ? CPPInstance::kIsReference : 0) | (isValue ? CPPInstance::kIsValue : 0) | (flags & CPPInstance::kIsOwner);
+        unsigned objflags = flags & \
+            (CPPInstance::kIsReference | CPPInstance::kIsValue | CPPInstance::kIsOwner | CPPInstance::kIsActual);
         pyobj->Set(address, (CPPInstance::EFlags)objflags);
 
         if (smart_type)
@@ -889,21 +889,28 @@ PyObject* CPyCppyy::BindCppObject(Cppyy::TCppObject_t address,
     bool isRef = flags & CPPInstance::kIsReference;
 
 // downcast to real class for object returns, unless pinned
+// TODO: should the memory regulator for klass be searched first, so that if
+// successful, no down-casting is attempted?
+// TODO: optimize for final classes
+    unsigned new_flags = flags;
     if (!isRef && (gPinnedTypes.empty() || gPinnedTypes.find(klass) == gPinnedTypes.end())) {
         Cppyy::TCppType_t clActual = Cppyy::GetActualClass(klass, address);
 
-        if (clActual && clActual != klass) {
-            intptr_t offset = Cppyy::GetBaseOffset(
-                clActual, klass, address, -1 /* down-cast */, true /* report errors */);
-            if (offset != -1) {   // may fail if clActual not fully defined
-                address = (void*)((intptr_t)address + offset);
-                klass = clActual;
+        if (clActual) {
+            if (clActual != klass) {
+                intptr_t offset = Cppyy::GetBaseOffset(
+                    clActual, klass, address, -1 /* down-cast */, true /* report errors */);
+                if (offset != -1) {   // may fail if clActual not fully defined
+                    address = (void*)((intptr_t)address + offset);
+                    klass = clActual;
+                }
             }
+            new_flags |= CPPInstance::kIsActual;
         }
     }
 
 // actual binding (returned object may be zero w/ a python exception set)
-    return BindCppObjectNoCast(address, klass, flags);
+    return BindCppObjectNoCast(address, klass, new_flags);
 }
 
 //----------------------------------------------------------------------------

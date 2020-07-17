@@ -251,6 +251,10 @@ void CPyCppyy::CPPDataMember::Set(Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t i
         fFlags |= kIsConstData;
     }
 
+// if this data member is an array, the conversion needs to be pointer to object for instances,
+// to prevent the need for copying in the conversion
+    if (ndim && fullType.back() != '*' && Cppyy::GetScope(fullType)) fullType += '*';
+
     fConverter = CreateConverter(fullType, dims.empty() ? nullptr : dims.data());
 }
 

@@ -428,6 +428,22 @@ static inline PyObject* eqneq_binop(CPPClass* klass, PyObject* self, PyObject* o
     Py_RETURN_TRUE;
 }
 
+static inline void* cast_actual(void* obj) {
+    void* address = ((CPPInstance*)obj)->GetObject();
+    if (((CPPInstance*)obj)->fFlags & CPPInstance::kIsActual)
+        return address;
+
+    Cppyy::TCppType_t klass = ((CPPClass*)Py_TYPE((PyObject*)obj))->fCppType;
+    Cppyy::TCppType_t clActual = Cppyy::GetActualClass(klass, address);
+    if (clActual && clActual != klass) {
+        intptr_t offset = Cppyy::GetBaseOffset(
+             clActual, klass, address, -1 /* down-cast */, true /* report errors */);
+        if (offset != -1) address = (void*)((intptr_t)address + offset);
+    }
+
+    return address;
+}
+
 static PyObject* op_richcompare(CPPInstance* self, PyObject* other, int op)
 {
 // Rich set of comparison objects; only equals and not-equals are defined.
@@ -448,16 +464,24 @@ static PyObject* op_richcompare(CPPInstance* self, PyObject* other, int op)
         result = eqneq_binop((CPPClass*)Py_TYPE(other), other, (PyObject*)self, op);
     if (result) return result;
 
-// default behavior: type + held pointer value defines identity (covers if
-// other is not actually an CPPInstance, as ob_type will be unequal)
+// default behavior: type + held pointer value defines identity; if both are
+// CPPInstance objects, perform an additional autocast if need be
     bool bIsEq = false;
-    if (Py_TYPE(self) == Py_TYPE(other) && \
-            self->GetObject() == ((CPPInstance*)other)->GetObject())
-        bIsEq = true;
 
-    if ((op == Py_EQ && bIsEq) || (op == Py_NE && !bIsEq)) {
-        Py_RETURN_TRUE;
+    if ((Py_TYPE(self) == Py_TYPE(other) && \
+            self->GetObject() == ((CPPInstance*)other)->GetObject())) {
+    // direct match
+        bIsEq = true;
+    } else if (CPPInstance_Check(other)) {
+    // try auto-cast match
+        void* addr1 = cast_actual(self);
+        void* addr2 = cast_actual(other);
+        bIsEq = addr1 && addr2 && (addr1 == addr2);
     }
+
+    if ((op == Py_EQ && bIsEq) || (op == Py_NE && !bIsEq))
+        Py_RETURN_TRUE;
+
     Py_RETURN_FALSE;
 }
 

@@ -119,7 +119,8 @@ PyObject* CPyCppyy::CPPConstructor::Call(
     // decided by the method proxy (which carries a creator flag) upon return
         self->Set((void*)address);
 
-    // TODO: consistent up or down cast ...
+    // mark as actual to prevent needless auto-casting and regsiter on its class
+        self->fFlags |= CPPInstance::kIsActual;
         MemoryRegulator::RegisterPyObject(self, (Cppyy::TCppObject_t)address);
 
     // handling smart types this way is deeply fugly, but if CPPInstance sets the proper

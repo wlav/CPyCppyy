@@ -516,6 +516,11 @@ std::string CPyCppyy::Utility::ConstructTemplateArgs(
 }
 
 //----------------------------------------------------------------------------
+static inline bool check_scope(const std::string& name)
+{
+    return (bool)Cppyy::GetScope(CPyCppyy::TypeManip::clean_type(Cppyy::ResolveName(name)));
+}
+
 void CPyCppyy::Utility::ConstructCallbackPreamble(const std::string& retType,
     const std::vector<std::string>& argtypes, std::ostringstream& code)
 {
@@ -532,8 +537,12 @@ void CPyCppyy::Utility::ConstructCallbackPreamble(const std::string& retType,
         code << "    CPYCPPYY_STATIC std::vector<std::unique_ptr<CPyCppyy::Converter, std::function<void(CPyCppyy::Converter*)>>> argcvs;\n"
              << "    if (argcvs.empty()) {\n"
              << "      argcvs.reserve(" << nArgs << ");\n";
-        for (int i = 0; i < nArgs; ++i)
-            code << "      argcvs.emplace_back(CPyCppyy::CreateConverter(\"" << argtypes[i] << "\"), CPyCppyy::DestroyConverter);\n";
+        for (int i = 0; i < nArgs; ++i) {
+            const std::string& at = argtypes[i];
+            code << "      argcvs.emplace_back(CPyCppyy::CreateConverter(\""
+                 << ((at.back() == '*' && check_scope(at)) ? at.substr(0, at.size()-1) : at)
+                 << "\"), CPyCppyy::DestroyConverter);\n";
+        }
         code << "    }\n";
     }
 
@@ -550,7 +559,9 @@ void CPyCppyy::Utility::ConstructCallbackPreamble(const std::string& retType,
         code << "    pyargs.reserve(" << nArgs << ");\n"
              << "    try {\n";
         for (int i = 0; i < nArgs; ++i) {
-            code << "      pyargs.emplace_back(argcvs[" << i << "]->FromMemory((void*)&arg" << i << "));\n"
+            code << "      pyargs.emplace_back(argcvs[" << i << "]->FromMemory((void*)";
+            if (!(argtypes[i].back() == '*' && check_scope(argtypes[i]))) code << '&';
+            code << "arg" << i << "));\n"
                  << "      if (!pyargs.back()) throw " << i << ";\n";
         }
         code << "    } catch(int) {\n"

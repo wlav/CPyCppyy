@@ -51,7 +51,7 @@ public:                                                                      \
 #define CPPYY_DECLARE_ARRAY_CONVERTER(name)                                  \
 class name##ArrayConverter : public Converter {                              \
 public:                                                                      \
-    name##ArrayConverter(dims_t shape);                                      \
+    name##ArrayConverter(dims_t shape, bool init = true);                    \
     name##ArrayConverter(const name##ArrayConverter&) = delete;              \
     name##ArrayConverter& operator=(const name##ArrayConverter&) = delete;   \
     virtual ~name##ArrayConverter() { delete [] fShape; }                    \
@@ -65,8 +65,11 @@ protected:                                                                   \
                                                                              \
 class name##ArrayPtrConverter : public name##ArrayConverter {                \
 public:                                                                      \
-    using name##ArrayConverter::name##ArrayConverter;                        \
+    name##ArrayPtrConverter(dims_t shape);                                   \
+    name##ArrayPtrConverter(const name##ArrayPtrConverter&) = delete;        \
+    name##ArrayPtrConverter& operator=(const name##ArrayPtrConverter&) = delete;\
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);      \
+    virtual PyObject* FromMemory(void*);                                     \
 };
 
 
@@ -282,16 +285,16 @@ public:
     InstanceArrayConverter(Cppyy::TCppType_t klass, dims_t dims, bool keepControl = false) :
             InstancePtrConverter(klass, keepControl) {
         dim_t size = (dims && 0 < dims[0]) ? dims[0]+1: 1;
-        m_dims = new dim_t[size];
+        fDims = new dim_t[size];
         if (dims) {
-            for (int i = 0; i < size; ++i) m_dims[i] = dims[i];
+            for (int i = 0; i < size; ++i) fDims[i] = dims[i];
         } else {
-            m_dims[0] = -1;
+            fDims[0] = -1;
         }
     }
     InstanceArrayConverter(const InstanceArrayConverter&) = delete;
     InstanceArrayConverter& operator=(const InstanceArrayConverter&) = delete;
-    virtual ~InstanceArrayConverter() { delete [] m_dims; }
+    virtual ~InstanceArrayConverter() { delete [] fDims; }
 
 public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
@@ -299,7 +302,7 @@ public:
     virtual bool ToMemory(PyObject* value, void* address);
 
 protected:
-    dims_t m_dims;
+    dims_t fDims;
 };
 
 

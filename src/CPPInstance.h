@@ -37,7 +37,8 @@ public:
         kIsSmartPtr  = 0x0080,
         kNoMemReg    = 0x0100,
         kHasLifeline = 0x0200,
-        kIsRegulated = 0x0400 };
+        kIsRegulated = 0x0400,
+        kIsActual    = 0x0800 };
 
 public:                 // public, as the python C-API works with C structs
     PyObject_HEAD

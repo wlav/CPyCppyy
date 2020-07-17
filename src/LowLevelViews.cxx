@@ -813,8 +813,7 @@ template<typename T>
 static inline PyObject* CreateLowLevelViewT(T** address, Py_ssize_t* shape)
 {
     using namespace CPyCppyy;
-    T* buf = address ? *address : nullptr;
-    LowLevelView* llp = (LowLevelView*)CreateLowLevelViewT(buf, shape);
+    LowLevelView* llp = (LowLevelView*)CreateLowLevelViewT((T*)address, shape);
     llp->set_buf((void**)address);
     return (PyObject*)llp;
 }

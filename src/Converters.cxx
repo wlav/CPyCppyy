@@ -1481,15 +1481,24 @@ bool CPyCppyy::VoidArrayConverter::ToMemory(PyObject* value, void* address)
 }
 
 //----------------------------------------------------------------------------
+static inline void init_shape(Py_ssize_t defdim, dims_t dims, Py_ssize_t*& shape)
+{
+    int nalloc = (dims && 0 < dims[0]) ? (int)dims[0]+1: 2;
+    shape = new Py_ssize_t[nalloc];
+    if (dims) {
+        for (int i = 0; i < nalloc; ++i)
+            shape[i] = (Py_ssize_t)dims[i];
+    } else {
+        shape[0] = defdim;
+        shape[1] = -1;
+    }
+}
+
+
+//----------------------------------------------------------------------------
 #define CPPYY_IMPL_ARRAY_CONVERTER(name, ctype, type, code)                  \
-CPyCppyy::name##ArrayConverter::name##ArrayConverter(dims_t dims) {          \
-    int nalloc = (dims && 0 < dims[0]) ? (int)dims[0]+1: 2;                  \
-    fShape = new Py_ssize_t[nalloc];                                         \
-    if (dims) {                                                              \
-        for (int i = 0; i < nalloc; ++i) fShape[i] = (Py_ssize_t)dims[i];    \
-    } else {                                                                 \
-        fShape[0] = 1; fShape[1] = -1;                                       \
-    }                                                                        \
+CPyCppyy::name##ArrayConverter::name##ArrayConverter(dims_t dims, bool init) {\
+    if (init) init_shape(1, dims, fShape);                                   \
 }                                                                            \
                                                                              \
 bool CPyCppyy::name##ArrayConverter::SetArg(                                 \
@@ -1544,6 +1553,11 @@ bool CPyCppyy::name##ArrayConverter::ToMemory(PyObject* value, void* address)\
     return true;                                                             \
 }                                                                            \
                                                                              \
+CPyCppyy::name##ArrayPtrConverter::name##ArrayPtrConverter(dims_t dims) :    \
+        name##ArrayConverter(nullptr, false) {                               \
+    init_shape(2, dims, fShape);                                             \
+}                                                                            \
+                                                                             \
 bool CPyCppyy::name##ArrayPtrConverter::SetArg(                              \
     PyObject* pyobject, Parameter& para, CallContext* ctxt)                  \
 {                                                                            \
@@ -1556,6 +1570,11 @@ bool CPyCppyy::name##ArrayPtrConverter::SetArg(                              \
         para.fValue.fVoidp = (void*)((CPyCppyy_tagCDataObject*)pyobject)->b_ptr;\
         para.fTypeCode = 'p';                                                \
         return true;                                                         \
+    } else if (LowLevelView_Check(pyobject) &&                               \
+            ((LowLevelView*)pyobject)->fBufInfo.ndim == 2) {                 \
+        para.fValue.fVoidp = ((LowLevelView*)pyobject)->get_buf();           \
+        para.fTypeCode = 'p';                                                \
+        return true;                                                         \
     }                                                                        \
     bool res = name##ArrayConverter::SetArg(pyobject, para, ctxt);           \
     if (res && para.fTypeCode == 'p') {                                      \
@@ -1564,6 +1583,11 @@ bool CPyCppyy::name##ArrayPtrConverter::SetArg(                              \
         return true;                                                         \
     }                                                                        \
     return false;                                                            \
+}                                                                            \
+                                                                             \
+PyObject* CPyCppyy::name##ArrayPtrConverter::FromMemory(void* address)       \
+{                                                                            \
+    return CreateLowLevelView((type**)address, fShape);                      \
 }
 
 
@@ -1919,7 +1943,11 @@ bool CPyCppyy::InstanceConverter::SetArg(
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::InstanceConverter::FromMemory(void* address)
 {
-    return BindCppObjectNoCast((Cppyy::TCppObject_t)address, fClass);
+// This should not need a cast (ie. BindCppObjectNoCast), but performing the cast
+// here means callbacks receive down-casted object when passed by-ptr, which is
+// needed for object identity. The latter case is assumed to be more common than
+// conversion of (global) objects.
+    return BindCppObject((Cppyy::TCppObject_t)address, fClass);
 }
 
 //----------------------------------------------------------------------------
@@ -2070,7 +2098,7 @@ template <bool ISREFERENCE>
 PyObject* CPyCppyy::InstancePtrPtrConverter<ISREFERENCE>::FromMemory(void* address)
 {
 // construct python object from C++ instance* read at <address>
-    return BindCppObject(address, fClass, CPPInstance::kIsReference);
+    return BindCppObject(*(void**)address, fClass, CPPInstance::kIsReference);
 }
 
 //----------------------------------------------------------------------------
@@ -2142,7 +2170,7 @@ bool CPyCppyy::InstanceArrayConverter::SetArg(
 PyObject* CPyCppyy::InstanceArrayConverter::FromMemory(void* address)
 {
 // construct python tuple of instances from C++ array read at <address>
-    return BindCppObjectArray(*(char**)address, fClass, m_dims);
+    return BindCppObjectArray(*(char**)address, fClass, fDims);
 }
 
 //----------------------------------------------------------------------------
@@ -2224,7 +2252,7 @@ bool CPyCppyy::VoidPtrPtrConverter::SetArg(
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::VoidPtrPtrConverter::FromMemory(void* address)
 {
-// read a void** from address; since this is unknown, long is used (user can cast)
+// read a void** from address; since this is unknown, ptrdiff_t is used (user can cast)
     if (!address || *(ptrdiff_t*)address == 0) {
         Py_INCREF(gNullPtrObject);
         return gNullPtrObject;
@@ -3134,6 +3162,8 @@ public:
         gf["internal_enum_type_t"] =        gf["int"];
         gf["internal_enum_type_t&"] =       gf["int&"];
         gf["const internal_enum_type_t&"] = gf["const int&"];
+        gf["internal_enum_type_t*"] =       gf["int*"];
+        gf["internal_enum_type_t**"] =      gf["int**"];
 #ifdef _WIN32
         gf["__int64"] =                     gf["long long"];
         gf["const __int64&"] =              gf["const long long&"];

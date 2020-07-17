@@ -605,7 +605,7 @@ PyObject* CPyCppyy::InstanceExecutor::Execute(
         return nullptr;
 
 // python ref counting will now control this object's life span; it will be
-// deleted b/c it is marked as a by-value object (unless C++ ownership is set)
+// deleted b/c it is marked as a by-value object owned by python (from fFlags)
     return pyobj;
 }
 
