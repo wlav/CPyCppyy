@@ -388,7 +388,7 @@ static bool AddTypeName(std::string& tmpl_name, PyObject* tn, PyObject* arg,
                      PyErr_Clear();
                      tmpl_name.append("int");    // still out of range, will fail later
                  } else
-                     tmpl_name.append("unsigned long longt");   // since already failed long long
+                     tmpl_name.append("unsigned long long");    // since already failed long long
              } else
                  tmpl_name.append((ll < INT_MIN || INT_MAX < ll) ? \
                      ((ll < LONG_MIN || LONG_MAX < ll) ? "long long" : "long") : "int");
