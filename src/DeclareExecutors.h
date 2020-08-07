@@ -49,26 +49,34 @@ CPPYY_DECL_EXEC(CString16);
 CPPYY_DECL_EXEC(CString32);
 
 // pointer/array executors
-CPPYY_DECL_EXEC(VoidArray);
-CPPYY_DECL_EXEC(BoolArray);
-CPPYY_DECL_EXEC(UCharArray);
+#define CPPYY_ARRAY_DECL_EXEC(name)                                          \
+class name##ArrayExecutor : public Executor {                                \
+    Py_ssize_t fDims[3];                                                     \
+public:                                                                      \
+    name##ArrayExecutor(Py_ssize_t ndims = 1) : fDims{ndims, -1, -1} {}      \
+    virtual PyObject* Execute(                                               \
+        Cppyy::TCppMethod_t, Cppyy::TCppObject_t, CallContext*);             \
+}
+CPPYY_ARRAY_DECL_EXEC(Void);
+CPPYY_ARRAY_DECL_EXEC(Bool);
+CPPYY_ARRAY_DECL_EXEC(UChar);
 #if __cplusplus > 201402L
-CPPYY_DECL_EXEC(ByteArray);
+CPPYY_ARRAY_DECL_EXEC(Byte);
 #endif
-CPPYY_DECL_EXEC(ShortArray);
-CPPYY_DECL_EXEC(UShortArray);
-CPPYY_DECL_EXEC(IntArray);
-CPPYY_DECL_EXEC(UIntArray);
-CPPYY_DECL_EXEC(LongArray);
-CPPYY_DECL_EXEC(ULongArray);
-CPPYY_DECL_EXEC(LLongArray);
-CPPYY_DECL_EXEC(ULLongArray);
-CPPYY_DECL_EXEC(FloatArray);
-CPPYY_DECL_EXEC(DoubleArray);
-CPPYY_DECL_EXEC(ComplexFArray);
-CPPYY_DECL_EXEC(ComplexDArray);
-CPPYY_DECL_EXEC(ComplexIArray);
-CPPYY_DECL_EXEC(ComplexLArray);
+CPPYY_ARRAY_DECL_EXEC(Short);
+CPPYY_ARRAY_DECL_EXEC(UShort);
+CPPYY_ARRAY_DECL_EXEC(Int);
+CPPYY_ARRAY_DECL_EXEC(UInt);
+CPPYY_ARRAY_DECL_EXEC(Long);
+CPPYY_ARRAY_DECL_EXEC(ULong);
+CPPYY_ARRAY_DECL_EXEC(LLong);
+CPPYY_ARRAY_DECL_EXEC(ULLong);
+CPPYY_ARRAY_DECL_EXEC(Float);
+CPPYY_ARRAY_DECL_EXEC(Double);
+CPPYY_ARRAY_DECL_EXEC(ComplexF);
+CPPYY_ARRAY_DECL_EXEC(ComplexD);
+CPPYY_ARRAY_DECL_EXEC(ComplexI);
+CPPYY_ARRAY_DECL_EXEC(ComplexL);
 
 // special cases
 CPPYY_DECL_EXEC(ComplexD);
