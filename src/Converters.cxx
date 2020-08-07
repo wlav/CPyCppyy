@@ -2257,7 +2257,8 @@ PyObject* CPyCppyy::VoidPtrPtrConverter::FromMemory(void* address)
         Py_INCREF(gNullPtrObject);
         return gNullPtrObject;
     }
-    return CreatePointerView(*(ptrdiff_t**)address, fSize);
+    Py_ssize_t shape[] = {1, (Py_ssize_t)fSize};
+    return CreatePointerView(*(ptrdiff_t**)address, shape);
 }
 
 //----------------------------------------------------------------------------

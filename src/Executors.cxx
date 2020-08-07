@@ -480,7 +480,7 @@ PyObject* CPyCppyy::VoidArrayExecutor::Execute(
         Py_INCREF(gNullPtrObject);
         return gNullPtrObject;
     }
-    return CreatePointerView(result);
+    return CreatePointerView(result, fDims);
 }
 
 //----------------------------------------------------------------------------
