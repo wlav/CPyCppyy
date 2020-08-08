@@ -849,7 +849,7 @@ PyObject* CPyCppyy::BindCppObjectNoCast(Cppyy::TCppObject_t address,
 // bind, register and return if successful
     if (pyobj != 0) { // fill proxy value?
         unsigned objflags = flags & \
-            (CPPInstance::kIsReference | CPPInstance::kIsValue | CPPInstance::kIsOwner | CPPInstance::kIsActual);
+            (CPPInstance::kIsReference | CPPInstance::kIsPtrPtr | CPPInstance::kIsValue | CPPInstance::kIsOwner | CPPInstance::kIsActual);
         pyobj->Set(address, (CPPInstance::EFlags)objflags);
 
         if (smart_type)

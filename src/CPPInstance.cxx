@@ -323,9 +323,13 @@ static PyObject* op_getitem(CPPInstance* self, PyObject* pyidx)
         return nullptr;
     }
 
+    unsigned flags = (self->fFlags & CPPInstance::kIsPtrPtr) ? CPPInstance::kIsReference : 0;
+
     size_t sz = Cppyy::SizeOf(((CPPClass*)Py_TYPE(self))->fCppType);
-    void* indexed_obj = (void*)((uintptr_t)self->GetObject()+(uintptr_t)(idx*sz));
-    return BindCppObjectNoCast(indexed_obj, ((CPPClass*)Py_TYPE(self))->fCppType);
+    uintptr_t address = (uintptr_t)(flags ? self->GetObjectRaw() : self->GetObject());
+    void* indexed_obj = (void*)(address+(uintptr_t)(idx*sz));
+
+    return BindCppObjectNoCast(indexed_obj, ((CPPClass*)Py_TYPE(self))->fCppType, flags);
 }
 
 //----------------------------------------------------------------------------
@@ -496,7 +500,9 @@ static PyObject* op_repr(CPPInstance* self)
 
     Cppyy::TCppType_t klass = self->ObjectIsA();
     std::string clName = klass ? Cppyy::GetFinalName(klass) : "<unknown>";
-    if (self->fFlags & CPPInstance::kIsReference)
+    if (self->fFlags & CPPInstance::kIsPtrPtr)
+        clName.append("**");
+    else if (self->fFlags & CPPInstance::kIsReference)
         clName.append("*");
 
     PyObject* repr = nullptr;

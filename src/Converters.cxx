@@ -2098,7 +2098,7 @@ template <bool ISREFERENCE>
 PyObject* CPyCppyy::InstancePtrPtrConverter<ISREFERENCE>::FromMemory(void* address)
 {
 // construct python object from C++ instance* read at <address>
-    return BindCppObject(*(void**)address, fClass, CPPInstance::kIsReference);
+    return BindCppObject(*(void**)address, fClass, CPPInstance::kIsReference | CPPInstance::kIsPtrPtr);
 }
 
 //----------------------------------------------------------------------------
