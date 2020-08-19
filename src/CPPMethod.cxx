@@ -364,6 +364,10 @@ int CPyCppyy::CPPMethod::GetPriority()
         const std::string aname = Cppyy::GetMethodArgType(fMethod, iarg);
 
         if (Cppyy::IsBuiltin(aname)) {
+        // complex type (note: double penalty: for complex and the template type)
+            if (strstr(aname.c_str(), "std::complex"))
+                priority -=   10;      // prefer double, float, etc. over conversion
+
         // integer types
             if (strstr(aname.c_str(), "bool"))
                 priority +=    1;      // bool over int (does accept 1 and 0)
