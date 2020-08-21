@@ -222,6 +222,16 @@ static inline bool ImplicitBool(PyObject* pyobject, CPyCppyy::CallContext* ctxt)
     return true;
 }
 
+static inline bool ImplicitInt(PyObject* pyobject, CPyCppyy::CallContext* ctxt)
+{
+    using namespace CPyCppyy;
+    if (!AllowImplicit(ctxt) && (PyLong_Check(pyobject) || PyInt_Check(pyobject))) {
+        if (!NoImplicit(ctxt)) ctxt->fFlags |= CallContext::kHaveImplicit;
+        return false;
+    }
+    return true;
+}
+
 static inline bool CPyCppyy_PyLong_AsBool(PyObject* pyobject)
 {
 // range-checking python integer to C++ bool conversion
@@ -419,10 +429,12 @@ bool CPyCppyy::name##Converter::ToMemory(PyObject* value, void* address)     \
     return true;                                                             \
 }
 
-#define CPPYY_IMPL_BASIC_CONVERTER(name, type, stype, ctype, F1, F2, tc)     \
+#define CPPYY_IMPL_BASIC_CONVERTER_NI(name, type, stype, ctype, F1, F2, tc)  \
 bool CPyCppyy::name##Converter::SetArg(                                      \
-    PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)            \
+    PyObject* pyobject, Parameter& para, CallContext* ctxt)                  \
 {                                                                            \
+    if (!ImplicitInt(pyobject, ctxt))                                        \
+        return false;                                                        \
     CPPYY_IMPL_BASIC_CONVERTER_BODY(name, type, stype, ctype, F1, F2, tc)    \
 }                                                                            \
 CPPYY_IMPL_BASIC_CONVERTER_METHODS(name, type, stype, ctype, F1, F2)
@@ -692,7 +704,7 @@ CPPYY_IMPL_REFCONVERTER(LDouble, c_longdouble, PY_LONG_DOUBLE,     'D');
 
 //----------------------------------------------------------------------------
 // convert <pyobject> to C++ bool, allow int/long -> bool, set arg for call
-CPPYY_IMPL_BASIC_CONVERTER(
+CPPYY_IMPL_BASIC_CONVERTER_NI(
     Bool, bool, long, c_bool, PyBool_FromLong, CPyCppyy_PyLong_AsBool, 'l')
 
 //----------------------------------------------------------------------------
