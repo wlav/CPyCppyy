@@ -2,18 +2,12 @@ import codecs, glob, os, sys, subprocess
 from setuptools import setup, find_packages, Extension
 from distutils import log
 
-from setuptools.dist import Distribution
 from distutils.command.build_ext import build_ext as _build_ext
 try:
     from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
     has_wheel = True
 except ImportError:
     has_wheel = False
-
-force_bdist = False
-if '--force-bdist' in sys.argv:
-    force_bdist = True
-    sys.argv.remove('--force-bdist')
 
 requirements = ['cppyy-cling==6.21.*', 'cppyy-backend==1.13.*']
 setup_requirements = ['wheel']
@@ -93,29 +87,6 @@ cmdclass = {
     'build_ext': my_build_extension }
 
 
-#
-# customized distribition to disable binaries
-#
-class MyDistribution(Distribution):
-    def run_commands(self):
-        # pip does not resolve dependencies before building binaries, so unless
-        # packages are installed one-by-one, on old install is used or the build
-        # will simply fail hard. The following is not completely quiet, but at
-        # least a lot less conspicuous.
-        if not is_manylinux() and not force_bdist:
-            disabled = set((
-                'bdist_wheel', 'bdist_egg', 'bdist_wininst', 'bdist_rpm'))
-            for cmd in self.commands:
-                if not cmd in disabled:
-                    self.run_command(cmd)
-                else:
-                    log.info('Command "%s" is disabled', cmd)
-                    cmd_obj = self.get_command_obj(cmd)
-                    cmd_obj.get_outputs = lambda: None
-        else:
-            return Distribution.run_commands(self)
-
-
 setup(
     name='CPyCppyy',
     version='1.11.2',
@@ -165,7 +136,6 @@ setup(
     headers=glob.glob(os.path.join('include', 'CPyCppyy', '*.h')),
 
     cmdclass=cmdclass,
-    distclass=MyDistribution,
 
     zip_safe=False,
 )
