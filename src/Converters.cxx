@@ -222,10 +222,10 @@ static inline bool ImplicitBool(PyObject* pyobject, CPyCppyy::CallContext* ctxt)
     return true;
 }
 
-static inline bool ImplicitInt(PyObject* pyobject, CPyCppyy::CallContext* ctxt)
+static inline bool StrictBool(PyObject* pyobject, CPyCppyy::CallContext* ctxt)
 {
     using namespace CPyCppyy;
-    if (!AllowImplicit(ctxt) && (PyLong_Check(pyobject) || PyInt_Check(pyobject))) {
+    if (!AllowImplicit(ctxt) && !PyBool_Check(pyobject)) {
         if (!NoImplicit(ctxt)) ctxt->fFlags |= CallContext::kHaveImplicit;
         return false;
     }
@@ -433,7 +433,7 @@ bool CPyCppyy::name##Converter::ToMemory(PyObject* value, void* address)     \
 bool CPyCppyy::name##Converter::SetArg(                                      \
     PyObject* pyobject, Parameter& para, CallContext* ctxt)                  \
 {                                                                            \
-    if (!ImplicitInt(pyobject, ctxt))                                        \
+    if (!StrictBool(pyobject, ctxt))                                         \
         return false;                                                        \
     CPPYY_IMPL_BASIC_CONVERTER_BODY(name, type, stype, ctype, F1, F2, tc)    \
 }                                                                            \
