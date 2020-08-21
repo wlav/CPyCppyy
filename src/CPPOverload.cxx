@@ -588,7 +588,7 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
     // fall through: python is dynamic, and so, the hashing isn't infallible
         PyErr_Clear();
     }
-    
+
 // ... otherwise loop over all methods and find the one that does not fail
     if (!IsSorted(mflags)) {
         std::stable_sort(methods.begin(), methods.end(), PriorityCmp);

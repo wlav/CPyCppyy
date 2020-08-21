@@ -464,7 +464,7 @@ PyObject* CPyCppyy::CString32Executor::Execute(
         char32_t w = U'\0';
         return PyUnicode_DecodeUTF32((const char*)&w, 0, nullptr, nullptr);
     }
- 
+
     return PyUnicode_DecodeUTF32((const char*)result,
         std::char_traits<char32_t>::length(result)*sizeof(char32_t), nullptr, nullptr);
 }
