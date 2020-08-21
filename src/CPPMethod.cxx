@@ -140,9 +140,9 @@ inline PyObject* CPyCppyy::CPPMethod::ExecuteProtected(
 // fatal signal
     PyObject* result = 0;
 
-    TRY {     // copy call environment to be able to jump back on signal
+    CLING_EXCEPTION_TRY {    // copy call environment to be able to jump back on signal
         result = ExecuteFast(self, offset, ctxt);
-    } CATCH(excode) {
+    } CLING_EXCEPTION_CATCH(excode) {
     // Unfortunately, the excodes are not the ones from signal.h, but enums from TSysEvtHandler.h
         if (excode == 0)
             PyErr_SetString(gBusException, "bus error in C++; program state was reset");
@@ -157,7 +157,7 @@ inline PyObject* CPyCppyy::CPPMethod::ExecuteProtected(
         else
             PyErr_SetString(PyExc_SystemError, "problem in C++; program state was reset");
         result = 0;
-    } ENDTRY;
+    } CLING_EXCEPTION_ENDTRY;
 
     return result;
 }
