@@ -879,7 +879,7 @@ namespace {
 
 using namespace CPyCppyy;
 
-#define WSTRING "std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >"
+#define WSTRING "std::basic_string<wchar_t>"
 
 struct InitExecFactories_t {
 public:

@@ -3022,7 +3022,7 @@ namespace {
 using namespace CPyCppyy;
 
 #define STRINGVIEW "std::basic_string_view<char,std::char_traits<char> >"
-#define WSTRING "std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >"
+#define WSTRING "std::basic_string<wchar_t>"
 
 static struct InitConvFactories_t {
 public:
