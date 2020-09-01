@@ -323,9 +323,13 @@ static PyObject* op_getitem(CPPInstance* self, PyObject* pyidx)
         return nullptr;
     }
 
-    unsigned flags = (self->fFlags & CPPInstance::kIsPtrPtr) ? CPPInstance::kIsReference : 0;
+    unsigned flags = 0; size_t sz = sizeof(void*);
+    if (self->fFlags & CPPInstance::kIsPtrPtr) {
+        flags = CPPInstance::kIsReference;
+    } else {
+        sz = Cppyy::SizeOf(((CPPClass*)Py_TYPE(self))->fCppType);
+    }
 
-    size_t sz = Cppyy::SizeOf(((CPPClass*)Py_TYPE(self))->fCppType);
     uintptr_t address = (uintptr_t)(flags ? self->GetObjectRaw() : self->GetObject());
     void* indexed_obj = (void*)(address+(uintptr_t)(idx*sz));
 
