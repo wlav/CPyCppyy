@@ -89,7 +89,7 @@ cmdclass = {
 
 setup(
     name='CPyCppyy',
-    version='1.11.2',
+    version='1.11.3',
     description='Cling-based Python-C++ bindings for CPython',
     long_description=long_description,
 
