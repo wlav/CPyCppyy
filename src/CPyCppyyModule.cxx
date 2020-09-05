@@ -891,11 +891,13 @@ extern "C" void initlibcppyy()
         CPYCPPYY_INIT_ERROR;
 
 // inject custom data types
+#if PY_VERSION_HEX < 0x03000000
     if (!Utility::InitProxy(gThisModule, &RefFloat_Type, "Double"))
         CPYCPPYY_INIT_ERROR;
 
     if (!Utility::InitProxy(gThisModule, &RefInt_Type, "Long"))
         CPYCPPYY_INIT_ERROR;
+#endif
 
     if (!Utility::InitProxy(gThisModule, &CustomInstanceMethod_Type, "InstanceMethod"))
         CPYCPPYY_INIT_ERROR;

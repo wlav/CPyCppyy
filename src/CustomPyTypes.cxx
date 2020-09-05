@@ -14,6 +14,7 @@
 
 namespace CPyCppyy {
 
+#if PY_VERSION_HEX < 0x03000000
 //= float type allowed for reference passing =================================
 PyTypeObject RefFloat_Type = {     // python float is a C/C++ double
     PyVarObject_HEAD_INIT(&PyType_Type, 0)
@@ -61,6 +62,7 @@ PyTypeObject RefInt_Type = {       // python int is a C/C++ long
     , 0                            // tp_finalize
 #endif
 };
+#endif
 
 //- custom type representing typedef to pointer of class ---------------------
 static PyObject* tpc_call(typedefpointertoclassobject* self, PyObject* args, PyObject* /* kwds */)

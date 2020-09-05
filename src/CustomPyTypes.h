@@ -7,6 +7,7 @@ namespace CPyCppyy {
     performance.
  */
 
+#if PY_VERSION_HEX < 0x03000000
 //- reference float object type and type verification ------------------------
 extern PyTypeObject RefFloat_Type;
 
@@ -36,6 +37,7 @@ inline bool RefInt_CheckExact(T* object)
 {
     return object && Py_TYPE(object) == &RefInt_Type;
 }
+#endif
 
 //- custom type representing typedef to pointer of class ---------------------
 struct typedefpointertoclassobject {

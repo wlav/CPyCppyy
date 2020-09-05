@@ -952,11 +952,21 @@ bool CPyCppyy::DoubleRefConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)
 {
 // convert <pyobject> to C++ double&, set arg for call
+#if PY_VERSION_HEX < 0x03000000
     if (RefFloat_CheckExact(pyobject)) {
         para.fValue.fVoidp = (void*)&((PyFloatObject*)pyobject)->ob_fval;
         para.fTypeCode = 'V';
         return true;
     }
+#endif
+
+#if PY_VERSION_HEX >= 0x02050000
+    if (Py_TYPE(pyobject) == GetCTypesType(ct_c_double)) {
+        para.fValue.fVoidp = (void*)((CPyCppyy_tagCDataObject*)pyobject)->b_ptr;
+        para.fTypeCode = 'V';
+        return true;
+    }
+#endif
 
 // alternate, pass pointer from buffer
     Py_ssize_t buflen = Utility::GetBuffer(pyobject, 'd', sizeof(double), para.fValue.fVoidp);
