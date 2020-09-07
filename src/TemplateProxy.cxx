@@ -205,10 +205,10 @@ PyObject* TemplateProxy::Instantiate(const std::string& fname,
     // the argument types. If it did, replace with vector and lookup anew.
         if (resname.find("initializer_list") != std::string::npos) {
             auto pos = proto.find("initializer_list");
-	    while (pos != std::string::npos) {
-		proto.replace(pos, 16, "vector");
-		pos = proto.find("initializer_list", pos + 6);
-	    }
+            while (pos != std::string::npos) {
+                proto.replace(pos, 16, "vector");
+                pos = proto.find("initializer_list", pos + 6);
+            }
 
             Cppyy::TCppMethod_t m2 = Cppyy::GetMethodTemplate(scope, fname, proto);
             if (m2 && m2 != cppmeth) {
