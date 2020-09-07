@@ -998,7 +998,7 @@ bool CPyCppyy::VoidConverter::SetArg(PyObject*, Parameter&, CallContext*)
 
 //----------------------------------------------------------------------------
 bool CPyCppyy::LLongConverter::SetArg(
-    PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)
+    PyObject* pyobject, Parameter& para, CallContext* ctxt)
 {
 // convert <pyobject> to C++ long long, set arg for call
     if (PyFloat_Check(pyobject)) {
@@ -1007,6 +1007,9 @@ bool CPyCppyy::LLongConverter::SetArg(
         PyErr_SetString(PyExc_ValueError, "cannot convert float to long long");
         return false;
     }
+
+    if (!ImplicitBool(pyobject, ctxt))
+        return false;
 
     para.fValue.fLLong = PyLong_AsLongLong(pyobject);
     if (PyErr_Occurred())
