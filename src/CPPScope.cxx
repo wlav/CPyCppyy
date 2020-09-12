@@ -76,6 +76,33 @@ static int enum_setattro(PyObject* /* pyclass */, PyObject* /* pyname */, PyObje
     return -1;
 }
 
+//----------------------------------------------------------------------------
+static PyObject* enum_repr(PyObject* self)
+{
+    PyObject* kls_cppname = PyObject_GetAttr((PyObject*)Py_TYPE(self), PyStrings::gCppName);
+    if (!kls_cppname) PyErr_Clear();
+    PyObject* obj_cppname = PyObject_GetAttr(self, PyStrings::gCppName);
+    if (!obj_cppname) PyErr_Clear();
+    PyObject* obj_str = Py_TYPE(self)->tp_str(self);
+
+    PyObject* repr = nullptr;
+    if (kls_cppname && obj_cppname && obj_str) {
+        const std::string resolved = Cppyy::ResolveEnum(CPyCppyy_PyText_AsString(kls_cppname));
+        repr = CPyCppyy_PyText_FromFormat("(%s::%s) : (%s) %s",
+            CPyCppyy_PyText_AsString(kls_cppname), CPyCppyy_PyText_AsString(obj_cppname),
+            resolved.c_str(),  CPyCppyy_PyText_AsString(obj_str));
+    }
+    Py_XDECREF(obj_cppname);
+    Py_XDECREF(kls_cppname);
+
+    if (repr) {
+        Py_DECREF(obj_str);
+        return repr;
+    }
+
+    return obj_str;
+}
+
 
 //= CPyCppyy type proxy construction/destruction =============================
 static PyObject* meta_alloc(PyTypeObject* meta, Py_ssize_t nitems)
@@ -315,6 +342,43 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
 
 
 //----------------------------------------------------------------------------
+static PyObject* pytype_from_enum_type(const std::string& enum_type)
+{
+    if (enum_type == "char")
+        return (PyObject*)&CPyCppyy_PyText_Type;
+    else if (enum_type == "bool")
+        return (PyObject*)&PyInt_Type;     // can't use PyBool_Type as base
+    else if (strstr("long", enum_type.c_str()))
+        return (PyObject*)&PyLong_Type;
+    return (PyObject*)&PyInt_Type;         // covers most cases
+}
+
+static PyObject* pyval_from_enum(const std::string& enum_type, PyObject* pytype,
+        PyObject* btype, Cppyy::TCppEnum_t etype, Cppyy::TCppIndex_t idata ) {
+    long long llval = Cppyy::GetEnumDataValue(etype, idata);
+
+    if (enum_type == "bool") {
+        PyObject* result = (bool)llval ? Py_True : Py_False;
+        Py_INCREF(result);
+        return result;                      // <- immediate return;
+    }
+
+    PyObject* bval;
+    if (enum_type == "char") {
+        char val = (char)llval;
+        bval = CPyCppyy_PyText_FromStringAndSize(&val, 1);
+    } else if (enum_type == "int" || enum_type == "unsigned int")
+        bval = PyInt_FromLong((long)llval);
+    else
+        bval = PyLong_FromLongLong(llval);
+
+    PyObject* args = PyTuple_New(1);
+    PyTuple_SET_ITEM(args, 0, bval);
+    PyObject* result = ((PyTypeObject*)btype)->tp_new((PyTypeObject*)pytype, args, nullptr);
+    Py_DECREF(args);
+    return result;
+}
+
 static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
 {
 // normal type-based lookup
@@ -409,38 +473,32 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
     // enums types requested as type (rather than the constants)
         if (!attr) {
         // TODO: IsEnum should deal with the scope, using klass->GetListOfEnums()->FindObject()
-            if (Cppyy::IsEnum(scope == Cppyy::gGlobalScope ? name : Cppyy::GetScopedFinalName(scope)+"::"+name)) {
+            const std::string& ename = scope == Cppyy::gGlobalScope ? name : Cppyy::GetScopedFinalName(scope)+"::"+name;
+            if (Cppyy::IsEnum(ename)) {
             // enum types (incl. named and class enums)
                 Cppyy::TCppEnum_t etype = Cppyy::GetEnum(scope, name);
                 if (etype) {
                 // create new enum type with labeled values in place, with a meta-class
                 // to make sure the enum values are read-only
+                    const std::string& resolved = Cppyy::ResolveEnum(ename);
+                    PyObject* pyside_type = pytype_from_enum_type(resolved);
                     PyObject* pymetabases = PyTuple_New(1);
-                    PyObject* btype = (PyObject*)Py_TYPE(&PyInt_Type);
+                    PyObject* btype = (PyObject*)Py_TYPE(pyside_type);
                     Py_INCREF(btype);
                     PyTuple_SET_ITEM(pymetabases, 0, btype);
 
                     PyObject* args = Py_BuildValue((char*)"sO{}", (name+"_meta").c_str(), pymetabases);
                     Py_DECREF(pymetabases);
-                    PyObject* pymeta = PyType_Type.tp_new(Py_TYPE(&PyInt_Type), args, nullptr);
-                    ((PyTypeObject*)pymeta)->tp_setattro = enum_setattro;
+                    PyObject* pymeta = PyType_Type.tp_new(Py_TYPE(pyside_type), args, nullptr);
                     Py_DECREF(args);
 
                 // prepare the base class
                     PyObject* pybases = PyTuple_New(1);
-                    Py_INCREF(&PyInt_Type);
-                    PyTuple_SET_ITEM(pybases, 0, (PyObject*)&PyInt_Type);
+                    Py_INCREF(pyside_type);
+                    PyTuple_SET_ITEM(pybases, 0, (PyObject*)pyside_type);
 
-                // collect the enum values
-                    Cppyy::TCppIndex_t ndata = Cppyy::GetNumEnumData(etype);
+                // create the __cpp_name__ for templates
                     PyObject* dct = PyDict_New();
-                    for (Cppyy::TCppIndex_t idata = 0; idata < ndata; ++idata) {
-                        PyObject* val = PyLong_FromLongLong(Cppyy::GetEnumDataValue(etype, idata));
-                        PyDict_SetItemString(dct, Cppyy::GetEnumDataName(etype, idata).c_str(), val);
-                        Py_DECREF(val);
-                    }
-
-                // add the __cpp_name__ for templates
                     PyObject* cppname = nullptr;
                     if (scope == Cppyy::gGlobalScope) {
                         Py_INCREF(pyname);
@@ -455,6 +513,22 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
                     Py_DECREF(pybases);
                     Py_DECREF(dct);
                     attr = ((PyTypeObject*)pymeta)->tp_new((PyTypeObject*)pymeta, args, nullptr);
+                    ((PyTypeObject*)attr)->tp_repr = enum_repr;
+                    ((PyTypeObject*)attr)->tp_str  = ((PyTypeObject*)pyside_type)->tp_repr;
+
+                // collect the enum values
+                    Cppyy::TCppIndex_t ndata = Cppyy::GetNumEnumData(etype);
+                    for (Cppyy::TCppIndex_t idata = 0; idata < ndata; ++idata) {
+                        PyObject* val = pyval_from_enum(resolved, attr, pyside_type, etype, idata);
+                        PyObject* pydname = CPyCppyy_PyText_FromString(Cppyy::GetEnumDataName(etype, idata).c_str());
+                        PyObject_SetAttr(attr, pydname, val);
+                        PyObject_SetAttr(val, PyStrings::gCppName, pydname);
+                        Py_DECREF(pydname);
+                        Py_DECREF(val);
+                    }
+
+                // disable writing onto enum values
+                    ((PyTypeObject*)pymeta)->tp_setattro = enum_setattro;
 
                 // final cleanup
                     Py_DECREF(args);
