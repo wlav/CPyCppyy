@@ -4,7 +4,9 @@
 #include "CPPDataMember.h"
 #include "CPPInstance.h"
 #include "LowLevelViews.h"
+#include "ProxyWrappers.h"
 #include "PyStrings.h"
+#include "TypeManip.h"
 #include "Utility.h"
 
 // Standard
@@ -20,7 +22,9 @@ enum ETypeDetails {
     kIsStaticData  = 0x0001,
     kIsConstData   = 0x0002,
     kIsArrayType   = 0x0004,
-    kIsCachable    = 0x0008
+    kIsEnumPrep    = 0x0008,
+    kIsEnumType    = 0x0010,
+    kIsCachable    = 0x0020
 };
 
 //= CPyCppyy data member as Python property behavior =========================
@@ -55,6 +59,44 @@ static PyObject* pp_get(CPPDataMember* pyprop, CPPInstance* pyobj, PyObject* /* 
     if (!ptr || (intptr_t)ptr == -1 /* Cling error */) {
         Py_INCREF(pyprop);
         return (PyObject*)pyprop;
+    }
+
+    if (pyprop->fFlags & (kIsEnumPrep | kIsEnumType)) {
+        if (pyprop->fFlags & kIsEnumPrep) {
+        // still need to do lookup; only ever try this once, then fallback on converter
+            pyprop->fFlags &= ~kIsEnumPrep;
+
+        // fDescription contains the full name of the actual enum value object
+            const std::string& lookup = CPyCppyy_PyText_AsString(pyprop->fDescription);
+            const std::string& enum_type  = TypeManip::extract_namespace(lookup);
+            const std::string& enum_scope = TypeManip::extract_namespace(enum_type);
+
+            PyObject* pyscope = nullptr;
+            if (enum_scope.empty()) pyscope = GetScopeProxy(Cppyy::gGlobalScope);
+            else pyscope = CreateScopeProxy(enum_scope);
+            if (pyscope) {
+                PyObject* pyEnumType = PyObject_GetAttrString(pyscope,
+                    enum_type.substr(enum_scope.size() ? enum_scope.size()+2 : 0, std::string::npos).c_str());
+                if (pyEnumType) {
+                    PyObject* pyval = PyObject_GetAttrString(pyEnumType,
+                        lookup.substr(enum_type.size()+2, std::string::npos).c_str());
+                    Py_DECREF(pyEnumType);
+                    if (pyval) {
+                        Py_DECREF(pyprop->fDescription);
+                        pyprop->fDescription = pyval;
+                        pyprop->fFlags |= kIsEnumType;
+                    }
+                }
+                Py_DECREF(pyscope);
+            }
+            if (!(pyprop->fFlags & kIsEnumType))
+                PyErr_Clear();
+        }
+
+        if (pyprop->fFlags & kIsEnumType) {
+            Py_INCREF(pyprop->fDescription);
+            return pyprop->fDescription;
+        }
     }
 
     if (pyprop->fConverter != 0) {
@@ -143,7 +185,7 @@ static CPPDataMember* pp_new(PyTypeObject* pytype, PyObject*, PyObject*)
     pyprop->fFlags          = 0;
     pyprop->fConverter      = nullptr;
     pyprop->fEnclosingScope = 0;
-    pyprop->fName           = nullptr;
+    pyprop->fDescription    = nullptr;
 
     return pyprop;
 }
@@ -154,7 +196,7 @@ static void pp_dealloc(CPPDataMember* pyprop)
 // Deallocate memory held by this descriptor.
     using namespace std;
     if (pyprop->fConverter && pyprop->fConverter->HasState()) delete pyprop->fConverter;
-    Py_XDECREF(pyprop->fName);    // never exposed so no GC necessary
+    Py_XDECREF(pyprop->fDescription);  // never exposed so no GC necessary
 
     Py_TYPE(pyprop)->tp_free((PyObject*)pyprop);
 }
@@ -225,7 +267,6 @@ PyTypeObject CPPDataMember_Type = {
 void CPyCppyy::CPPDataMember::Set(Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t idata)
 {
     fEnclosingScope = scope;
-    fName           = CPyCppyy_PyText_FromString(Cppyy::GetDatamemberName(scope, idata).c_str());
     fOffset         = Cppyy::GetDatamemberOffset(scope, idata); // TODO: make lazy
     fFlags          = Cppyy::IsStaticData(scope, idata) ? kIsStaticData : 0;
 
@@ -243,9 +284,15 @@ void CPyCppyy::CPPDataMember::Set(Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t i
         fFlags |= kIsArrayType;
     }
 
+    const std::string name = Cppyy::GetDatamemberName(scope, idata);
     std::string fullType = Cppyy::GetDatamemberType(scope, idata);
     if (Cppyy::IsEnumData(scope, idata)) {
-        fullType = Cppyy::ResolveEnum(fullType);  // enum might be any type of int
+        if (fullType.find("(anonymous)") == std::string::npos) {
+        // repurpose fDescription for lazy lookup of the enum later
+            fDescription = CPyCppyy_PyText_FromString((fullType + "::" + name).c_str());
+            fFlags |= kIsEnumPrep;
+        }
+        fullType = Cppyy::ResolveEnum(fullType);
         fFlags |= kIsConstData;
     } else if (Cppyy::IsConstData(scope, idata)) {
         fFlags |= kIsConstData;
@@ -256,13 +303,16 @@ void CPyCppyy::CPPDataMember::Set(Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t i
     if (ndim && fullType.back() != '*' && Cppyy::GetScope(fullType)) fullType += '*';
 
     fConverter = CreateConverter(fullType, dims.empty() ? nullptr : dims.data());
+
+    if (!(fFlags & kIsEnumPrep))
+        fDescription = CPyCppyy_PyText_FromString(name.c_str());
 }
 
 //-----------------------------------------------------------------------------
 void CPyCppyy::CPPDataMember::Set(Cppyy::TCppScope_t scope, const std::string& name, void* address)
 {
     fEnclosingScope = scope;
-    fName           = CPyCppyy_PyText_FromString(name.c_str());
+    fDescription    = CPyCppyy_PyText_FromString(name.c_str());
     fOffset         = (intptr_t)address;
     fFlags          = kIsStaticData | kIsConstData;
     fConverter      = CreateConverter("internal_enum_type_t");
@@ -301,4 +351,25 @@ void* CPyCppyy::CPPDataMember::GetAddress(CPPInstance* pyobj)
         offset = Cppyy::GetBaseOffset(pyobj->ObjectIsA(), fEnclosingScope, obj, 1 /* up-cast */);
 
     return (void*)((intptr_t)obj + offset + fOffset);
+}
+
+
+//-----------------------------------------------------------------------------
+std::string CPyCppyy::CPPDataMember::GetName()
+{
+    if (fFlags & kIsEnumType) {
+        PyObject* repr = PyObject_Repr(fDescription);
+        if (repr) {
+            std::string res = CPyCppyy_PyText_AsString(repr);
+            Py_DECREF(repr);
+            return res;
+        }
+        PyErr_Clear();
+        return "<unknown>";
+    } else if (fFlags & kIsEnumPrep) {
+        std::string fullName = CPyCppyy_PyText_AsString(fDescription);
+        return fullName.substr(fullName.rfind("::")+2, std::string::npos);
+    }
+
+    return CPyCppyy_PyText_AsString(fDescription);
 }

@@ -17,7 +17,7 @@ public:
     void Set(Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t idata);
     void Set(Cppyy::TCppScope_t scope, const std::string& name, void* address);
 
-    std::string GetName() { return CPyCppyy_PyText_AsString(fName); }
+    std::string GetName();
     void* GetAddress(CPPInstance* pyobj /* owner */);
 
 public:                 // public, as the python C-API works with C structs
@@ -26,7 +26,7 @@ public:                 // public, as the python C-API works with C structs
     long               fFlags;
     Converter*         fConverter;
     Cppyy::TCppScope_t fEnclosingScope;
-    PyObject*          fName;
+    PyObject*          fDescription;
 
 private:                // private, as the python C-API will handle creation
     CPPDataMember() = delete;
