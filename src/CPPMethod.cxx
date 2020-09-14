@@ -528,6 +528,7 @@ PyObject* CPyCppyy::CPPMethod::GetArgDefault(int iarg, bool silent)
         return pyval;        // may be nullptr
     }
 
+    PyErr_Format(PyExc_TypeError, "Could not construct default value for: %s", Cppyy::GetMethodArgName(fMethod, iarg).c_str());
     return nullptr;
 }
 

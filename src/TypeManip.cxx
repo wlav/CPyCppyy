@@ -3,6 +3,7 @@
 #include "TypeManip.h"
 
 // Standard
+#include <algorithm>
 #include <ctype.h>
 
 
@@ -17,13 +18,18 @@ std::string::size_type find_qualifier_index(const std::string& name)
 {
 // Find the first location that is not part of the class name proper.
     std::string::size_type i = name.size() - 1;
+    bool arr_open = false;
     for ( ; 0 < i; --i) {
         std::string::value_type c = name[i];
-        if (is_varchar(c) || c == '>') {
+        if (!arr_open && (is_varchar(c) || c == '>')) {
             if (c == 't' && 6 < i && !is_varchar(name[i-5]) && name.substr(i-4, 5) == "const")
                 i -= 4;      // this skips 'const' on a pointer type
             else
                 break;
+        } else if (c == ']') {
+            arr_open = true;
+        } else if (c == '[') {
+            arr_open = false;
         }
     }
 
@@ -33,6 +39,9 @@ std::string::size_type find_qualifier_index(const std::string& name)
 static inline void erase_const(std::string& name)
 {
 // Find and remove all occurrence of 'const'.
+    if (name.empty())
+        return;
+
     std::string::size_type spos = std::string::npos;
     std::string::size_type start = 0;
     while ((spos = name.find("const", start)) != std::string::npos) {
@@ -152,6 +161,16 @@ void CPyCppyy::TypeManip::cppscope_to_pyscope(std::string& cppscope)
     while ((pos = cppscope.find("::", pos)) != std::string::npos) {
         cppscope.replace(pos, 2, ".");
         pos += 1;
+    }
+}
+
+//----------------------------------------------------------------------------
+void CPyCppyy::TypeManip::cppscope_to_legalname(std::string& cppscope)
+{
+// Change characters illegal in a variable name into '_' to form a legal name.
+    for (char& c : cppscope) {
+        for (char needle : {':', '>', '<', ' ', ',', '='})
+            if (c == needle) c = '_';
     }
 }
 

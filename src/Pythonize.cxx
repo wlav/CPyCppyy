@@ -3,6 +3,7 @@
 #include "Pythonize.h"
 #include "Converters.h"
 #include "CPPInstance.h"
+#include "CPPFunction.h"
 #include "CPPOverload.h"
 #include "CustomPyTypes.h"
 #include "LowLevelViews.h"
@@ -1268,6 +1269,71 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
             Py_DECREF(top_cls);
         }
         PyObject_SetAttr(pyclass, PyStrings::gNe, top_ne);
+    }
+
+    if (Cppyy::IsPOD(((CPPClass*)pyclass)->fCppType) && name.compare(0, 5, "std::", 5) != 0) {
+    // create a pseudo-constructor to allow initializer-style object creation
+        Cppyy::TCppType_t kls = ((CPPClass*)pyclass)->fCppType;
+        Cppyy::TCppIndex_t ndata = Cppyy::GetNumDatamembers(kls);
+        if (ndata) {
+            std::string rname = name;
+            TypeManip::cppscope_to_legalname(rname);
+
+            std::ostringstream initdef;
+            initdef << "namespace __cppyy_internal {\n"
+                    << "void init_" << rname << "(" << name << "*& self";
+            bool codegen_ok = true;
+            Cppyy::TCppIndex_t actual_ndata = ndata;
+            for (Cppyy::TCppIndex_t i = 0; i < ndata; ++i) {
+                if (Cppyy::IsStaticData(kls, i) || !Cppyy::IsPublicData(kls, i)) {
+                    actual_ndata -= 1;
+                    continue;
+                }
+
+                const std::string& tt = Cppyy::ResolveName(Cppyy::GetDatamemberType(kls, i));
+                const std::string& cpd = Utility::Compound(tt);
+                const std::string& tt_clean = TypeManip::clean_type(tt, false, true);
+
+                if (Cppyy::IsEnum(tt_clean)) {
+                // TODO: this is stupid as it breaks both on legit enum data members as well as on
+                // enum constants that are exposed to the enclosing scope, but for now it is safer
+                // to simply not support ithis case
+                    codegen_ok = false;
+                    break;
+                }
+
+                if (tt.rfind(']') == std::string::npos && tt.rfind(')') == std::string::npos) {
+                    if (!cpd.empty())
+                        initdef << ", " << tt_clean << cpd << " ";
+                    else
+                        initdef << ", const " << tt_clean << "& ";
+                    initdef << Cppyy::GetDatamemberName(kls, i) << " = ";
+                    if ((!cpd.empty() && cpd.back() == '*') || Cppyy::IsBuiltin(tt_clean)) initdef << 0;
+                    else initdef << tt_clean << "()";
+                } else {
+                    codegen_ok = false;     // TODO: how to support arrays, anonymous enums, etc?
+                    break;
+                }
+            }
+            if (!actual_ndata) codegen_ok = false;
+            if (codegen_ok) {
+                initdef << ") {\n  self = new " << name << "{";
+                for (Cppyy::TCppIndex_t i = 0; i < ndata; ++i) {
+                    if (i != 0) initdef << ", ";
+                    initdef << Cppyy::GetDatamemberName(kls, i);
+                }
+                initdef << "};\n} }";
+            }
+            if (codegen_ok && Cppyy::Compile(initdef.str())) {
+                Cppyy::TCppScope_t cis = Cppyy::GetScope("__cppyy_internal");
+                const auto& mix = Cppyy::GetMethodIndicesFromName(cis, "init_"+rname);
+                if (mix.size()) {
+                    if (!Utility::AddToClass(pyclass, "__init__",
+                            new CPPFunction(cis, Cppyy::GetMethod(cis, mix[0]))))
+                        PyErr_Clear();
+                }
+            }
+        }
     }
 
 

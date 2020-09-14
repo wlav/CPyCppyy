@@ -15,6 +15,7 @@ namespace TypeManip {
     std::string template_base(const std::string& cppname);
 
     void cppscope_to_pyscope(std::string& cppscope);
+    void cppscope_to_legalname(std::string& cppscope);
     std::string extract_namespace(const std::string& name);
 
     std::vector<std::string> extract_arg_types(const std::string& sig);
