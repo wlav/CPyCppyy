@@ -390,6 +390,8 @@ static PyObject* mp_func_defaults(CPPOverload* pymeth, void*)
         PyObject* defvalue = methods[0]->GetArgDefault(iarg);
         if (defvalue)
             PyTuple_SET_ITEM(defaults, itup++, defvalue);
+        else
+           PyErr_Clear();
     }
     _PyTuple_Resize(&defaults, itup);
 
