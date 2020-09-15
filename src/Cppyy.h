@@ -51,6 +51,8 @@ namespace Cppyy {
 // direct interpreter access -------------------------------------------------
     CPPYY_IMPORT
     bool Compile(const std::string& code);
+    CPPYY_IMPORT
+    std::string ToString(TCppType_t klass, TCppObject_t obj);
 
 // name to opaque C++ scope representation -----------------------------------
     CPPYY_IMPORT

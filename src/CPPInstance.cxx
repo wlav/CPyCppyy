@@ -598,36 +598,23 @@ static PyObject* op_str_internal(PyObject* pyobj, PyObject* lshift, bool isBound
 
 static PyObject* op_str(CPPInstance* self)
 {
-// Forward to C++ insertion operator if available, otherwise forward to repr.
-    PyObject* result = nullptr;
-    PyObject* pyobj = (PyObject*)self;
-    PyObject* lshift = PyObject_GetAttr(pyobj, PyStrings::gLShift);
-    if (lshift) result = op_str_internal(pyobj, lshift, true);
+// See whether the backend can pretty-pring this function, otherwise forward to repr.
+    const std::string& pretty = Cppyy::ToString(self->ObjectIsA(), self->GetObject());
+    if (!pretty.empty())
+        return CPyCppyy_PyText_FromString(pretty.c_str());
 
-    if (!result) {
-        PyErr_Clear();
-        PyObject* pyclass = (PyObject*)Py_TYPE(pyobj);
-        lshift = PyObject_GetAttr(pyclass, PyStrings::gLShiftC);
-        if (!lshift) {
-            PyErr_Clear();
-        // attempt lazy install of global operator<<(ostream&)
-            std::string rcname = Utility::ClassName(pyobj);
-            Cppyy::TCppScope_t rnsID = Cppyy::GetScope(TypeManip::extract_namespace(rcname));
-            PyCallable* pyfunc = Utility::FindBinaryOperator("std::ostream", rcname, "<<", rnsID);
-            if (pyfunc) {
-                Utility::AddToClass(pyclass, "__lshiftc__", pyfunc);
-                lshift = PyObject_GetAttr(pyclass, PyStrings::gLShiftC);
-            } else
-                PyType_Type.tp_setattro(pyclass, PyStrings::gLShiftC, Py_None);
-        } else if (lshift == Py_None) {
-            Py_DECREF(lshift);
-            lshift = nullptr;
-        }
-        if (lshift) result = op_str_internal(pyobj, lshift, false);
+    for (PyObject* pyname : {PyStrings::gLShift, PyStrings::gLShiftC}) {
+         PyObject* lshift = PyObject_GetAttr((PyObject*)self, pyname);
+         if (lshift == Py_None) {
+             Py_DECREF(lshift);
+             continue;
+         } else if (lshift) {
+             PyObject* result = op_str_internal((PyObject*)self, lshift, true);
+             if (result)
+                 return result;
+         }
+         PyErr_Clear();
     }
-
-    if (result)
-        return result;
 
     return op_repr(self);
 }
