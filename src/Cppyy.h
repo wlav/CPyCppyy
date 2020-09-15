@@ -141,7 +141,7 @@ namespace Cppyy {
     CPPYY_IMPORT
     bool IsEnum(const std::string& type_name);
     CPPYY_IMPORT
-    bool IsPOD(TCppType_t type);
+    bool IsAggregate(TCppType_t type);
 
     CPPYY_IMPORT
     void GetAllCppNames(TCppScope_t scope, std::set<std::string>& cppnames);

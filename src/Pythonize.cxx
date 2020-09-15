@@ -1271,7 +1271,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         PyObject_SetAttr(pyclass, PyStrings::gNe, top_ne);
     }
 
-    if (Cppyy::IsPOD(((CPPClass*)pyclass)->fCppType) && name.compare(0, 5, "std::", 5) != 0) {
+    if (Cppyy::IsAggregate(((CPPClass*)pyclass)->fCppType) && name.compare(0, 5, "std::", 5) != 0) {
     // create a pseudo-constructor to allow initializer-style object creation
         Cppyy::TCppType_t kls = ((CPPClass*)pyclass)->fCppType;
         Cppyy::TCppIndex_t ndata = Cppyy::GetNumDatamembers(kls);
