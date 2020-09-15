@@ -579,7 +579,8 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
 
     // no drop through if failed (if implicit was desired, don't provide template args)
         Utility::FetchError(errors);
-        PyObject* topmsg = CPyCppyy_PyText_FromFormat("Could not instantiate %s:", CPyCppyy_PyText_AsString(pyfullname));
+        PyObject* topmsg = CPyCppyy_PyText_FromFormat(
+            "Could not find \"%s\" (set cppyy.set_debug() for C++ errors):", CPyCppyy_PyText_AsString(pyfullname));
         Py_DECREF(pyfullname);
         Utility::SetDetailedException(errors, topmsg /* steals */, PyExc_TypeError /* default error */);
 
