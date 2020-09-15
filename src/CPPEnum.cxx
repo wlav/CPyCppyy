@@ -2,6 +2,7 @@
 #include "CPyCppyy.h"
 #include "CPPEnum.h"
 #include "PyStrings.h"
+#include "Utility.h"
 
 
 //- private helpers ----------------------------------------------------------
@@ -82,6 +83,51 @@ static PyObject* enum_repr(PyObject* self)
 }
 
 
+//----------------------------------------------------------------------------
+// TODO: factor the following lookup with similar codes in Convertes and TemplateProxy.cxx
+
+static std::map<std::string, std::string> gCTypesNames = {
+    {"bool", "c_bool"},
+    {"char", "c_char"}, {"wchar_t", "c_wchar"},
+    {"std::byte", "c_byte"}, {"int8_t", "c_byte"}, {"uint8_t", "c_ubyte"},
+    {"short", "c_short"}, {"int16_t", "c_int16"}, {"unsigned short", "c_ushort"}, {"uint16_t", "c_uint16"},
+    {"int", "c_int"}, {"unsigned int", "c_uint"},
+    {"long", "c_long"}, {"unsigned long", "c_ulong"},
+    {"long long", "c_longlong"}, {"unsigned long long", "c_ulonglong"}};
+
+// Both GetCTypesType and GetCTypesPtrType, rely on the ctypes module itself
+// caching the types (thus also making them unique), so no ref-count is needed.
+// Further, by keeping a ref-count on the module, it won't be off-loaded until
+// the 2nd cleanup cycle.
+static PyTypeObject* GetCTypesType(const std::string& cppname)
+{
+    static PyObject* ctmod = PyImport_ImportModule("ctypes");   // ref-count kept
+    if (!ctmod)
+        return nullptr;
+
+    auto nn = gCTypesNames.find(cppname);
+    if (nn == gCTypesNames.end()) {
+        PyErr_Format(PyExc_TypeError, "Can not find ctypes type for \"%s\"", cppname.c_str());
+        return nullptr;
+    }
+
+    return (PyTypeObject*)PyObject_GetAttrString(ctmod, nn->second.c_str());
+}
+
+static PyObject* enum_ctype(PyObject* cls, PyObject* args, PyObject* kwds)
+{
+    PyObject* pyres = PyObject_GetAttr(cls, CPyCppyy::PyStrings::gUnderlying);
+    if (!pyres) PyErr_Clear();
+
+    std::string underlying = pyres ? CPyCppyy_PyText_AsString(pyres) : "int";
+    PyTypeObject* ct = GetCTypesType(underlying);
+    if (!ct)
+        return nullptr;
+
+    return PyType_Type.tp_call((PyObject*)ct, args, kwds);
+}
+
+
 //- creation -----------------------------------------------------------------
 CPyCppyy::CPPEnum* CPyCppyy::CPPEnum_New(const std::string& name, Cppyy::TCppScope_t scope)
 {
@@ -117,12 +163,19 @@ CPyCppyy::CPPEnum* CPyCppyy::CPPEnum_New(const std::string& name, Cppyy::TCppSco
         PyObject* pycppname = CPyCppyy_PyText_FromString(ename.c_str());
         PyDict_SetItem(dct, PyStrings::gCppName, pycppname);
         Py_DECREF(pycppname);
+        PyObject* pyresolved = CPyCppyy_PyText_FromString(resolved.c_str());
+        PyDict_SetItem(dct, PyStrings::gUnderlying, pyresolved);
+        Py_DECREF(pyresolved);
 
     // create the actual enum class
         args = Py_BuildValue((char*)"sOO", name.c_str(), pybases, dct);
         Py_DECREF(pybases);
         Py_DECREF(dct);
         pyenum = ((PyTypeObject*)pymeta)->tp_new((PyTypeObject*)pymeta, args, nullptr);
+
+    // add pythonizations
+        Utility::AddToClass(
+            (PyObject*)Py_TYPE(pyenum), "__ctype__", (PyCFunction)enum_ctype, METH_VARARGS | METH_KEYWORDS);
         ((PyTypeObject*)pyenum)->tp_repr = enum_repr;
         ((PyTypeObject*)pyenum)->tp_str  = ((PyTypeObject*)pyside_type)->tp_repr;
 
