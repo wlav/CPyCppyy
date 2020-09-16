@@ -695,9 +695,43 @@ PyObject* ArrayInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 
 
 //- map behavior as primitives ------------------------------------------------
+static PyObject* MapFromPairs(PyObject* self, PyObject* pairs)
+{
+// construct an empty map, then fill it with the key, value pairs
+    PyObject* result = PyObject_CallMethodObjArgs(self, PyStrings::gRealInit, nullptr);
+    if (!result)
+        return nullptr;
+
+    PyObject* si_call = PyObject_GetAttr(self, PyStrings::gSetItem);
+    for (Py_ssize_t i = 0; i < PySequence_Size(pairs); ++i) {
+        PyObject* pair = PySequence_GetItem(pairs, i);
+        PyObject* sires = nullptr;
+        if (pair && PySequence_Check(pair) && PySequence_Size(pair) == 2) {
+            PyObject* key   = PySequence_GetItem(pair, 0);
+            PyObject* value = PySequence_GetItem(pair, 1);
+            sires = PyObject_CallFunctionObjArgs(si_call, key, value, nullptr);
+            Py_DECREF(value);
+            Py_DECREF(key);
+        }
+        Py_DECREF(pair);
+        if (!sires) {
+            Py_DECREF(si_call);
+            Py_DECREF(result);
+            if (!PyErr_Occurred())
+                PyErr_SetString(PyExc_TypeError, "Failed to fill map (argument not a dict or sequence of pairs)");
+            return nullptr;
+        } else
+            Py_DECREF(sires);
+    }
+    Py_DECREF(si_call);
+
+    return result;
+}
+
 PyObject* MapInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 {
-// Specialized map constructor to allow construction from mapping containers.
+// Specialized map constructor to allow construction from mapping containers and
+// from tuples of pairs ("intializer_list style").
     if (PyTuple_GET_SIZE(args) == 1 && PyMapping_Check(PyTuple_GET_ITEM(args, 0))) {
         PyObject* assoc = PyTuple_GET_ITEM(args, 0);
 #if PY_VERSION_HEX < 0x03000000
@@ -708,35 +742,20 @@ PyObject* MapInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
         PyObject* items = PyMapping_Items(assoc);
 #endif
         if (items && PySequence_Check(items)) {
-        // construct an empty map, then fill it
-            PyObject* result = PyObject_CallMethodObjArgs(self, PyStrings::gRealInit, nullptr);
-            if (!result) {
-                Py_DECREF(items);
-                return nullptr;
-            }
-
-            PyObject* si_call = PyObject_GetAttr(self, PyStrings::gSetItem);
-            for (Py_ssize_t i = 0; i < PySequence_Size(items); ++i) {
-                PyObject* item = PySequence_GetItem(items, i);
-                PyObject* sires = PyObject_CallFunctionObjArgs(
-                    si_call, PyTuple_GET_ITEM(item, 0), PyTuple_GET_ITEM(item, 1), nullptr);
-                Py_DECREF(item);
-                if (!sires) {
-                    Py_DECREF(si_call);
-                    Py_DECREF(result);
-                    Py_DECREF(items);
-                    return nullptr;
-                } else
-                    Py_DECREF(sires);
-            }
-            Py_DECREF(si_call);
-
+            PyObject* result = MapFromPairs(self, items);
+            Py_DECREF(items);
             return result;
-        } else
-            PyErr_Clear();
+        }
+
+        Py_XDECREF(items);
+        PyErr_Clear();
     }
 
-// The given argument wasn't iterable: simply forward to regular constructor
+// tuple of pairs case
+    else if (PyTuple_GET_SIZE(args) == 1 && PySequence_Check(PyTuple_GET_ITEM(args, 0)))
+        return MapFromPairs(self, PyTuple_GET_ITEM(args, 0));
+
+// The given argument wasn't a mapping or tuple of pairs: forward to regular constructor
     PyObject* realInit = PyObject_GetAttr(self, PyStrings::gRealInit);
     if (realInit) {
         PyObject* result = PyObject_Call(realInit, args, nullptr);
