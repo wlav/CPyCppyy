@@ -85,7 +85,6 @@ PyObject* CPyCppyy::CPPConstructor::Call(
         PyObject* pyobj = PyObject_Call(dispproxy, args, kwds);
         if (!pyobj)
             return nullptr;
-        Py_DECREF(dispproxy);
 
     // retrieve the actual pointer, take over control, and set set _internal_self (TODO: get
     // this from the compiler in case of some unorthodox padding or if the inheritance
@@ -93,10 +92,13 @@ PyObject* CPyCppyy::CPPConstructor::Call(
         address = (ptrdiff_t)((CPPInstance*)pyobj)->GetObject();
         if (address) {
             ((CPPInstance*)pyobj)->CppOwns();
-            ptrdiff_t self_address = address + Cppyy::SizeOf(disp) - sizeof(DispatchPtr);
-            new ((void*)self_address) DispatchPtr{(PyObject*)self};
+            PyObject* pyoff = PyObject_CallMethod(dispproxy, (char*)"_dispatchptr_offset", nullptr);
+            size_t disp_offset = PyLong_AsSsize_t(pyoff);
+            Py_DECREF(pyoff);
+            new ((void*)(address + disp_offset)) DispatchPtr{(PyObject*)self};
         }
         Py_DECREF(pyobj);
+        Py_DECREF(dispproxy);
 
     } else {
     // translate the arguments
