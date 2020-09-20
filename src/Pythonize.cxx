@@ -1527,16 +1527,18 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
 // the global ones (the idea is to allow writing a pythonizor that see all classes)
     bool pstatus = true;
     std::string outer_scope = TypeManip::extract_namespace(name);
-    auto p = gPythonizations.find(outer_scope);
-    if (p != gPythonizations.end()) {
-        PyObject* subname = CPyCppyy_PyText_FromString(
-            name.substr(outer_scope.size()+2, std::string::npos).c_str());
-        pstatus = run_pythonizors(pyclass, subname, p->second);
-        Py_DECREF(subname);
+    if (!outer_scope.empty()) {
+        auto p = gPythonizations.find(outer_scope);
+        if (p != gPythonizations.end()) {
+            PyObject* subname = CPyCppyy_PyText_FromString(
+                name.substr(outer_scope.size()+2, std::string::npos).c_str());
+            pstatus = run_pythonizors(pyclass, subname, p->second);
+            Py_DECREF(subname);
+        }
     }
 
-    if (pstatus && !outer_scope.empty()) {
-        p = gPythonizations.find("");
+    if (pstatus) {
+        auto p = gPythonizations.find("");
         if (p != gPythonizations.end())
             pstatus = run_pythonizors(pyclass, pyname, p->second);
     }
