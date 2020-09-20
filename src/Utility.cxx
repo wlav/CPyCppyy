@@ -630,7 +630,7 @@ Py_ssize_t CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, v
 // Retrieve a linear buffer pointer from the given pyobject.
 
 // special case: don't handle character strings here (yes, they're buffers, but not quite)
-    if (PyBytes_Check(pyobject))
+    if (PyBytes_Check(pyobject) || PyUnicode_Check(pyobject))
         return 0;
 
 // special case: bytes array

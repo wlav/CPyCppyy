@@ -2714,23 +2714,25 @@ bool CPyCppyy::InitializerListConverter::SetArg(
     if (CPPInstance_Check(pyobject) || !PySequence_Check(pyobject) || CPyCppyy_PyText_Check(pyobject)
 #if PY_VERSION_HEX >= 0x03000000
         || PyBytes_Check(pyobject)
+#else
+        || PyUnicode_Check(pyobject)
 #endif
         )
         return false;
 
-    void* buf;
+    void* buf = nullptr;
     Py_ssize_t buflen = Utility::GetBuffer(pyobject, '*', (int)fValueSize, buf, true);
     faux_initlist* fake = nullptr;
     if (buf && buflen) {
     // dealing with an array here, pass on whole-sale
         fake = (faux_initlist*)malloc(sizeof(faux_initlist));
-	fake->_M_array = (faux_initlist::iterator)buf;
+        fake->_M_array = (faux_initlist::iterator)buf;
 #if defined (_LIBCPP_INITIALIZER_LIST) || defined(__GNUC__)
         fake->_M_len = (faux_initlist::size_type)buflen;
 #elif defined (_MSC_VER)
         fake->_Last = fake->_M_array+buflen*fValueSize;
 #endif
-    } else {
+    } else if (fValueSize) {
     // can only construct empty lists, so use a fake initializer list
         size_t len = (size_t)PySequence_Size(pyobject);
         fake = (faux_initlist*)malloc(sizeof(faux_initlist)+fValueSize*len);
@@ -2765,6 +2767,9 @@ bool CPyCppyy::InitializerListConverter::SetArg(
             }
         }
     }
+
+    if (!fake)     // no buffer and value size indeterminate
+        return false;
 
     para.fValue.fVoidp = (void*)fake;
     para.fTypeCode = 'X';     // means ptr that backend has to free after call
@@ -3030,7 +3035,7 @@ namespace {
 using namespace CPyCppyy;
 
 #define STRINGVIEW "std::basic_string_view<char,std::char_traits<char> >"
-#define WSTRING "std::basic_string<wchar_t>"
+#define WSTRING "std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >"
 
 static struct InitConvFactories_t {
 public:
