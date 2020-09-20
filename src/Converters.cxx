@@ -30,9 +30,6 @@
 #include <codecvt>
 #endif
 
-#define UNKNOWN_SIZE         -1
-#define UNKNOWN_ARRAY_SIZE   -2
-
 
 //- data _____________________________________________________________________
 namespace CPyCppyy {
@@ -1483,14 +1480,14 @@ bool CPyCppyy::VoidArrayConverter::ToMemory(PyObject* value, void* address)
 //----------------------------------------------------------------------------
 static inline void init_shape(Py_ssize_t defdim, dims_t dims, Py_ssize_t*& shape)
 {
-    int nalloc = (dims && 0 < dims[0]) ? (int)dims[0]+1: 2;
+    int nalloc = (dims && 0 < dims[0]) ? (int)dims[0]+1: defdim+1;
     shape = new Py_ssize_t[nalloc];
     if (dims) {
         for (int i = 0; i < nalloc; ++i)
             shape[i] = (Py_ssize_t)dims[i];
     } else {
         shape[0] = defdim;
-        shape[1] = -1;
+        for (int i = 1; i < nalloc; ++i) shape[i] = CPyCppyy::UNKNOWN_SIZE;
     }
 }
 
@@ -2862,10 +2859,8 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, dims
     if (cpd == "[]") {
     // simple array
         h = gConvFactories.find(realType + "*");
-        if (h != gConvFactories.end()) {
-            if (dims && dims[1] == UNKNOWN_SIZE) dims[1] = UNKNOWN_ARRAY_SIZE;
+        if (h != gConvFactories.end())
             return (h->second)(dims);
-        }
     } else if (cpd == "*[]") {
     // array of pointers
         h = gConvFactories.find(realType + "*");
@@ -2875,8 +2870,8 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, dims
             dim_t newdim = (dims && 0 < dims[0]) ? dims[0]+1 : 2;
             dims_t newdims = new dim_t[newdim+1];
             newdims[0] = newdim;
-            newdims[1] = (0 < size ? size : UNKNOWN_ARRAY_SIZE);      // the array
-            newdims[2] = UNKNOWN_SIZE;                                // the pointer
+            newdims[1] = (0 < size ? size : UNKNOWN_SIZE);      // the array
+            newdims[2] = UNKNOWN_SIZE;                          // the pointer
             if (dims && 2 < newdim) {
                 for (int i = 2; i < (newdim-1); ++i)
                     newdims[i+1] = dims[i];

@@ -51,9 +51,9 @@ CPPYY_DECL_EXEC(CString32);
 // pointer/array executors
 #define CPPYY_ARRAY_DECL_EXEC(name)                                          \
 class name##ArrayExecutor : public Executor {                                \
-    Py_ssize_t fDims[3];                                                     \
+    Py_ssize_t fShape[3];                                                    \
 public:                                                                      \
-    name##ArrayExecutor(Py_ssize_t ndims = 1) : fDims{ndims, -1, -1} {}      \
+    name##ArrayExecutor(Py_ssize_t ndims = 1) : fShape{ndims, -1, -1} {}     \
     virtual PyObject* Execute(                                               \
         Cppyy::TCppMethod_t, Cppyy::TCppObject_t, CallContext*);             \
 }

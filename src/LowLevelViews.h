@@ -11,6 +11,8 @@
 
 namespace CPyCppyy {
 
+static const Py_ssize_t UNKNOWN_SIZE       = (Py_ssize_t)-1;
+
 class Converter;
 
 class LowLevelView {

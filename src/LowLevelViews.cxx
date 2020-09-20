@@ -765,7 +765,7 @@ template<typename T>
 static inline PyObject* CreateLowLevelViewT(T* address, Py_ssize_t* shape)
 {
     using namespace CPyCppyy;
-    Py_ssize_t nx = (shape && 0 <= shape[1]) ? shape[1] : INT_MAX/sizeof(T);
+    Py_ssize_t nx = (shape && shape[1] != UNKNOWN_SIZE) ? shape[1] : INT_MAX/sizeof(T);
     PyObject* args = PyTuple_New(0);
     LowLevelView* llp =
         (LowLevelView*)LowLevelView_Type.tp_new(&LowLevelView_Type, args, nullptr);
