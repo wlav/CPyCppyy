@@ -197,9 +197,6 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass, cons
                     qual_return.find("const", 0, 5) == std::string::npos) {
                 if (isCall && !potGetItem) potGetItem = method;
                 setupSetItem = true;     // will add methods as overloads
-            } else if (isCall) {
-            // not a non-const by-ref return, thus better __getitem__ candidate
-                potGetItem = method;
             }
         }
 
