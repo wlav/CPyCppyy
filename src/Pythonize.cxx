@@ -1208,6 +1208,27 @@ namespace CPyCppyy {
     std::set<std::string> gIteratorTypes;
 }
 
+static inline
+bool run_pythonizors(PyObject* pyclass, PyObject* pyname, const std::vector<PyObject*>& v)
+{
+    PyObject* args = PyTuple_New(2);
+    Py_INCREF(pyclass); PyTuple_SET_ITEM(args, 0, pyclass);
+    Py_INCREF(pyname);  PyTuple_SET_ITEM(args, 1, pyname);
+
+    bool pstatus = true;
+    for (auto pythonizor : v) {
+        PyObject* result = PyObject_CallObject(pythonizor, args);
+        if (!result) {
+            pstatus = false; // TODO: detail the error handling
+            break;
+        }
+        Py_DECREF(result);
+    }
+    Py_DECREF(args);
+
+    return pstatus;
+}
+
 bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
 {
 // Add pre-defined pythonizations (for STL and ROOT) to classes based on their
@@ -1499,40 +1520,28 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         return false;
     } else {
         Py_XDECREF(res);
-        // pyname handed to tuple below
+        // pyname handed to args tuple below
     }
 
-// call registered pythonizors, if any
-    PyObject* args = PyTuple_New(2);
-    Py_INCREF(pyclass);
-    PyTuple_SET_ITEM(args, 0, pyclass);
-
-    std::string outer_scope = TypeManip::extract_namespace(name);
-
+// call registered pythonizors, if any: first run the namespace-specific pythonizors, then
+// the global ones (the idea is to allow writing a pythonizor that see all classes)
     bool pstatus = true;
-    auto p = outer_scope.empty() ? gPythonizations.end() : gPythonizations.find(outer_scope);
-    if (p == gPythonizations.end()) {
-        p = gPythonizations.find("");
-        PyTuple_SET_ITEM(args, 1, pyname);
-    } else {
-        PyTuple_SET_ITEM(args, 1, CPyCppyy_PyText_FromString(
-                                      name.substr(outer_scope.size()+2, std::string::npos).c_str()));
-        Py_DECREF(pyname);
-    }
-
+    std::string outer_scope = TypeManip::extract_namespace(name);
+    auto p = gPythonizations.find(outer_scope);
     if (p != gPythonizations.end()) {
-        for (auto pythonizor : p->second) {
-            PyObject* result = PyObject_CallObject(pythonizor, args);
-            if (!result) {
-            // TODO: detail error handling for the pythonizors
-                pstatus = false;
-                break;
-            }
-            Py_DECREF(result);
-        }
+        PyObject* subname = CPyCppyy_PyText_FromString(
+            name.substr(outer_scope.size()+2, std::string::npos).c_str());
+        pstatus = run_pythonizors(pyclass, subname, p->second);
+        Py_DECREF(subname);
     }
 
-    Py_DECREF(args);
+    if (pstatus && !outer_scope.empty()) {
+        p = gPythonizations.find("");
+        if (p != gPythonizations.end())
+            pstatus = run_pythonizors(pyclass, pyname, p->second);
+    }
+
+    Py_DECREF(pyname);
 
 // phew! all done ...
     return pstatus;
