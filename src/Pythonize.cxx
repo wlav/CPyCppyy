@@ -732,7 +732,12 @@ PyObject* MapInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 {
 // Specialized map constructor to allow construction from mapping containers and
 // from tuples of pairs ("intializer_list style").
-    if (PyTuple_GET_SIZE(args) == 1 && PyMapping_Check(PyTuple_GET_ITEM(args, 0))) {
+
+// PyMapping_Check is not very discriminatory, as it basically only checks for the
+// existence of  __getitem__, hence the most common cases of tuple and list are
+// dropped straight-of-the-bat (the PyMapping_Items call will fail on them).
+    if (PyTuple_GET_SIZE(args) == 1 && PyMapping_Check(PyTuple_GET_ITEM(args, 0)) && \
+           !(PyTuple_Check(PyTuple_GET_ITEM(args, 0)) || PyList_Check(PyTuple_GET_ITEM(args, 0)))) {
         PyObject* assoc = PyTuple_GET_ITEM(args, 0);
 #if PY_VERSION_HEX < 0x03000000
     // to prevent warning about literal string, expand macro
@@ -749,10 +754,12 @@ PyObject* MapInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 
         Py_XDECREF(items);
         PyErr_Clear();
+
+    // okay to fall through as long as 'self' has not been created (is done in MapFromPairs)
     }
 
-// tuple of pairs case
-    else if (PyTuple_GET_SIZE(args) == 1 && PySequence_Check(PyTuple_GET_ITEM(args, 0)))
+// tuple of pairs case (some mapping types are sequences)
+    if (PyTuple_GET_SIZE(args) == 1 && PySequence_Check(PyTuple_GET_ITEM(args, 0)))
         return MapFromPairs(self, PyTuple_GET_ITEM(args, 0));
 
 // The given argument wasn't a mapping or tuple of pairs: forward to regular constructor
