@@ -182,7 +182,7 @@ namespace Cppyy {
 
 // method/function reflection information ------------------------------------
     CPPYY_IMPORT
-    TCppIndex_t GetNumMethods(TCppScope_t scope);
+    TCppIndex_t GetNumMethods(TCppScope_t scope, bool accept_namespace = false);
     CPPYY_IMPORT
     std::vector<TCppIndex_t> GetMethodIndicesFromName(TCppScope_t scope, const std::string& name);
 
@@ -215,7 +215,7 @@ namespace Cppyy {
     bool        IsConstMethod(TCppMethod_t);
 
     CPPYY_IMPORT
-    TCppIndex_t GetNumTemplatedMethods(TCppScope_t scope);
+    TCppIndex_t GetNumTemplatedMethods(TCppScope_t scope, bool accept_namespace = false);
     CPPYY_IMPORT
     std::string GetTemplatedMethodName(TCppScope_t scope, TCppIndex_t imeth);
     CPPYY_IMPORT
@@ -246,7 +246,7 @@ namespace Cppyy {
 
 // data member reflection information ----------------------------------------
     CPPYY_IMPORT
-    TCppIndex_t GetNumDatamembers(TCppScope_t scope);
+    TCppIndex_t GetNumDatamembers(TCppScope_t scope, bool accept_namespace = false);
     CPPYY_IMPORT
     std::string GetDatamemberName(TCppScope_t scope, TCppIndex_t idata);
     CPPYY_IMPORT
