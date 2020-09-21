@@ -45,7 +45,7 @@ namespace {
 // extended data can slot in place of fObject for those use cases.
 
 struct ExtendedData {
-    ExtendedData() : fObject(nullptr), fSmartClass(nullptr), fTypeSize(0), fLastState(nullptr), fDispatchPtr(nullptr) {}
+    ExtendedData() : fObject(nullptr), fSmartClass(nullptr), fDispatchPtr(nullptr) {}
     ~ExtendedData() {
         for (auto& pc : fDatamemberCache)
             Py_XDECREF(pc.second);
@@ -58,8 +58,6 @@ struct ExtendedData {
 
 // for smart pointer types
     CPyCppyy::CPPSmartClass* fSmartClass;
-    size_t         fTypeSize;
-    void*          fLastState;
 
 // for caching expensive-to-create data member representations
     CPyCppyy::CI_DatamemberCache_t fDatamemberCache;
