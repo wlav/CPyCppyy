@@ -70,8 +70,8 @@ struct CPyCppyy_tagPyCArgObject {      // not public (but stable; note that olde
     PyObject* obj;
 };
 
-// indices of ctypes types into the array caches (not that c_complex does not
-// exist as a type in ctypes)
+// indices of ctypes types into the array caches (note that c_complex and c_fcomplex
+// do not exist as types in ctypes)
 #define ct_c_bool        0
 #define ct_c_char        1
 #define ct_c_shar        1
@@ -97,14 +97,15 @@ struct CPyCppyy_tagPyCArgObject {      // not public (but stable; note that olde
 #define ct_c_char_p     18
 #define ct_c_wchar_p    19
 #define ct_c_void_p     20
-#define ct_c_complex    21
-#define NTYPES          22
+#define ct_c_fcomplex   21
+#define ct_c_complex    22
+#define NTYPES          23
 
 static std::array<const char*, NTYPES> gCTypesNames = {
     "c_bool", "c_char", "c_wchar", "c_byte", "c_ubyte", "c_short", "c_ushort", "c_uint16",
     "c_int", "c_uint", "c_uint32", "c_long", "c_ulong", "c_longlong", "c_ulonglong",
     "c_float", "c_double", "c_longdouble",
-    "c_char_p", "c_wchar_p", "c_void_p", "c_complex" };
+    "c_char_p", "c_wchar_p", "c_void_p", "c_fcomplex", "c_complex" };
 static std::array<PyTypeObject*, NTYPES> gCTypesTypes;
 static std::array<PyTypeObject*, NTYPES> gCTypesPtrTypes;
 
@@ -1606,6 +1607,7 @@ CPPYY_IMPL_ARRAY_CONVERTER(ULLong,   c_ulonglong,  unsigned long long,   'Q')
 CPPYY_IMPL_ARRAY_CONVERTER(Float,    c_float,      float,                'f')
 CPPYY_IMPL_ARRAY_CONVERTER(Double,   c_double,     double,               'd')
 CPPYY_IMPL_ARRAY_CONVERTER(LDouble,  c_longdouble, long double,          'D')
+CPPYY_IMPL_ARRAY_CONVERTER(ComplexF, c_fcomplex,   std::complex<float>,  'z')
 CPPYY_IMPL_ARRAY_CONVERTER(ComplexD, c_complex,    std::complex<double>, 'Z')
 
 
@@ -3141,6 +3143,9 @@ public:
         gf["double**"] =                    (cf_t)+[](dims_t d) { return new DoubleArrayPtrConverter{d}; };
         gf["long double*"] =                (cf_t)+[](dims_t d) { return new LDoubleArrayConverter{d}; };
         gf["long double**"] =               (cf_t)+[](dims_t d) { return new LDoubleArrayPtrConverter{d}; };
+        gf["std::complex<float>*"] =        (cf_t)+[](dims_t d) { return new ComplexFArrayConverter{d}; };
+        gf["complex<float>*"] =             (cf_t)+[](dims_t d) { return new ComplexFArrayConverter{d}; };
+        gf["std::complex<float>**"] =       (cf_t)+[](dims_t d) { return new ComplexFArrayPtrConverter{d}; };
         gf["std::complex<double>*"] =       (cf_t)+[](dims_t d) { return new ComplexDArrayConverter{d}; };
         gf["complex<double>*"] =            (cf_t)+[](dims_t d) { return new ComplexDArrayConverter{d}; };
         gf["std::complex<double>**"] =      (cf_t)+[](dims_t d) { return new ComplexDArrayPtrConverter{d}; };

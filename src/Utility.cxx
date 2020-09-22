@@ -649,6 +649,8 @@ Py_ssize_t CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, v
             // ctypes is inconsistent in format on Windows; either way these types are the same size
                 || (tc == 'I' && strchr(bufinfo.format, 'L')) || (tc == 'i' && strchr(bufinfo.format, 'l'))
 #endif
+            // complex float is 'Zf' in bufinfo.format, but 'z' in single char
+                || (tc == 'z' && strstr(bufinfo.format, "Zf"))
             // allow 'signed char' ('b') from array to pass through '?' (bool as from struct)
                 || (tc == '?' && strchr(bufinfo.format, 'b'))
                     ) {
