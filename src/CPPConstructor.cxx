@@ -86,9 +86,7 @@ PyObject* CPyCppyy::CPPConstructor::Call(
         if (!pyobj)
             return nullptr;
 
-    // retrieve the actual pointer, take over control, and set set _internal_self (TODO: get
-    // this from the compiler in case of some unorthodox padding or if the inheritance
-    //  hierarchy extends back into C++ land)
+    // retrieve the actual pointer, take over control, and set set _internal_self
         address = (ptrdiff_t)((CPPInstance*)pyobj)->GetObject();
         if (address) {
             ((CPPInstance*)pyobj)->CppOwns();
