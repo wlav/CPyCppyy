@@ -141,9 +141,7 @@ static inline PyObject* HandleReturn(
     CPPOverload* pymeth, CPPInstance* oldSelf, PyObject* result)
 {
 // special case for python exceptions, propagated through C++ layer
-    int ll_action = 0;
     if (result) {
-
     // if this method creates new objects, always take ownership
         if (IsCreator(pymeth->fMethodInfo->fFlags)) {
 
@@ -159,41 +157,41 @@ static inline PyObject* HandleReturn(
         }
 
     // if this new object falls inside self, make sure its lifetime is proper
-        if ((PyObject*)pymeth->fSelf != result) {
-            if (pymeth->fMethodInfo->fFlags & CallContext::kSetLifeline)
-                ll_action = 1;
-            else if (!(pymeth->fMethodInfo->fFlags & CallContext::kNeverLifeLine) && \
-                     CPPInstance_Check(pymeth->fSelf) && CPPInstance_Check(result)) {
-            // if self was a by-value return and result is not, pro-actively protect result;
-            // else if the return value falls within the memory of 'this', force a lifeline
-                CPPInstance* cppself = (CPPInstance*)pymeth->fSelf;
-                CPPInstance* cppres  = (CPPInstance*)result;
-                if (!(cppres->fFlags & CPPInstance::kIsValue)) {     // no need if the result is temporary
-                    if (cppself->fFlags & CPPInstance::kIsValue)
-                        ll_action = 2;
-                    else if (cppself->fFlags & CPPInstance::kHasLifeline)
-                        ll_action = 3;
-                    else {
-                        ptrdiff_t offset = (ptrdiff_t)cppres->GetObject() - (ptrdiff_t)cppself->GetObject();
-                        if (0 <= offset && offset < (ptrdiff_t)Cppyy::SizeOf(cppself->ObjectIsA()))
-                             ll_action = 4;
+        if (!(pymeth->fMethodInfo->fFlags & CallContext::kNeverLifeLine)) {
+            int ll_action = 0;
+            if ((PyObject*)pymeth->fSelf != result) {
+                if (pymeth->fMethodInfo->fFlags & CallContext::kSetLifeline)
+                    ll_action = 1;
+                else if (CPPInstance_Check(result) && CPPInstance_Check(pymeth->fSelf)) {
+                // if self was a by-value return and result is not, pro-actively protect result;
+                // else if the return value falls within the memory of 'this', force a lifeline
+                    CPPInstance* cppself = (CPPInstance*)pymeth->fSelf;
+                    CPPInstance* cppres  = (CPPInstance*)result;
+                    if (!(cppres->fFlags & CPPInstance::kIsValue)) {     // no need if the result is temporary
+                        if (cppself->fFlags & CPPInstance::kIsValue)
+                            ll_action = 2;
+                        else if (cppself->fFlags & CPPInstance::kHasLifeline)
+                            ll_action = 3;
+                        else {
+                            ptrdiff_t offset = (ptrdiff_t)cppres->GetObject() - (ptrdiff_t)cppself->GetObject();
+                            if (0 <= offset && offset < (ptrdiff_t)Cppyy::SizeOf(cppself->ObjectIsA()))
+                                 ll_action = 4;
+                        }
                     }
+                    if (ll_action) cppres->fFlags |= CPPInstance::kHasLifeline;    // for chaining
                 }
-                if (ll_action) cppres->fFlags |= CPPInstance::kHasLifeline;    // for chaining
+            }
+
+            if (!ll_action)
+                pymeth->fMethodInfo->fFlags |= CallContext::kNeverLifeLine;       // assume invariant semantics
+            else {
+                if (PyObject_SetAttr(result, PyStrings::gLifeLine, (PyObject*)pymeth->fSelf) == -1)
+                    PyErr_Clear();         // ignored
+                if (ll_action == 1 && CPPInstance_Check(result) /* already checked for other cases */)
+                    ((CPPInstance*)result)->fFlags |= CPPInstance::kHasLifeline;  // for chaining
+                pymeth->fMethodInfo->fFlags |= CallContext::kSetLifeline;         // for next time
             }
         }
-
-        if (!ll_action)
-            pymeth->fMethodInfo->fFlags |= CallContext::kNeverLifeLine;   // assume invariant semantics
-    }
-
-    if (ll_action) {
-        if (PyObject_SetAttr(result, PyStrings::gLifeLine, (PyObject*)pymeth->fSelf) == -1)
-            PyErr_Clear();         // ignored
-        if (ll_action == 1 /* directly set */ && CPPInstance_Check(result))
-            ((CPPInstance*)result)->fFlags |= CPPInstance::kHasLifeline;  // for chaining
-        else
-            pymeth->fMethodInfo->fFlags |= CallContext::kSetLifeline;     // for next time
     }
 
 // reset self as necessary to allow re-use of the CPPOverload
