@@ -773,9 +773,9 @@ PyObject* MapInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
     return nullptr;
 }
 
-PyObject* MapContains(PyObject* self, PyObject* obj)
+PyObject* STLContainsWithFind(PyObject* self, PyObject* obj)
 {
-// Implement python's __contains__ for std::map<>s
+// Implement python's __contains__ for std::map/std::set
     PyObject* result = nullptr;
 
     PyObject* iter = CallPyObjMethod(self, "find", obj);
@@ -1458,13 +1458,15 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         Utility::AddToClass(pyclass, "__real_init", "__init__");
         Utility::AddToClass(pyclass, "__init__", (PyCFunction)MapInit, METH_VARARGS | METH_KEYWORDS);
 
-        Utility::AddToClass(pyclass, "__contains__", (PyCFunction)MapContains, METH_O);
+        Utility::AddToClass(pyclass, "__contains__", (PyCFunction)STLContainsWithFind, METH_O);
     }
 
     else if (IsTemplatedSTLClass(name, "set")) {
     // constructor that takes python associative collections
         Utility::AddToClass(pyclass, "__real_init", "__init__");
         Utility::AddToClass(pyclass, "__init__", (PyCFunction)SetInit, METH_VARARGS | METH_KEYWORDS);
+
+        Utility::AddToClass(pyclass, "__contains__", (PyCFunction)STLContainsWithFind, METH_O);
     }
 
     else if (IsTemplatedSTLClass(name, "pair")) {
