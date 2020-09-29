@@ -1351,12 +1351,11 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
             initdef << "namespace __cppyy_internal {\n"
                     << "void init_" << rname << "(" << name << "*& self";
             bool codegen_ok = true;
-            Cppyy::TCppIndex_t actual_ndata = ndata;
+            std::vector<std::string> arg_types, arg_names, arg_defaults;
+            arg_types.reserve(ndata); arg_names.reserve(ndata); arg_defaults.reserve(ndata);
             for (Cppyy::TCppIndex_t i = 0; i < ndata; ++i) {
-                if (Cppyy::IsStaticData(kls, i) || !Cppyy::IsPublicData(kls, i)) {
-                    actual_ndata -= 1;
+                if (Cppyy::IsStaticData(kls, i) || !Cppyy::IsPublicData(kls, i))
                     continue;
-                }
 
                 const std::string& tt = Cppyy::ResolveName(Cppyy::GetDatamemberType(kls, i));
                 const std::string& cpd = Utility::Compound(tt);
@@ -1371,34 +1370,42 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
                 }
 
                 if (tt.rfind(']') == std::string::npos && tt.rfind(')') == std::string::npos) {
-                    if (!cpd.empty())
-                        initdef << ", " << tt_clean << cpd << " ";
-                    else
-                        initdef << ", const " << tt_clean << "& ";
-                    initdef << Cppyy::GetDatamemberName(kls, i) << " = ";
-                    if ((!cpd.empty() && cpd.back() == '*') || Cppyy::IsBuiltin(tt_clean)) initdef << 0;
-                    else initdef << tt_clean << "()";
+                    if (!cpd.empty()) arg_types.push_back(tt_clean+cpd);
+                    else arg_types.push_back("const "+tt_clean+"&");
+                    arg_names.push_back(Cppyy::GetDatamemberName(kls, i));
+                    if ((!cpd.empty() && cpd.back() == '*') || Cppyy::IsBuiltin(tt_clean))
+                        arg_defaults.push_back("0");
+                    else {
+                        Cppyy::TCppScope_t ttid = Cppyy::GetScope(tt_clean);
+                        if (Cppyy::IsDefaultConstructable(ttid)) arg_defaults.push_back(tt_clean+"{}");
+                    }
                 } else {
                     codegen_ok = false;     // TODO: how to support arrays, anonymous enums, etc?
                     break;
                 }
             }
-            if (!actual_ndata) codegen_ok = false;
-            if (codegen_ok) {
+
+            if (codegen_ok && !arg_types.empty()) {
+                bool defaults_ok = arg_defaults.size() == arg_types.size();
+                for (std::vector<std::string>::size_type i = 0; i < arg_types.size(); ++i) {
+                    initdef << ", " << arg_types[i] << " " << arg_names[i];
+                    if (defaults_ok) initdef << " = " << arg_defaults[i];
+                }
                 initdef << ") {\n  self = new " << name << "{";
-                for (Cppyy::TCppIndex_t i = 0; i < ndata; ++i) {
+                for (std::vector<std::string>::size_type i = 0; i < arg_names.size(); ++i) {
                     if (i != 0) initdef << ", ";
-                    initdef << Cppyy::GetDatamemberName(kls, i);
+                    initdef << arg_names[i];
                 }
                 initdef << "};\n} }";
-            }
-            if (codegen_ok && Cppyy::Compile(initdef.str())) {
-                Cppyy::TCppScope_t cis = Cppyy::GetScope("__cppyy_internal");
-                const auto& mix = Cppyy::GetMethodIndicesFromName(cis, "init_"+rname);
-                if (mix.size()) {
-                    if (!Utility::AddToClass(pyclass, "__init__",
-                            new CPPFunction(cis, Cppyy::GetMethod(cis, mix[0]))))
-                        PyErr_Clear();
+
+                if (Cppyy::Compile(initdef.str())) {
+                    Cppyy::TCppScope_t cis = Cppyy::GetScope("__cppyy_internal");
+                    const auto& mix = Cppyy::GetMethodIndicesFromName(cis, "init_"+rname);
+                    if (mix.size()) {
+                        if (!Utility::AddToClass(pyclass, "__init__",
+                                new CPPFunction(cis, Cppyy::GetMethod(cis, mix[0]))))
+                            PyErr_Clear();
+                    }
                 }
             }
         }
