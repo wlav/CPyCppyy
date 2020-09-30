@@ -547,7 +547,8 @@ bool CPyCppyy::name##Converter::SetArg(                                      \
                                                                              \
 PyObject* CPyCppyy::name##Converter::FromMemory(void* address)               \
 {                                                                            \
-    return PyBytes_FromFormat("%c", *((type*)address));                      \
+    /* return char in "native" str type as that's more natural in use */     \
+    return CPyCppyy_PyText_FromFormat("%c", *((type*)address));              \
 }                                                                            \
                                                                              \
 bool CPyCppyy::name##Converter::ToMemory(PyObject* value, void* address)     \

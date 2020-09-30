@@ -984,21 +984,23 @@ static int PyObject_Compare(PyObject* one, PyObject* other) {
     return !PyObject_RichCompareBool(one, other, Py_EQ);
 }
 #endif
-static inline PyObject* CPyCppyy_PyString_FromCppString(std::string* s) {
+static inline PyObject* CPyCppyy_PyString_FromCppString(std::string* s, bool native=true) {
+    if (native)
+        return PyBytes_FromStringAndSize(s->c_str(), s->size());
     return CPyCppyy_PyText_FromStringAndSize(s->c_str(), s->size());
 }
 
-static inline PyObject* CPyCppyy_PyString_FromCppString(std::wstring* s) {
+static inline PyObject* CPyCppyy_PyString_FromCppString(std::wstring* s, bool=true) {
     return PyUnicode_FromWideChar(s->c_str(), s->size());
 }
 
 #define CPPYY_IMPL_STRING_PYTHONIZATION(type, name)                          \
-static PyObject* name##StringGetData(PyObject* self)                         \
+static PyObject* name##StringGetData(PyObject* self, bool native=true)       \
 {                                                                            \
     if (CPyCppyy::CPPInstance_Check(self)) {                                 \
         type* obj = ((type*)((CPPInstance*)self)->GetObject());              \
         if (obj) {                                                           \
-            return CPyCppyy_PyString_FromCppString(obj);                     \
+            return CPyCppyy_PyString_FromCppString(obj, native);             \
         } else {                                                             \
             return CPPInstance_Type.tp_str(self);                            \
         }                                                                    \
@@ -1009,7 +1011,7 @@ static PyObject* name##StringGetData(PyObject* self)                         \
                                                                              \
 PyObject* name##StringRepr(PyObject* self)                                   \
 {                                                                            \
-    PyObject* data = name##StringGetData(self);                              \
+    PyObject* data = name##StringGetData(self, true);                        \
     if (data) {                                                              \
         PyObject* repr = PyObject_Repr(data);                                \
         Py_DECREF(data);                                                     \
@@ -1020,7 +1022,7 @@ PyObject* name##StringRepr(PyObject* self)                                   \
                                                                              \
 PyObject* name##StringIsEqual(PyObject* self, PyObject* obj)                 \
 {                                                                            \
-    PyObject* data = name##StringGetData(self);                              \
+    PyObject* data = name##StringGetData(self, PyBytes_Check(obj));          \
     if (data) {                                                              \
         PyObject* result = PyObject_RichCompare(data, obj, Py_EQ);           \
         Py_DECREF(data);                                                     \
@@ -1031,7 +1033,7 @@ PyObject* name##StringIsEqual(PyObject* self, PyObject* obj)                 \
                                                                              \
 PyObject* name##StringIsNotEqual(PyObject* self, PyObject* obj)              \
 {                                                                            \
-    PyObject* data = name##StringGetData(self);                              \
+    PyObject* data = name##StringGetData(self, PyBytes_Check(obj));          \
     if (data) {                                                              \
         PyObject* result = PyObject_RichCompare(data, obj, Py_NE);           \
         Py_DECREF(data);                                                     \
@@ -1045,7 +1047,7 @@ PyObject* name##StringIsNotEqual(PyObject* self, PyObject* obj)              \
 CPPYY_IMPL_STRING_PYTHONIZATION(type, name)                                  \
 PyObject* name##StringCompare(PyObject* self, PyObject* obj)                 \
 {                                                                            \
-    PyObject* data = name##StringGetData(self);                              \
+    PyObject* data = name##StringGetData(self, PyBytes_Check(obj));          \
     int result = 0;                                                          \
     if (data) {                                                              \
         result = PyObject_Compare(data, obj);                                \
@@ -1063,7 +1065,7 @@ Py_hash_t StlStringHash(PyObject* self)
 {
 // std::string objects hash to the same values as Python strings to allow
 // matches in dictionaries etc.
-    PyObject* data = StlStringGetData(self);
+    PyObject* data = StlStringGetData(self, false);
     Py_hash_t h = CPyCppyy_PyText_Type.tp_hash(data);
     Py_DECREF(data);
     return h;
