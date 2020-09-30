@@ -242,10 +242,6 @@ static inline bool CPyCppyy_PyLong_AsBool(PyObject* pyobject)
     return (bool)l;
 }
 
-static inline char CPyCppyy_PyText_AsChar(PyObject* pyobject) {
-// python string to C++ char conversion
-    return (char)CPyCppyy_PyText_AsString(pyobject)[0];
-}
 
 // range-checking python integer to C++ integer conversion (prevents p2.7 silent conversions)
 #define CPPYY_PYLONG_AS_TYPE(name, type, limit_low, limit_high)              \
@@ -461,11 +457,17 @@ CPPYY_IMPL_BASIC_CONVERTER_METHODS(name, type, stype, ctype, F1, F2)
 static inline int ExtractChar(PyObject* pyobject, const char* tname, int low, int high)
 {
     int lchar = -1;
-    if (CPyCppyy_PyText_Check(pyobject)) {
-        if (CPyCppyy_PyText_GET_SIZE(pyobject) == 1)
-            lchar = (int)CPyCppyy_PyText_AsChar(pyobject);
+    if (PyBytes_Check(pyobject)) {
+        if (PyBytes_GET_SIZE(pyobject) == 1)
+            lchar = (int)(PyBytes_AsString(pyobject)[0]);
         else
-            PyErr_Format(PyExc_ValueError, "%s expected, got string of size " PY_SSIZE_T_FORMAT,
+            PyErr_Format(PyExc_ValueError, "%s expected, got bytes of size " PY_SSIZE_T_FORMAT,
+                tname, PyBytes_GET_SIZE(pyobject));
+    } else if (CPyCppyy_PyText_Check(pyobject)) {
+        if (CPyCppyy_PyText_GET_SIZE(pyobject) == 1)
+            lchar = (int)(CPyCppyy_PyText_AsString(pyobject)[0]);
+        else
+            PyErr_Format(PyExc_ValueError, "%s expected, got str of size " PY_SSIZE_T_FORMAT,
                 tname, CPyCppyy_PyText_GET_SIZE(pyobject));
     } else if (!PyFloat_Check(pyobject)) {   // don't allow truncating conversion
         lchar = (int)PyLong_AsLong(pyobject);
@@ -545,13 +547,17 @@ bool CPyCppyy::name##Converter::SetArg(                                      \
                                                                              \
 PyObject* CPyCppyy::name##Converter::FromMemory(void* address)               \
 {                                                                            \
-    return CPyCppyy_PyText_FromFormat("%c", *((type*)address));              \
+    return PyBytes_FromFormat("%c", *((type*)address));                      \
 }                                                                            \
                                                                              \
 bool CPyCppyy::name##Converter::ToMemory(PyObject* value, void* address)     \
 {                                                                            \
     Py_ssize_t len;                                                          \
-    const char* cstr = CPyCppyy_PyText_AsStringAndSize(value, &len);         \
+    const char* cstr = nullptr;                                              \
+    if (PyBytes_Check(value))                                                \
+        PyBytes_AsStringAndSize(value, (char**)&cstr, &len);                 \
+    else                                                                     \
+        cstr = CPyCppyy_PyText_AsStringAndSize(value, &len);                 \
     if (cstr) {                                                              \
         if (len != 1) {                                                      \
             PyErr_Format(PyExc_TypeError, #type" expected, got string of size %zd", len);\
@@ -1688,7 +1694,11 @@ bool CPyCppyy::name##Converter::SetArg(                                      \
     PyObject* pyobject, Parameter& para, CallContext* ctxt)                  \
 {                                                                            \
     Py_ssize_t len;                                                          \
-    const char* cstr = CPyCppyy_PyText_AsStringAndSize(pyobject, &len);      \
+    const char* cstr = nullptr;                                              \
+    if (PyBytes_Check(pyobject))                                             \
+        PyBytes_AsStringAndSize(pyobject, (char**)&cstr, &len);              \
+    else                                                                     \
+        cstr = CPyCppyy_PyText_AsStringAndSize(pyobject, &len);              \
     if (cstr) {                                                              \
         fBuffer = type(cstr, len);                                           \
         para.fValue.fVoidp = &fBuffer;                                       \
@@ -1702,24 +1712,27 @@ bool CPyCppyy::name##Converter::SetArg(                                      \
         para.fTypeCode = 'V';                                                \
         return result;                                                       \
     }                                                                        \
+                                                                             \
     return false;                                                            \
 }                                                                            \
                                                                              \
 PyObject* CPyCppyy::name##Converter::FromMemory(void* address)               \
 {                                                                            \
     if (address)                                                             \
-        return CPyCppyy_PyText_FromStringAndSize(((type*)address)->F1(), ((type*)address)->F2()); \
-    Py_INCREF(PyStrings::gEmptyString);                                      \
-    return PyStrings::gEmptyString;                                          \
+        return InstanceConverter::FromMemory(address);                       \
+    auto* empty = new type();                                                \
+    return BindCppObjectNoCast(empty, fClass, CPPInstance::kIsOwner);        \
 }                                                                            \
                                                                              \
 bool CPyCppyy::name##Converter::ToMemory(PyObject* value, void* address)     \
 {                                                                            \
-    if (CPyCppyy_PyText_Check(value)) {                                      \
+    if (PyBytes_Check(value)) {                                              \
+        *((type*)address) = PyBytes_AsString(value);                         \
+        return true;                                                         \
+    } else if (CPyCppyy_PyText_Check(value)) {                               \
         *((type*)address) = CPyCppyy_PyText_AsString(value);                 \
         return true;                                                         \
     }                                                                        \
-                                                                             \
     return InstanceConverter::ToMemory(value, address);                      \
 }
 

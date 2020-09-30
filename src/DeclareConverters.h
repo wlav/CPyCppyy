@@ -173,13 +173,13 @@ public:
     CString16Converter(const CString16Converter&) = delete;
     CString16Converter& operator=(const CString16Converter&) = delete;
     virtual ~CString16Converter() { free(fBuffer); }
- 
+
 public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
     virtual PyObject* FromMemory(void* address);
     virtual bool ToMemory(PyObject* value, void* address);
     virtual bool HasState() { return true; }
- 
+
 protected:
     char16_t* fBuffer;
     long fMaxSize;
@@ -315,6 +315,7 @@ public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
     virtual PyObject* FromMemory(void* address);
     virtual bool ToMemory(PyObject* value, void* address);
+    virtual bool HasState() { return true; }
 
 private:
     std::complex<double> fBuffer;
@@ -357,6 +358,7 @@ public:                                                                      \
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);      \
     virtual PyObject* FromMemory(void* address);                             \
     virtual bool ToMemory(PyObject* value, void* address);                   \
+    virtual bool HasState() { return true; }                                 \
 protected:                                                                   \
     strtype fBuffer;                                                         \
 }

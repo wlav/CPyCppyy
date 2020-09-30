@@ -58,6 +58,7 @@ typedef dim_t* dims_t;
 #define PyBytes_CheckExact             PyString_CheckExact
 #define PyBytes_AS_STRING              PyString_AS_STRING
 #define PyBytes_AsString               PyString_AsString
+#define PyBytes_AsStringAndSize        PyString_AsStringAndSize
 #define PyBytes_GET_SIZE               PyString_GET_SIZE
 #define PyBytes_Size                   PyString_Size
 #define PyBytes_FromFormat             PyString_FromFormat
