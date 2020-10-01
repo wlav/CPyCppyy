@@ -1008,11 +1008,7 @@ PyObject* name##StringGetData(PyObject* self, bool native=true)              \
 {                                                                            \
     if (CPyCppyy::CPPInstance_Check(self)) {                                 \
         type* obj = ((type*)((CPPInstance*)self)->GetObject());              \
-        if (obj) {                                                           \
-            return CPyCppyy_PyString_FromCppString(obj, native);             \
-        } else {                                                             \
-            return CPPInstance_Type.tp_str(self);                            \
-        }                                                                    \
+        if (obj) return CPyCppyy_PyString_FromCppString(obj, native);        \
     }                                                                        \
     PyErr_Format(PyExc_TypeError, "object mismatch (%s expected)", #type);   \
     return nullptr;                                                          \
@@ -1103,6 +1099,46 @@ PyObject* StlStringDecode(PyObject* self, PyObject* args, PyObject* kwds)
         return nullptr;
     }
     return PyUnicode_Decode(obj->data(), obj->size(), encoding, errors);
+}
+
+PyObject* StlStringReplace(PyObject* self, PyObject* args, PyObject* kwds)
+{
+    char* keywords[] = {(char*)"old", (char*)"new", (char*)"count", (char*)nullptr};
+    const char* olds; const char* news; int count = -1;
+    if (PyArg_ParseTupleAndKeywords(args, kwds,
+            const_cast<char*>("ss|i"), keywords, &olds, &news, &count)) {
+        std::string* obj = ((std::string*)((CPPInstance*)self)->GetObject());
+        if (obj) {
+            int nold = strlen(olds);   // TODO: should consider \0 in olds/news
+            int nnew = strlen(news);
+            int converted = 0;
+
+            std::string* ret = new std::string(*obj);
+            std::string::size_type pos = 0;
+            while ((pos = ret->find(olds, pos)) != std::string::npos) {
+                ret->replace(pos, nold, news);
+                if (++converted == count)
+                    break;
+                pos += nnew;
+            }
+
+            return BindCppObjectNoCast(ret, ((CPPInstance*)self)->ObjectIsA(), CPPInstance::kIsOwner);
+
+        } else {
+            PyErr_SetString(PyExc_ReferenceError, "attempt to access a null-pointer");
+            return nullptr;
+        }
+    }
+
+    PyErr_Clear();
+    PyObject* cppreplace = PyObject_GetAttrString(self, (char*)"__cpp_replace");
+    if (cppreplace) {
+        PyObject* result = PyObject_Call(cppreplace, args, nullptr);
+        Py_DECREF(cppreplace);
+        return result;
+    }
+
+    return nullptr;
 }
 
 Py_hash_t StlStringHash(PyObject* self)
@@ -1547,6 +1583,8 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         Utility::AddToClass(pyclass, "__eq__",    (PyCFunction)StlStringIsEqual,    METH_O);
         Utility::AddToClass(pyclass, "__ne__",    (PyCFunction)StlStringIsNotEqual, METH_O);
         Utility::AddToClass(pyclass, "decode",    (PyCFunction)StlStringDecode,     METH_VARARGS | METH_KEYWORDS);
+        Utility::AddToClass(pyclass, "__cpp_replace", "replace");
+        Utility::AddToClass(pyclass, "replace",   (PyCFunction)StlStringReplace,    METH_VARARGS | METH_KEYWORDS);
         ((PyTypeObject*)pyclass)->tp_hash = (hashfunc)StlStringHash;
     }
 

@@ -1687,6 +1687,29 @@ bool CPyCppyy::NullptrConverter::SetArg(PyObject* pyobject, Parameter& para, Cal
 
 
 //----------------------------------------------------------------------------
+template<typename T>
+static inline bool CPyCppyy_PyUnicodeAsBytes2Buffer(PyObject* pyobject, T& buffer) {
+    PyObject* pybytes = nullptr;
+    if (PyBytes_Check(pyobject)) {
+        Py_INCREF(pyobject);
+        pybytes = pyobject;
+    } else if (PyUnicode_Check(pyobject)) {
+        pybytes = PyUnicode_EncodeUTF8(
+            PyUnicode_AS_UNICODE(pyobject), PyUnicode_GET_SIZE(pyobject), nullptr);
+    }
+
+    if (pybytes) {
+        Py_ssize_t len;
+        const char* cstr = nullptr;
+        PyBytes_AsStringAndSize(pybytes, (char**)&cstr, &len);
+        if (cstr) buffer = T{cstr, (typename T::size_type)len};
+        Py_DECREF(pybytes);
+        return (bool)cstr;
+    }
+
+    return false;
+}
+
 #define CPPYY_IMPL_STRING_AS_PRIMITIVE_CONVERTER(name, type, F1, F2)         \
 CPyCppyy::name##Converter::name##Converter(bool keepControl) :               \
     InstanceConverter(Cppyy::GetScope(#type), keepControl) {}                \
@@ -1694,14 +1717,7 @@ CPyCppyy::name##Converter::name##Converter(bool keepControl) :               \
 bool CPyCppyy::name##Converter::SetArg(                                      \
     PyObject* pyobject, Parameter& para, CallContext* ctxt)                  \
 {                                                                            \
-    Py_ssize_t len;                                                          \
-    const char* cstr = nullptr;                                              \
-    if (PyBytes_Check(pyobject))                                             \
-        PyBytes_AsStringAndSize(pyobject, (char**)&cstr, &len);              \
-    else                                                                     \
-        cstr = CPyCppyy_PyText_AsStringAndSize(pyobject, &len);              \
-    if (cstr) {                                                              \
-        fBuffer = type(cstr, len);                                           \
+    if (CPyCppyy_PyUnicodeAsBytes2Buffer(pyobject, fBuffer)) {               \
         para.fValue.fVoidp = &fBuffer;                                       \
         para.fTypeCode = 'V';                                                \
         return true;                                                         \
@@ -1727,13 +1743,8 @@ PyObject* CPyCppyy::name##Converter::FromMemory(void* address)               \
                                                                              \
 bool CPyCppyy::name##Converter::ToMemory(PyObject* value, void* address)     \
 {                                                                            \
-    if (PyBytes_Check(value)) {                                              \
-        *((type*)address) = PyBytes_AsString(value);                         \
+    if (CPyCppyy_PyUnicodeAsBytes2Buffer(value, *((type*)address)))          \
         return true;                                                         \
-    } else if (CPyCppyy_PyText_Check(value)) {                               \
-        *((type*)address) = CPyCppyy_PyText_AsString(value);                 \
-        return true;                                                         \
-    }                                                                        \
     return InstanceConverter::ToMemory(value, address);                      \
 }
 
