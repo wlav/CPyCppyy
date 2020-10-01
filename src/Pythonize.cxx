@@ -984,18 +984,27 @@ static int PyObject_Compare(PyObject* one, PyObject* other) {
     return !PyObject_RichCompareBool(one, other, Py_EQ);
 }
 #endif
-static inline PyObject* CPyCppyy_PyString_FromCppString(std::string* s, bool native=true) {
+static inline
+PyObject* CPyCppyy_PyString_FromCppString(std::string* s, bool native=true) {
     if (native)
         return PyBytes_FromStringAndSize(s->c_str(), s->size());
     return CPyCppyy_PyText_FromStringAndSize(s->c_str(), s->size());
 }
 
-static inline PyObject* CPyCppyy_PyString_FromCppString(std::wstring* s, bool=true) {
-    return PyUnicode_FromWideChar(s->c_str(), s->size());
+static inline
+PyObject* CPyCppyy_PyString_FromCppString(std::wstring* s, bool native=true) {
+    PyObject* pyobj = PyUnicode_FromWideChar(s->c_str(), s->size());
+    if (pyobj && native) {
+        PyObject* pybytes = PyUnicode_AsEncodedString(pyobj, "UTF-8", "strict");
+        Py_DECREF(pyobj);
+        pyobj = pybytes;
+    }
+    return pyobj;
 }
 
 #define CPPYY_IMPL_STRING_PYTHONIZATION(type, name)                          \
-static PyObject* name##StringGetData(PyObject* self, bool native=true)       \
+static inline                                                                \
+PyObject* name##StringGetData(PyObject* self, bool native=true)              \
 {                                                                            \
     if (CPyCppyy::CPPInstance_Check(self)) {                                 \
         type* obj = ((type*)((CPPInstance*)self)->GetObject());              \
@@ -1007,6 +1016,26 @@ static PyObject* name##StringGetData(PyObject* self, bool native=true)       \
     }                                                                        \
     PyErr_Format(PyExc_TypeError, "object mismatch (%s expected)", #type);   \
     return nullptr;                                                          \
+}                                                                            \
+                                                                             \
+PyObject* name##StringStr(PyObject* self)                                    \
+{                                                                            \
+    PyObject* pyobj = name##StringGetData(self, false);                      \
+    if (!pyobj) {                                                            \
+      /* do a native conversion to make printing possible (debatable) */     \
+        PyErr_Clear();                                                       \
+        PyObject* pybytes = name##StringGetData(self, true);                 \
+        if (pybytes) { /* should not fail */                                 \
+            pyobj = PyObject_Str(pybytes);                                   \
+            Py_DECREF(pybytes);                                              \
+        }                                                                    \
+    }                                                                        \
+    return pyobj;                                                            \
+}                                                                            \
+                                                                             \
+PyObject* name##StringBytes(PyObject* self)                                  \
+{                                                                            \
+    return name##StringGetData(self, true);                                  \
 }                                                                            \
                                                                              \
 PyObject* name##StringRepr(PyObject* self)                                   \
@@ -1060,6 +1089,21 @@ PyObject* name##StringCompare(PyObject* self, PyObject* obj)                 \
 
 CPPYY_IMPL_STRING_PYTHONIZATION_CMP(std::string, Stl)
 CPPYY_IMPL_STRING_PYTHONIZATION_CMP(std::wstring, StlW)
+
+PyObject* StlStringDecode(PyObject* self, PyObject* args, PyObject* kwds)
+{
+    char* keywords[] = {(char*)"encoding", (char*)"errors", (char*)nullptr};
+    const char* encoding; const char* errors;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds,
+            const_cast<char*>("s|s"), keywords, &encoding, &errors))
+        return nullptr;
+    std::string* obj = ((std::string*)((CPPInstance*)self)->GetObject());
+    if (!obj) {
+        PyErr_SetString(PyExc_ReferenceError, "attempt to access a null-pointer");
+        return nullptr;
+    }
+    return PyUnicode_Decode(obj->data(), obj->size(), encoding, errors);
+}
 
 Py_hash_t StlStringHash(PyObject* self)
 {
@@ -1496,20 +1540,23 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
     }
 
     else if (name == "std::string") { // TODO: ask backend as well
-        Utility::AddToClass(pyclass, "__repr__", (PyCFunction)StlStringRepr,    METH_NOARGS);
-        Utility::AddToClass(pyclass, "__str__",  (PyCFunction)StlStringGetData, METH_NOARGS);
-        Utility::AddToClass(pyclass, "__cmp__",  (PyCFunction)StlStringCompare, METH_O);
-        Utility::AddToClass(pyclass, "__eq__",   (PyCFunction)StlStringIsEqual, METH_O);
-        Utility::AddToClass(pyclass, "__ne__",   (PyCFunction)StlStringIsNotEqual, METH_O);
+        Utility::AddToClass(pyclass, "__repr__",  (PyCFunction)StlStringRepr,       METH_NOARGS);
+        Utility::AddToClass(pyclass, "__str__",   (PyCFunction)StlStringStr,        METH_NOARGS);
+        Utility::AddToClass(pyclass, "__bytes__", (PyCFunction)StlStringBytes,      METH_NOARGS);
+        Utility::AddToClass(pyclass, "__cmp__",   (PyCFunction)StlStringCompare,    METH_O);
+        Utility::AddToClass(pyclass, "__eq__",    (PyCFunction)StlStringIsEqual,    METH_O);
+        Utility::AddToClass(pyclass, "__ne__",    (PyCFunction)StlStringIsNotEqual, METH_O);
+        Utility::AddToClass(pyclass, "decode",    (PyCFunction)StlStringDecode,     METH_VARARGS | METH_KEYWORDS);
         ((PyTypeObject*)pyclass)->tp_hash = (hashfunc)StlStringHash;
     }
 
     else if (name == "std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >") {
-        Utility::AddToClass(pyclass, "__repr__", (PyCFunction)StlWStringRepr,    METH_NOARGS);
-        Utility::AddToClass(pyclass, "__str__",  (PyCFunction)StlWStringGetData, METH_NOARGS);
-        Utility::AddToClass(pyclass, "__cmp__",  (PyCFunction)StlWStringCompare, METH_O);
-        Utility::AddToClass(pyclass, "__eq__",   (PyCFunction)StlWStringIsEqual, METH_O);
-        Utility::AddToClass(pyclass, "__ne__",   (PyCFunction)StlWStringIsNotEqual, METH_O);
+        Utility::AddToClass(pyclass, "__repr__",  (PyCFunction)StlWStringRepr,       METH_NOARGS);
+        Utility::AddToClass(pyclass, "__str__",   (PyCFunction)StlWStringStr,        METH_NOARGS);
+        Utility::AddToClass(pyclass, "__bytes__", (PyCFunction)StlWStringBytes,      METH_NOARGS);
+        Utility::AddToClass(pyclass, "__cmp__",   (PyCFunction)StlWStringCompare,    METH_O);
+        Utility::AddToClass(pyclass, "__eq__",    (PyCFunction)StlWStringIsEqual,    METH_O);
+        Utility::AddToClass(pyclass, "__ne__",    (PyCFunction)StlWStringIsNotEqual, METH_O);
     }
 
     else if (name == "complex<double>" || name == "std::complex<double>") {
