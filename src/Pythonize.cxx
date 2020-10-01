@@ -987,13 +987,13 @@ static int PyObject_Compare(PyObject* one, PyObject* other) {
 static inline
 PyObject* CPyCppyy_PyString_FromCppString(std::string* s, bool native=true) {
     if (native)
-        return PyBytes_FromStringAndSize(s->c_str(), s->size());
-    return CPyCppyy_PyText_FromStringAndSize(s->c_str(), s->size());
+        return PyBytes_FromStringAndSize(s->data(), s->size());
+    return CPyCppyy_PyText_FromStringAndSize(s->data(), s->size());
 }
 
 static inline
 PyObject* CPyCppyy_PyString_FromCppString(std::wstring* s, bool native=true) {
-    PyObject* pyobj = PyUnicode_FromWideChar(s->c_str(), s->size());
+    PyObject* pyobj = PyUnicode_FromWideChar(s->data(), s->size());
     if (pyobj && native) {
         PyObject* pybytes = PyUnicode_AsEncodedString(pyobj, "UTF-8", "strict");
         Py_DECREF(pyobj);
