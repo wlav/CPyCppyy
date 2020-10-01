@@ -1694,8 +1694,12 @@ static inline bool CPyCppyy_PyUnicodeAsBytes2Buffer(PyObject* pyobject, T& buffe
         Py_INCREF(pyobject);
         pybytes = pyobject;
     } else if (PyUnicode_Check(pyobject)) {
+#if PY_VERSION_HEX < 0x03030000
         pybytes = PyUnicode_EncodeUTF8(
             PyUnicode_AS_UNICODE(pyobject), PyUnicode_GET_SIZE(pyobject), nullptr);
+#else
+        pybytes = PyUnicode_AsUTF8String(pyobject);
+#endif
     }
 
     if (pybytes) {
