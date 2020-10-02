@@ -1110,12 +1110,7 @@ PyObject* StlStringReplace(CPPInstance* self, PyObject* args, PyObject* kwds)
     }
 
     char* keywords[] = {(char*)"old", (char*)"new", (char*)"count", (char*)nullptr};
-    char *oldbuf = nullptr, *newbuf = nullptr; Py_ssize_t count = -1;
-#ifdef PY_SSIZE_T_CLEAN
-     Py_ssize_t nold = 0, nnew = 0;
-#else
-     int nold = 0, nnew = 0;
-#endif
+    char *oldbuf = nullptr, *newbuf = nullptr; Py_ssize_t nold = 0, nnew = 0, count = -1;
     if (PyArg_ParseTupleAndKeywords(args, kwds, const_cast<char*>("et#et#|n"), keywords,
             "utf-8", &oldbuf, &nold, "utf-8", &newbuf, &nnew, &count)) {
 
