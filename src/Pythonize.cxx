@@ -1101,37 +1101,42 @@ PyObject* StlStringDecode(PyObject* self, PyObject* args, PyObject* kwds)
     return PyUnicode_Decode(obj->data(), obj->size(), encoding, errors);
 }
 
-PyObject* StlStringReplace(PyObject* self, PyObject* args, PyObject* kwds)
+PyObject* StlStringReplace(CPPInstance* self, PyObject* args, PyObject* kwds)
 {
-    char* keywords[] = {(char*)"old", (char*)"new", (char*)"count", (char*)nullptr};
-    const char* olds; const char* news; int count = -1;
-    if (PyArg_ParseTupleAndKeywords(args, kwds,
-            const_cast<char*>("ss|i"), keywords, &olds, &news, &count)) {
-        std::string* obj = ((std::string*)((CPPInstance*)self)->GetObject());
-        if (obj) {
-            int nold = strlen(olds);   // TODO: should consider \0 in olds/news
-            int nnew = strlen(news);
-            int converted = 0;
+    std::string* obj = (std::string*)self->GetObject();
+    if (!obj) {
+        PyErr_SetString(PyExc_ReferenceError, "attempt to access a null-pointer");
+        return nullptr;
+    }
 
-            std::string* ret = new std::string(*obj);
+    char* keywords[] = {(char*)"old", (char*)"new", (char*)"count", (char*)nullptr};
+    char *oldbuf = nullptr, *newbuf = nullptr; Py_ssize_t nold = 0, nnew = 0, count = -1;
+    if (PyArg_ParseTupleAndKeywords(args, kwds, const_cast<char*>("et#et#|n"), keywords,
+            "utf-8", &oldbuf, &nold, "utf-8", &newbuf, &nnew, &count)) {
+
+        std::string olds{oldbuf, (std::string::size_type)nold};
+        std::string news{newbuf, (std::string::size_type)nnew};
+        PyMem_Free(oldbuf); PyMem_Free(newbuf);
+
+        std::string* ret = new std::string(*obj);
+        if (count && olds != news) {    // does replacement have effect?
+            int step = nnew + (nold ? 0 : 1);
+
+            Py_ssize_t converted = 0;
             std::string::size_type pos = 0;
             while ((pos = ret->find(olds, pos)) != std::string::npos) {
                 ret->replace(pos, nold, news);
                 if (++converted == count)
                     break;
-                pos += nnew;
+                pos += step;
             }
-
-            return BindCppObjectNoCast(ret, ((CPPInstance*)self)->ObjectIsA(), CPPInstance::kIsOwner);
-
-        } else {
-            PyErr_SetString(PyExc_ReferenceError, "attempt to access a null-pointer");
-            return nullptr;
         }
+
+        return BindCppObjectNoCast(ret, self->ObjectIsA(), CPPInstance::kIsOwner);
     }
 
     PyErr_Clear();
-    PyObject* cppreplace = PyObject_GetAttrString(self, (char*)"__cpp_replace");
+    PyObject* cppreplace = PyObject_GetAttrString((PyObject*)self, (char*)"__cpp_replace");
     if (cppreplace) {
         PyObject* result = PyObject_Call(cppreplace, args, nullptr);
         Py_DECREF(cppreplace);
