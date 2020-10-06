@@ -578,7 +578,9 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
         }
     }
     if (memoized_pc) {
-        // TODO: if (!NoImplicit(&ctxt)) ctxt.fFlags |= CallContext::kAllowImplicit;    // no two rounds needed
+    // it is necessary to enable implicit conversions as the memoized call may be from
+    // such a conversion case; if the call fails, the implicit flag is reset below
+        if (!NoImplicit(&ctxt)) ctxt.fFlags |= CallContext::kAllowImplicit;
         PyObject* result = memoized_pc->Call(pymeth->fSelf, args, kwds, &ctxt);
         result = HandleReturn(pymeth, oldSelf, result);
 
@@ -586,6 +588,7 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
             return result;
 
     // fall through: python is dynamic, and so, the hashing isn't infallible
+        ctxt.fFlags &= ~CallContext::kAllowImplicit;
         PyErr_Clear();
     }
 
