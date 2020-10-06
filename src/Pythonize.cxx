@@ -52,6 +52,17 @@ bool HasAttrDirect(PyObject* pyclass, PyObject* pyname, bool mustBeCPyCppyy = fa
     return false;
 }
 
+PyObject* GetAttrDirect(PyObject* pyclass, PyObject* pyname) {
+// get an attribute without causing getattr lookups
+    PyObject* dct = PyObject_GetAttr(pyclass, PyStrings::gDict);
+    if (dct) {
+        PyObject* attr = PyObject_GetItem(dct, pyname);
+        Py_DECREF(dct);
+        return attr;
+    }
+    return nullptr;
+}
+
 //-----------------------------------------------------------------------------
 inline bool IsTemplatedSTLClass(const std::string& name, const std::string& klass) {
 // Scan the name of the class and determine whether it is a template instantiation.
@@ -328,7 +339,7 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
         if (fi && (PyTuple_CheckExact(fi) || PyList_CheckExact(fi))) {
         // use emplace_back to construct the vector entries one by one
             PyObject* eb_call = PyObject_GetAttrString(self, (char*)"emplace_back");
-            PyObject* vtype = PyObject_GetAttrString((PyObject*)Py_TYPE(self), "value_type");
+            PyObject* vtype = GetAttrDirect((PyObject*)Py_TYPE(self), PyStrings::gValueType);
             bool value_is_vector = false;
             if (vtype && CPyCppyy_PyText_Check(vtype)) {
             // if the value_type is a vector, then allow for initialization from sequences
@@ -469,40 +480,52 @@ static PyObject* vector_iter(PyObject* v) {
     if (v->ob_refcnt <= 2 || (((CPPInstance*)v)->fFlags & CPPInstance::kIsValue))
         vi->vi_flags = vectoriterobject::kNeedLifeLine;
 
-    PyObject* pyvalue_type = PyObject_GetAttrString((PyObject*)Py_TYPE(v), "value_type");
-    PyObject* pyvalue_size = PyObject_GetAttrString((PyObject*)Py_TYPE(v), "value_size");
+    PyObject* pyvalue_type = GetAttrDirect((PyObject*)Py_TYPE(v), PyStrings::gValueType);
+    if (pyvalue_type) {
+        PyObject* pyvalue_size = GetAttrDirect((PyObject*)Py_TYPE(v), PyStrings::gValueSize);
+        if (pyvalue_size) {
+            vi->vi_stride = PyLong_AsLong(pyvalue_size);
+            Py_DECREF(pyvalue_size);
+        } else {
+            PyErr_Clear();
+            vi->vi_stride = 0;
+        }
 
-    vi->vi_klass = 0;
-    if (pyvalue_type && pyvalue_size) {
-        PyObject* pydata = CallPyObjMethod(v, "data");
-        if (!pydata || Utility::GetBuffer(pydata, '*', 1, vi->vi_data, false) == 0) {
-            if (CPPInstance_Check(pydata)) {
-                vi->vi_data = ((CPPInstance*)pydata)->GetObjectRaw();
-                vi->vi_klass = ((CPPInstance*)pydata)->ObjectIsA(false);
+        if (CPyCppyy_PyText_Check(pyvalue_type)) {
+            std::string value_type = CPyCppyy_PyText_AsString(pyvalue_type);
+            vi->vi_klass = Cppyy::GetScope(value_type);
+            if (vi->vi_klass) {
+                vi->vi_converter = nullptr;
+                if (!vi->vi_flags) {
+                    value_type = Cppyy::ResolveName(value_type);
+                    if (value_type.back() != '*')     // meaning, object stored by-value
+                        vi->vi_flags = vectoriterobject::kNeedLifeLine;
+                }
             } else
-                vi->vi_data = nullptr;
+                vi->vi_converter = CPyCppyy::CreateConverter(value_type);
+            if (!vi->vi_stride) vi->vi_stride = Cppyy::SizeOf(value_type);
+
+        } else if (CPPScope_Check(pyvalue_type)) {
+            vi->vi_klass = ((CPPClass*)pyvalue_type)->fCppType;
+            vi->vi_converter = nullptr;
+            if (!vi->vi_stride) vi->vi_stride = Cppyy::SizeOf(vi->vi_klass);
+            if (!vi->vi_flags)  vi->vi_flags  = vectoriterobject::kNeedLifeLine;
         }
+
+        PyObject* pydata = CallPyObjMethod(v, "__real_data");
+        if (!pydata || Utility::GetBuffer(pydata, '*', 1, vi->vi_data, false) == 0)
+            vi->vi_data = CPPInstance_Check(pydata) ? ((CPPInstance*)pydata)->GetObjectRaw() : nullptr;
         Py_XDECREF(pydata);
-
-        std::string value_type = CPyCppyy_PyText_AsString(pyvalue_type);
-        vi->vi_converter = vi->vi_klass ? nullptr : CPyCppyy::CreateConverter(value_type);
-        vi->vi_stride    = PyLong_AsLong(pyvalue_size);
-
-        if (!vi->vi_flags && vi->vi_klass) {
-        // set a lifeline when iterating over a container of objects
-            value_type = Cppyy::ResolveName(value_type);
-            if (value_type.back() != '*')   // meaning, object stored by-value
-                vi->vi_flags = vectoriterobject::kNeedLifeLine;
-        }
 
     } else {
         PyErr_Clear();
         vi->vi_data      = nullptr;
-        vi->vi_converter = nullptr;
         vi->vi_stride    = 0;
+        vi->vi_converter = nullptr;
+        vi->vi_klass     = 0;
+        vi->vi_flags     = 0;
     }
 
-    Py_XDECREF(pyvalue_size);
     Py_XDECREF(pyvalue_type);
 
     vi->ii_pos = 0;
@@ -1524,18 +1547,18 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
             }
 
         // vector-optimized iterator protocol
-            ((PyTypeObject*)pyclass)->tp_iter      = (getiterfunc)vector_iter;
+            ((PyTypeObject*)pyclass)->tp_iter = (getiterfunc)vector_iter;
 
         // helpers for iteration
             const std::string& vtype = Cppyy::ResolveName(name+"::value_type");
             size_t typesz = Cppyy::SizeOf(vtype);
             if (typesz) {
                 PyObject* pyvalue_size = PyLong_FromSsize_t(typesz);
-                PyObject_SetAttrString(pyclass, "value_size", pyvalue_size);
+                PyObject_SetAttr(pyclass, PyStrings::gValueSize, pyvalue_size);
                 Py_DECREF(pyvalue_size);
 
                 PyObject* pyvalue_type = CPyCppyy_PyText_FromString(vtype.c_str());
-                PyObject_SetAttrString(pyclass, "value_type", pyvalue_type);
+                PyObject_SetAttr(pyclass, PyStrings::gValueType, pyvalue_type);
                 Py_DECREF(pyvalue_type);
             }
         }

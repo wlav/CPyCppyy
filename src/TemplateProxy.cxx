@@ -501,7 +501,6 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
     CPPOverload* ol = nullptr;
     if (!pytmpl->fTemplateArgs) {
     // look for known signatures ...
-        CPPOverload* ol = nullptr;
         auto& v = pytmpl->fTI->fDispatchMap[""];
         for (const auto& p : v) {
             if (p.first == sighash) {

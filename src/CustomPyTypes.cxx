@@ -262,6 +262,7 @@ PyTypeObject CustomInstanceMethod_Type = {
 
 //= CPyCppyy custom iterator for performance =================================
 static void indexiter_dealloc(indexiterobject* ii) {
+    PyObject_GC_UnTrack(ii);
     Py_XDECREF(ii->ii_container);
     PyObject_GC_Del(ii);
 }
