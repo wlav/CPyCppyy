@@ -89,7 +89,7 @@ struct CallContext {
         if (fNArgs <= SMALL_ARGS_N) return fArgs;
         return fArgsVec->data();
     }
- 
+
     size_t GetSize() { return fNArgs; }
 
 public:

@@ -493,18 +493,16 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
 
 // TODO: should previously instantiated templates be considered first?
 
-// container for collecting errors
-    std::vector<Utility::PyError_t> errors;
-
-    PyObject* pymeth = nullptr, *result = nullptr;
+    PyObject *pymeth = nullptr, *result = nullptr;
 
 // short-cut through memoization map
     uint64_t sighash = HashSignature(args);
 
+    CPPOverload* ol = nullptr;
     if (!pytmpl->fTemplateArgs) {
     // look for known signatures ...
         CPPOverload* ol = nullptr;
-        auto& v = pytmpl->fTI->fDispatchMap[targs2str(pytmpl)];
+        auto& v = pytmpl->fTI->fDispatchMap[""];
         for (const auto& p : v) {
             if (p.first == sighash) {
                 ol = p.second;
@@ -523,9 +521,12 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
             }
             if (result)
                 return result;
-            Utility::FetchError(errors);
         }
     }
+
+// container for collecting errors
+    std::vector<Utility::PyError_t> errors;
+    if (ol) Utility::FetchError(errors);
 
 // do not mix template instantiations with implicit conversions
     if (!kwds) kwds = PyDict_New();

@@ -304,7 +304,7 @@ static inline bool CArraySetArg(PyObject* pyobject, CPyCppyy::Parameter& para, c
 
 
 //- helper for implicit conversions ------------------------------------------
-static inline PyObject* ConvertImplicit(Cppyy::TCppType_t klass,
+static inline CPyCppyy::CPPInstance* ConvertImplicit(Cppyy::TCppType_t klass,
     PyObject* pyobject, CPyCppyy::Parameter& para, CPyCppyy::CallContext* ctxt, bool manage=true)
 {
     using namespace CPyCppyy;
@@ -318,7 +318,7 @@ static inline PyObject* ConvertImplicit(Cppyy::TCppType_t klass,
 // initializer lists and thus "syntax" not a conversion
     if (!AllowImplicit(ctxt)) {
         PyTypeObject* pytype = (PyTypeObject*)Py_TYPE(pyobject);
-        if (!(pytype == &PyList_Type || pytype == &PyTuple_Type)) {
+        if (!(pytype == &PyList_Type || pytype == &PyTuple_Type)) {// || !CPPInstance_Check(pyobject))) {
             if (!NoImplicit(ctxt)) ctxt->fFlags |= CallContext::kHaveImplicit;
             return nullptr;
         }
@@ -355,7 +355,7 @@ static inline PyObject* ConvertImplicit(Cppyy::TCppType_t klass,
         if (manage) ctxt->AddTemporary((PyObject*)pytmp);
         para.fValue.fVoidp = pytmp->GetObjectRaw();
         para.fTypeCode = 'V';
-        return (PyObject*)pytmp;
+        return pytmp;
     }
 
     PyErr_Clear();
@@ -2063,7 +2063,7 @@ bool CPyCppyy::InstanceMoveConverter::SetArg(
 // convert <pyobject> to C++ instance&&, set arg for call
     CPPInstance* pyobj = GetCppInstance(pyobject);
     if (!pyobj) {
-    // implicit conversion is fine as it the temporary by definition is moveable
+    // implicit conversion is fine as the temporary by definition is moveable
         return (bool)ConvertImplicit(fClass, pyobject, para, ctxt);
     }
 

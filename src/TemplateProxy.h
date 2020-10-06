@@ -38,7 +38,6 @@ public:
     CPPOverload* fNonTemplated;   // holder for non-template overloads
     CPPOverload* fTemplated;      // holder for templated overloads
     CPPOverload* fLowPriority;    // low priority overloads such as void*/void**
-    PyObject* fWeakrefList;
 
     TP_DispatchMap_t fDispatchMap;
 

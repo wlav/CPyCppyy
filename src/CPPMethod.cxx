@@ -202,27 +202,7 @@ bool CPyCppyy::CPPMethod::InitExecutor_(Executor*& executor, CallContext* /* ctx
 std::string CPyCppyy::CPPMethod::GetSignatureString(bool fa)
 {
 // built a signature representation (used for doc strings)
-    std::stringstream sig; sig << "(";
-    int count = 0;
-    const size_t nArgs = Cppyy::GetMethodNumArgs(fMethod);
-    for (int iarg = 0; iarg < (int)nArgs; ++iarg) {
-        if (count) sig << (fa ? ", " : ",");
-
-        sig << Cppyy::GetMethodArgType(fMethod, iarg);
-
-        if (fa) {
-            const std::string& parname = Cppyy::GetMethodArgName(fMethod, iarg);
-            if (!parname.empty())
-                sig << " " << parname;
-
-            const std::string& defvalue = Cppyy::GetMethodArgDefault(fMethod, iarg);
-            if (!defvalue.empty())
-                sig << " = " << defvalue;
-        }
-        count++;
-    }
-    sig << ")";
-    return sig.str();
+    return Cppyy::GetMethodSignature(fMethod, fa);
 }
 
 //----------------------------------------------------------------------------
