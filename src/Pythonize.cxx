@@ -480,7 +480,7 @@ static PyObject* vector_iter(PyObject* v) {
     if (v->ob_refcnt <= 2 || (((CPPInstance*)v)->fFlags & CPPInstance::kIsValue))
         vi->vi_flags = vectoriterobject::kNeedLifeLine;
 
-    PyObject* pyvalue_type = GetAttrDirect((PyObject*)Py_TYPE(v), PyStrings::gValueType);
+    PyObject* pyvalue_type = PyObject_GetAttr((PyObject*)Py_TYPE(v), PyStrings::gValueType);
     if (pyvalue_type) {
         PyObject* pyvalue_size = GetAttrDirect((PyObject*)Py_TYPE(v), PyStrings::gValueSize);
         if (pyvalue_size) {
@@ -1551,15 +1551,17 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
 
         // helpers for iteration
             const std::string& vtype = Cppyy::ResolveName(name+"::value_type");
-            size_t typesz = Cppyy::SizeOf(vtype);
+            if (vtype.rfind("value_type") == std::string::npos) {    // actually resolved?
+                PyObject* pyvalue_type = CPyCppyy_PyText_FromString(vtype.c_str());
+                PyObject_SetAttr(pyclass, PyStrings::gValueType, pyvalue_type);
+                Py_DECREF(pyvalue_type);
+            }
+
+            size_t typesz = Cppyy::SizeOf(name+"::value_type");
             if (typesz) {
                 PyObject* pyvalue_size = PyLong_FromSsize_t(typesz);
                 PyObject_SetAttr(pyclass, PyStrings::gValueSize, pyvalue_size);
                 Py_DECREF(pyvalue_size);
-
-                PyObject* pyvalue_type = CPyCppyy_PyText_FromString(vtype.c_str());
-                PyObject_SetAttr(pyclass, PyStrings::gValueType, pyvalue_type);
-                Py_DECREF(pyvalue_type);
             }
         }
     }
