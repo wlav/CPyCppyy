@@ -119,7 +119,7 @@ PyObject* CPyCppyy::CPPConstructor::Call(
     // decided by the method proxy (which carries a creator flag) upon return
         self->Set((void*)address);
 
-    // mark as actual to prevent needless auto-casting and regsiter on its class
+    // mark as actual to prevent needless auto-casting and register on its class
         self->fFlags |= CPPInstance::kIsActual;
         MemoryRegulator::RegisterPyObject(self, (Cppyy::TCppObject_t)address);
 
