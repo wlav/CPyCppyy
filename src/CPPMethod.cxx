@@ -398,7 +398,7 @@ int CPyCppyy::CPPMethod::GetPriority()
                 priority +=   150;     // needed for proper implicit conversion rules
             } else if (aname.rfind("&&", aname.size()-2) != std::string::npos) {
                 priority +=   100;     // prefer moves over other ref/ptr
-            } else if (!aname.empty() && !Cppyy::IsComplete(aname)) {
+            } else if (scope && !Cppyy::IsComplete(clean_name)) {
             // class is known, but no dictionary available, 2 more cases: * and &
                 if (aname[aname.size() - 1] == '&')
                     priority += -5000;

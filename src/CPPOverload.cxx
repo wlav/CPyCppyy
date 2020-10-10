@@ -119,9 +119,9 @@ static inline bool IsPseudoFunc(CPPOverload* pymeth)
 }
 
 // helper to sort on method priority
-static int PriorityCmp(PyCallable* left, PyCallable* right)
+static int PriorityCmp(const std::pair<int, PyCallable*>& left, const std::pair<int, PyCallable*>& right)
 {
-    return left->GetPriority() > right->GetPriority();
+    return left.first > right.first;
 }
 
 // return helper
@@ -594,7 +594,15 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
 
 // ... otherwise loop over all methods and find the one that does not fail
     if (!IsSorted(mflags)) {
-        std::stable_sort(methods.begin(), methods.end(), PriorityCmp);
+    // sorting is based on priority, which is not stored on the method as it is used
+    // only once, so copy the vector of methods into one where the priority can be
+    // stored during sorting
+        std::vector<std::pair<int, PyCallable*>> pm; pm.reserve(methods.size());
+        for (auto ptr : methods)
+            pm.emplace_back(ptr->GetPriority(), ptr);
+        std::stable_sort(pm.begin(), pm.end(), PriorityCmp);
+        for (CPPOverload::Methods_t::size_type i = 0; i < methods.size(); ++i)
+            methods[i] = pm[i].second;
         pymeth->fMethodInfo->fFlags |= CallContext::kIsSorted;
     }
 
