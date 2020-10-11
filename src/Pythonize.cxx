@@ -1133,28 +1133,25 @@ PyObject* StlStringReplace(CPPInstance* self, PyObject* args, PyObject* kwds)
     }
 
     char* keywords[] = {(char*)"old", (char*)"new", (char*)"count", (char*)nullptr};
-    char *oldbuf = nullptr, *newbuf = nullptr; Py_ssize_t nold = 0, nnew = 0, count = -1;
+    char *olds = nullptr, *news = nullptr; Py_ssize_t nold = 0, nnew = 0, count = -1;
     if (PyArg_ParseTupleAndKeywords(args, kwds, const_cast<char*>("et#et#|n"), keywords,
-            "utf-8", &oldbuf, &nold, "utf-8", &newbuf, &nnew, &count)) {
-
-        std::string olds{oldbuf, (std::string::size_type)nold};
-        std::string news{newbuf, (std::string::size_type)nnew};
-        PyMem_Free(oldbuf); PyMem_Free(newbuf);
+            "utf-8", &olds, &nold, "utf-8", &news, &nnew, &count)) {
 
         std::string* ret = new std::string(*obj);
-        if (count && olds != news) {    // does replacement have effect?
+        if (count) {    // nothing todo if count == 0
             int step = nnew + (nold ? 0 : 1);
 
             Py_ssize_t converted = 0;
             std::string::size_type pos = 0;
-            while ((pos = ret->find(olds, pos)) != std::string::npos) {
-                ret->replace(pos, nold, news);
+            while ((pos = ret->find(olds, pos, nold)) != std::string::npos) {
+                ret->replace(pos, nold, news, nnew);
                 if (++converted == count)
                     break;
                 pos += step;
             }
         }
 
+        PyMem_Free(olds); PyMem_Free(news);
         return BindCppObjectNoCast(ret, self->ObjectIsA(), CPPInstance::kIsOwner);
     }
 
