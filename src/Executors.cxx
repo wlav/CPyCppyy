@@ -389,9 +389,13 @@ PyObject* CPyCppyy::STLStringRefExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
 // execute <method> with argument <self, ctxt>, return python string return value
+    static Cppyy::TCppScope_t sSTLStringScope = Cppyy::GetScope("std::string");
+
     std::string* result = (std::string*)GILCallR(method, self, ctxt);
-    if (!fAssignable)
-        return CPyCppyy_PyText_FromStringAndSize(result->c_str(), result->size());
+    if (!fAssignable) {
+        std::string* rescp = new std::string{*result};
+        return BindCppObjectNoCast((void*)rescp, sSTLStringScope, CPPInstance::kIsOwner);
+    }
 
     *result = std::string(
         CPyCppyy_PyText_AsString(fAssignable), CPyCppyy_PyText_GET_SIZE(fAssignable));
@@ -422,7 +426,7 @@ PyObject* CPyCppyy::CStringExecutor::Execute(
         return PyStrings::gEmptyString;
     }
 
-    return CPyCppyy_PyText_FromString(result);
+    return CPyCppyy_PyText_FromString(result);   // TODO: bytes?
 }
 
 //----------------------------------------------------------------------------
@@ -541,16 +545,10 @@ PyObject* CPyCppyy::STLStringExecutor::Execute(
 // TODO: make use of GILLCallS (?!)
     static Cppyy::TCppScope_t sSTLStringScope = Cppyy::GetScope("std::string");
     std::string* result = (std::string*)GILCallO(method, self, ctxt, sSTLStringScope);
-    if (!result) {
-        Py_INCREF(PyStrings::gEmptyString);
-        return PyStrings::gEmptyString;
-    }
+    if (!result)
+        result = new std::string{};
 
-    PyObject* pyresult =
-        CPyCppyy_PyText_FromStringAndSize(result->c_str(), result->size());
-    ::operator delete(result); // calls Cppyy::CallO which calls ::operator new
-
-    return pyresult;
+    return BindCppObjectNoCast((void*)result, sSTLStringScope, CPPInstance::kIsOwner);
 }
 
 //----------------------------------------------------------------------------

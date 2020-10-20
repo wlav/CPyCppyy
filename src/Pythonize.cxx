@@ -684,7 +684,7 @@ PyObject* ArrayInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
             Py_DECREF(result);
             return nullptr;
         }
- 
+
         PyObject* si_call = PyObject_GetAttr(self, PyStrings::gSetItem);
         for (Py_ssize_t i = 0; i < fillsz; ++i) {
             PyObject* item = PySequence_GetItem(items, i);
@@ -1109,53 +1109,70 @@ PyObject* name##StringCompare(PyObject* self, PyObject* obj)                 \
 CPPYY_IMPL_STRING_PYTHONIZATION_CMP(std::string, Stl)
 CPPYY_IMPL_STRING_PYTHONIZATION_CMP(std::wstring, StlW)
 
-PyObject* StlStringDecode(PyObject* self, PyObject* args, PyObject* kwds)
+static inline std::string* GetSTLString(CPPInstance* self) {
+    if (!CPPInstance_Check(self)) {
+        PyErr_SetString(PyExc_TypeError, "std::string object expected");
+        return nullptr;
+    }
+
+    std::string* obj = (std::string*)self->GetObject();
+    if (!obj)
+        PyErr_SetString(PyExc_ReferenceError, "attempt to access a null-pointer");
+
+    return obj;
+}
+
+PyObject* StlStringDecode(CPPInstance* self, PyObject* args, PyObject* kwds)
 {
+    std::string* obj = GetSTLString(self);
+    if (!obj)
+        return nullptr;
+
     char* keywords[] = {(char*)"encoding", (char*)"errors", (char*)nullptr};
     const char* encoding; const char* errors;
     if (!PyArg_ParseTupleAndKeywords(args, kwds,
             const_cast<char*>("s|s"), keywords, &encoding, &errors))
         return nullptr;
-    std::string* obj = ((std::string*)((CPPInstance*)self)->GetObject());
-    if (!obj) {
-        PyErr_SetString(PyExc_ReferenceError, "attempt to access a null-pointer");
-        return nullptr;
-    }
+
     return PyUnicode_Decode(obj->data(), obj->size(), encoding, errors);
+}
+
+PyObject* StlStringContains(CPPInstance* self, PyObject* pyobj)
+{
+    std::string* obj = GetSTLString(self);
+    if (!obj)
+        return nullptr;
+
+    const char* needle = CPyCppyy_PyText_AsString(pyobj);
+    if (!needle)
+        return nullptr;
+
+    if (obj->find(needle) != std::string::npos) {
+        Py_RETURN_TRUE;
+    }
+
+    Py_RETURN_FALSE;
 }
 
 PyObject* StlStringReplace(CPPInstance* self, PyObject* args, PyObject* kwds)
 {
-    std::string* obj = (std::string*)self->GetObject();
-    if (!obj) {
-        PyErr_SetString(PyExc_ReferenceError, "attempt to access a null-pointer");
+    std::string* obj = GetSTLString(self);
+    if (!obj)
         return nullptr;
+
+// both str and std::string have a method "replace", but the Python version only
+// accepts strings and takes no keyword arguments, whereas the C++ version has no
+// overload that takes a string
+
+    if (2 <= PyTuple_GET_SIZE(args) && CPyCppyy_PyText_Check(PyTuple_GET_ITEM(args, 0))) {
+        PyObject* pystr = CPyCppyy_PyText_FromStringAndSize(obj->data(), obj->size());
+        PyObject* meth = PyObject_GetAttrString(pystr, (char*)"replace");
+        Py_DECREF(pystr);
+        PyObject* result = PyObject_CallObject(meth, args);
+        Py_DECREF(meth);
+        return result;
     }
 
-    char* keywords[] = {(char*)"old", (char*)"new", (char*)"count", (char*)nullptr};
-    char *olds = nullptr, *news = nullptr; Py_ssize_t nold = 0, nnew = 0, count = -1;
-    if (PyArg_ParseTupleAndKeywords(args, kwds, const_cast<char*>("et#et#|n"), keywords,
-            "utf-8", &olds, &nold, "utf-8", &news, &nnew, &count)) {
-
-        std::string* ret = new std::string(*obj);
-        if (count) {    // nothing todo if count == 0
-            int step = nnew + (nold ? 0 : 1);
-
-            Py_ssize_t converted = 0;
-            std::string::size_type pos = 0;
-            while ((pos = ret->find(olds, pos, nold)) != std::string::npos) {
-                ret->replace(pos, nold, news, nnew);
-                if (++converted == count)
-                    break;
-                pos += step;
-            }
-        }
-
-        PyMem_Free(olds); PyMem_Free(news);
-        return BindCppObjectNoCast(ret, self->ObjectIsA(), CPPInstance::kIsOwner);
-    }
-
-    PyErr_Clear();
     PyObject* cppreplace = PyObject_GetAttrString((PyObject*)self, (char*)"__cpp_replace");
     if (cppreplace) {
         PyObject* result = PyObject_Call(cppreplace, args, nullptr);
@@ -1163,8 +1180,56 @@ PyObject* StlStringReplace(CPPInstance* self, PyObject* args, PyObject* kwds)
         return result;
     }
 
+    PyErr_SetString(PyExc_AttributeError, "\'std::string\' object has no attribute \'replace\'");
     return nullptr;
 }
+
+#define CPYCPPYY_STRING_FINDMETHOD(name, cppname, pyname)                    \
+PyObject* StlString##name(CPPInstance* self, PyObject* args, PyObject* kwds) \
+{                                                                            \
+    std::string* obj = GetSTLString(self);                                   \
+    if (!obj)                                                                \
+        return nullptr;                                                      \
+                                                                             \
+    PyObject* cppmeth = PyObject_GetAttrString((PyObject*)self, (char*)#cppname);\
+    if (cppmeth) {                                                           \
+        PyObject* result = PyObject_Call(cppmeth, args, nullptr);            \
+        Py_DECREF(cppmeth);                                                  \
+        if (result) {                                                        \
+            if (PyLongOrInt_AsULong64(result) == (PY_ULONG_LONG)std::string::npos) {\
+                Py_DECREF(result);                                           \
+                return PyInt_FromLong(-1);                                   \
+            }                                                                \
+            return result;                                                   \
+        }                                                                    \
+        PyErr_Clear();                                                       \
+    }                                                                        \
+                                                                             \
+    PyObject* pystr = CPyCppyy_PyText_FromStringAndSize(obj->data(), obj->size());\
+    PyObject* pymeth = PyObject_GetAttrString(pystr, (char*)#pyname);        \
+    Py_DECREF(pystr);                                                        \
+    PyObject* result = PyObject_CallObject(pymeth, args);                    \
+    Py_DECREF(pymeth);                                                       \
+    return result;                                                           \
+}
+
+// both str and std::string have method "find" and "rfin"; try the C++ version first
+// and fall back on the Python one in case of failure
+CPYCPPYY_STRING_FINDMETHOD( Find, __cpp_find,  find)
+CPYCPPYY_STRING_FINDMETHOD(RFind, __cpp_rfind, rfind)
+
+PyObject* StlStringGetAttr(CPPInstance* self, PyObject* attr_name)
+{
+    std::string* obj = GetSTLString(self);
+    if (!obj)
+        return nullptr;
+
+    PyObject* pystr = CPyCppyy_PyText_FromStringAndSize(obj->data(), obj->size());
+    PyObject* attr = PyObject_GetAttr(pystr, attr_name);
+    Py_DECREF(pystr);
+    return attr;
+}
+
 
 Py_hash_t StlStringHash(PyObject* self)
 {
@@ -1603,15 +1668,23 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
     }
 
     else if (name == "std::string") { // TODO: ask backend as well
-        Utility::AddToClass(pyclass, "__repr__",  (PyCFunction)StlStringRepr,       METH_NOARGS);
-        Utility::AddToClass(pyclass, "__str__",   (PyCFunction)StlStringStr,        METH_NOARGS);
-        Utility::AddToClass(pyclass, "__bytes__", (PyCFunction)StlStringBytes,      METH_NOARGS);
-        Utility::AddToClass(pyclass, "__cmp__",   (PyCFunction)StlStringCompare,    METH_O);
-        Utility::AddToClass(pyclass, "__eq__",    (PyCFunction)StlStringIsEqual,    METH_O);
-        Utility::AddToClass(pyclass, "__ne__",    (PyCFunction)StlStringIsNotEqual, METH_O);
-        Utility::AddToClass(pyclass, "decode",    (PyCFunction)StlStringDecode,     METH_VARARGS | METH_KEYWORDS);
+        Utility::AddToClass(pyclass, "__repr__",      (PyCFunction)StlStringRepr,       METH_NOARGS);
+        Utility::AddToClass(pyclass, "__str__",       (PyCFunction)StlStringStr,        METH_NOARGS);
+        Utility::AddToClass(pyclass, "__bytes__",     (PyCFunction)StlStringBytes,      METH_NOARGS);
+        Utility::AddToClass(pyclass, "__cmp__",       (PyCFunction)StlStringCompare,    METH_O);
+        Utility::AddToClass(pyclass, "__eq__",        (PyCFunction)StlStringIsEqual,    METH_O);
+        Utility::AddToClass(pyclass, "__ne__",        (PyCFunction)StlStringIsNotEqual, METH_O);
+        Utility::AddToClass(pyclass, "__contains__",  (PyCFunction)StlStringContains,   METH_O);
+        Utility::AddToClass(pyclass, "decode",        (PyCFunction)StlStringDecode,     METH_VARARGS | METH_KEYWORDS);
+        Utility::AddToClass(pyclass, "__cpp_find",    "find");
+        Utility::AddToClass(pyclass, "find",          (PyCFunction)StlStringFind,       METH_VARARGS | METH_KEYWORDS);
+        Utility::AddToClass(pyclass, "__cpp_rfind",   "rfind");
+        Utility::AddToClass(pyclass, "rfind",         (PyCFunction)StlStringRFind,      METH_VARARGS | METH_KEYWORDS);
         Utility::AddToClass(pyclass, "__cpp_replace", "replace");
-        Utility::AddToClass(pyclass, "replace",   (PyCFunction)StlStringReplace,    METH_VARARGS | METH_KEYWORDS);
+        Utility::AddToClass(pyclass, "replace",       (PyCFunction)StlStringReplace,    METH_VARARGS | METH_KEYWORDS);
+        Utility::AddToClass(pyclass, "__getattr__",   (PyCFunction)StlStringGetAttr,    METH_O);
+
+    // to allow use of std::string in dictionaries and findable with str
         ((PyTypeObject*)pyclass)->tp_hash = (hashfunc)StlStringHash;
     }
 
