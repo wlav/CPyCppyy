@@ -1135,7 +1135,7 @@ bool CPyCppyy::CStringConverter::ToMemory(PyObject* value, void* address)
     if (fMaxSize != -1 && fMaxSize < (long)len)
         PyErr_Warn(PyExc_RuntimeWarning, (char*)"string too long for char array (truncated)");
 
-// is address is available, and it wasn't set by this converter, assume a byte-wise copy;
+// if address is available, and it wasn't set by this converter, assume a byte-wise copy;
 // otherwise assume a pointer copy (this relies on the converter to be used for properties,
 // or for argument passing, but not both at the same time; this is currently the case)
     void* ptrval = *(void**)address;
