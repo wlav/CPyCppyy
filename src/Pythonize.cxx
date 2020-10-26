@@ -878,7 +878,7 @@ static const ptrdiff_t PS_END_ADDR  =  7;   // non-aligned address, so no clash
 static const ptrdiff_t PS_FLAG_ADDR = 11;   // id.
 static const ptrdiff_t PS_COLL_ADDR = 13;   // id.
 
-PyObject* StlSequenceIter(PyObject* self)
+PyObject* STLSequenceIter(PyObject* self)
 {
 // Implement python's __iter__ for std::iterator<>s
     PyObject* iter = PyObject_CallMethodObjArgs(self, PyStrings::gBegin, nullptr);
@@ -1090,7 +1090,7 @@ PyObject* name##StringIsNotEqual(PyObject* self, PyObject* obj)              \
     return nullptr;                                                          \
 }
 
-// Only define StlStringCompare:
+// Only define STLStringCompare:
 #define CPPYY_IMPL_STRING_PYTHONIZATION_CMP(type, name)                      \
 CPPYY_IMPL_STRING_PYTHONIZATION(type, name)                                  \
 PyObject* name##StringCompare(PyObject* self, PyObject* obj)                 \
@@ -1106,8 +1106,8 @@ PyObject* name##StringCompare(PyObject* self, PyObject* obj)                 \
     return PyInt_FromLong(result);                                           \
 }
 
-CPPYY_IMPL_STRING_PYTHONIZATION_CMP(std::string, Stl)
-CPPYY_IMPL_STRING_PYTHONIZATION_CMP(std::wstring, StlW)
+CPPYY_IMPL_STRING_PYTHONIZATION_CMP(std::string, STL)
+CPPYY_IMPL_STRING_PYTHONIZATION_CMP(std::wstring, STLW)
 
 static inline std::string* GetSTLString(CPPInstance* self) {
     if (!CPPInstance_Check(self)) {
@@ -1122,7 +1122,7 @@ static inline std::string* GetSTLString(CPPInstance* self) {
     return obj;
 }
 
-PyObject* StlStringDecode(CPPInstance* self, PyObject* args, PyObject* kwds)
+PyObject* STLStringDecode(CPPInstance* self, PyObject* args, PyObject* kwds)
 {
     std::string* obj = GetSTLString(self);
     if (!obj)
@@ -1137,7 +1137,7 @@ PyObject* StlStringDecode(CPPInstance* self, PyObject* args, PyObject* kwds)
     return PyUnicode_Decode(obj->data(), obj->size(), encoding, errors);
 }
 
-PyObject* StlStringContains(CPPInstance* self, PyObject* pyobj)
+PyObject* STLStringContains(CPPInstance* self, PyObject* pyobj)
 {
     std::string* obj = GetSTLString(self);
     if (!obj)
@@ -1154,7 +1154,7 @@ PyObject* StlStringContains(CPPInstance* self, PyObject* pyobj)
     Py_RETURN_FALSE;
 }
 
-PyObject* StlStringReplace(CPPInstance* self, PyObject* args, PyObject* kwds)
+PyObject* STLStringReplace(CPPInstance* self, PyObject* args, PyObject* kwds)
 {
     std::string* obj = GetSTLString(self);
     if (!obj)
@@ -1185,7 +1185,7 @@ PyObject* StlStringReplace(CPPInstance* self, PyObject* args, PyObject* kwds)
 }
 
 #define CPYCPPYY_STRING_FINDMETHOD(name, cppname, pyname)                    \
-PyObject* StlString##name(CPPInstance* self, PyObject* args, PyObject* kwds) \
+PyObject* STLString##name(CPPInstance* self, PyObject* args, PyObject* kwds) \
 {                                                                            \
     std::string* obj = GetSTLString(self);                                   \
     if (!obj)                                                                \
@@ -1218,7 +1218,7 @@ PyObject* StlString##name(CPPInstance* self, PyObject* args, PyObject* kwds) \
 CPYCPPYY_STRING_FINDMETHOD( Find, __cpp_find,  find)
 CPYCPPYY_STRING_FINDMETHOD(RFind, __cpp_rfind, rfind)
 
-PyObject* StlStringGetAttr(CPPInstance* self, PyObject* attr_name)
+PyObject* STLStringGetAttr(CPPInstance* self, PyObject* attr_name)
 {
     std::string* obj = GetSTLString(self);
     if (!obj)
@@ -1231,11 +1231,11 @@ PyObject* StlStringGetAttr(CPPInstance* self, PyObject* attr_name)
 }
 
 
-Py_hash_t StlStringHash(PyObject* self)
+Py_hash_t STLStringHash(PyObject* self)
 {
 // std::string objects hash to the same values as Python strings to allow
 // matches in dictionaries etc.
-    PyObject* data = StlStringGetData(self, false);
+    PyObject* data = STLStringGetData(self, false);
     Py_hash_t h = CPyCppyy_PyText_Type.tp_hash(data);
     Py_DECREF(data);
     return h;
@@ -1243,7 +1243,7 @@ Py_hash_t StlStringHash(PyObject* self)
 
 
 //- STL iterator behavior ----------------------------------------------------
-PyObject* StlIterNext(PyObject* self)
+PyObject* STLIterNext(PyObject* self)
 {
 // Python iterator protocol __next__ for STL forward iterators.
     bool mustIncrement = true;
@@ -1461,8 +1461,8 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
                         gIteratorTypes.insert(resname);
 
                 // install iterator protocol a la STL
-                    ((PyTypeObject*)pyclass)->tp_iter = (getiterfunc)StlSequenceIter;
-                    Utility::AddToClass(pyclass, "__iter__", (PyCFunction)StlSequenceIter, METH_NOARGS);
+                    ((PyTypeObject*)pyclass)->tp_iter = (getiterfunc)STLSequenceIter;
+                    Utility::AddToClass(pyclass, "__iter__", (PyCFunction)STLSequenceIter, METH_NOARGS);
                 }
             }
         }
@@ -1661,40 +1661,40 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
     }
 
     else if (name.find("iterator") != std::string::npos || gIteratorTypes.find(name) != gIteratorTypes.end()) {
-        ((PyTypeObject*)pyclass)->tp_iternext = (iternextfunc)StlIterNext;
-        Utility::AddToClass(pyclass, CPPYY__next__, (PyCFunction)StlIterNext, METH_NOARGS);
+        ((PyTypeObject*)pyclass)->tp_iternext = (iternextfunc)STLIterNext;
+        Utility::AddToClass(pyclass, CPPYY__next__, (PyCFunction)STLIterNext, METH_NOARGS);
         ((PyTypeObject*)pyclass)->tp_iter = (getiterfunc)PyObject_SelfIter;
         Utility::AddToClass(pyclass, "__iter__", (PyCFunction)PyObject_SelfIter, METH_NOARGS);
     }
 
     else if (name == "std::string") { // TODO: ask backend as well
-        Utility::AddToClass(pyclass, "__repr__",      (PyCFunction)StlStringRepr,       METH_NOARGS);
-        Utility::AddToClass(pyclass, "__str__",       (PyCFunction)StlStringStr,        METH_NOARGS);
-        Utility::AddToClass(pyclass, "__bytes__",     (PyCFunction)StlStringBytes,      METH_NOARGS);
-        Utility::AddToClass(pyclass, "__cmp__",       (PyCFunction)StlStringCompare,    METH_O);
-        Utility::AddToClass(pyclass, "__eq__",        (PyCFunction)StlStringIsEqual,    METH_O);
-        Utility::AddToClass(pyclass, "__ne__",        (PyCFunction)StlStringIsNotEqual, METH_O);
-        Utility::AddToClass(pyclass, "__contains__",  (PyCFunction)StlStringContains,   METH_O);
-        Utility::AddToClass(pyclass, "decode",        (PyCFunction)StlStringDecode,     METH_VARARGS | METH_KEYWORDS);
+        Utility::AddToClass(pyclass, "__repr__",      (PyCFunction)STLStringRepr,       METH_NOARGS);
+        Utility::AddToClass(pyclass, "__str__",       (PyCFunction)STLStringStr,        METH_NOARGS);
+        Utility::AddToClass(pyclass, "__bytes__",     (PyCFunction)STLStringBytes,      METH_NOARGS);
+        Utility::AddToClass(pyclass, "__cmp__",       (PyCFunction)STLStringCompare,    METH_O);
+        Utility::AddToClass(pyclass, "__eq__",        (PyCFunction)STLStringIsEqual,    METH_O);
+        Utility::AddToClass(pyclass, "__ne__",        (PyCFunction)STLStringIsNotEqual, METH_O);
+        Utility::AddToClass(pyclass, "__contains__",  (PyCFunction)STLStringContains,   METH_O);
+        Utility::AddToClass(pyclass, "decode",        (PyCFunction)STLStringDecode,     METH_VARARGS | METH_KEYWORDS);
         Utility::AddToClass(pyclass, "__cpp_find",    "find");
-        Utility::AddToClass(pyclass, "find",          (PyCFunction)StlStringFind,       METH_VARARGS | METH_KEYWORDS);
+        Utility::AddToClass(pyclass, "find",          (PyCFunction)STLStringFind,       METH_VARARGS | METH_KEYWORDS);
         Utility::AddToClass(pyclass, "__cpp_rfind",   "rfind");
-        Utility::AddToClass(pyclass, "rfind",         (PyCFunction)StlStringRFind,      METH_VARARGS | METH_KEYWORDS);
+        Utility::AddToClass(pyclass, "rfind",         (PyCFunction)STLStringRFind,      METH_VARARGS | METH_KEYWORDS);
         Utility::AddToClass(pyclass, "__cpp_replace", "replace");
-        Utility::AddToClass(pyclass, "replace",       (PyCFunction)StlStringReplace,    METH_VARARGS | METH_KEYWORDS);
-        Utility::AddToClass(pyclass, "__getattr__",   (PyCFunction)StlStringGetAttr,    METH_O);
+        Utility::AddToClass(pyclass, "replace",       (PyCFunction)STLStringReplace,    METH_VARARGS | METH_KEYWORDS);
+        Utility::AddToClass(pyclass, "__getattr__",   (PyCFunction)STLStringGetAttr,    METH_O);
 
     // to allow use of std::string in dictionaries and findable with str
-        ((PyTypeObject*)pyclass)->tp_hash = (hashfunc)StlStringHash;
+        ((PyTypeObject*)pyclass)->tp_hash = (hashfunc)STLStringHash;
     }
 
     else if (name == "std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >") {
-        Utility::AddToClass(pyclass, "__repr__",  (PyCFunction)StlWStringRepr,       METH_NOARGS);
-        Utility::AddToClass(pyclass, "__str__",   (PyCFunction)StlWStringStr,        METH_NOARGS);
-        Utility::AddToClass(pyclass, "__bytes__", (PyCFunction)StlWStringBytes,      METH_NOARGS);
-        Utility::AddToClass(pyclass, "__cmp__",   (PyCFunction)StlWStringCompare,    METH_O);
-        Utility::AddToClass(pyclass, "__eq__",    (PyCFunction)StlWStringIsEqual,    METH_O);
-        Utility::AddToClass(pyclass, "__ne__",    (PyCFunction)StlWStringIsNotEqual, METH_O);
+        Utility::AddToClass(pyclass, "__repr__",  (PyCFunction)STLWStringRepr,       METH_NOARGS);
+        Utility::AddToClass(pyclass, "__str__",   (PyCFunction)STLWStringStr,        METH_NOARGS);
+        Utility::AddToClass(pyclass, "__bytes__", (PyCFunction)STLWStringBytes,      METH_NOARGS);
+        Utility::AddToClass(pyclass, "__cmp__",   (PyCFunction)STLWStringCompare,    METH_O);
+        Utility::AddToClass(pyclass, "__eq__",    (PyCFunction)STLWStringIsEqual,    METH_O);
+        Utility::AddToClass(pyclass, "__ne__",    (PyCFunction)STLWStringIsNotEqual, METH_O);
     }
 
     else if (name == "complex<double>" || name == "std::complex<double>") {

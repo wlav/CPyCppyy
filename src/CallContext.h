@@ -59,7 +59,7 @@ struct CallContext {
         kUseHeuristics  = 0x0040, // if method applies heuristics memory policy
         kUseStrict      = 0x0080, // if method applies strict memory policy
         kReleaseGIL     = 0x0100, // if method should release the GIL
-        kSetLifeline    = 0x0200, // if return value is part of 'this'
+        kSetLifeLine    = 0x0200, // if return value is part of 'this'
         kNeverLifeLine  = 0x0400, // if the return value is never part of 'this'
         kProtected      = 0x0800, // if method should return on signals
         kUseFFI         = 0x1000, // not implemented

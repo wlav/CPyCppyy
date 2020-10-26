@@ -160,7 +160,7 @@ static inline PyObject* HandleReturn(
         if (!(pymeth->fMethodInfo->fFlags & CallContext::kNeverLifeLine)) {
             int ll_action = 0;
             if ((PyObject*)pymeth->fSelf != result) {
-                if (pymeth->fMethodInfo->fFlags & CallContext::kSetLifeline)
+                if (pymeth->fMethodInfo->fFlags & CallContext::kSetLifeLine)
                     ll_action = 1;
                 else if (cppres && CPPInstance_Check(pymeth->fSelf)) {
                 // if self was a by-value return and result is not, pro-actively protect result;
@@ -169,7 +169,7 @@ static inline PyObject* HandleReturn(
                     if (!(cppres->fFlags & CPPInstance::kIsValue)) {     // no need if the result is temporary
                         if (cppself->fFlags & CPPInstance::kIsValue)
                             ll_action = 2;
-                        else if (cppself->fFlags & CPPInstance::kHasLifeline)
+                        else if (cppself->fFlags & CPPInstance::kHasLifeLine)
                             ll_action = 3;
                         else {
                             ptrdiff_t offset = (ptrdiff_t)cppres->GetObject() - (ptrdiff_t)cppself->GetObject();
@@ -185,8 +185,8 @@ static inline PyObject* HandleReturn(
             else {
                 if (PyObject_SetAttr(result, PyStrings::gLifeLine, (PyObject*)pymeth->fSelf) == -1)
                     PyErr_Clear();         // ignored
-                if (cppres) cppres->fFlags |= CPPInstance::kHasLifeline;          // for chaining
-                pymeth->fMethodInfo->fFlags |= CallContext::kSetLifeline;         // for next time
+                if (cppres) cppres->fFlags |= CPPInstance::kHasLifeLine;          // for chaining
+                pymeth->fMethodInfo->fFlags |= CallContext::kSetLifeLine;         // for next time
             }
         }
     }
@@ -489,7 +489,7 @@ static int mp_set##name(CPPOverload* pymeth, PyObject* value, void*) {       \
     return set_flag(pymeth, value, flag, label);                             \
 }
 
-CPPYY_BOOLEAN_PROPERTY(lifeline, CallContext::kSetLifeline, "__set_lifeline__")
+CPPYY_BOOLEAN_PROPERTY(lifeline, CallContext::kSetLifeLine, "__set_lifeline__")
 CPPYY_BOOLEAN_PROPERTY(threaded, CallContext::kReleaseGIL,  "__release_gil__")
 CPPYY_BOOLEAN_PROPERTY(useffi,   CallContext::kUseFFI,      "__useffi__")
 CPPYY_BOOLEAN_PROPERTY(sig2exc,  CallContext::kProtected,   "__sig2exc__")

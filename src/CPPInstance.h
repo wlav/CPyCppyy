@@ -36,7 +36,7 @@ public:
         kIsPtrPtr    = 0x0040,
         kIsSmartPtr  = 0x0080,
         kNoMemReg    = 0x0100,
-        kHasLifeline = 0x0200,
+        kHasLifeLine = 0x0200,
         kIsRegulated = 0x0400,
         kIsActual    = 0x0800 };
 
