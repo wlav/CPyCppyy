@@ -499,8 +499,10 @@ static int ll_ass_sub(CPyCppyy::LowLevelView* self, PyObject* key, PyObject* val
         int ret = -1;
 
         // rvalue must be an exporter
-        if (PyObject_GetBuffer(value, &src, PyBUF_FULL_RO) < 0)
+        if (PyObject_GetBuffer(value, &src, PyBUF_FULL_RO) < 0) {
+            if (src.obj) CPyCppyy_PyBuffer_Release(value, &src);
             return ret;
+        }
 
         dest = view;
         dest.shape = &arrays[0]; dest.shape[0] = view.shape[0];
@@ -513,7 +515,9 @@ static int ll_ass_sub(CPyCppyy::LowLevelView* self, PyObject* key, PyObject* val
             return -1;
         dest.len = dest.shape[0] * dest.itemsize;
 
-        return copy_single(&dest, &src);
+        ret = copy_single(&dest, &src);
+        CPyCppyy_PyBuffer_Release(value, &src);
+        return ret;
     }
 
     if (is_multiindex(key)) {
