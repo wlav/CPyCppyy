@@ -43,7 +43,8 @@ struct Parameter {
 
 // extra call information
 struct CallContext {
-    CallContext() : fFlags(0), fCurScope(0), fArgsVec(nullptr), fNArgs(0), fTemps(nullptr) {}
+    CallContext() : fFlags(0), fCurScope(0), fPyContext(nullptr),
+        fArgsVec(nullptr), fNArgs(0), fTemps(nullptr) {}
     CallContext(const CallContext&) = delete;
     CallContext& operator=(const CallContext&) = delete;
     ~CallContext() { if (fTemps) Cleanup(); delete fArgsVec; }
@@ -94,16 +95,18 @@ struct CallContext {
 
 public:
 // info/status
-    uint64_t fFlags;
+    uint64_t           fFlags;
     Cppyy::TCppScope_t fCurScope;
+    PyObject*          fPyContext;
 
 private:
-// payload
-    Parameter fArgs[SMALL_ARGS_N];
-    std::vector<Parameter>* fArgsVec;
-    size_t fNArgs;
     struct Temporary { PyObject* fPyObject; Temporary* fNext; };
-    Temporary* fTemps;
+
+// payload
+    Parameter               fArgs[SMALL_ARGS_N];
+    std::vector<Parameter>* fArgsVec;
+    size_t                  fNArgs;
+    Temporary*              fTemps;
 };
 
 inline bool IsSorted(uint64_t flags) {

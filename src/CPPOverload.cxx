@@ -548,6 +548,7 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
     ctxt.fFlags |= (mflags & CallContext::kReleaseGIL);
     ctxt.fFlags |= (mflags & CallContext::kProtected);
     if (IsConstructor(pymeth->fMethodInfo->fFlags)) ctxt.fFlags |= CallContext::kIsConstructor;
+    ctxt.fPyContext = (PyObject*)pymeth->fSelf;  // no Py_INCREF as no ownership
 
 // magic variable to prevent recursion passed by keyword?
     if (kwds && PyDict_CheckExact(kwds) && PyDict_Size(kwds) != 0) {

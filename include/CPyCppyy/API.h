@@ -29,6 +29,8 @@
 #endif
 #include "Python.h"
 
+#define CPYCPPYY_VERSION_HEX 0x011200
+
 // Cppyy types
 namespace Cppyy {
     typedef size_t      TCppScope_t;
@@ -99,7 +101,7 @@ public:
     virtual PyObject* FromMemory(void* address);
 
 // convert a Python object to a C++ object and store it on address
-    virtual bool ToMemory(PyObject* value, void* address);
+    virtual bool ToMemory(PyObject* value, void* address, PyObject* ctxt = nullptr);
 
 // if a converter has state, it will be unique per function, shared otherwise
     virtual bool HasState() { return false; }
