@@ -700,15 +700,15 @@ static PyObject* tpp_subscript(TemplateProxy* pytmpl, PyObject* args)
 
 //-----------------------------------------------------------------------------
 static PyObject* tpp_getuseffi(CPPOverload*, void*)
-{   
+{
     return PyInt_FromLong(0); // dummy (__useffi__ unused)
-}   
-    
+}
+
 //-----------------------------------------------------------------------------
 static int tpp_setuseffi(CPPOverload*, PyObject*, void*)
-{   
+{
     return 0;                 // dummy (__useffi__ unused)
-}   
+}
 
 
 //----------------------------------------------------------------------------
