@@ -1309,7 +1309,7 @@ bool CPyCppyy::name##Converter::ToMemory(PyObject* value, void* address, PyObjec
     Py_ssize_t len = PyBytes_GET_SIZE(bstr) - sizeof(type) /*BOM*/;          \
                                                                              \
 /* verify (too long string will cause truncation, no crash) */               \
-    if (fMaxSize != -1 && fMaxSize < len/sizeof(type)) {                     \
+    if (fMaxSize != -1 && fMaxSize < long(len/sizeof(type))) {               \
         PyErr_Warn(PyExc_RuntimeWarning, (char*)"string too long for "#type" array (truncated)");\
         len = fMaxSize-sizeof(type);                                         \
     }                                                                        \
