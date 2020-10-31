@@ -504,7 +504,7 @@ static PyObject* BindObject(PyObject*, PyObject* args, PyObject* kwds)
     Py_ssize_t argc = PyTuple_GET_SIZE(args);
     if (argc != 2) {
         PyErr_Format(PyExc_TypeError,
-            "BindObject takes exactly 2 argumenst (" PY_SSIZE_T_FORMAT " given)", argc);
+            "BindObject takes exactly 2 arguments (" PY_SSIZE_T_FORMAT " given)", argc);
         return nullptr;
     }
 

@@ -203,13 +203,31 @@ static inline bool SetLifeLine(PyObject* holder, PyObject* target, intptr_t ref)
 // set a lifeline from on the holder to the target, using the ref as label
    if (!holder) return false;
 
-// 'ref' is expected to be the converter address, so that the combination of
-// holder and ref is unique, but also identifiable for reuse when the C++ side
-// is being overwritten
+// 'ref' is expected to be the converter address or data memory location, so
+// that the combination of holder and ref is unique, but also identifiable for
+// reuse when the C++ side is being overwritten
     std::ostringstream attr_name;
-    attr_name << ref;
+    attr_name << "__" << ref;
     auto res = PyObject_SetAttrString(holder, (char*)attr_name.str().c_str(), target);
     return res != -1;
+}
+
+static bool HasLifeLine(PyObject* holder, intptr_t ref)
+{
+// determine if a lifeline was previously set for the ref on the holder
+   if (!holder) return false;
+
+    std::ostringstream attr_name;
+    attr_name << "__" << ref;
+    PyObject* res = PyObject_GetAttrString(holder, (char*)attr_name.str().c_str());
+
+    if (res) {
+        Py_DECREF(res);
+        return true;
+    }
+
+    PyErr_Clear();
+    return false;
 }
 
 
@@ -1148,7 +1166,7 @@ PyObject* CPyCppyy::CStringConverter::FromMemory(void* address)
     return PyStrings::gEmptyString;
 }
 
-bool CPyCppyy::CStringConverter::ToMemory(PyObject* value, void* address, PyObject* /* ctxt */)
+bool CPyCppyy::CStringConverter::ToMemory(PyObject* value, void* address, PyObject* ctxt)
 {
 // convert <value> to C++ const char*, write it at <address>
     Py_ssize_t len;
@@ -1163,13 +1181,23 @@ bool CPyCppyy::CStringConverter::ToMemory(PyObject* value, void* address, PyObje
 // otherwise assume a pointer copy (this relies on the converter to be used for properties,
 // or for argument passing, but not both at the same time; this is currently the case)
     void* ptrval = *(void**)address;
-    if (!ptrval || ptrval == (void*)fBuffer.data()) {
+    if (ptrval == (void*)fBuffer.data()) {
         fBuffer = std::string(cstr, len);
         *(void**)address = (void*)fBuffer.data();
         return true;
+    } else if (ptrval && HasLifeLine(ctxt, (intptr_t)ptrval)) {
+        ptrval = nullptr;
+    // fall through; ptrval is nullptr means we're managing it
     }
 
-// the pointer value is non-zero or not ours: assume byte copy
+// the string is (going to be) managed by us: assume pointer copy
+    if (!ptrval) {
+        SetLifeLine(ctxt, value, (intptr_t)ptrval);
+        *(void**)address = (void*)cstr;
+        return true;
+    }
+
+// the pointer value is non-zero and not ours: assume byte copy
     if (fMaxSize != -1)
         strncpy(*(char**)address, cstr, fMaxSize);    // padds remainder
     else
@@ -1238,127 +1266,62 @@ bool CPyCppyy::WCStringConverter::ToMemory(PyObject* value, void* address, PyObj
 }
 
 //----------------------------------------------------------------------------
-bool CPyCppyy::CString16Converter::SetArg(
-    PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)
-{
-// construct a new string and copy it in new memory
-    Py_ssize_t len = PyUnicode_GetSize(pyobject);
-    if (len == (Py_ssize_t)-1 && PyErr_Occurred())
-        return false;
-
-    PyObject* bstr = PyUnicode_AsUTF16String(pyobject);
-    if (!bstr) return false;
-
-    fBuffer = (char16_t*)realloc(fBuffer, sizeof(char16_t)*(len+1));
-    memcpy(fBuffer, PyBytes_AS_STRING(bstr) + sizeof(char16_t) /*BOM*/, len*sizeof(char16_t));
-    Py_DECREF(bstr);
-
-// set the value and declare success
-    fBuffer[len] = u'\0';
-    para.fValue.fVoidp = (void*)fBuffer;
-    para.fTypeCode = 'p';
-    return true;
+#define CPYCPPYY_WIDESTRING_CONVERTER(name, type, encode, decode, snull)     \
+bool CPyCppyy::name##Converter::SetArg(                                      \
+    PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)            \
+{                                                                            \
+/* change string encoding and copy into local buffer */                      \
+    PyObject* bstr = encode(pyobject);                                       \
+    if (!bstr) return false;                                                 \
+                                                                             \
+    Py_ssize_t len = PyBytes_GET_SIZE(bstr) - sizeof(type) /*BOM*/;          \
+    fBuffer = (type*)realloc(fBuffer, len + sizeof(type));                   \
+    memcpy(fBuffer, PyBytes_AS_STRING(bstr) + sizeof(type) /*BOM*/, len);    \
+    Py_DECREF(bstr);                                                         \
+                                                                             \
+    fBuffer[len/sizeof(type)] = snull;                                       \
+    para.fValue.fVoidp = (void*)fBuffer;                                     \
+    para.fTypeCode = 'p';                                                    \
+    return true;                                                             \
+}                                                                            \
+                                                                             \
+PyObject* CPyCppyy::name##Converter::FromMemory(void* address)               \
+{                                                                            \
+/* construct python object from C++ <type>* read at <address> */             \
+    if (address && *(type**)address) {                                       \
+        if (fMaxSize != -1)                                                  \
+            return decode(*(const char**)address, fMaxSize, nullptr, nullptr);\
+        return decode(*(const char**)address,                                \
+            std::char_traits<type>::length(*(type**)address)*sizeof(type), nullptr, nullptr);\
+    }                                                                        \
+                                                                             \
+/* empty string in case there's no valid address */                          \
+    type w = snull;                                                          \
+    return decode((const char*)&w, 0, nullptr, nullptr);                     \
+}                                                                            \
+                                                                             \
+bool CPyCppyy::name##Converter::ToMemory(PyObject* value, void* address, PyObject* /* ctxt */)\
+{                                                                            \
+/* convert <value> to C++ <type>*, write it at <address> */                  \
+    PyObject* bstr = encode(value);                                          \
+    if (!bstr) return false;                                                 \
+                                                                             \
+    Py_ssize_t len = PyBytes_GET_SIZE(bstr) - sizeof(type) /*BOM*/;          \
+                                                                             \
+/* verify (too long string will cause truncation, no crash) */               \
+    if (fMaxSize != -1 && fMaxSize < len/sizeof(type)) {                     \
+        PyErr_Warn(PyExc_RuntimeWarning, (char*)"string too long for "#type" array (truncated)");\
+        len = fMaxSize-sizeof(type);                                         \
+    }                                                                        \
+                                                                             \
+    memcpy(*((void**)address), PyBytes_AS_STRING(bstr) + sizeof(type) /*BOM*/, len);\
+    Py_DECREF(bstr);                                                         \
+    *((type**)address)[len/sizeof(type)] = snull;                            \
+    return true;                                                             \
 }
 
-PyObject* CPyCppyy::CString16Converter::FromMemory(void* address)
-{
-// construct python object from C++ char16_t* read at <address>
-    if (address && *(char16_t**)address) {
-        if (fMaxSize != -1)        // need to prevent reading beyond boundary
-            return PyUnicode_DecodeUTF16(*(const char**)address, fMaxSize, nullptr, nullptr);
-    // with unknown size
-        return PyUnicode_DecodeUTF16(*(const char**)address,
-            std::char_traits<char16_t>::length(*(char16_t**)address)*sizeof(char16_t), nullptr, nullptr);
-    }
-
-// empty string in case there's no valid address
-    char16_t w = u'\0';
-    return PyUnicode_DecodeUTF16((const char*)&w, 0, nullptr, nullptr);
-}
-
-bool CPyCppyy::CString16Converter::ToMemory(PyObject* value, void* address, PyObject* /* ctxt */)
-{
-// convert <value> to C++ char16_t*, write it at <address>
-    Py_ssize_t len = PyUnicode_GetSize(value);
-    if (len == (Py_ssize_t)-1 && PyErr_Occurred())
-        return false;
-
-// verify (too long string will cause truncation, no crash)
-    if (fMaxSize != -1 && fMaxSize < len) {
-        PyErr_Warn(PyExc_RuntimeWarning, (char*)"string too long for char16_t array (truncated)");
-        len = fMaxSize-1;
-    }
-
-    PyObject* bstr = PyUnicode_AsUTF16String(value);
-    if (!bstr) return false;
-
-    memcpy(*((void**)address), PyBytes_AS_STRING(bstr) + sizeof(char16_t) /*BOM*/, len*sizeof(char16_t));
-    Py_DECREF(bstr);
-    *((char16_t**)address)[len] = u'\0';
-    return true;
-}
-
-//----------------------------------------------------------------------------
-bool CPyCppyy::CString32Converter::SetArg(
-    PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)
-{
-// construct a new string and copy it in new memory
-    Py_ssize_t len = PyUnicode_GetSize(pyobject);
-    if (len == (Py_ssize_t)-1 && PyErr_Occurred())
-        return false;
-
-    PyObject* bstr = PyUnicode_AsUTF32String(pyobject);
-    if (!bstr) return false;
-
-    fBuffer = (char32_t*)realloc(fBuffer, sizeof(char32_t)*(len+1));
-    memcpy(fBuffer, PyBytes_AS_STRING(bstr) + sizeof(char32_t) /*BOM*/, len*sizeof(char32_t));
-    Py_DECREF(bstr);
-
-// set the value and declare success
-    fBuffer[len] = U'\0';
-    para.fValue.fVoidp = (void*)fBuffer;
-    para.fTypeCode = 'p';
-    return true;
-}
-
-PyObject* CPyCppyy::CString32Converter::FromMemory(void* address)
-{
-// construct python object from C++ char32_t* read at <address>
-    if (address && *(char32_t**)address) {
-        if (fMaxSize != -1)        // need to prevent reading beyond boundary
-            return PyUnicode_DecodeUTF32(*(const char**)address, fMaxSize, nullptr, nullptr);
-    // with unknown size
-        return PyUnicode_DecodeUTF32(*(const char**)address,
-            std::char_traits<char32_t>::length(*(char32_t**)address)*sizeof(char32_t), nullptr, nullptr);
-    }
-
-// empty string in case there's no valid address
-    char32_t w = U'\0';
-    return PyUnicode_DecodeUTF32((const char*)&w, 0, nullptr, nullptr);
-}
-
-bool CPyCppyy::CString32Converter::ToMemory(PyObject* value, void* address, PyObject* /* ctxt */)
-{
-// convert <value> to C++ char32_t*, write it at <address>
-    Py_ssize_t len = PyUnicode_GetSize(value);
-    if (len == (Py_ssize_t)-1 && PyErr_Occurred())
-        return false;
-
-// verify (too long string will cause truncation, no crash)
-    if (fMaxSize != -1 && fMaxSize < len) {
-        PyErr_Warn(PyExc_RuntimeWarning, (char*)"string too long for char32_t array (truncated)");
-        len = fMaxSize-1;
-    }
-
-    PyObject* bstr = PyUnicode_AsUTF32String(value);
-    if (!bstr) return false;
-
-    memcpy(*((void**)address), PyBytes_AS_STRING(bstr) + sizeof(char32_t) /*BOM*/, len*sizeof(char32_t));
-    Py_DECREF(bstr);
-    *((char32_t**)address)[len] = U'\0';
-    return true;
-}
-
+CPYCPPYY_WIDESTRING_CONVERTER(CString16, char16_t, PyUnicode_AsUTF16String, PyUnicode_DecodeUTF16, u'\0')
+CPYCPPYY_WIDESTRING_CONVERTER(CString32, char32_t, PyUnicode_AsUTF32String, PyUnicode_DecodeUTF32, U'\0')
 
 //----------------------------------------------------------------------------
 bool CPyCppyy::NonConstCStringConverter::SetArg(
