@@ -655,21 +655,22 @@ Py_ssize_t CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, v
                 || (tc == '?' && strchr(bufinfo.format, 'b'))
                     ) {
                 buf = bufinfo.buf;
-                if (buf && bufinfo.ndim == 0) {
-                    PyBuffer_Release(&bufinfo);
-                    return bufinfo.len/bufinfo.itemsize;
-                } else if (buf && bufinfo.ndim == 1) {
-                    Py_ssize_t size1d = bufinfo.shape ? bufinfo.shape[0] : bufinfo.len/bufinfo.itemsize;
-                    PyBuffer_Release(&bufinfo);
-                    return size1d;
-                }
+                Py_ssize_t buflen = 0;
+                if (buf && bufinfo.ndim == 0)
+                    buflen = bufinfo.len/bufinfo.itemsize;
+                else if (buf && bufinfo.ndim == 1)
+                    buflen = bufinfo.shape ? bufinfo.shape[0] : bufinfo.len/bufinfo.itemsize;
+                CPyCppyy_PyBuffer_Release(pyobject, &bufinfo);
+                if (buflen)
+                    return buflen;
             } else {
             // have buf, but format mismatch: bail out now, otherwise the old
             // code will return based on itemsize match
-                PyBuffer_Release(&bufinfo);
+                CPyCppyy_PyBuffer_Release(pyobject, &bufinfo);
                 return 0;
             }
-        }
+        } else if (bufinfo.obj)
+            CPyCppyy_PyBuffer_Release(pyobject, &bufinfo);
         PyErr_Clear();
     }
 
@@ -678,7 +679,7 @@ Py_ssize_t CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, v
 
     PySequenceMethods* seqmeths = Py_TYPE(pyobject)->tp_as_sequence;
     if (seqmeths != 0 && bufprocs != 0
-#if  PY_VERSION_HEX < 0x03000000
+#if PY_VERSION_HEX < 0x03000000
          && bufprocs->bf_getwritebuffer != 0
          && (*(bufprocs->bf_getsegcount))(pyobject, 0) == 1
 #else
@@ -694,11 +695,7 @@ Py_ssize_t CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, v
         (*(bufprocs->bf_getbuffer))(pyobject, &bufinfo, PyBUF_WRITABLE);
         buf = (char*)bufinfo.buf;
         Py_ssize_t buflen = bufinfo.len;
-#if PY_VERSION_HEX < 0x03010000
-        PyBuffer_Release(pyobject, &bufinfo);
-#else
-        PyBuffer_Release(&bufinfo);
-#endif
+        CPyCppyy_PyBuffer_Release(pyobject, &bufinfo);
 #endif
 
         if (buf && check == true) {
