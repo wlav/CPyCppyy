@@ -1531,15 +1531,10 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
 
                 const std::string& tt = Cppyy::ResolveName(Cppyy::GetDatamemberType(kls, i));
                 const std::string& cpd = Utility::Compound(tt);
-                const std::string& tt_clean = TypeManip::clean_type(tt, false, true);
+                std::string tt_clean = TypeManip::clean_type(tt, false, true);
 
-                if (Cppyy::IsEnum(tt_clean)) {
-                // TODO: this is stupid as it breaks both on legit enum data members as well as on
-                // enum constants that are exposed to the enclosing scope, but for now it is safer
-                // to simply not support ithis case
-                    codegen_ok = false;
-                    break;
-                }
+                if (tt_clean == "internal_enum_type_t" || Cppyy::IsEnum(tt_clean))
+                    tt_clean = Cppyy::GetDatamemberType(kls, i);     // restore (properly scoped name)
 
                 if (tt.rfind(']') == std::string::npos && tt.rfind(')') == std::string::npos) {
                     if (!cpd.empty()) arg_types.push_back(tt_clean+cpd);
