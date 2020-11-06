@@ -720,11 +720,11 @@ bool CPyCppyy::CPPMethod::ConvertAndSetArgs(PyObject* args, CallContext* ctxt)
         }
     }
 
-    if (argc == 0)
-        return true;
-
 // pass current scope for which the call is made
     ctxt->fCurScope = fScope;
+
+    if (argc == 0)
+        return true;
 
 // convert the arguments to the method call array
     bool isOK = true;
