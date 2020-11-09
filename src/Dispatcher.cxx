@@ -8,6 +8,7 @@
 #include "Utility.h"
 
 // Standard
+#include <set>
 #include <sstream>
 
 
@@ -207,7 +208,7 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
 
 // protected methods and data need their access changed in the C++ trampoline and then
 // exposed on the Python side; so, collect their names as we go along
-    std::vector<std::string> protected_names;
+    std::set<std::string> protected_names;
 
 // simple case: methods from current class (collect constructors along the way)
     int has_default = 0;
@@ -244,10 +245,25 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
             if (contains != 1) {
                 Py_DECREF(key);
 
-            // if the method is protected, we expose it with a 'using'
+            // if the method is protected, we expose it through re-declaration and forwarding (using
+            // does not work here b/c there may be private overloads)
                 if (Cppyy::IsProtectedMethod(method)) {
-                    protected_names.push_back(mtCppName);
-                    code << "  using " << binfo.bname << "::" << mtCppName << ";\n";
+                    protected_names.insert(mtCppName);
+
+                    code << "  " << Cppyy::GetMethodResultType(method) << " " << mtCppName << "(";
+                    Cppyy::TCppIndex_t nArgs = Cppyy::GetMethodNumArgs(method);
+                    for (Cppyy::TCppIndex_t i = 0; i < nArgs; ++i) {
+                        if (i != 0) code << ", ";
+                        code << Cppyy::GetMethodArgType(method, i) << " arg" << i;
+                    }
+                    code << ") ";
+                    if (Cppyy::IsConstMethod(method)) code << "const ";
+                    code << "{\n    return " << binfo.bname << "::" << mtCppName << "(";
+                    for (Cppyy::TCppIndex_t i = 0; i < nArgs; ++i) {
+                        if (i != 0) code << ", ";
+                        code << "arg" << i;
+                    }
+                    code << ");\n  }\n";
                 }
 
                 continue;
@@ -326,20 +342,20 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
             if (Cppyy::IsProtectedData(binfo.btype, idata)) {
                 const std::string dm_name = Cppyy::GetDatamemberName(binfo.btype, idata);
                 if (dm_name != "_internal_self") {
-                    protected_names.push_back(Cppyy::GetDatamemberName(binfo.btype, idata));
+                    const std::string& dname = Cppyy::GetDatamemberName(binfo.btype, idata);
+                    protected_names.insert(dname);
                     if (!setPublic) {
                         code << "public:\n";
                         setPublic = true;
                     }
-                    code << "  using " << binfo.bname << "::" << protected_names.back() << ";\n";
+                    code << "  using " << binfo.bname << "::" << dname << ";\n";
                 }
             }
         }
     }
 
 // add an offset calculator for the dispatch ptr as needed
-    code << "public:\n"
-         << "static size_t _dispatchptr_offset() { return (size_t)&(("
+    code << "public:\n  static size_t _dispatchptr_offset() { return (size_t)&(("
          << derivedName << "*)(0x0))->_internal_self; }";
 
 // finish class declaration
