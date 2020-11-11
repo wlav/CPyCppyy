@@ -32,13 +32,14 @@ public:
         kIsExtended  = 0x0004,
         kIsReference = 0x0008,
         kIsRValue    = 0x0010,
-        kIsValue     = 0x0020,
-        kIsPtrPtr    = 0x0040,
-        kIsSmartPtr  = 0x0080,
-        kNoMemReg    = 0x0100,
-        kHasLifeLine = 0x0200,
-        kIsRegulated = 0x0400,
-        kIsActual    = 0x0800 };
+        kIsLValue    = 0x0020,
+        kIsValue     = 0x0040,
+        kIsPtrPtr    = 0x0080,
+        kIsSmartPtr  = 0x0100,
+        kNoMemReg    = 0x0200,
+        kHasLifeLine = 0x0400,
+        kIsRegulated = 0x0800,
+        kIsActual    = 0x1000 };
 
 public:                 // public, as the python C-API works with C structs
     PyObject_HEAD

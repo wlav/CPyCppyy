@@ -201,7 +201,7 @@ static bool IsCTypesArrayOrPointer(PyObject* pyobject)
 static inline bool SetLifeLine(PyObject* holder, PyObject* target, intptr_t ref)
 {
 // set a lifeline from on the holder to the target, using the ref as label
-   if (!holder) return false;
+    if (!holder) return false;
 
 // 'ref' is expected to be the converter address or data memory location, so
 // that the combination of holder and ref is unique, but also identifiable for
@@ -1192,7 +1192,7 @@ bool CPyCppyy::CStringConverter::ToMemory(PyObject* value, void* address, PyObje
 
 // the string is (going to be) managed by us: assume pointer copy
     if (!ptrval) {
-        SetLifeLine(ctxt, value, (intptr_t)ptrval);
+        SetLifeLine(ctxt, value, (intptr_t)address);
         *(void**)address = (void*)cstr;
         return true;
     }
@@ -2051,7 +2051,7 @@ bool CPyCppyy::InstanceMoveConverter::SetArg(
 {
 // convert <pyobject> to C++ instance&&, set arg for call
     CPPInstance* pyobj = GetCppInstance(pyobject);
-    if (!pyobj) {
+    if (!pyobj || (pyobj->fFlags & CPPInstance::kIsLValue)) {
     // implicit conversion is fine as the temporary by definition is moveable
         return (bool)ConvertImplicit(fClass, pyobject, para, ctxt);
     }
@@ -2316,7 +2316,7 @@ bool CPyCppyy::PyObjectConverter::ToMemory(PyObject* value, void* address, PyObj
 //- function pointer converter -----------------------------------------------
 static unsigned int sWrapperCounter = 0;
 // cache mapping signature/return type to python callable and corresponding wrapper
-typedef std::pair<std::string, std::string> RetSigKey_t;
+typedef std::string RetSigKey_t;
 static std::map<RetSigKey_t, std::vector<void*>> sWrapperFree;
 static std::map<RetSigKey_t, std::map<PyObject*, void*>> sWrapperLookup;
 static std::map<PyObject*, std::pair<void*, RetSigKey_t>> sWrapperWeakRefs;
@@ -2326,10 +2326,19 @@ static PyObject* WrapperCacheEraser(PyObject*, PyObject* pyref)
 {
     auto ipos = sWrapperWeakRefs.find(pyref);
     if (ipos != sWrapperWeakRefs.end()) {
-    // disable this callback and store for possible re-use
+        auto key = ipos->second.second;
+
+    // disable this callback and store on free list for possible re-use
         void* wpraddress = ipos->second.first;
-        *sWrapperReference[wpraddress] = nullptr;
+        PyObject** oldref = sWrapperReference[wpraddress];
+        const auto& lookup = sWrapperLookup.find(key);
+        if (lookup != sWrapperLookup.end()) lookup->second.erase(*oldref);
+        *oldref = nullptr;        // to detect deletions
         sWrapperFree[ipos->second.second].push_back(wpraddress);
+
+    // clean up and remove weak reference from admin
+        Py_DECREF(ipos->first);
+        sWrapperWeakRefs.erase(ipos);
     }
 
     Py_RETURN_NONE;
@@ -2387,7 +2396,7 @@ static void* PyFunction_AsCPointer(PyObject* pyobject,
         void* wpraddress = nullptr;
 
     // re-use existing wrapper if possible
-        auto key = std::make_pair(rettype, signature);
+        auto key = rettype+signature;
         const auto& lookup = sWrapperLookup.find(key);
         if (lookup != sWrapperLookup.end()) {
             const auto& existing = lookup->second.find(pyobject);
@@ -2401,7 +2410,8 @@ static void* PyFunction_AsCPointer(PyObject* pyobject,
            if (freewrap != sWrapperFree.end() && !freewrap->second.empty()) {
                wpraddress = freewrap->second.back();
                freewrap->second.pop_back();
-               *sWrapperReference[wpraddress] = pyobject;
+               *(sWrapperReference[wpraddress]) = pyobject;
+               sWrapperLookup[key][pyobject] = wpraddress;
                PyObject* wref = PyWeakref_NewRef(pyobject, sWrapperCacheEraser);
                if (wref) sWrapperWeakRefs[wref] = std::make_pair(wpraddress, key);
                else PyErr_Clear();     // happens for builtins which don't need this
@@ -2477,7 +2487,7 @@ static void* PyFunction_AsCPointer(PyObject* pyobject,
 }
 
 bool CPyCppyy::FunctionPointerConverter::SetArg(
-    PyObject* pyobject, Parameter& para, CallContext* /*ctxt*/)
+    PyObject* pyobject, Parameter& para, CallContext* ctxt)
 {
 // special case: allow nullptr singleton:
     if (gNullPtrObject == pyobject) {
@@ -2489,6 +2499,7 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
 // normal case, get a function pointer
     void* fptr = PyFunction_AsCPointer(pyobject, fRetType, fSignature);
     if (fptr) {
+        SetLifeLine(ctxt->fPyContext, pyobject, (intptr_t)this);
         para.fValue.fVoidp = fptr;
         para.fTypeCode = 'p';
         return true;
@@ -2539,11 +2550,14 @@ PyObject* CPyCppyy::FunctionPointerConverter::FromMemory(void* address)
     PyObject* func = PyObject_GetAttrString(pyscope, cached->second.c_str());
     Py_DECREF(pyscope);
 
+    if (func)      // prevent moving this func object, since then it can not be reused
+        ((CPPInstance*)func)->fFlags |= CPPInstance::kIsLValue;
+
     return func;
 }
 
 bool CPyCppyy::FunctionPointerConverter::ToMemory(
-    PyObject* pyobject, void* address, PyObject* /* ctxt */)
+    PyObject* pyobject, void* address, PyObject* ctxt)
 {
 // special case: allow nullptr singleton:
     if (gNullPtrObject == pyobject) {
@@ -2554,6 +2568,7 @@ bool CPyCppyy::FunctionPointerConverter::ToMemory(
 // normal case, get a function pointer
     void* fptr = PyFunction_AsCPointer(pyobject, fRetType, fSignature);
     if (fptr) {
+        SetLifeLine(ctxt, pyobject, (intptr_t)address);
         *((void**)address) = fptr;
         return true;
     }
@@ -2582,8 +2597,10 @@ bool CPyCppyy::StdFunctionConverter::SetArg(
     // then try normal conversion a second time
         PyObject* func = this->FunctionPointerConverter::FromMemory(&para.fValue.fVoidp);
         if (func) {
-            Py_XDECREF(fFuncWrap); fFuncWrap = func;
-            bool result = fConverter->SetArg(fFuncWrap, para, ctxt);
+            SetLifeLine(ctxt->fPyContext, func, (intptr_t)this);
+            bool result = fConverter->SetArg(func, para, ctxt);
+            if (result) ctxt->AddTemporary(func);
+            else Py_DECREF(func);
             if (!rf) ctxt->fFlags &= ~CallContext::kNoImplicit;
             return result;
         }
@@ -2600,6 +2617,9 @@ PyObject* CPyCppyy::StdFunctionConverter::FromMemory(void* address)
 
 bool CPyCppyy::StdFunctionConverter::ToMemory(PyObject* value, void* address, PyObject* ctxt)
 {
+// if the value is not an std::function<> but a generic Python callable, the
+// conversion is done through the assignment, which may involve a temporary
+    if (address) SetLifeLine(ctxt, value, (intptr_t)address);
     return fConverter->ToMemory(value, address, ctxt);
 }
 

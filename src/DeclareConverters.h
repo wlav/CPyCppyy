@@ -403,10 +403,10 @@ protected:
 class StdFunctionConverter : public FunctionPointerConverter {
 public:
     StdFunctionConverter(Converter* cnv, const std::string& ret, const std::string& sig) :
-        FunctionPointerConverter(ret, sig), fConverter(cnv), fFuncWrap(nullptr) {}
+        FunctionPointerConverter(ret, sig), fConverter(cnv) {}
     StdFunctionConverter(const StdFunctionConverter&) = delete;
     StdFunctionConverter& operator=(const StdFunctionConverter&) = delete;
-    virtual ~StdFunctionConverter() { Py_XDECREF(fFuncWrap); delete fConverter; }
+    virtual ~StdFunctionConverter() { delete fConverter; }
 
 public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
@@ -415,7 +415,6 @@ public:
 
 protected:
     Converter* fConverter;
-    PyObject* fFuncWrap;
 };
 
 
