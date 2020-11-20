@@ -426,7 +426,7 @@ PyObject* CPyCppyy::CStringExecutor::Execute(
         return PyStrings::gEmptyString;
     }
 
-    return CPyCppyy_PyText_FromString(result);   // TODO: bytes?
+    return CPyCppyy_PyText_FromString(result);
 }
 
 //----------------------------------------------------------------------------
