@@ -2,6 +2,7 @@
 #include "CPyCppyy.h"
 #include "LowLevelViews.h"
 #include "Converters.h"
+#include "CustomPyTypes.h"
 
 // Standard
 #include <map>
@@ -612,6 +613,27 @@ static int ll_getbuf(CPyCppyy::LowLevelView* self, Py_buffer* view, int flags)
 }
 
 
+//= iterator protocol =======================================================
+static PyObject* ll_iter(PyObject* self) {
+// The index iterator indexes through getitem, just like python would do by
+// default, except that it checks the size externally to raise StopIteration,
+// rather than geitem failing.
+
+    using namespace CPyCppyy;
+
+    indexiterobject* ii = PyObject_GC_New(indexiterobject, &IndexIter_Type);
+    if (!ii) return nullptr;
+
+    Py_INCREF(self);
+    ii->ii_container = self;
+    ii->ii_pos       = 0;
+    ii->ii_len       = ll_length((LowLevelView*)self);
+
+    PyObject_GC_Track(ii);
+    return (PyObject*)ii;
+}
+
+
 //- mapping methods ---------------------------------------------------------
 static PyMappingMethods ll_as_mapping = {
     (lenfunc)      ll_length,      // mp_length
@@ -676,7 +698,7 @@ PyTypeObject LowLevelView_Type = {
     0,                             // tp_clear
     0,                             // tp_richcompare
     0,                             // tp_weaklistoffset
-    0,                             // tp_iter
+    (getiterfunc)ll_iter,          // tp_iter
     0,                             // tp_iternext
     ll_methods,                    // tp_methods
     0,                             // tp_members
