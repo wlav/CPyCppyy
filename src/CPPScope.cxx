@@ -303,6 +303,7 @@ static PyObject* pt_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
         Py_DECREF((PyObject*)result);
         return nullptr;
     }
+
     return (PyObject*)result;
 }
 

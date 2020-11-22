@@ -5,6 +5,7 @@
 #include "Executors.h"
 #include "MemoryRegulator.h"
 #include "ProxyWrappers.h"
+#include "PyStrings.h"
 
 #include "CPyCppyy/DispatchPtr.h"
 
@@ -63,7 +64,7 @@ PyObject* CPyCppyy::CPPConstructor::Call(
 
 // perform the call, nullptr 'this' makes the other side allocate the memory
     Cppyy::TCppScope_t disp = self->ObjectIsA(false /* check_smart */);
-    ptrdiff_t address = 0;
+    intptr_t address = 0;
     if (GetScope() != disp) {
     // happens for Python derived types, which have a dispatcher inserted that
     // is not otherwise user-visible: call it instead
@@ -87,15 +88,13 @@ PyObject* CPyCppyy::CPPConstructor::Call(
             return nullptr;
 
     // retrieve the actual pointer, take over control, and set set _internal_self
-        address = (ptrdiff_t)((CPPInstance*)pyobj)->GetObject();
+        address = (intptr_t)((CPPInstance*)pyobj)->GetObject();
         if (address) {
             ((CPPInstance*)pyobj)->CppOwns();
-            PyObject* pyoff = PyObject_CallMethod(dispproxy, (char*)"_dispatchptr_offset", nullptr);
-            size_t disp_offset = PyLong_AsSsize_t(pyoff);
-            Py_DECREF(pyoff);
-            new ((void*)(address + disp_offset)) DispatchPtr{(PyObject*)self};
+            PyObject* res = PyObject_CallMethodObjArgs(
+                dispproxy, PyStrings::gDispInit, pyobj, (PyObject*)self, nullptr);
+            Py_XDECREF(res);
         }
-        Py_DECREF(pyobj);
         Py_DECREF(dispproxy);
 
     } else {
@@ -105,7 +104,7 @@ PyObject* CPyCppyy::CPPConstructor::Call(
             return nullptr;
         }
 
-        address = (ptrdiff_t)this->Execute(nullptr, 0, ctxt);
+        address = (intptr_t)this->Execute(nullptr, 0, ctxt);
     }
 
 // done with filtered args

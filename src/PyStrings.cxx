@@ -58,6 +58,7 @@ PyObject* CPyCppyy::PyStrings::gCppImag          = nullptr;
 PyObject* CPyCppyy::PyStrings::gThisModule       = nullptr;
 
 PyObject* CPyCppyy::PyStrings::gNoImplicit       = nullptr;
+PyObject* CPyCppyy::PyStrings::gDispInit         = nullptr;
 
 PyObject* CPyCppyy::PyStrings::gExPythonize      = nullptr;
 PyObject* CPyCppyy::PyStrings::gPythonize        = nullptr;
@@ -125,6 +126,7 @@ bool CPyCppyy::CreatePyStrings() {
 
     CPPYY_INITIALIZE_STRING(gThisModule,     cppyy);
 
+    CPPYY_INITIALIZE_STRING(gDispInit,       _init_dispatchptr);
     CPPYY_INITIALIZE_STRING(gNoImplicit,     __cppyy_no_implicit);
 
     CPPYY_INITIALIZE_STRING(gExPythonize,    __cppyy_explicit_pythonize__);
@@ -190,6 +192,7 @@ PyObject* CPyCppyy::DestroyPyStrings() {
     Py_DECREF(PyStrings::gThisModule);  PyStrings::gThisModule  = nullptr;
 
     Py_DECREF(PyStrings::gNoImplicit);  PyStrings::gNoImplicit  = nullptr;
+    Py_DECREF(PyStrings::gDispInit);    PyStrings::gDispInit    = nullptr;
 
     Py_DECREF(PyStrings::gExPythonize); PyStrings::gExPythonize = nullptr;
     Py_DECREF(PyStrings::gPythonize);   PyStrings::gPythonize   = nullptr;

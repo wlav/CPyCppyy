@@ -354,9 +354,20 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
         }
     }
 
-// add an offset calculator for the dispatch ptr as needed
-    code << "public:\n  static size_t _dispatchptr_offset() { return (size_t)&(("
-         << derivedName << "*)(0x0))->_internal_self; }";
+// initialize the dispatch pointer for all direct bases that have one
+    BaseInfos_t::size_type disp_inited = 0;
+    code << "public:\n  static void _init_dispatchptr(" << derivedName << "* inst, PyObject* self) {\n";
+    if (1 < base_infos.size()) {
+        for (const auto& binfo : base_infos) {
+             if (Cppyy::GetDatamemberIndex(binfo.btype, "_internal_self") != (Cppyy::TCppIndex_t)-1) {
+                 code << "    " << binfo.bname << "::_init_dispatchptr(inst, self);\n";
+                 disp_inited += 1;
+             }
+        }
+    }
+    if (disp_inited != base_infos.size())
+       code << "    new ((void*)&inst->_internal_self) CPyCppyy::DispatchPtr{self};\n";
+    code << "  }";
 
 // finish class declaration
     code << "};\n}";
