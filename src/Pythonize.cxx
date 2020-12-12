@@ -467,6 +467,16 @@ PyObject* VectorData(PyObject* self, PyObject*)
 }
 
 
+//---------------------------------------------------------------------------
+PyObject* VectorArray(PyObject* self, PyObject* /* args */)
+{
+    PyObject* pydata = VectorData(self, nullptr);
+    PyObject* view = PyObject_CallMethodObjArgs(pydata, PyStrings::gArray, nullptr);
+    Py_DECREF(pydata);
+    return view;
+}
+
+
 //-----------------------------------------------------------------------------
 static PyObject* vector_iter(PyObject* v) {
     vectoriterobject* vi = PyObject_GC_New(vectoriterobject, &VectorIter_Type);
@@ -1596,6 +1606,9 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         // data with size
             Utility::AddToClass(pyclass, "__real_data", "data");
             Utility::AddToClass(pyclass, "data", (PyCFunction)VectorData);
+
+        // numpy array conversion
+            Utility::AddToClass(pyclass, "__array__", (PyCFunction)VectorArray);
 
         // checked getitem
             if (HasAttrDirect(pyclass, PyStrings::gLen)) {

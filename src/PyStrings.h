@@ -66,6 +66,7 @@ namespace PyStrings {
     extern PyObject* gExPythonize;
     extern PyObject* gPythonize;
 
+    extern PyObject* gArray;
     extern PyObject* gDType;
     extern PyObject* gFromBuffer;
 

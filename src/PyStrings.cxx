@@ -63,6 +63,7 @@ PyObject* CPyCppyy::PyStrings::gDispInit         = nullptr;
 PyObject* CPyCppyy::PyStrings::gExPythonize      = nullptr;
 PyObject* CPyCppyy::PyStrings::gPythonize        = nullptr;
 
+PyObject* CPyCppyy::PyStrings::gArray            = nullptr;
 PyObject* CPyCppyy::PyStrings::gDType            = nullptr;
 PyObject* CPyCppyy::PyStrings::gFromBuffer       = nullptr;
 
@@ -135,6 +136,7 @@ bool CPyCppyy::CreatePyStrings() {
     CPPYY_INITIALIZE_STRING(gExPythonize,    __cppyy_explicit_pythonize__);
     CPPYY_INITIALIZE_STRING(gPythonize,      __cppyy_pythonize__);
 
+    CPPYY_INITIALIZE_STRING(gArray,          __array__);
     CPPYY_INITIALIZE_STRING(gDType,          dtype);
     CPPYY_INITIALIZE_STRING(gFromBuffer,     frombuffer);
 
@@ -203,6 +205,7 @@ PyObject* CPyCppyy::DestroyPyStrings() {
     Py_DECREF(PyStrings::gExPythonize); PyStrings::gExPythonize = nullptr;
     Py_DECREF(PyStrings::gPythonize);   PyStrings::gPythonize   = nullptr;
 
+    Py_DECREF(PyStrings::gArray);       PyStrings::gArray       = nullptr;
     Py_DECREF(PyStrings::gDType);       PyStrings::gDType       = nullptr;
     Py_DECREF(PyStrings::gFromBuffer);  PyStrings::gFromBuffer  = nullptr;
 
