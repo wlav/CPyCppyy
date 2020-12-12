@@ -3,6 +3,7 @@
 #include "LowLevelViews.h"
 #include "Converters.h"
 #include "CustomPyTypes.h"
+#include "PyStrings.h"
 
 // Standard
 #include <map>
@@ -52,46 +53,6 @@ static PyGetSetDef ll_getset[] = {
     {(char*)"format",   (getter)ll_typecode, nullptr, nullptr, nullptr},
     {(char*)"typecode", (getter)ll_typecode, nullptr, nullptr, nullptr},
     {(char*)nullptr, nullptr, nullptr, nullptr, nullptr }
-};
-
-
-//---------------------------------------------------------------------------
-static PyObject* ll_reshape(CPyCppyy::LowLevelView* self, PyObject* shape)
-{
-// Allow the user to fix up the actual (type-strided) size of the buffer.
-    if (!PyTuple_Check(shape) || PyTuple_GET_SIZE(shape) != 1) {
-        if (shape) {
-            PyObject* pystr = PyObject_Str(shape);
-            if (pystr) {
-                PyErr_Format(PyExc_TypeError, "tuple object of length 1 expected, received %s",
-                    CPyCppyy_PyText_AsStringChecked(pystr));
-                Py_DECREF(pystr);
-                return nullptr;
-            }
-        }
-        PyErr_SetString(PyExc_TypeError, "tuple object of length 1 expected");
-        return nullptr;
-    }
-
-    Py_ssize_t nlen = PyInt_AsSsize_t(PyTuple_GET_ITEM(shape, 0));
-    if (nlen == -1 && PyErr_Occurred())
-        return nullptr;
-
-    self->fBufInfo.len = nlen * self->fBufInfo.itemsize;
-    if (self->fBufInfo.ndim == 1 && self->fBufInfo.shape)
-        self->fBufInfo.shape[0] = nlen;
-    else {
-        PyErr_SetString(PyExc_TypeError, "unsupported buffer dimensions");
-        return nullptr;
-    }
-
-    Py_RETURN_NONE;
-}
-
-//---------------------------------------------------------------------------
-static PyMethodDef ll_methods[] = {
-    {(char*)"reshape",     (PyCFunction)ll_reshape, METH_O,      nullptr},
-    {(char*)nullptr, nullptr, 0, nullptr}
 };
 
 
@@ -665,6 +626,85 @@ static PyBufferProcs ll_as_buffer = {
 #endif
     (getbufferproc)ll_getbuf,       // bf_getbuffer
     0,                              // bf_releasebuffer
+};
+
+
+//---------------------------------------------------------------------------
+static PyObject* ll_reshape(CPyCppyy::LowLevelView* self, PyObject* shape)
+{
+// Allow the user to fix up the actual (type-strided) size of the buffer.
+    if (!PyTuple_Check(shape) || PyTuple_GET_SIZE(shape) != 1) {
+        if (shape) {
+            PyObject* pystr = PyObject_Str(shape);
+            if (pystr) {
+                PyErr_Format(PyExc_TypeError, "tuple object of length 1 expected, received %s",
+                    CPyCppyy_PyText_AsStringChecked(pystr));
+                Py_DECREF(pystr);
+                return nullptr;
+            }
+        }
+        PyErr_SetString(PyExc_TypeError, "tuple object of length 1 expected");
+        return nullptr;
+    }
+
+    Py_ssize_t nlen = PyInt_AsSsize_t(PyTuple_GET_ITEM(shape, 0));
+    if (nlen == -1 && PyErr_Occurred())
+        return nullptr;
+
+    self->fBufInfo.len = nlen * self->fBufInfo.itemsize;
+    if (self->fBufInfo.ndim == 1 && self->fBufInfo.shape)
+        self->fBufInfo.shape[0] = nlen;
+    else {
+        PyErr_SetString(PyExc_TypeError, "unsupported buffer dimensions");
+        return nullptr;
+    }
+
+    Py_RETURN_NONE;
+}
+
+
+//---------------------------------------------------------------------------
+static PyObject* ll_array(CPyCppyy::LowLevelView* self, PyObject* args, PyObject* /* kwds */)
+{
+// Construct a numpy array from the lowlevelview (w/o copy if possible); this
+// uses the Python methods to avoid depending on numpy directly
+
+// Expect as most a dtype from the arguments;
+    static PyObject* ctmod = PyImport_ImportModule("numpy");    // ref-count kept
+    if (!ctmod)
+        return nullptr;
+
+// expect possible dtype from the arguments, otherwie take it from the type code
+    PyObject* dtype;
+    if (!args || PyTuple_GET_SIZE(args) != 1) {
+        PyObject* npdtype = PyObject_GetAttr(ctmod, CPyCppyy::PyStrings::gDType);
+        PyObject* typecode = ll_typecode(self, nullptr);
+        dtype = PyObject_CallFunctionObjArgs(npdtype, typecode, nullptr);
+        Py_DECREF(typecode);
+        Py_DECREF(npdtype);
+    } else {
+        dtype = PyTuple_GET_ITEM(args, 0);
+        Py_INCREF(dtype);
+    }
+
+    if (!dtype)
+        return nullptr;
+
+    PyObject* npfrombuf = PyObject_GetAttr(ctmod, CPyCppyy::PyStrings::gFromBuffer);
+    PyObject* view = PyObject_CallFunctionObjArgs(npfrombuf, (PyObject*)self, dtype, nullptr);
+    Py_DECREF(dtype);
+    Py_DECREF(npfrombuf);
+
+    return view;
+}
+
+//---------------------------------------------------------------------------
+static PyMethodDef ll_methods[] = {
+    {(char*)"reshape",     (PyCFunction)ll_reshape, METH_O,
+        (char*)"change the shape (not layout) of the low level view"},
+    {(char*)"__array__",   (PyCFunction)ll_array,   METH_VARARGS | METH_KEYWORDS,
+        (char*)"return a numpy array from the low level view"},
+    {(char*)nullptr, nullptr, 0, nullptr}
 };
 
 

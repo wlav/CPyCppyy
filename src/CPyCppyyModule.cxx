@@ -902,20 +902,19 @@ extern "C" void initlibcppyy()
     if (!Utility::InitProxy(gThisModule, &CustomInstanceMethod_Type, "InstanceMethod"))
         CPYCPPYY_INIT_ERROR;
 
-    if (!Utility::InitProxy(gThisModule, &TupleOfInstances_Type, "InstancesArray"))
+    if (!Utility::InitProxy(gThisModule, &TupleOfInstances_Type, "InstanceArray"))
        CPYCPPYY_INIT_ERROR;
 
-    if (!Utility::InitProxy(gThisModule, &InstanceArrayIter_Type, "instancearrayiter"))
-       CPYCPPYY_INIT_ERROR;
+    if (!Utility::InitProxy(gThisModule, &LowLevelView_Type, "LowLevelView"))
+        CPYCPPYY_INIT_ERROR;
 
     if (!Utility::InitProxy(gThisModule, &PyNullPtr_t_Type, "nullptr_t"))
         CPYCPPYY_INIT_ERROR;
 
-// initialize low level ptr type, but do not inject in gThisModule
-    if (PyType_Ready(&LowLevelView_Type) < 0)
+// custom iterators
+    if (PyType_Ready(&InstanceArrayIter_Type) < 0)
         CPYCPPYY_INIT_ERROR;
 
-// custom iterators
     if (PyType_Ready(&IndexIter_Type) < 0)
         CPYCPPYY_INIT_ERROR;
 

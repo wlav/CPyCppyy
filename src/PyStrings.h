@@ -66,6 +66,9 @@ namespace PyStrings {
     extern PyObject* gExPythonize;
     extern PyObject* gPythonize;
 
+    extern PyObject* gDType;
+    extern PyObject* gFromBuffer;
+
 } // namespace PyStrings
 
 bool CreatePyStrings();
