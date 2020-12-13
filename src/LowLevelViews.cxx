@@ -23,8 +23,11 @@ static CPyCppyy::LowLevelView* ll_new(PyTypeObject* subtype, PyObject*, PyObject
 {
 // Create a new low level ptr type
     CPyCppyy::LowLevelView* pyobj = (CPyCppyy::LowLevelView*)subtype->tp_alloc(subtype, 0);
-    if (!pyobj) PyErr_Print();
+    if (!pyobj)
+        return nullptr;
+
     memset(&pyobj->fBufInfo, 0, sizeof(Py_buffer));
+    (intptr_t&)pyobj->fBufInfo.internal |= CPyCppyy::LowLevelView::kIsCppArray;
     pyobj->fBuf = nullptr;
     pyobj->fConverter = nullptr;
 
@@ -37,10 +40,42 @@ static void ll_dealloc(CPyCppyy::LowLevelView* pyobj)
 // Destruction requires the deletion of the converter (if any)
     PyMem_Free(pyobj->fBufInfo.shape);
     PyMem_Free(pyobj->fBufInfo.strides);
+    if ((intptr_t)pyobj->fBufInfo.internal & CPyCppyy::LowLevelView::kIsOwner) {
+       if ((intptr_t)pyobj->fBufInfo.internal & CPyCppyy::LowLevelView::kIsCppArray)
+           delete [] pyobj->fBuf;
+       else
+           free(pyobj->fBuf);
+    }
     if (pyobj->fConverter && pyobj->fConverter->HasState()) delete pyobj->fConverter;
     Py_TYPE(pyobj)->tp_free((PyObject*)pyobj);
 }
 
+
+//----------------------------------------------------------------------------
+#define CPYCPPYY_LL_FLAG_GETSET(name, flag, doc)                             \
+static PyObject* ll_get##name(CPyCppyy::LowLevelView* pyobj)                 \
+{                                                                            \
+    return PyBool_FromLong((long)((intptr_t)pyobj->fBufInfo.internal & flag));\
+}                                                                            \
+                                                                             \
+static int ll_set##name(CPyCppyy::LowLevelView* pyobj, PyObject* value, void*)\
+{                                                                            \
+    long settrue = PyLong_AsLong(value);                                     \
+    if (settrue == -1 && PyErr_Occurred()) {                                 \
+        PyErr_SetString(PyExc_ValueError, #doc" should be either True or False");\
+        return -1;                                                           \
+    }                                                                        \
+                                                                             \
+    if ((bool)settrue)                                                       \
+       (intptr_t&)pyobj->fBufInfo.internal |=  flag;                         \
+    else                                                                     \
+       (intptr_t&)pyobj->fBufInfo.internal &= ~flag;                         \
+                                                                             \
+    return 0;                                                                \
+}
+
+CPYCPPYY_LL_FLAG_GETSET(ownership, CPyCppyy::LowLevelView::kIsOwner,    __python_owns__)
+CPYCPPYY_LL_FLAG_GETSET(cpparray,  CPyCppyy::LowLevelView::kIsCppArray, __cpp_array__)
 
 //---------------------------------------------------------------------------
 static PyObject* ll_typecode(CPyCppyy::LowLevelView* self, void*)
@@ -50,6 +85,10 @@ static PyObject* ll_typecode(CPyCppyy::LowLevelView* self, void*)
 
 //---------------------------------------------------------------------------
 static PyGetSetDef ll_getset[] = {
+    {(char*)"__python_owns__", (getter)ll_getownership, (setter)ll_setownership,
+        (char*)"If true, python manages the life time of this buffer", nullptr},
+    {(char*)"__cpp_array__",   (getter)ll_getcpparray,  (setter)ll_setcpparray,
+        (char*)"If true, this array was allocated with C++\'s new[]", nullptr},
     {(char*)"format",   (getter)ll_typecode, nullptr, nullptr, nullptr},
     {(char*)"typecode", (getter)ll_typecode, nullptr, nullptr, nullptr},
     {(char*)nullptr, nullptr, nullptr, nullptr, nullptr }
@@ -847,7 +886,7 @@ static inline PyObject* CreateLowLevelViewT(T* address, Py_ssize_t* shape)
     view.shape[0]       = nx;      // view.len / view.itemsize
     view.strides        = (Py_ssize_t*)PyMem_Malloc(view.ndim * sizeof(Py_ssize_t));
     view.suboffsets     = nullptr;
-    view.internal       = nullptr;
+    (intptr_t&)view.internal = CPyCppyy::LowLevelView::kIsCppArray;  // assumed
 
     if (view.ndim == 1) {
     // simple 1-dim array of the declared type

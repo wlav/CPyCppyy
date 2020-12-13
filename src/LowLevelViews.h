@@ -17,6 +17,12 @@ class Converter;
 
 class LowLevelView {
 public:
+    enum EFlags {
+        kDefault     = 0x0000,
+        kIsCppArray  = 0x0001,
+        kIsOwner     = 0x0002 };
+
+public:
     PyObject_HEAD
     Py_buffer   fBufInfo;
     void**      fBuf;
