@@ -9,6 +9,7 @@
 #include "CPPGetSetItem.h"
 #include "CPPInstance.h"
 #include "CPPMethod.h"
+#include "CPPOperator.h"
 #include "CPPOverload.h"
 #include "CPPScope.h"
 #include "MemoryRegulator.h"
@@ -167,6 +168,10 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass, cons
     for (Cppyy::TCppIndex_t imeth = 0; imeth < nMethods; ++imeth) {
         Cppyy::TCppMethod_t method = Cppyy::GetMethod(scope, imeth);
 
+    // do not expose non-public methods as the Cling wrappers as those won't compile
+        if (!Cppyy::IsPublicMethod(method))
+            continue;
+
     // process the method based on its name
         std::string mtCppName = Cppyy::GetMethodName(method);
 
@@ -174,6 +179,7 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass, cons
         bool setupSetItem = false;
         bool isConstructor = Cppyy::IsConstructor(method);
         bool isTemplate = isConstructor ? false : Cppyy::IsMethodTemplate(scope, imeth);
+        bool isStubbedOperator = false;
 
     // filter empty names (happens for namespaces, is bug?)
         if (mtCppName == "")
@@ -184,7 +190,8 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass, cons
             continue;
 
     // translate operators
-        std::string mtName = Utility::MapOperatorName(mtCppName, Cppyy::GetMethodNumArgs(method));
+        std::string mtName = Utility::MapOperatorName(
+            mtCppName, Cppyy::GetMethodNumArgs(method), &isStubbedOperator);
         if (mtName.empty())
             continue;
 
@@ -205,10 +212,6 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass, cons
                 potGetItem = method;
             }
         }
-
-    // do not expose private methods as the Cling wrappers for them won't compile
-        if (!Cppyy::IsPublicMethod(method))
-            continue;
 
     // template members; handled by adding a dispatcher to the class
         bool storeOnTemplate =
@@ -235,6 +238,8 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass, cons
                     pycall = new CPPConstructor(scope, method);
             } else
                 pycall = new CPPAbstractClassConstructor(scope, method);
+        } else if (isStubbedOperator) {
+            pycall = new CPPOperator(scope, method, mtName);
         } else                               // member function
             pycall = new CPPMethod(scope, method);
 

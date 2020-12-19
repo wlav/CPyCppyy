@@ -54,7 +54,6 @@ namespace {
 
             gC2POperatorMapping["[]"]  = "__getitem__";
             gC2POperatorMapping["()"]  = "__call__";
-            gC2POperatorMapping["/"]   = CPPYY__div__;
             gC2POperatorMapping["%"]   = "__mod__";
             gC2POperatorMapping["**"]  = "__pow__";
             gC2POperatorMapping["<<"]  = "__lshift__";
@@ -737,7 +736,7 @@ Py_ssize_t CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, v
 }
 
 //----------------------------------------------------------------------------
-std::string CPyCppyy::Utility::MapOperatorName(const std::string& name, bool bTakesParams)
+std::string CPyCppyy::Utility::MapOperatorName(const std::string& name, bool bTakesParams, bool* stubbed)
 {
 // Map the given C++ operator name on the python equivalent.
     if (8 < name.size() && name.substr(0, 8) == "operator") {
@@ -766,15 +765,25 @@ std::string CPyCppyy::Utility::MapOperatorName(const std::string& name, bool bTa
 
         } else if (op == "*") {
         // dereference v.s. multiplication of two instances
-            return bTakesParams ? "__mul__" : "__deref__";
+            if (!bTakesParams) return "__deref__";
+            if (stubbed) *stubbed = true;
+            return "__mul__";
+
+        } else if (op == "/") {
+        // no unary, but is stubbed
+            return CPPYY__div__;
 
         } else if (op == "+") {
         // unary positive v.s. addition of two instances
-            return bTakesParams ? "__add__" : "__pos__";
+            if (!bTakesParams) return "__pos__";
+            if (stubbed) *stubbed = true;
+            return "__add__";
 
         } else if (op == "-") {
         // unary negative v.s. subtraction of two instances
-            return bTakesParams ? "__sub__" : "__neg__";
+            if (!bTakesParams) return "__neg__";
+            if (stubbed) *stubbed = true;
+            return "__sub__";
 
         } else if (op == "++") {
         // prefix v.s. postfix increment

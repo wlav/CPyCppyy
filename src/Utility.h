@@ -52,7 +52,7 @@ bool InitProxy(PyObject* module, PyTypeObject* pytype, const char* name);
 Py_ssize_t GetBuffer(PyObject* pyobject, char tc, int size, void*& buf, bool check = true);
 
 // data/operator mappings
-std::string MapOperatorName(const std::string& name, bool bTakesParames);
+std::string MapOperatorName(const std::string& name, bool bTakesParames, bool* stubbed = nullptr);
 
 struct PyOperators {
     PyOperators() : fEq(nullptr), fNe(nullptr), fLAdd(nullptr), fRAdd(nullptr),
