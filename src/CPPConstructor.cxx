@@ -7,8 +7,6 @@
 #include "ProxyWrappers.h"
 #include "PyStrings.h"
 
-#include "CPyCppyy/DispatchPtr.h"
-
 // Standard
 #include <string>
 
