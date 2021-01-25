@@ -504,20 +504,118 @@ static PyObject* BindObject(PyObject*, PyObject* args, PyObject* kwds)
     Py_ssize_t argc = PyTuple_GET_SIZE(args);
     if (argc != 2) {
         PyErr_Format(PyExc_TypeError,
-            "BindObject takes exactly 2 arguments (" PY_SSIZE_T_FORMAT " given)", argc);
+            "bind_object takes 2 positional arguments but (" PY_SSIZE_T_FORMAT " were given)", argc);
         return nullptr;
     }
 
-// try to convert first argument: either PyCapsule/CObject or long integer
-    PyObject* pyaddr = PyTuple_GET_ITEM(args, 0);
+// convert 2nd argument first (used for both pointer value and instance cases)
+    Cppyy::TCppType_t cast_type = 0;
+    PyObject* arg1 = PyTuple_GET_ITEM(args, 1);
+    if (!CPyCppyy_PyText_Check(arg1)) {          // not string, then class
+        if (CPPScope_Check(arg1))
+            cast_type = ((CPPClass*)arg1)->fCppType;
+        else
+            arg1 = PyObject_GetAttr(arg1, PyStrings::gName);
+    } else
+        Py_INCREF(arg1);
 
+    if (!cast_type && arg1) {
+        cast_type = (Cppyy::TCppType_t)Cppyy::GetScope(CPyCppyy_PyText_AsString(arg1));
+        Py_DECREF(arg1);
+    }
+
+    if (!cast_type) {
+        PyErr_SetString(PyExc_TypeError,
+            "bind_object expects a valid class or class name as an argument");
+        return nullptr;
+    }
+
+// next, convert the first argument, some pointer value or a pre-existing instance
+    PyObject* arg0 = PyTuple_GET_ITEM(args, 0);
+
+    if (CPPInstance_Check(arg0)) {
+    // if this instance's class has a relation to the requested one, calculate the
+    // offset, erase if from any caches, and update the pointer and type
+        CPPInstance* obj = (CPPInstance*)arg0;
+        Cppyy::TCppType_t cur_type = obj->ObjectIsA(false /* check_smart */);
+
+        bool isPython = CPPScope_Check(arg1) && \
+            (((CPPClass*)arg1)->fFlags & CPPScope::kIsPython);
+
+        if (cur_type == cast_type && !isPython) {
+            Py_INCREF(arg0);      // nothing to do
+            return arg0;
+        }
+
+        int direction = 0;
+        Cppyy::TCppType_t base = 0, derived = 0;
+        if (Cppyy::IsSubtype(cast_type, cur_type)) {
+            derived = cast_type;
+            base    = cur_type;
+            direction = -1;      // down-cast
+        } else if (Cppyy::IsSubtype(cur_type, cast_type)) {
+            base    = cast_type;
+            derived = cur_type;
+            direction =  1;      // up-cast
+        } else {
+            PyErr_SetString(PyExc_TypeError,
+                "provided instance and provided target type are unrelated");
+            return nullptr;
+        }
+
+        Cppyy::TCppObject_t address = (Cppyy::TCppObject_t)obj->GetObject();
+        ptrdiff_t offset = Cppyy::GetBaseOffset(derived, base, address, direction);
+
+    // it's debatable whether a new proxy should be created rather than updating
+    // the old, but changing the old object would be changing the behavior of all
+    // code that has a reference to it, which may not be the intention if the cast
+    // is on a C++ data member; this probably is the "least surprise" option
+
+    // ownership is taken over as needed, again following the principle of "least
+    // surprise" as most likely only the cast object will be retained
+        bool owns = obj->fFlags & CPPInstance::kIsOwner;
+
+        if (!isPython) {
+        // ordinary C++ class
+            PyObject* pyobj = BindCppObjectNoCast(
+                (void*)((intptr_t)address + offset), cast_type, owns ? CPPInstance::kIsOwner : 0);
+            if (owns && pyobj) obj->CppOwns();
+            return pyobj;
+
+        } else {
+        // rebinding to a Python-side class
+            CPPInstance* pyobj = (CPPInstance*)((PyTypeObject*)arg1)->tp_new((PyTypeObject*)arg1, nullptr, nullptr);
+            if (pyobj) {
+                void* cast_address = (void*)((intptr_t)address + offset);
+                pyobj->GetObjectRaw() = cast_address;
+                PyObject* dispproxy = CPyCppyy::GetScopeProxy(cast_type);
+                Py_INCREF(arg0);
+                PyObject* res = PyObject_CallMethodObjArgs(
+                    dispproxy, PyStrings::gDispInit, (PyObject*)pyobj, arg0, nullptr);
+                Py_DECREF(dispproxy);
+                if (!res) Py_DECREF(arg0);
+                Py_XDECREF(res);
+
+                if (owns && res) {
+                    MemoryRegulator::RegisterPyObject(pyobj, cast_address);
+                    obj->CppOwns();
+                    pyobj->PythonOwns();
+                }
+            }
+
+            return (PyObject*)pyobj;
+
+        }
+    }
+
+// not a pre-existing object; get the address and bind
     void* addr = nullptr;
-    if (pyaddr != &_CPyCppyy_NullPtrStruct) {
-        addr = CPyCppyy_PyCapsule_GetPointer(pyaddr, nullptr);
+    if (arg0 != &_CPyCppyy_NullPtrStruct) {
+        addr = CPyCppyy_PyCapsule_GetPointer(arg0, nullptr);
         if (PyErr_Occurred()) {
             PyErr_Clear();
 
-            addr = PyLong_AsVoidPtr(pyaddr);
+            addr = PyLong_AsVoidPtr(arg0);
             if (PyErr_Occurred()) {
                 PyErr_Clear();
 
@@ -525,32 +623,11 @@ static PyObject* BindObject(PyObject*, PyObject* args, PyObject* kwds)
                 Py_ssize_t buflen = Utility::GetBuffer(PyTuple_GetItem(args, 0), '*', 1, addr, false);
                 if (!addr || !buflen) {
                     PyErr_SetString(PyExc_TypeError,
-                        "BindObject requires a CObject or long integer as first argument");
+                        "bind_object requires a CObject/Capsule, long integer, buffer, or instance as first argument");
                     return nullptr;
                 }
             }
         }
-    }
-
-    Cppyy::TCppType_t klass = 0;
-    PyObject* pyname = PyTuple_GET_ITEM(args, 1);
-    if (!CPyCppyy_PyText_Check(pyname)) {         // not string, then class
-        if (CPPScope_Check(pyname))
-            klass = ((CPPClass*)pyname)->fCppType;
-        else
-            pyname = PyObject_GetAttr(pyname, PyStrings::gName);
-    } else
-        Py_INCREF(pyname);
-
-    if (!klass && pyname) {
-        klass = (Cppyy::TCppType_t)Cppyy::GetScope(CPyCppyy_PyText_AsString(pyname));
-        Py_DECREF(pyname);
-    }
-
-    if (!klass) {
-        PyErr_SetString(PyExc_TypeError,
-            "BindObject expects a valid class or class name as an argument");
-        return nullptr;
     }
 
     bool do_cast = false;
@@ -560,9 +637,9 @@ static PyObject* BindObject(PyObject*, PyObject* args, PyObject* kwds)
     }
 
     if (do_cast)
-        return BindCppObject(addr, klass);
+        return BindCppObject(addr, cast_type);
 
-    return BindCppObjectNoCast(addr, klass);
+    return BindCppObjectNoCast(addr, cast_type);
 }
 
 //----------------------------------------------------------------------------

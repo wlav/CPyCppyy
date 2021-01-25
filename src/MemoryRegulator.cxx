@@ -184,16 +184,15 @@ bool CPyCppyy::MemoryRegulator::RegisterPyObject(
 
     CppToPyMap_t* cppobjs = ((CPPClass*)Py_TYPE(pyobj))->fImp.fCppObjects;
     if (!cppobjs)
-         return false;
+        return false;
 
-    CppToPyMap_t::iterator ppo = cppobjs->find(cppobj);
-    if (ppo == cppobjs->end()) {
-        cppobjs->insert(std::make_pair(cppobj, (PyObject*)pyobj));
-        pyobj->fFlags |= CPPInstance::kIsRegulated;
-        return true;
-    }
+// the following does not check wether the cppobj was already registered b/c the
+// unregister callback wouldn't be able to disambiguate either (the only known case
+// where the registration happens twice is with Python-side derived instances)
+    (*cppobjs)[cppobj] = (PyObject*)pyobj;
+    pyobj->fFlags |= CPPInstance::kIsRegulated;
 
-    return false;
+    return true;
 }
 
 //-----------------------------------------------------------------------------
