@@ -51,7 +51,7 @@ public:
     CPPInstance() = delete;
 
     void Set(void* address, EFlags flags = kDefault);
-    CPPInstance* Copy(void* cppinst);
+    CPPInstance* Copy(void* cppinst, PyTypeObject* target = nullptr);
 
 // state checking
     bool  IsExtended() const { return fFlags & kIsExtended; }
@@ -75,7 +75,8 @@ public:
     CI_DatamemberCache_t& GetDatamemberCache();
 
 // cross-inheritence dispatch
-    void SetDispatchPtr(void*);
+    void  SetDispatchPtr(void*);
+    void* GetDispatchPtr();
 
 private:
     void  CreateExtension();

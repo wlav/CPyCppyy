@@ -16,6 +16,10 @@
 #include "TupleOfInstances.h"
 #include "Utility.h"
 
+#define CPYCPPYY_INTERNAL 1
+#include "CPyCppyy/DispatchPtr.h"
+#undef CPYCPPYY_INTERNAL
+
 // Standard
 #include <algorithm>
 #include <map>
@@ -536,8 +540,8 @@ static PyObject* BindObject(PyObject*, PyObject* args, PyObject* kwds)
     if (CPPInstance_Check(arg0)) {
     // if this instance's class has a relation to the requested one, calculate the
     // offset, erase if from any caches, and update the pointer and type
-        CPPInstance* obj = (CPPInstance*)arg0;
-        Cppyy::TCppType_t cur_type = obj->ObjectIsA(false /* check_smart */);
+        CPPInstance* arg0_pyobj = (CPPInstance*)arg0;
+        Cppyy::TCppType_t cur_type = arg0_pyobj->ObjectIsA(false /* check_smart */);
 
         bool isPython = CPPScope_Check(arg1) && \
             (((CPPClass*)arg1)->fFlags & CPPScope::kIsPython);
@@ -563,7 +567,7 @@ static PyObject* BindObject(PyObject*, PyObject* args, PyObject* kwds)
             return nullptr;
         }
 
-        Cppyy::TCppObject_t address = (Cppyy::TCppObject_t)obj->GetObject();
+        Cppyy::TCppObject_t address = (Cppyy::TCppObject_t)arg0_pyobj->GetObject();
         ptrdiff_t offset = Cppyy::GetBaseOffset(derived, base, address, direction);
 
     // it's debatable whether a new proxy should be created rather than updating
@@ -573,32 +577,34 @@ static PyObject* BindObject(PyObject*, PyObject* args, PyObject* kwds)
 
     // ownership is taken over as needed, again following the principle of "least
     // surprise" as most likely only the cast object will be retained
-        bool owns = obj->fFlags & CPPInstance::kIsOwner;
+        bool owns = arg0_pyobj->fFlags & CPPInstance::kIsOwner;
 
         if (!isPython) {
         // ordinary C++ class
             PyObject* pyobj = BindCppObjectNoCast(
                 (void*)((intptr_t)address + offset), cast_type, owns ? CPPInstance::kIsOwner : 0);
-            if (owns && pyobj) obj->CppOwns();
+            if (owns && pyobj) arg0_pyobj->CppOwns();
             return pyobj;
 
         } else {
-        // rebinding to a Python-side class
-            CPPInstance* pyobj = (CPPInstance*)((PyTypeObject*)arg1)->tp_new((PyTypeObject*)arg1, nullptr, nullptr);
+        // rebinding to a Python-side class, using a fresh proxy
+            void* cast_address = (void*)((intptr_t)address + offset);
+            CPPInstance* pyobj = arg0_pyobj->Copy(cast_address, (PyTypeObject*)arg1);
             if (pyobj) {
-                void* cast_address = (void*)((intptr_t)address + offset);
-                pyobj->GetObjectRaw() = cast_address;
-                PyObject* dispproxy = CPyCppyy::GetScopeProxy(cast_type);
-                Py_INCREF(arg0);
-                PyObject* res = PyObject_CallMethodObjArgs(
-                    dispproxy, PyStrings::gDispInit, (PyObject*)pyobj, arg0, nullptr);
-                Py_DECREF(dispproxy);
-                if (!res) Py_DECREF(arg0);
-                Py_XDECREF(res);
+            // initialize from the hidden dispatch pointer, instead of (possibly stripped)
+            // given proxy object
+                DispatchPtr* dptr = (DispatchPtr*)arg0_pyobj->GetDispatchPtr();
+                if (dptr && *dptr) {
+                    PyObject* dispproxy = CPyCppyy::GetScopeProxy(cast_type);
+                    PyObject* res = PyObject_CallMethodObjArgs(
+                        dispproxy, PyStrings::gDispInit, (PyObject*)pyobj, (PyObject*)*dptr, nullptr);
+                    if (!res) PyErr_Clear();
+                    else { Py_DECREF(res); }
+                    Py_DECREF(dispproxy);
+                }
 
-                if (owns && res) {
-                    MemoryRegulator::RegisterPyObject(pyobj, cast_address);
-                    obj->CppOwns();
+                if (owns) {
+                    arg0_pyobj->CppOwns();
                     pyobj->PythonOwns();
                 }
             }

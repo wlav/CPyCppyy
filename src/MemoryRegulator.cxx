@@ -186,12 +186,15 @@ bool CPyCppyy::MemoryRegulator::RegisterPyObject(
     if (!cppobjs)
         return false;
 
-// the following does not check wether the cppobj was already registered b/c the
-// unregister callback wouldn't be able to disambiguate either (the only known case
-// where the registration happens twice is with Python-side derived instances)
-    (*cppobjs)[cppobj] = (PyObject*)pyobj;
-    pyobj->fFlags |= CPPInstance::kIsRegulated;
+// if an address was already associated with a different object, then stop following
+// the old and force insert the new proxy for following
+    const auto& res = cppobjs->insert(std::make_pair(cppobj, (PyObject*)pyobj));
+    if (!res.second) {
+        ((CPPInstance*)res.first->second)->fFlags &= ~CPPInstance::kIsRegulated;
+        (*cppobjs)[cppobj] = (PyObject*)pyobj;
+    }
 
+    pyobj->fFlags |= CPPInstance::kIsRegulated;
     return true;
 }
 

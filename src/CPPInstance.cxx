@@ -95,12 +95,12 @@ void* CPyCppyy::CPPInstance::GetExtendedObject()
 
 
 //- public methods -----------------------------------------------------------
-CPyCppyy::CPPInstance* CPyCppyy::CPPInstance::Copy(void* cppinst)
+CPyCppyy::CPPInstance* CPyCppyy::CPPInstance::Copy(void* cppinst, PyTypeObject* target)
 {
 // create a fresh instance; args and kwds are not used by op_new (see below)
     PyObject* self = (PyObject*)this;
-    PyTypeObject* pytype = Py_TYPE(self);
-    PyObject* newinst = pytype->tp_new(pytype, nullptr, nullptr);
+    if (!target) target = Py_TYPE(self);
+    PyObject* newinst = target->tp_new(target, nullptr, nullptr);
 
 // set the C++ instance as given
     ((CPPInstance*)newinst)->fObject = cppinst;
@@ -192,6 +192,14 @@ void CPyCppyy::CPPInstance::SetDispatchPtr(void* ptr)
 // Set up the dispatch pointer for memory management
     CreateExtension();
     DISPATCHPTR(this) = (DispatchPtr*)ptr;
+}
+
+//----------------------------------------------------------------------------
+void* CPyCppyy::CPPInstance::GetDispatchPtr()
+{
+// Return the dispatch ptr usedfor memory management
+    if (!IsExtended()) return nullptr;
+    return DISPATCHPTR(this);
 }
 
 
