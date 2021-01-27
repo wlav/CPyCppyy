@@ -31,7 +31,7 @@ public:
 // Conversion constructor: called with C++ object construction when the PyObject
 // is known (eg. when instantiating from Python), with pyobj the Python-side
 // representation of the C++ object.
-    explicit DispatchPtr(PyObject* pyobj);
+    explicit DispatchPtr(PyObject* pyobj, bool strong = false);
 
 // Copy constructor: only ever called from C++. The Python object needs to be
 // copied, in case it has added state, and rebound to the new C++ instance.

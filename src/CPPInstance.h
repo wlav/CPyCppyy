@@ -76,7 +76,6 @@ public:
 
 // cross-inheritence dispatch
     void  SetDispatchPtr(void*);
-    void* GetDispatchPtr();
 
 private:
     void  CreateExtension();

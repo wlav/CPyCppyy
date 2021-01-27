@@ -194,14 +194,6 @@ void CPyCppyy::CPPInstance::SetDispatchPtr(void* ptr)
     DISPATCHPTR(this) = (DispatchPtr*)ptr;
 }
 
-//----------------------------------------------------------------------------
-void* CPyCppyy::CPPInstance::GetDispatchPtr()
-{
-// Return the dispatch ptr usedfor memory management
-    if (!IsExtended()) return nullptr;
-    return DISPATCHPTR(this);
-}
-
 
 //----------------------------------------------------------------------------
 void CPyCppyy::op_dealloc_nofree(CPPInstance* pyobj) {

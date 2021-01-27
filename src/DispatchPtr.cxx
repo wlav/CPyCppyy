@@ -1,4 +1,4 @@
-// Bindings                                                                 
+// Bindings
 #include "CPyCppyy.h"
 #define CPYCPPYY_INTERNAL 1
 #include "CPyCppyy/DispatchPtr.h"
@@ -15,10 +15,17 @@ PyObject* CPyCppyy::DispatchPtr::Get() const
 }
 
 //-----------------------------------------------------------------------------
-CPyCppyy::DispatchPtr::DispatchPtr(PyObject* pyobj) : fPyHardRef(nullptr)
+CPyCppyy::DispatchPtr::DispatchPtr(PyObject* pyobj, bool strong) : fPyHardRef(nullptr)
 {
+    if (strong) {
+        Py_INCREF(pyobj);
+        fPyHardRef = pyobj;
+        fPyWeakRef = nullptr;
+    } else {
+        fPyHardRef = nullptr;
+        fPyWeakRef = PyWeakref_NewRef(pyobj, nullptr);
+    }
     ((CPPInstance*)pyobj)->SetDispatchPtr(this);
-    fPyWeakRef = PyWeakref_NewRef(pyobj, nullptr);
 }
 
 //-----------------------------------------------------------------------------

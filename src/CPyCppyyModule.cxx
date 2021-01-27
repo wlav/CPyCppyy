@@ -587,30 +587,32 @@ static PyObject* BindObject(PyObject*, PyObject* args, PyObject* kwds)
             return pyobj;
 
         } else {
-        // rebinding to a Python-side class, using a fresh proxy
+        // rebinding to a Python-side class, create a fresh instance first to be able to
+        // perform a lookup of the original dispatch object and if found, return original
             void* cast_address = (void*)((intptr_t)address + offset);
-            CPPInstance* pyobj = arg0_pyobj->Copy(cast_address, (PyTypeObject*)arg1);
-            if (pyobj) {
-            // initialize from the hidden dispatch pointer, instead of (possibly stripped)
-            // given proxy object
-                DispatchPtr* dptr = (DispatchPtr*)arg0_pyobj->GetDispatchPtr();
-                if (dptr && *dptr) {
-                    PyObject* dispproxy = CPyCppyy::GetScopeProxy(cast_type);
-                    PyObject* res = PyObject_CallMethodObjArgs(
-                        dispproxy, PyStrings::gDispInit, (PyObject*)pyobj, (PyObject*)*dptr, nullptr);
-                    if (!res) PyErr_Clear();
-                    else { Py_DECREF(res); }
-                    Py_DECREF(dispproxy);
-                }
+            PyObject* pyobj = ((PyTypeObject*)arg1)->tp_new((PyTypeObject*)arg1, nullptr, nullptr);
+            ((CPPInstance*)pyobj)->GetObjectRaw() = cast_address;
 
-                if (owns) {
-                    arg0_pyobj->CppOwns();
-                    pyobj->PythonOwns();
-                }
+            PyObject* dispproxy = CPyCppyy::GetScopeProxy(cast_type);
+            PyObject* res = PyObject_CallMethodObjArgs(
+                    dispproxy, PyStrings::gDispGet, pyobj, nullptr);
+            /* Note: the resultant object is borrowed */
+            if (CPPInstance_Check(res) && ((CPPInstance*)res)->GetObject() == cast_address) {
+                ((CPPInstance*)pyobj)->CppOwns();     // make sure C++ object isn't deleted
+                Py_DECREF(pyobj);                     //  on DECREF (is default, but still)
+                pyobj = res;
+            } else {
+                if (res) Py_DECREF(res);              // most likely Py_None
+                else PyErr_Clear();                   // should not happen
+            }
+            Py_DECREF(dispproxy);
+
+            if (pyobj && owns) {
+                arg0_pyobj->CppOwns();
+                ((CPPInstance*)pyobj)->PythonOwns();
             }
 
-            return (PyObject*)pyobj;
-
+            return pyobj;
         }
     }
 

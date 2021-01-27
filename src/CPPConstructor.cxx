@@ -88,7 +88,7 @@ PyObject* CPyCppyy::CPPConstructor::Call(
     // retrieve the actual pointer, take over control, and set set _internal_self
         address = (intptr_t)((CPPInstance*)pyobj)->GetObject();
         if (address) {
-            ((CPPInstance*)pyobj)->CppOwns();
+            ((CPPInstance*)pyobj)->CppOwns();    // b/c self will control the object on address
             PyObject* res = PyObject_CallMethodObjArgs(
                 dispproxy, PyStrings::gDispInit, pyobj, (PyObject*)self, nullptr);
             Py_XDECREF(res);

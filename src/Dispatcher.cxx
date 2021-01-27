@@ -365,9 +365,20 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
              }
         }
     }
+// The dispatch initializer is only used in constructors, and C++ object start out
+// as owned by C++, with Python ownership explicitly set only later. To match, the
+// dispatch pointer needs to start out with a hard reference, i.e. C++ ownership of
+// the dispatch object. If the constructor has __creates__ set to True (default),
+// then a call to PythonOwns() will switch the hard ref to a weak ref, preventing
+// accidental circular references.
     if (disp_inited != base_infos.size())
-       code << "    new ((void*)&inst->_internal_self) CPyCppyy::DispatchPtr{self};\n";
+       code << "    new ((void*)&inst->_internal_self) CPyCppyy::DispatchPtr{self, true};\n";
     code << "  }";
+
+// provide an accessor to re-initialize after round-tripping from C++ (internal)
+    code << "\n  static PyObject* _get_dispatch(" << derivedName << "* inst) {\n"
+            "    PyObject* res = (PyObject*)inst->_internal_self;\n"
+            "    Py_XINCREF(res); return res;\n  }";
 
 // finish class declaration
     code << "};\n}";

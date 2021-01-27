@@ -62,6 +62,7 @@ namespace PyStrings {
 
     extern PyObject* gNoImplicit;
     extern PyObject* gDispInit;
+    extern PyObject* gDispGet;
 
     extern PyObject* gExPythonize;
     extern PyObject* gPythonize;
