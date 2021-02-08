@@ -1539,22 +1539,23 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
                 if (Cppyy::IsStaticData(kls, i) || !Cppyy::IsPublicData(kls, i))
                     continue;
 
-                const std::string& tt = Cppyy::ResolveName(Cppyy::GetDatamemberType(kls, i));
-                const std::string& cpd = Utility::Compound(tt);
-                std::string tt_clean = TypeManip::clean_type(tt, false, true);
+                const std::string& txt = Cppyy::GetDatamemberType(kls, i);
+                const std::string& res = Cppyy::IsEnum(txt) ? txt : Cppyy::ResolveName(txt);
+                const std::string& cpd = Utility::Compound(res);
+                std::string res_clean = TypeManip::clean_type(res, false, true);
 
-                if (tt_clean == "internal_enum_type_t" || Cppyy::IsEnum(tt_clean))
-                    tt_clean = Cppyy::GetDatamemberType(kls, i);     // restore (properly scoped name)
+                if (res_clean == "internal_enum_type_t")
+                    res_clean = Cppyy::GetDatamemberType(kls, i);     // restore (properly scoped name)
 
-                if (tt.rfind(']') == std::string::npos && tt.rfind(')') == std::string::npos) {
-                    if (!cpd.empty()) arg_types.push_back(tt_clean+cpd);
-                    else arg_types.push_back("const "+tt_clean+"&");
+                if (res.rfind(']') == std::string::npos && res.rfind(')') == std::string::npos) {
+                    if (!cpd.empty()) arg_types.push_back(res_clean+cpd);
+                    else arg_types.push_back("const "+res_clean+"&");
                     arg_names.push_back(Cppyy::GetDatamemberName(kls, i));
-                    if ((!cpd.empty() && cpd.back() == '*') || Cppyy::IsBuiltin(tt_clean))
+                    if ((!cpd.empty() && cpd.back() == '*') || Cppyy::IsBuiltin(res_clean))
                         arg_defaults.push_back("0");
                     else {
-                        Cppyy::TCppScope_t ttid = Cppyy::GetScope(tt_clean);
-                        if (Cppyy::IsDefaultConstructable(ttid)) arg_defaults.push_back(tt_clean+"{}");
+                        Cppyy::TCppScope_t klsid = Cppyy::GetScope(res_clean);
+                        if (Cppyy::IsDefaultConstructable(klsid)) arg_defaults.push_back(res_clean+"{}");
                     }
                 } else {
                     codegen_ok = false;     // TODO: how to support arrays, anonymous enums, etc?
