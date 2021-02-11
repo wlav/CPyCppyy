@@ -103,7 +103,7 @@ public:
 
 protected:
     Cppyy::TCppType_t fClass;
-    unsigned int      fFlags;
+    uint32_t          fFlags;
 };
 
 class IteratorExecutor : public InstanceExecutor {

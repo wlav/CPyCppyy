@@ -547,6 +547,7 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
     ctxt.fFlags |= mempolicy ? mempolicy : (uint64_t)CallContext::sMemoryPolicy;
     ctxt.fFlags |= (mflags & CallContext::kReleaseGIL);
     ctxt.fFlags |= (mflags & CallContext::kProtected);
+    ctxt.fFlags |= (pymeth->fFlags & CallContext::kCallDirect);
     if (IsConstructor(pymeth->fMethodInfo->fFlags)) ctxt.fFlags |= CallContext::kIsConstructor;
     ctxt.fPyContext = (PyObject*)pymeth->fSelf;  // no Py_INCREF as no ownership
 
@@ -692,6 +693,7 @@ static CPPOverload* mp_descrget(CPPOverload* pymeth, CPPInstance* pyobj, PyObjec
 {
 // Descriptor; create and return a new bound method proxy (language requirement) if self
     if (!pyobj) {
+        pymeth->fFlags |= CallContext::kCallDirect;
         Py_INCREF(pymeth);
         return pymeth;       // unbound, e.g. free functions
     }
@@ -717,6 +719,11 @@ static CPPOverload* mp_descrget(CPPOverload* pymeth, CPPInstance* pyobj, PyObjec
     Py_INCREF((PyObject*)pyobj);
     newPyMeth->fSelf = pyobj;
 
+// reset flags of the new method, as there is a self (which may or may not have
+// come in through direct call syntax, but that's now impossible to know, so this
+// is the safer choice)
+    newPyMeth->fFlags = CallContext::kNone;
+
     PyObject_GC_Track(newPyMeth);
     return newPyMeth;
 }
@@ -728,6 +735,7 @@ static CPPOverload* mp_new(PyTypeObject*, PyObject*, PyObject*)
 // Create a new method proxy object.
     CPPOverload* pymeth = PyObject_GC_New(CPPOverload, &CPPOverload_Type);
     pymeth->fSelf = nullptr;
+    pymeth->fFlags = CallContext::kNone;
     pymeth->fMethodInfo = new CPPOverload::MethodInfo_t;
 
     PyObject_GC_Track(pymeth);

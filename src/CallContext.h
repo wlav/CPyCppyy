@@ -12,6 +12,9 @@ namespace CPyCppyy {
 // small number that allows use of stack for argument passing
 const int SMALL_ARGS_N = 8;
 
+// convention to pass flag for direct calls (similar to Python's vector calls)
+#define DIRECT_CALL ((size_t)1 << (8 * sizeof(size_t) - 1))
+
 #ifndef CPYCPPYY_PARAMETER
 #define CPYCPPYY_PARAMETER
 // general place holder for function parameters
@@ -43,7 +46,7 @@ struct Parameter {
 
 // extra call information
 struct CallContext {
-    CallContext() : fFlags(0), fCurScope(0), fPyContext(nullptr),
+    CallContext() : fCurScope(0), fPyContext(nullptr), fFlags(0),
         fArgsVec(nullptr), fNArgs(0), fTemps(nullptr) {}
     CallContext(const CallContext&) = delete;
     CallContext& operator=(const CallContext&) = delete;
@@ -57,14 +60,15 @@ struct CallContext {
         kHaveImplicit   = 0x0008, // indicate that implicit converters are available
         kAllowImplicit  = 0x0010, // indicate that implicit coversions are allowed
         kNoImplicit     = 0x0020, // disable implicit to prevent recursion
-        kUseHeuristics  = 0x0040, // if method applies heuristics memory policy
-        kUseStrict      = 0x0080, // if method applies strict memory policy
-        kReleaseGIL     = 0x0100, // if method should release the GIL
-        kSetLifeLine    = 0x0200, // if return value is part of 'this'
-        kNeverLifeLine  = 0x0400, // if the return value is never part of 'this'
-        kProtected      = 0x0800, // if method should return on signals
-        kUseFFI         = 0x1000, // not implemented
-        kIsPseudoFunc   = 0x2000, // internal, used for introspection
+        kCallDirect     = 0x0040, // call wrapped method directly, no inheritance
+        kUseHeuristics  = 0x0080, // if method applies heuristics memory policy
+        kUseStrict      = 0x0100, // if method applies strict memory policy
+        kReleaseGIL     = 0x0200, // if method should release the GIL
+        kSetLifeLine    = 0x0400, // if return value is part of 'this'
+        kNeverLifeLine  = 0x0800, // if the return value is never part of 'this'
+        kProtected      = 0x1000, // if method should return on signals
+        kUseFFI         = 0x2000, // not implemented
+        kIsPseudoFunc   = 0x4000, // internal, used for introspection
     };
 
 // memory handling
@@ -92,12 +96,13 @@ struct CallContext {
     }
 
     size_t GetSize() { return fNArgs; }
+    size_t GetEncodedSize() { return fNArgs | ((fFlags & kCallDirect) ? DIRECT_CALL : 0); }
 
 public:
 // info/status
-    uint64_t           fFlags;
     Cppyy::TCppScope_t fCurScope;
     PyObject*          fPyContext;
+    uint32_t           fFlags;
 
 private:
     struct Temporary { PyObject* fPyObject; Temporary* fNext; };

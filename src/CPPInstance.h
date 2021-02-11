@@ -44,7 +44,7 @@ public:
 public:                 // public, as the python C-API works with C structs
     PyObject_HEAD
     void*     fObject;
-    int       fFlags;
+    uint32_t  fFlags;
 
 public:
 // construction (never done directly)

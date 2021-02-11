@@ -52,16 +52,16 @@ static inline rtype GILCall##tcode(                                          \
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CPyCppyy::CallContext* ctxt)\
 {                                                                            \
     if (!ReleasesGIL(ctxt))                                                  \
-        return Cppyy::Call##tcode(method, self, ctxt->GetSize(), ctxt->GetArgs());\
+        return Cppyy::Call##tcode(method, self, ctxt->GetEncodedSize(), ctxt->GetArgs());\
     GILControl gc{};                                                         \
-    return Cppyy::Call##tcode(method, self, ctxt->GetSize(), ctxt->GetArgs());\
+    return Cppyy::Call##tcode(method, self, ctxt->GetEncodedSize(), ctxt->GetArgs());\
 }
 #else
 #define CPPYY_IMPL_GILCALL(rtype, tcode)                                     \
 static inline rtype GILCall##tcode(                                          \
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CPyCppyy::CallContext* ctxt)\
 {                                                                            \
-    return Cppyy::Call##tcode(method, self, ctxt->GetSize(), ctxt->GetArgs());\
+    return Cppyy::Call##tcode(method, self, ctxt->GetEncodedSize(), ctxt->GetArgs());\
 }
 #endif
 
@@ -83,10 +83,10 @@ static inline Cppyy::TCppObject_t GILCallO(Cppyy::TCppMethod_t method,
 #ifdef WITH_THREAD
     if (!ReleasesGIL(ctxt))
 #endif
-        return Cppyy::CallO(method, self, ctxt->GetSize(), ctxt->GetArgs(), klass);
+        return Cppyy::CallO(method, self, ctxt->GetEncodedSize(), ctxt->GetArgs(), klass);
 #ifdef WITH_THREAD
     GILControl gc{};
-    return Cppyy::CallO(method, self, ctxt->GetSize(), ctxt->GetArgs(), klass);
+    return Cppyy::CallO(method, self, ctxt->GetEncodedSize(), ctxt->GetArgs(), klass);
 #endif
 }
 
@@ -96,10 +96,10 @@ static inline Cppyy::TCppObject_t GILCallConstructor(
 #ifdef WITH_THREAD
     if (!ReleasesGIL(ctxt))
 #endif
-        return Cppyy::CallConstructor(method, klass, ctxt->GetSize(), ctxt->GetArgs());
+        return Cppyy::CallConstructor(method, klass, ctxt->GetEncodedSize(), ctxt->GetArgs());
 #ifdef WITH_THREAD
     GILControl gc{};
-    return Cppyy::CallConstructor(method, klass, ctxt->GetSize(), ctxt->GetArgs());
+    return Cppyy::CallConstructor(method, klass, ctxt->GetEncodedSize(), ctxt->GetArgs());
 #endif
 }
 

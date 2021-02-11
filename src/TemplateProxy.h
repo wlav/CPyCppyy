@@ -41,7 +41,7 @@ public:
 
     TP_DispatchMap_t fDispatchMap;
 
-    uint64_t fFlags;              // collective for all methods
+    uint32_t fFlags;              // collective for all methods
 };
 
 typedef std::shared_ptr<TemplateInfo> TP_TInfo_t;

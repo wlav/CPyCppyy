@@ -321,7 +321,7 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
 
 // filter for python specials
     std::string name = CPyCppyy_PyText_AsString(pyname);
-    if (name.size() >= 2 && name.compare(0, 2, "__") == 0 &&
+    if (name.size() >= 5 && name.compare(0, 2, "__") == 0 &&
             name.compare(name.size()-2, name.size(), "__") == 0)
         return nullptr;
 
@@ -329,6 +329,7 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
     std::vector<Utility::PyError_t> errors;
     Utility::FetchError(errors);
     attr = CreateScopeProxy(name, pyclass);
+
     if (CPPScope_Check(attr) && (((CPPScope*)attr)->fFlags & CPPScope::kIsException)) {
     // Instead of the CPPScope, return a fresh exception class derived from CPPExcInstance.
         return CreateExcScopeProxy(attr, pyname, pyclass);

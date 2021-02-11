@@ -46,7 +46,7 @@ public:
         std::string                 fName;
         CPPOverload::DispatchMap_t  fDispatchMap;
         CPPOverload::Methods_t      fMethods;
-        uint64_t                    fFlags;
+        uint32_t                    fFlags;
 
         int* fRefCount;
 
@@ -67,6 +67,7 @@ public:                 // public, as the python C-API works with C structs
     PyObject_HEAD
     CPPInstance*   fSelf;         // must be first (same layout as TemplateProxy)
     MethodInfo_t*  fMethodInfo;
+    uint32_t       fFlags;
 
 private:
     CPPOverload() = delete;

@@ -49,7 +49,7 @@ public:
 public:
     PyHeapTypeObject  fType;
     Cppyy::TCppType_t fCppType;
-    int               fFlags;
+    uint32_t          fFlags;
     union {
         CppToPyMap_t*           fCppObjects;     // classes only
         std::vector<PyObject*>* fUsing;          // namespaces only
