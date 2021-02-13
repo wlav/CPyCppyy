@@ -585,35 +585,133 @@ static PyObject* op_str_internal(PyObject* pyobj, PyObject* lshift, bool isBound
     if (isBound) res = PyObject_CallFunctionObjArgs(lshift, pys, NULL);
     else res = PyObject_CallFunctionObjArgs(lshift, pys, pyobj, NULL);
     Py_DECREF(pys);
-    Py_DECREF(lshift);
     if (res) {
         Py_DECREF(res);
         return CPyCppyy_PyText_FromString(s.str().c_str());
     }
-    PyErr_Clear();
     return nullptr;
+}
+
+
+static inline bool ScopeFlagCheck(CPPInstance* self, CPPScope::EFlags flag) {
+    return ((CPPScope*)Py_TYPE((PyObject*)self))->fFlags & flag;
+}
+
+static inline void ScopeFlagSet(CPPInstance* self, CPPScope::EFlags flag) {
+    ((CPPScope*)Py_TYPE((PyObject*)self))->fFlags |= flag;
 }
 
 static PyObject* op_str(CPPInstance* self)
 {
-// See whether the backend can pretty-pring this function, otherwise forward to repr.
-    const std::string& pretty = Cppyy::ToString(self->ObjectIsA(), self->GetObject());
-    if (!pretty.empty())
-        return CPyCppyy_PyText_FromString(pretty.c_str());
+// There are three possible options here:
+//   1. Available operator<< to convert through an ostringstream
+//   2. Cling's pretty printing
+//   3. Generic printing as done in op_repr
+//
+// Additionally, there may be a mapped __str__ from the C++ type defining `operator char*`
+// or `operator const char*`. Results are memoized for performance reasons.
 
-    for (PyObject* pyname : {PyStrings::gLShift, PyStrings::gLShiftC}) {
-         PyObject* lshift = PyObject_GetAttr((PyObject*)self, pyname);
-         if (lshift == Py_None) {
-             Py_DECREF(lshift);
-             continue;
-         } else if (lshift) {
-             PyObject* result = op_str_internal((PyObject*)self, lshift, true);
-             if (result)
-                 return result;
-         }
-         PyErr_Clear();
+// 1. Available operator<< to convert through an ostringstream
+    if (!ScopeFlagCheck(self, CPPScope::kNoOSInsertion)) {
+        for (PyObject* pyname : {PyStrings::gLShift, PyStrings::gLShiftC, (PyObject*)0x01, (PyObject*)0x02}) {
+            if (pyname == PyStrings::gLShift && ScopeFlagCheck(self, CPPScope::kGblOSInsertion))
+                continue;
+
+            else if (pyname == (PyObject*)0x01) {
+            // normal lookup failed; attempt lazy install of global operator<<(ostream&, type&)
+                std::string rcname = Utility::ClassName((PyObject*)self);
+                Cppyy::TCppScope_t rnsID = Cppyy::GetScope(TypeManip::extract_namespace(rcname));
+                PyCallable* pyfunc = Utility::FindBinaryOperator("std::ostream", rcname, "<<", rnsID);
+                if (!pyfunc)
+                     continue;
+
+                Utility::AddToClass((PyObject*)Py_TYPE((PyObject*)self), "__lshiftc__", pyfunc);
+
+                pyname = PyStrings::gLShiftC;
+                ScopeFlagSet(self, CPPScope::kGblOSInsertion);
+
+            } else if (pyname == (PyObject*)0x02) {
+            // TODO: the only reason this still exists, is b/c friend functions are otherwise not found
+            // TODO: ToString() still leaks ...
+                const std::string& pretty = Cppyy::ToString(self->ObjectIsA(), self->GetObject());
+                if (!pretty.empty())
+                    return CPyCppyy_PyText_FromString(pretty.c_str());
+                continue;
+            }
+
+            PyObject* lshift = PyObject_GetAttr(
+                pyname == PyStrings::gLShift ? (PyObject*)self : (PyObject*)Py_TYPE((PyObject*)self), pyname);
+
+            if (lshift) {
+                PyObject* result = op_str_internal((PyObject*)self, lshift, pyname == PyStrings::gLShift);
+                Py_DECREF(lshift);
+                if (result)
+                    return result;
+            }
+
+            PyErr_Clear();
+        }
+
+    // failed ostream printing; don't try again
+        ScopeFlagSet(self, CPPScope::kNoOSInsertion);
     }
 
+// 2. Cling's pretty printing (not done through backend for performance reasons)
+    if (!ScopeFlagCheck(self, CPPScope::kNoPrettyPrint)) {
+        static PyObject* printValue = nullptr;
+        if (!printValue) {
+            PyObject* gbl = PyDict_GetItemString(PySys_GetObject((char*)"modules"), "cppyy.gbl");
+            PyObject* cl  = PyObject_GetAttrString(gbl, (char*)"cling");
+            printValue    = PyObject_GetAttrString(cl,  (char*)"printValue");
+            Py_DECREF(cl);
+            // gbl is borrowed
+            if (printValue) {
+                Py_DECREF(printValue);           // make borrowed
+                if (!PyCallable_Check(printValue))
+                    printValue = nullptr;        // unusable ...
+            }
+            if (!printValue)      // unlikely
+                ScopeFlagSet(self, CPPScope::kNoPrettyPrint);
+        }
+
+        if (printValue) {
+        // as printValue only works well for templates taking pointer arguments, we'll
+        // have to force the issue by working with a by-ptr object
+            Cppyy::TCppObject_t cppobj = self->GetObjectRaw();
+            PyObject* byref = (PyObject*)self;
+            if (!(self->fFlags & CPPInstance::kIsReference)) {
+                byref = BindCppObjectNoCast((Cppyy::TCppObject_t)&cppobj,
+                    self->ObjectIsA(), CPPInstance::kIsReference | CPPInstance::kNoMemReg);
+            } else {
+                Py_INCREF(byref);
+            }
+
+        // explicit template lookup
+            PyObject* clName = CPyCppyy_PyText_FromString(Utility::ClassName((PyObject*)self).c_str());
+            PyObject* OL = PyObject_GetItem(printValue, clName);
+            Py_DECREF(clName);
+
+            PyObject* pretty = OL ? PyObject_CallFunctionObjArgs(OL, byref, nullptr) : nullptr;
+            Py_XDECREF(OL);
+            Py_DECREF(byref);
+
+            PyObject* result = nullptr;
+            if (pretty) {
+                const std::string& pv = *(std::string*)((CPPInstance*)pretty)->GetObject();
+                if (!pv.empty() && pv.find("@0x") == std::string::npos)
+                    result = CPyCppyy_PyText_FromString(pv.c_str());
+                Py_DECREF(pretty);
+                if (result) return result;
+            }
+
+            PyErr_Clear();
+        }
+
+    // if not available/specialized, don't try again
+        ScopeFlagSet(self, CPPScope::kNoPrettyPrint);
+    }
+
+// 3. Generic printing as done in op_repr
     return op_repr(self);
 }
 
