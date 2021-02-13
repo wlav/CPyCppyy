@@ -50,7 +50,7 @@ namespace Cppyy {
 
 // direct interpreter access -------------------------------------------------
     CPPYY_IMPORT
-    bool Compile(const std::string& code);
+    bool Compile(const std::string& code, bool silent = false);
     CPPYY_IMPORT
     std::string ToString(TCppType_t klass, TCppObject_t obj);
 

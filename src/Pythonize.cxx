@@ -1576,7 +1576,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
                 }
                 initdef << "};\n} }";
 
-                if (Cppyy::Compile(initdef.str())) {
+                if (Cppyy::Compile(initdef.str(), true /* silent */)) {
                     Cppyy::TCppScope_t cis = Cppyy::GetScope("__cppyy_internal");
                     const auto& mix = Cppyy::GetMethodIndicesFromName(cis, "init_"+rname);
                     if (mix.size()) {
