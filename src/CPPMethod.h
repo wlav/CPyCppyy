@@ -32,7 +32,7 @@ public:
     virtual int       GetMaxArgs();
     virtual PyObject* GetCoVarNames();
     virtual PyObject* GetArgDefault(int iarg, bool silent=true);
-    virtual bool IsConst();
+    virtual bool      IsConst();
 
     virtual PyObject* GetScopeProxy();
     virtual Cppyy::TCppFuncAddr_t GetFunctionAddress();
