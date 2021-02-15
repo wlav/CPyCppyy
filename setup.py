@@ -22,15 +22,6 @@ with codecs.open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
 #
 # platform-dependent helpers
 #
-def is_manylinux():
-    try:
-        for line in open('/etc/redhat-release').readlines():
-            if 'CentOS release 6.10 (Final)' in line:
-                return True
-    except (OSError, IOError):
-        pass
-    return False
-
 def _get_link_libraries():
     if 'win32' in sys.platform:
         return ['libcppyy_backend', 'libCoreLegacy']
