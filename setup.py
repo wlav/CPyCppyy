@@ -9,7 +9,7 @@ try:
 except ImportError:
     has_wheel = False
 
-requirements = ['cppyy-cling>=6.21.4', 'cppyy-backend>=1.14.1']
+requirements = ['cppyy-cling>=6.21.5', 'cppyy-backend>=1.14.2']
 setup_requirements = ['wheel']
 if 'build' in sys.argv or 'install' in sys.argv:
     setup_requirements += requirements
