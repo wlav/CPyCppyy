@@ -20,6 +20,7 @@
 #include <stddef.h>      // for ptrdiff_t
 #include <string.h>
 #include <array>
+#include <locale>        // for wstring_convert
 #include <utility>
 #include <sstream>
 #if __cplusplus > 201402L
