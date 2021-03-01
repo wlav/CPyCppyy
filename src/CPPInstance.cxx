@@ -581,14 +581,28 @@ static PyObject* op_str_internal(PyObject* pyobj, PyObject* lshift, bool isBound
     static Cppyy::TCppScope_t sOStringStreamID = Cppyy::GetScope("std::ostringstream");
     std::ostringstream s;
     PyObject* pys = BindCppObjectNoCast(&s, sOStringStreamID);
+    Py_INCREF(pys);
+#if PY_VERSION_HEX >= 0x03000000
+// for py3 and later, a ref-count of 2 is okay to consider the object temporary, but
+// in this case, we can't lose our existing ostrinstring (otherwise, we'd have to peel
+// it out of the return value, if moves are used
+    Py_INCREF(pys);
+#endif
+
     PyObject* res;
     if (isBound) res = PyObject_CallFunctionObjArgs(lshift, pys, NULL);
     else res = PyObject_CallFunctionObjArgs(lshift, pys, pyobj, NULL);
+
     Py_DECREF(pys);
+#if PY_VERSION_HEX >= 0x03000000
+    Py_DECREF(pys);
+#endif
+
     if (res) {
         Py_DECREF(res);
         return CPyCppyy_PyText_FromString(s.str().c_str());
     }
+
     return nullptr;
 }
 
