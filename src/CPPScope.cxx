@@ -313,17 +313,40 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
 {
 // normal type-based lookup
     PyObject* attr = PyType_Type.tp_getattro(pyclass, pyname);
-    if (attr || pyclass == (PyObject*)&CPPInstance_Type)
+    if (pyclass == (PyObject*)&CPPInstance_Type)
         return attr;
 
+    PyObject* possibly_shadowed = nullptr;
+    if (attr) {
+        if (CPPScope_Check(attr) && CPPScope_Check(pyclass) && !(((CPPScope*)pyclass)->fFlags & CPPScope::kIsNamespace)) {
+        // TODO: the goal here is to prevent typedefs that are shadowed in subclasses
+        // to be found as from the base class. The better approach would be to find
+        // all typedefs at class creation and insert placeholders to flag here. The
+        // current typedef loop in gInterpreter won't do, however.
+            PyObject* dct = PyObject_GetAttr(pyclass, PyStrings::gDict);
+            if (dct) {
+                PyObject* attr_from_dict = PyObject_GetItem(dct, pyname);
+                Py_DECREF(dct);
+                if (attr_from_dict) {
+                    Py_DECREF(attr);
+                    return attr_from_dict;
+                }
+                possibly_shadowed = attr;
+                attr = nullptr;
+            }
+            PyErr_Clear();
+        } else
+            return attr;
+    }
+
     if (!CPyCppyy_PyText_CheckExact(pyname) || !CPPScope_Check(pyclass))
-        return nullptr;
+        return possibly_shadowed;
 
 // filter for python specials
     std::string name = CPyCppyy_PyText_AsString(pyname);
     if (name.size() >= 5 && name.compare(0, 2, "__") == 0 &&
             name.compare(name.size()-2, name.size(), "__") == 0)
-        return nullptr;
+        return possibly_shadowed;
 
 // more elaborate search in case of failure (eg. for inner classes on demand)
     std::vector<Utility::PyError_t> errors;
@@ -465,6 +488,19 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
                 if (attr) break;
                 PyErr_Clear();
             }
+        }
+    }
+
+// if the attribute was not found but could possibly have been shadowed, insert it into
+// the dict now, to short-circuit future lookups (TODO: this is part of the workaround
+// described above of which the true solution is to loop over all typedefs at creation
+// time for the class)
+    if (possibly_shadowed) {
+        if (attr) {
+            Py_DECREF(possibly_shadowed);
+        } else {
+            attr = possibly_shadowed;
+            PyType_Type.tp_setattro(pyclass, pyname, attr);
         }
     }
 

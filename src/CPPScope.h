@@ -79,7 +79,11 @@ extern PyTypeObject CPPScope_Type;
 template<typename T>
 inline bool CPPScope_Check(T* object)
 {
-    return object && PyObject_TypeCheck(object, &CPPScope_Type);
+// Short-circuit the type check by checking tp_new which all generated subclasses
+// of CPPScope inherit.
+    return object && \
+        (Py_TYPE(object)->tp_new == CPPScope_Type.tp_new || \
+         PyObject_TypeCheck(object, &CPPScope_Type));
 }
 
 template<typename T>
