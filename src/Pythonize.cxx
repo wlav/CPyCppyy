@@ -1490,7 +1490,8 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
 // operator==/!= are used in op_richcompare of CPPInstance, which subsequently allows
 // comparisons to None; if no operator is available, a hook is installed for lazy
 // lookups in the global and/or class namespace
-    if (HasAttrDirect(pyclass, PyStrings::gEq, true)) {
+    if (HasAttrDirect(pyclass, PyStrings::gEq, true) && \
+            Cppyy::GetMethodIndicesFromName(klass->fCppType, "__eq__").empty()) {
         PyObject* cppol = PyObject_GetAttr(pyclass, PyStrings::gEq);
         if (!klass->fOperators) klass->fOperators = new Utility::PyOperators();
         klass->fOperators->fEq = cppol;
@@ -1506,7 +1507,8 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         PyObject_SetAttr(pyclass, PyStrings::gEq, top_eq);
     }
 
-    if (HasAttrDirect(pyclass, PyStrings::gNe, true)) {
+    if (HasAttrDirect(pyclass, PyStrings::gNe, true) && \
+            Cppyy::GetMethodIndicesFromName(klass->fCppType, "__ne__").empty()) {
         PyObject* cppol = PyObject_GetAttr(pyclass, PyStrings::gNe);
         if (!klass->fOperators) klass->fOperators = new Utility::PyOperators();
         klass->fOperators->fNe = cppol;

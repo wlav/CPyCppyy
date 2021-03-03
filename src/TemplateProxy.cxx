@@ -542,7 +542,10 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
 
     // first, lookup by full name, if previously stored
         bool isNS = (((CPPScope*)pytmpl->fTI->fPyClass)->fFlags & CPPScope::kIsNamespace);
-        pymeth = PyObject_GetAttr((pytmpl->fSelf && !isNS) ? pytmpl->fSelf : pytmpl->fTI->fPyClass, pyfullname);
+        if (pytmpl->fSelf && !isNS)
+            pymeth = PyObject_GetAttr(pytmpl->fSelf, pyfullname);
+        else  // by-passes custom scope getattr that searches into Cling
+            pymeth = PyType_Type.tp_getattro(pytmpl->fTI->fPyClass, pyfullname);
 
     // attempt call if found (this may fail if there are specializations)
         if (CPPOverload_Check(pymeth)) {

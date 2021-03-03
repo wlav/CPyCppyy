@@ -31,28 +31,20 @@ static inline PyObject* add_template(PyObject* pyclass,
 {
 // If templated, the user-facing function must be the template proxy, but the
 // specific lookup must be the current overload, if already found.
-    TemplateProxy* pytmpl = nullptr;
 
     const std::string& ncl = TypeManip::clean_type(name);
-    if (ncl != name) {
-        PyObject* pyncl = CPyCppyy_PyText_InternFromString(ncl.c_str());
-        pytmpl = (TemplateProxy*)PyType_Type.tp_getattro((PyObject*)Py_TYPE(pyclass), pyncl);
-        if (!pytmpl) {
-            PyErr_Clear();
-            pytmpl = TemplateProxy_New(ncl, ncl, pyclass);
-        // cache the template on its clean name
-            PyType_Type.tp_setattro((PyObject*)Py_TYPE(pyclass), pyncl, (PyObject*)pytmpl);
-        }
-        Py_DECREF(pyncl);
-    }
-
-    if (pytmpl) {
-        if (!TemplateProxy_CheckExact((PyObject*)pytmpl)) {
-            Py_DECREF(pytmpl);
-            return nullptr;
-        }
-    } else
+    PyObject* pyncl = CPyCppyy_PyText_FromString(ncl.c_str());
+    TemplateProxy* pytmpl = (TemplateProxy*)PyType_Type.tp_getattro(pyclass, pyncl);
+    if (!pytmpl) {
+        PyErr_Clear();
         pytmpl = TemplateProxy_New(ncl, ncl, pyclass);
+    // cache the template on its clean name
+        PyType_Type.tp_setattro(pyclass, pyncl, (PyObject*)pytmpl);
+        Py_DECREF(pyncl);
+    } else if (!TemplateProxy_CheckExact((PyObject*)pytmpl)) {
+        Py_DECREF(pytmpl);
+        return nullptr;
+    }
 
     if (overloads) {
     // adopt the new overloads
@@ -62,6 +54,8 @@ static inline PyObject* add_template(PyObject* pyclass,
             for (auto clb : *overloads) pytmpl->AdoptMethod(clb);
     }
 
+// the caller expects a method matching the full name, thus is a specialization
+// was requested, do not return the template yet
     if (ncl == name)
         return (PyObject*)pytmpl;
 
@@ -358,6 +352,7 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
         return CreateExcScopeProxy(attr, pyname, pyclass);
     }
 
+    bool templated_functions_checked = false;
     CPPScope* klass = ((CPPScope*)pyclass);
     if (!attr) {
         Utility::FetchError(errors);
@@ -382,9 +377,9 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
             // that it doesn't exist yet.
                 if (Cppyy::ExistsMethodTemplate(scope, name))
                     attr = add_template(pyclass, name, &overloads);
-
-                if (!attr)    // add_template can fail if the method can not be added
+                else
                     attr = (PyObject*)CPPOverload_New(name, overloads);
+                templated_functions_checked = true;
             }
 
         // tickle lazy lookup of data members
@@ -413,8 +408,9 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
             }
         }
 
-    // function templates that have not been instantiated
-        if (!attr) {
+    // function templates that have not been instantiated (namespaces _may_ have already
+    //  been taken care of, by their general function lookup above)
+        if (!attr && !templated_functions_checked) {
             if (Cppyy::ExistsMethodTemplate(scope, name))
                 attr = add_template(pyclass, name);
             else {
