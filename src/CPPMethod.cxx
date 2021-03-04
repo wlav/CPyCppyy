@@ -670,26 +670,29 @@ PyObject* CPyCppyy::CPPMethod::PreProcessArgs(
         CPPInstance* pyobj = (CPPInstance*)PyTuple_GET_ITEM(args, 0);
 
     // demand CPyCppyy object, and an argument that may match down the road
-        if (CPPInstance_Check(pyobj) &&
-             (fScope == Cppyy::gGlobalScope ||                  // free global
-             (pyobj->ObjectIsA() == 0)     ||                   // null pointer or ctor call
-             (Cppyy::IsSubtype(pyobj->ObjectIsA(), fScope)))) { // matching types
+        if (CPPInstance_Check(pyobj)) {
+            Cppyy::TCppType_t oisa = pyobj->ObjectIsA();
+            if (fScope == Cppyy::gGlobalScope ||                // free global
+                oisa == 0 ||                                    // null pointer or ctor call
+                oisa == fScope ||                               // matching types
+                Cppyy::IsSubtype(oisa, fScope)) {               // id.
 
-        // reset self
-            Py_INCREF(pyobj);      // corresponding Py_DECREF is in CPPOverload
-            self = pyobj;
+            // reset self
+                Py_INCREF(pyobj);      // corresponding Py_DECREF is in CPPOverload
+                self = pyobj;
 
-        // offset args by 1 (new ref)
-            PyObject* newArgs = PyTuple_GetSlice(args, 1, PyTuple_GET_SIZE(args));
+            // offset args by 1 (new ref)
+                PyObject* newArgs = PyTuple_GetSlice(args, 1, PyTuple_GET_SIZE(args));
 
-        // put the keywords, if any, in their places in the arguments array
-            if (kwds) {
-                args = ProcessKeywords(nullptr, newArgs, kwds);
-                Py_DECREF(newArgs);
-                newArgs = args;
+            // put the keywords, if any, in their places in the arguments array
+                if (kwds) {
+                    args = ProcessKeywords(nullptr, newArgs, kwds);
+                    Py_DECREF(newArgs);
+                    newArgs = args;
+                }
+
+                return newArgs;   // may be nullptr if kwds insertion failed
             }
-
-            return newArgs;  // may be nullptr if kwds insertion failed
         }
     }
 

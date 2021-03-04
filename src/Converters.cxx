@@ -1875,16 +1875,17 @@ bool CPyCppyy::InstancePtrConverter::SetArg(
     if (pyobj->IsSmart() && IsConstructor(ctxt->fFlags) && Cppyy::IsSmartPtr(ctxt->fCurScope))
         return false;
 
-    if (pyobj->ObjectIsA() && Cppyy::IsSubtype(pyobj->ObjectIsA(), fClass)) {
+    Cppyy::TCppType_t oisa = pyobj->ObjectIsA();
+    if (oisa && (oisa == fClass || Cppyy::IsSubtype(oisa, fClass))) {
     // depending on memory policy, some objects need releasing when passed into functions
         if (!KeepControl() && !UseStrictOwnership(ctxt))
             pyobj->CppOwns();
 
     // calculate offset between formal and actual arguments
         para.fValue.fVoidp = pyobj->GetObject();
-        if (pyobj->ObjectIsA() != fClass) {
+        if (oisa != fClass) {
             para.fValue.fIntPtr += Cppyy::GetBaseOffset(
-                pyobj->ObjectIsA(), fClass, para.fValue.fVoidp, 1 /* up-cast */);
+                oisa, fClass, para.fValue.fVoidp, 1 /* up-cast */);
         }
 
     // set pointer (may be null) and declare success
@@ -1939,13 +1940,14 @@ bool CPyCppyy::InstanceConverter::SetArg(
 // convert <pyobject> to C++ instance, set arg for call
     CPPInstance* pyobj = GetCppInstance(pyobject);
     if (pyobj) {
-        if (pyobj->ObjectIsA() && Cppyy::IsSubtype(pyobj->ObjectIsA(), fClass)) {
+        auto oisa = pyobj->ObjectIsA();
+        if (oisa && (oisa == fClass || Cppyy::IsSubtype(oisa, fClass))) {
         // calculate offset between formal and actual arguments
             para.fValue.fVoidp = pyobj->GetObject();
             if (!para.fValue.fVoidp)
                 return false;
 
-            if (pyobj->ObjectIsA() != fClass) {
+            if (oisa != fClass) {
                 para.fValue.fIntPtr += Cppyy::GetBaseOffset(
                     pyobj->ObjectIsA(), fClass, para.fValue.fVoidp, 1 /* up-cast */);
             }
@@ -2642,6 +2644,7 @@ bool CPyCppyy::SmartPtrConverter::SetArg(
     }
 
     CPPInstance* pyobj = (CPPInstance*)pyobject;
+    Cppyy::TCppType_t oisa = pyobj->ObjectIsA();
 
 // for the case where we have a 'hidden' smart pointer:
     if (Cppyy::TCppType_t tsmart = pyobj->GetSmartIsA()) {
@@ -2664,12 +2667,12 @@ bool CPyCppyy::SmartPtrConverter::SetArg(
     }
 
 // for the case where we have an 'exposed' smart pointer:
-    if (!pyobj->IsSmart() && Cppyy::IsSubtype(pyobj->ObjectIsA(), fSmartPtrType)) {
+    if (!pyobj->IsSmart() && Cppyy::IsSubtype(oisa, fSmartPtrType)) {
     // calculate offset between formal and actual arguments
         para.fValue.fVoidp = pyobj->GetObject();
-        if (pyobj->ObjectIsA() != fSmartPtrType) {
+        if (oisa != fSmartPtrType) {
             para.fValue.fIntPtr += Cppyy::GetBaseOffset(
-                pyobj->ObjectIsA(), fSmartPtrType, para.fValue.fVoidp, 1 /* up-cast */);
+                oisa, fSmartPtrType, para.fValue.fVoidp, 1 /* up-cast */);
         }
 
     // set pointer (may be null) and declare success
@@ -2678,7 +2681,7 @@ bool CPyCppyy::SmartPtrConverter::SetArg(
     }
 
 // for the case where we have an ordinary object to convert
-    if (!pyobj->IsSmart() && Cppyy::IsSubtype(pyobj->ObjectIsA(), fUnderlyingType)) {
+    if (!pyobj->IsSmart() && Cppyy::IsSubtype(oisa, fUnderlyingType)) {
     // create the relevant smart pointer and make the pyobject "smart"
         CPPInstance* pysmart = (CPPInstance*)ConvertImplicit(fSmartPtrType, pyobject, para, ctxt, false);
         if (!CPPInstance_Check(pysmart)) {
@@ -2697,7 +2700,7 @@ bool CPyCppyy::SmartPtrConverter::SetArg(
     }
 
 // final option, try mapping pointer types held (TODO: do not allow for non-const ref)
-    if (pyobj->IsSmart() && Cppyy::IsSubtype(pyobj->ObjectIsA(), fUnderlyingType)) {
+    if (pyobj->IsSmart() && Cppyy::IsSubtype(oisa, fUnderlyingType)) {
         para.fValue.fVoidp = ((CPPInstance*)pyobject)->GetSmartObject();
         para.fTypeCode = 'V';
         return true;
