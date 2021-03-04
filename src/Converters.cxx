@@ -2510,7 +2510,6 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
 }
 
 static std::map<void*, std::string> sFuncWrapperLookup;
-static const char* FPCFM_ERRMSG = "conversion to std::function failed";
 PyObject* CPyCppyy::FunctionPointerConverter::FromMemory(void* address)
 {
 // A function pointer in clang is represented by a Type, not a FunctionDecl and it's
@@ -2519,7 +2518,7 @@ PyObject* CPyCppyy::FunctionPointerConverter::FromMemory(void* address)
     static int func_count = 0;
 
     if (!(address && *(void**)address)) {
-        PyErr_SetString(PyExc_TypeError, FPCFM_ERRMSG);
+        PyErr_SetString(PyExc_ReferenceError, "can not convert null function pointer");
         return nullptr;
     }
 
@@ -2536,7 +2535,7 @@ PyObject* CPyCppyy::FunctionPointerConverter::FromMemory(void* address)
              << ";\n}";
 
         if (!Cppyy::Compile(code.str())) {
-            PyErr_SetString(PyExc_TypeError, FPCFM_ERRMSG);
+            PyErr_SetString(PyExc_TypeError, "conversion to std::function failed");
             return nullptr;
         }
 
