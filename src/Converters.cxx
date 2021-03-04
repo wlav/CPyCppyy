@@ -2518,7 +2518,7 @@ PyObject* CPyCppyy::FunctionPointerConverter::FromMemory(void* address)
     static int func_count = 0;
 
     if (!(address && *(void**)address)) {
-        PyErr_SetString(PyExc_ReferenceError, "can not convert null function pointer");
+        PyErr_SetString(PyExc_TypeError, "can not convert null function pointer");
         return nullptr;
     }
 
