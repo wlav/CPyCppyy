@@ -52,6 +52,7 @@ namespace PyStrings {
     extern PyObject* gSize;
     extern PyObject* gTemplate;
     extern PyObject* gVectorAt;
+    extern PyObject* gInsert;
     extern PyObject* gValueType;
     extern PyObject* gValueSize;
 

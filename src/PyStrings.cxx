@@ -49,6 +49,7 @@ PyObject* CPyCppyy::PyStrings::gSecond           = nullptr;
 PyObject* CPyCppyy::PyStrings::gSize             = nullptr;
 PyObject* CPyCppyy::PyStrings::gTemplate         = nullptr;
 PyObject* CPyCppyy::PyStrings::gVectorAt         = nullptr;
+PyObject* CPyCppyy::PyStrings::gInsert           = nullptr;
 PyObject* CPyCppyy::PyStrings::gValueType        = nullptr;
 PyObject* CPyCppyy::PyStrings::gValueSize        = nullptr;
 
@@ -123,6 +124,7 @@ bool CPyCppyy::CreatePyStrings() {
     CPPYY_INITIALIZE_STRING(gSize,           size);
     CPPYY_INITIALIZE_STRING(gTemplate,       Template);
     CPPYY_INITIALIZE_STRING(gVectorAt,       _vector__at);
+    CPPYY_INITIALIZE_STRING(gInsert,         insert);
     CPPYY_INITIALIZE_STRING(gValueType,      value_type);
     CPPYY_INITIALIZE_STRING(gValueSize,      value_size);
 
@@ -193,6 +195,7 @@ PyObject* CPyCppyy::DestroyPyStrings() {
     Py_DECREF(PyStrings::gSize);        PyStrings::gSize        = nullptr;
     Py_DECREF(PyStrings::gTemplate);    PyStrings::gTemplate    = nullptr;
     Py_DECREF(PyStrings::gVectorAt);    PyStrings::gVectorAt    = nullptr;
+    Py_DECREF(PyStrings::gInsert);      PyStrings::gInsert      = nullptr;
     Py_DECREF(PyStrings::gValueType);   PyStrings::gValueType   = nullptr;
     Py_DECREF(PyStrings::gValueSize);   PyStrings::gValueSize   = nullptr;
 
