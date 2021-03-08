@@ -141,6 +141,9 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
     const Py_ssize_t nBases = PyTuple_GET_SIZE(bases);
     BaseInfos_t base_infos; base_infos.reserve(nBases);
     for (Py_ssize_t ibase = 0; ibase < nBases; ++ibase) {
+        if (!CPPScope_Check(PyTuple_GET_ITEM(bases, ibase)))
+            continue;
+
         Cppyy::TCppType_t basetype = ((CPPScope*)PyTuple_GET_ITEM(bases, ibase))->fCppType;
 
         if (!basetype) {
@@ -161,9 +164,6 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
         base_infos.emplace_back(
             basetype, TypeManip::template_base(Cppyy::GetFinalName(basetype)), Cppyy::GetScopedFinalName(basetype));
     }
-
-    if ((Py_ssize_t)base_infos.size() != nBases)
-        return false;
 
 // TODO: check deep hierarchy for multiple inheritance
     bool isDeepHierarchy = klass->fCppType && base_infos.front().btype != klass->fCppType;
