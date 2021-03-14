@@ -494,6 +494,21 @@ CPPYY_BOOLEAN_PROPERTY(threaded, CallContext::kReleaseGIL,  "__release_gil__")
 CPPYY_BOOLEAN_PROPERTY(useffi,   CallContext::kUseFFI,      "__useffi__")
 CPPYY_BOOLEAN_PROPERTY(sig2exc,  CallContext::kProtected,   "__sig2exc__")
 
+static PyObject* mp_getcppname(CPPOverload* pymeth, void*)
+{
+    if ((void*)pymeth == (void*)&CPPOverload_Type)
+        return CPyCppyy_PyText_FromString("CPPOverload_Type");
+
+    auto& methods = pymeth->fMethodInfo->fMethods;
+    if (methods.empty())
+        return CPyCppyy_PyText_FromString("void (*)()");   // debatable
+
+    if (methods.size() == 1)
+        return methods[0]->GetTypeName();
+
+    return CPyCppyy_PyText_FromString("void* (*)(...)");   // id.
+}
+
 //----------------------------------------------------------------------------
 static PyGetSetDef mp_getset[] = {
     {(char*)"__name__",   (getter)mp_name,   nullptr, nullptr, nullptr},
@@ -526,6 +541,7 @@ static PyGetSetDef mp_getset[] = {
       (char*)"not implemented", nullptr},
     {(char*)"__sig2exc__",         (getter)mp_getsig2exc, (setter)mp_setsig2exc,
       (char*)"If true, turn signals into Python exceptions", nullptr},
+    {(char*)"__cpp_name__",        (getter)mp_getcppname, nullptr, nullptr, nullptr},
     {(char*)nullptr, nullptr, nullptr, nullptr, nullptr}
 };
 

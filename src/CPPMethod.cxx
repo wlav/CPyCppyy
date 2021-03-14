@@ -314,6 +314,13 @@ PyObject* CPyCppyy::CPPMethod::GetPrototype(bool fa)
 }
 
 //----------------------------------------------------------------------------
+PyObject* CPyCppyy::CPPMethod::GetTypeName() {
+    PyObject* cppname = CPyCppyy_PyText_FromString((GetReturnTypeName() + " (*)").c_str());
+    CPyCppyy_PyText_AppendAndDel(&cppname, GetSignature(false /* show_formalargs */));
+    return cppname;
+}
+
+//----------------------------------------------------------------------------
 int CPyCppyy::CPPMethod::GetPriority()
 {
 // To help with overload selection, methods are given a priority based on the

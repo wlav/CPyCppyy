@@ -449,6 +449,12 @@ static bool AddTypeName(std::string& tmpl_name, PyObject* tn, PyObject* arg,
                 }
             }
         }
+    } else if (tn == (PyObject*)&CPPOverload_Type) {
+        PyObject* tpName =  arg ? \
+            PyObject_GetAttr(arg, PyStrings::gCppName) : \
+            CPyCppyy_PyText_FromString("void* (*)(...)");
+        tmpl_name.append(CPyCppyy_PyText_AsString(tpName));
+        Py_DECREF(tpName);
     } else if (PyObject_HasAttr(tn, PyStrings::gCppName)) {
         PyObject* tpName = PyObject_GetAttr(tn, PyStrings::gCppName);
         tmpl_name.append(CPyCppyy_PyText_AsString(tpName));
