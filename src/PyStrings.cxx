@@ -8,6 +8,7 @@ PyObject* CPyCppyy::PyStrings::gAssign           = nullptr;
 PyObject* CPyCppyy::PyStrings::gBases            = nullptr;
 PyObject* CPyCppyy::PyStrings::gBase             = nullptr;
 PyObject* CPyCppyy::PyStrings::gCppName          = nullptr;
+PyObject* CPyCppyy::PyStrings::gAnnotations      = nullptr;
 PyObject* CPyCppyy::PyStrings::gCType            = nullptr;
 PyObject* CPyCppyy::PyStrings::gDeref            = nullptr;
 PyObject* CPyCppyy::PyStrings::gPreInc           = nullptr;
@@ -82,6 +83,7 @@ bool CPyCppyy::CreatePyStrings() {
     CPPYY_INITIALIZE_STRING(gBases,          __bases__);
     CPPYY_INITIALIZE_STRING(gBase,           __base__);
     CPPYY_INITIALIZE_STRING(gCppName,        __cpp_name__);
+    CPPYY_INITIALIZE_STRING(gAnnotations,    __annotations__);
     CPPYY_INITIALIZE_STRING(gCType,          __ctype__);
     CPPYY_INITIALIZE_STRING(gDeref,          __deref__);
     CPPYY_INITIALIZE_STRING(gPreInc,         __preinc__);
@@ -154,6 +156,7 @@ PyObject* CPyCppyy::DestroyPyStrings() {
     Py_DECREF(PyStrings::gBases);       PyStrings::gBases       = nullptr;
     Py_DECREF(PyStrings::gBase);        PyStrings::gBase        = nullptr;
     Py_DECREF(PyStrings::gCppName);     PyStrings::gCppName     = nullptr;
+    Py_DECREF(PyStrings::gAnnotations); PyStrings::gAnnotations = nullptr;
     Py_DECREF(PyStrings::gCType);       PyStrings::gCType       = nullptr;
     Py_DECREF(PyStrings::gDeref);       PyStrings::gDeref       = nullptr;
     Py_DECREF(PyStrings::gPreInc);      PyStrings::gPreInc      = nullptr;

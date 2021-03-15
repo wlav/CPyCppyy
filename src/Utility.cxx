@@ -394,8 +394,12 @@ static bool AddTypeName(std::string& tmpl_name, PyObject* tn, PyObject* arg,
 #endif
         } else
             tmpl_name.append("int");
+
+        return true;
+    }
+
 #if PY_VERSION_HEX < 0x03000000
-    } else if (tn == (PyObject*)&PyLong_Type) {
+    if (tn == (PyObject*)&PyLong_Type) {
         if (arg) {
              PY_LONG_LONG ll = PyLong_AsLongLong(arg);
              if (ll == (PY_LONG_LONG)-1 && PyErr_Occurred()) {
@@ -410,17 +414,27 @@ static bool AddTypeName(std::string& tmpl_name, PyObject* tn, PyObject* arg,
                  tmpl_name.append((ll < LONG_MIN || LONG_MAX < ll) ? "long long" : "long");
         } else
             tmpl_name.append("long");
+
+        return true;
+    }
 #endif
-    } else if (tn == (PyObject*)&PyFloat_Type) {
+
+    if (tn == (PyObject*)&PyFloat_Type) {
     // special case for floats (Python-speak for double) if from argument (only)
         tmpl_name.append(arg ? "double" : "float");
+        return true;
+    }
+
 #if PY_VERSION_HEX < 0x03000000
-    } else if (tn == (PyObject*)&PyString_Type) {
+    if (tn == (PyObject*)&PyString_Type) {
 #else
-    } else if (tn == (PyObject*)&PyUnicode_Type) {
+    if (tn == (PyObject*)&PyUnicode_Type) {
 #endif
         tmpl_name.append("std::string");
-    } else if (tn == (PyObject*)&PyList_Type || tn == (PyObject*)&PyTuple_Type) {
+        return true;
+    }
+
+    if (tn == (PyObject*)&PyList_Type || tn == (PyObject*)&PyTuple_Type) {
         if (arg && PySequence_Size(arg)) {
             std::string subtype{"std::initializer_list<"};
             PyObject* item = PySequence_GetItem(arg, 0);
@@ -432,7 +446,10 @@ static bool AddTypeName(std::string& tmpl_name, PyObject* tn, PyObject* arg,
             Py_DECREF(item);
         }
 
-    } else if (CPPScope_Check(tn)) {
+        return true;
+    }
+
+    if (CPPScope_Check(tn)) {
         tmpl_name.append(Cppyy::GetScopedFinalName(((CPPClass*)tn)->fCppType));
         if (arg) {
         // try to specialize the type match for the given object
@@ -449,32 +466,81 @@ static bool AddTypeName(std::string& tmpl_name, PyObject* tn, PyObject* arg,
                 }
             }
         }
-    } else if (tn == (PyObject*)&CPPOverload_Type) {
+
+        return true;
+    }
+
+    if (tn == (PyObject*)&CPPOverload_Type) {
         PyObject* tpName =  arg ? \
             PyObject_GetAttr(arg, PyStrings::gCppName) : \
             CPyCppyy_PyText_FromString("void* (*)(...)");
         tmpl_name.append(CPyCppyy_PyText_AsString(tpName));
         Py_DECREF(tpName);
-    } else if (PyObject_HasAttr(tn, PyStrings::gCppName)) {
-        PyObject* tpName = PyObject_GetAttr(tn, PyStrings::gCppName);
-        tmpl_name.append(CPyCppyy_PyText_AsString(tpName));
-        Py_DECREF(tpName);
-    } else if (PyObject_HasAttr(tn, PyStrings::gName)) {
-        PyObject* tpName = PyObject_GetAttr(tn, PyStrings::gName);
-        tmpl_name.append(CPyCppyy_PyText_AsString(tpName));
-        Py_DECREF(tpName);
-    } else if (PyInt_Check(tn) || PyLong_Check(tn) || PyFloat_Check(tn)) {
+
+        return true;
+    }
+
+    if (arg && PyCallable_Check(arg)) {
+        PyObject* annot = PyObject_GetAttr(arg, PyStrings::gAnnotations);
+        if (annot) {
+            if (PyDict_Check(annot) && 1 < PyDict_Size(annot)) {
+                PyObject* ret = PyDict_GetItemString(annot, "return");
+                if (ret) {
+                // dict is ordered, with the last value being the return type
+                    std::ostringstream tpn;
+                    tpn << (CPPScope_Check(ret) ? ClassName(ret) : CPyCppyy_PyText_AsString(ret))
+                        << " (*)(";
+
+                    PyObject* values = PyDict_Values(annot);
+                    for (Py_ssize_t i = 0; i < (PyList_GET_SIZE(values)-1); ++i) {
+                        if (i) tpn << ", ";
+                        PyObject* item = PyList_GET_ITEM(values, i);
+                        tpn << (CPPScope_Check(item) ?  ClassName(item) : CPyCppyy_PyText_AsString(item));
+                    }
+                    Py_DECREF(values);
+
+                    tpn << ')';
+                    tmpl_name.append(tpn.str());
+
+                    return true;
+
+                } else
+                   PyErr_Clear();
+            }
+            Py_DECREF(annot);
+        } else
+            PyErr_Clear();
+
+        PyObject* tpName = PyObject_GetAttr(arg, PyStrings::gCppName);
+        if (tpName) {
+            tmpl_name.append(CPyCppyy_PyText_AsString(tpName));
+            Py_DECREF(tpName);
+            return true;
+        }
+        PyErr_Clear();
+    }
+
+    for (auto nn : {PyStrings::gCppName, PyStrings::gName}) {
+        PyObject* tpName = PyObject_GetAttr(tn, nn);
+        if (tpName) {
+            tmpl_name.append(CPyCppyy_PyText_AsString(tpName));
+            Py_DECREF(tpName);
+            return true;
+        }
+        PyErr_Clear();
+    }
+
+    if (PyInt_Check(tn) || PyLong_Check(tn) || PyFloat_Check(tn)) {
     // last ditch attempt, works for things like int values; since this is a
     // source of errors otherwise, it is limited to specific types and not
     // generally used (str(obj) can print anything ...)
         PyObject* pystr = PyObject_Str(tn);
         tmpl_name.append(CPyCppyy_PyText_AsString(pystr));
         Py_DECREF(pystr);
-    } else {
-        return false;
+        return true;
     }
 
-    return true;
+    return false;
 }
 
 std::string CPyCppyy::Utility::ConstructTemplateArgs(
