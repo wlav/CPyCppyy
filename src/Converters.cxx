@@ -1476,7 +1476,7 @@ bool CPyCppyy::VoidArrayConverter::ToMemory(PyObject* value, void* address, PyOb
 //----------------------------------------------------------------------------
 static inline void init_shape(Py_ssize_t defdim, dims_t dims, Py_ssize_t*& shape)
 {
-    int nalloc = (dims && 0 < dims[0]) ? (int)dims[0]+1: defdim+1;
+    int nalloc = (dims && 0 < dims[0]) ? (int)dims[0]+1: (int)defdim+1;
     shape = new Py_ssize_t[nalloc];
     if (dims) {
         for (int i = 0; i < nalloc; ++i)
@@ -2843,7 +2843,7 @@ bool CPyCppyy::NotImplementedConverter::SetArg(PyObject*, Parameter&, CallContex
 
 //- helper to refactor some code from CreateConverter ------------------------
 static inline CPyCppyy::Converter* selectInstanceCnv(
-    Cppyy::TCppScope_t klass, const std::string& cpd, long size, dims_t dims, bool isConst, bool control)
+    Cppyy::TCppScope_t klass, const std::string& cpd, dim_t size, dims_t dims, bool isConst, bool control)
 {
     using namespace CPyCppyy;
     Converter* result = nullptr;
