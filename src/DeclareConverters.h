@@ -61,6 +61,7 @@ public:                                                                      \
     virtual bool HasState() { return true; }                                 \
 protected:                                                                   \
     Py_ssize_t* fShape;                                                      \
+    bool fIsFixed;                                                           \
 };                                                                           \
                                                                              \
 class name##ArrayPtrConverter : public name##ArrayConverter {                \
