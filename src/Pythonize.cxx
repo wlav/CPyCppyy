@@ -310,7 +310,7 @@ static bool FillVector(PyObject* vecin, PyObject* args, ItemGetter* getter)
     if (sz < 0)
         return false;
 
-// reserve memory as appliable
+// reserve memory as applicable
     if (0 < sz) {
         PyObject* res = PyObject_CallMethod(vecin, (char*)"reserve", (char*)"n", sz);
         Py_DECREF(res);
