@@ -1,13 +1,9 @@
-#ifndef CPYCPPYY_TPYTHON
-#define CPYCPPYY_TPYTHON
+#ifndef CPYCPPYY_API_H
+#define CPYCPPYY_API_H
 
-//////////////////////////////////////////////////////////////////////////////
-//                                                                          //
-// TPython                                                                  //
-//                                                                          //
-// Access to the python interpreter and API onto CPyCppyy.                  //
-//                                                                          //
-//////////////////////////////////////////////////////////////////////////////
+//
+// Access to the python interpreter and API onto CPyCppyy.
+//
 
 // Python
 #ifdef _WIN32
