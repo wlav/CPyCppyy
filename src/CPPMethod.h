@@ -62,7 +62,7 @@ protected:
 
 private:
     void Copy_(const CPPMethod&);
-    void Destroy_() const;
+    void Destroy_();
 
     PyObject* ExecuteFast(void*, ptrdiff_t, CallContext*);
     PyObject* ExecuteProtected(void*, ptrdiff_t, CallContext*);
