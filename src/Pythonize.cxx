@@ -934,6 +934,32 @@ static const ptrdiff_t PS_END_ADDR  =  7;   // non-aligned address, so no clash
 static const ptrdiff_t PS_FLAG_ADDR = 11;   // id.
 static const ptrdiff_t PS_COLL_ADDR = 13;   // id.
 
+PyObject* LLSequenceIter(PyObject* self)
+{
+// Implement python's __iter__ for low level views used through STL-type begin()/end()
+    PyObject* iter = PyObject_CallMethodObjArgs(self, PyStrings::gBegin, nullptr);
+
+    if (LowLevelView_Check(iter)) {
+    // builtin pointer iteration: can only succeed if a size is available
+        Py_ssize_t sz = PySequence_Size(self);
+        if (sz == -1) {
+            Py_DECREF(iter);
+            return nullptr;
+        }
+        PyObject* lliter = Py_TYPE(iter)->tp_iter(iter);
+        ((indexiterobject*)lliter)->ii_len = sz;
+        Py_DECREF(iter);
+        return lliter;
+    }
+
+    if (iter) {
+        Py_DECREF(iter);
+        PyErr_SetString(PyExc_TypeError, "unrecognized iterator type for low level views");
+    }
+
+    return nullptr;
+}
+
 PyObject* STLSequenceIter(PyObject* self)
 {
 // Implement python's __iter__ for std::iterator<>s
@@ -1512,18 +1538,30 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
             // types to add the "next" method on use
                 Cppyy::TCppMethod_t meth = Cppyy::GetMethod(klass->fCppType, v[0]);
                 const std::string& resname = Cppyy::GetMethodResultType(meth);
-                if (Cppyy::GetScope(resname)) {
+                bool isIterator = gIteratorTypes.find(resname) != gIteratorTypes.end();
+                if (!isIterator && Cppyy::GetScope(resname)) {
                     if (resname.find("iterator") == std::string::npos)
                         gIteratorTypes.insert(resname);
+                    isIterator = true;
+                }
 
+                if (isIterator) {
                 // install iterator protocol a la STL
                     ((PyTypeObject*)pyclass)->tp_iter = (getiterfunc)STLSequenceIter;
                     Utility::AddToClass(pyclass, "__iter__", (PyCFunction)STLSequenceIter, METH_NOARGS);
+                } else {
+                // still okay if this is some pointer type of builtin persuasion (general class
+                // won't work: the return type needs to understand the iterator protocol)
+                    std::string resolved = Cppyy::ResolveName(resname);
+                    if (resolved.back() == '*' && Cppyy::IsBuiltin(resolved.substr(0, resolved.size()-1))) {
+                        ((PyTypeObject*)pyclass)->tp_iter = (getiterfunc)LLSequenceIter;
+                        Utility::AddToClass(pyclass, "__iter__", (PyCFunction)LLSequenceIter, METH_NOARGS);
+                    }
                 }
             }
         }
         if (!((PyTypeObject*)pyclass)->tp_iter &&     // no iterator resolved
-                HasAttrDirect(pyclass, PyStrings::gGetItem) && HasAttrDirect(pyclass, PyStrings::gLen)) {
+                HasAttrDirect(pyclass, PyStrings::gGetItem) && PyObject_HasAttr(pyclass, PyStrings::gLen)) {
         // Python will iterate over __getitem__ using integers, but C++ operator[] will never raise
         // a StopIteration. A checked getitem (raising IndexError if beyond size()) works in some
         // cases but would mess up if operator[] is meant to implement an associative container. So,
