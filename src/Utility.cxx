@@ -311,7 +311,10 @@ CPyCppyy::PyCallable* CPyCppyy::Utility::FindBinaryOperator(
     PyCallable* pyfunc = 0;
 
     if (!scope) {
-        if (lcname == "str" || lcname == "unicode") scope = Cppyy::GetScope("std");
+        // TODO: the following should remain sync with what clingwrapper does in its
+        // type remapper; there must be a better way?
+        if (lcname == "str" || lcname == "unicode" || lcname == "complex")
+            scope = Cppyy::GetScope("std");
         else scope = Cppyy::GetScope(TypeManip::extract_namespace(lcname));
     }
     if (scope)
