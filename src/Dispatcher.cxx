@@ -11,6 +11,8 @@
 #include <set>
 #include <sstream>
 
+#include <iostream>
+
 
 //----------------------------------------------------------------------------
 static inline void InjectMethod(Cppyy::TCppMethod_t method, const std::string& mtCppName, std::ostringstream& code)
@@ -211,9 +213,7 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
     std::set<std::string> protected_names;
 
 // simple case: methods from current class (collect constructors along the way)
-    int has_default = 0;
-    int has_cctor = 0;
-    bool has_constructors = false;
+    int has_default = 0, has_cctor = 0, has_ctors = 0, has_tmpl_ctors = 0;
     AllCtors_t ctors{base_infos.size()};
     for (BaseInfos_t::size_type ibase = 0; ibase < base_infos.size(); ++ibase) {
         const auto& binfo = base_infos[ibase];
@@ -276,10 +276,22 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
             Py_DECREF(key);
         }
 
+    // support for templated ctors in single inheritance (TODO: also multi possible?)
+        if (base_infos.size() == 1) {
+            const Cppyy::TCppIndex_t nTemplMethods = Cppyy::GetNumTemplatedMethods(binfo.btype);
+            for (Cppyy::TCppIndex_t imeth = 0; imeth < nTemplMethods; ++imeth) {
+                if (Cppyy::IsTemplatedConstructor(binfo.btype, imeth)) {
+                    any_ctor_found = true;
+                    has_tmpl_ctors += 1;
+                    break;        // one suffices to map as argument packs are used
+                }
+            }
+        }
+
     // count the cctors and default ctors to determine whether each base has one
         if (cctor_found   || (!cctor_found && !any_ctor_found))   has_cctor   += 1;
         if (default_found || (!default_found && !any_ctor_found)) has_default += 1;
-        if (any_ctor_found) has_constructors = true;
+        if (any_ctor_found && !has_tmpl_ctors)                    has_ctors   += 1;
     }
 
 // try to locate left-overs in base classes
@@ -316,20 +328,22 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
 // for working with C++ templates, additional constructors are needed to make
 // sure the python object is properly carried, but they can only be generated
 // if the base class supports them
-    if (1 < nBases && (!has_constructors || has_default == nBases))
+    if (1 < nBases && (!has_ctors || has_default == nBases))
         code << "  " << derivedName << "() {}\n";
-    if (!has_constructors || has_cctor == nBases) {
+    if (has_cctor == nBases) {
         code << "  " << derivedName << "(const " << derivedName << "& other) : ";
         for (BaseInfos_t::size_type ibase = 0; ibase < base_infos.size(); ++ibase) {
             if (ibase != 0) code << ", ";
             code << base_infos[ibase].bname << "(other)";
         }
-        if (!isDeepHierarchy) {
-            if (has_cctor) code << ", ";
-            else code << " : ";
-            code << "_internal_self(other._internal_self, this)";
-        }
+        if (!isDeepHierarchy)
+            code << ", _internal_self(other._internal_self, this)";
         code << " {}\n";
+    }
+    if (has_tmpl_ctors && base_infos.size() == 1) {
+    // support for templated ctors in single inheritance (TODO: also multi possible?)
+        code << "  template<typename ...Args>\n  " << derivedName << "(Args... args) : "
+             << base_infos[0].bname << "(args...) {}\n";
     }
 
 // destructor: default is fine
