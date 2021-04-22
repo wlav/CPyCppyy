@@ -1056,17 +1056,10 @@ bool CPyCppyy::LLongConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* ctxt)
 {
 // convert <pyobject> to C++ long long, set arg for call
-    if (PyFloat_Check(pyobject)) {
-    // special case: float implements nb_int, but allowing rounding conversions
-    // interferes with overloading
-        PyErr_SetString(PyExc_ValueError, "cannot convert float to long long");
-        return false;
-    }
-
     if (!ImplicitBool(pyobject, ctxt))
         return false;
 
-    para.fValue.fLLong = PyLong_AsLongLong(pyobject);
+    para.fValue.fLLong = CPyCppyy_PyLong_AsStrictLongLong(pyobject);
     if (PyErr_Occurred())
         return false;
     para.fTypeCode = 'q';
