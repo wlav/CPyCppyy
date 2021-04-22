@@ -313,6 +313,19 @@ static inline long CPyCppyy_PyLong_AsStrictLong(PyObject* pyobject)
     return (long)PyLong_AsLong(pyobject);   // already does long range check
 }
 
+static inline long CPyCppyy_PyLong_AsStrictLongLong(PyObject* pyobject)
+{
+// strict python integer to C++ long long integer conversion
+
+// prevent float -> long (see CPyCppyy_PyLong_AsStrictInt)
+    if (!(PyLong_Check(pyobject) || PyInt_Check(pyobject))) {
+        PyErr_SetString(PyExc_TypeError, "int/long conversion expects an integer object");
+        return (long)-1;
+   }
+
+    return (long)PyLong_AsLongLong(pyobject);   // already does long range check
+}
+
 
 //- helper for pointer/array/reference conversions ---------------------------
 static inline bool CArraySetArg(PyObject* pyobject, CPyCppyy::Parameter& para, char tc, int size)
@@ -662,7 +675,7 @@ CPPYY_IMPL_BASIC_CONST_REFCONVERTER(Int,    int,            c_int,       CPyCppy
 CPPYY_IMPL_BASIC_CONST_REFCONVERTER(UInt,   unsigned int,   c_uint,      PyLongOrInt_AsULong)
 CPPYY_IMPL_BASIC_CONST_REFCONVERTER(Long,   long,           c_long,      CPyCppyy_PyLong_AsStrictLong)
 CPPYY_IMPL_BASIC_CONST_REFCONVERTER(ULong,  unsigned long,  c_ulong,     PyLongOrInt_AsULong)
-CPPYY_IMPL_BASIC_CONST_REFCONVERTER(LLong,  PY_LONG_LONG,   c_longlong,  PyLong_AsLongLong)
+CPPYY_IMPL_BASIC_CONST_REFCONVERTER(LLong,  PY_LONG_LONG,   c_longlong,  CPyCppyy_PyLong_AsStrictLongLong)
 CPPYY_IMPL_BASIC_CONST_REFCONVERTER(ULLong, PY_ULONG_LONG,  c_ulonglong, PyLongOrInt_AsULong64)
 
 //----------------------------------------------------------------------------
