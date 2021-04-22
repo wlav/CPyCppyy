@@ -129,6 +129,11 @@ namespace {
 unsigned long CPyCppyy::PyLongOrInt_AsULong(PyObject* pyobject)
 {
 // Convert <pybject> to C++ unsigned long, with bounds checking, allow int -> ulong.
+    if (PyFloat_Check(pyobject)) {
+        PyErr_SetString(PyExc_TypeError, "can\'t convert float to unsigned long");
+        return -1;
+    }
+
     unsigned long ul = PyLong_AsUnsignedLong(pyobject);
     if (PyErr_Occurred() && PyInt_Check(pyobject)) {
         PyErr_Clear();
@@ -149,6 +154,11 @@ unsigned long CPyCppyy::PyLongOrInt_AsULong(PyObject* pyobject)
 PY_ULONG_LONG CPyCppyy::PyLongOrInt_AsULong64(PyObject* pyobject)
 {
 // Convert <pyobject> to C++ unsigned long long, with bounds checking.
+    if (PyFloat_Check(pyobject)) {
+        PyErr_SetString(PyExc_TypeError, "can\'t convert float to unsigned long long");
+        return -1;
+    }
+
     PY_ULONG_LONG ull = PyLong_AsUnsignedLongLong(pyobject);
     if (PyErr_Occurred() && PyInt_Check(pyobject)) {
         PyErr_Clear();
