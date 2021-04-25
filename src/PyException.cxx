@@ -1,3 +1,6 @@
+// Standard
+#include <string.h>
+
 // Bindings
 #include "CPyCppyy.h"
 #define CPYCPPYY_INTERNAL 1
@@ -21,7 +24,35 @@
 //- constructors/destructor --------------------------------------------------
 CPyCppyy::PyException::PyException()
 {
-// default constructor
+#ifdef WITH_THREAD
+    PyGILState_STATE state = PyGILState_Ensure();
+#endif
+
+    PyObject* pytype = nullptr, *pyvalue = nullptr, *pytrace = nullptr;
+    PyErr_Fetch(&pytype, &pyvalue, &pytrace);
+    if (pytype && pyvalue) {
+        const char* tname = PyExceptionClass_Name(pytype);
+        if (tname) {
+            char* dot = strrchr((char*)tname, '.');
+            if (dot) tname = dot+1;
+            fMsg += tname;
+            fMsg += ": ";
+        }
+
+        PyObject* msg = PyObject_Str(pyvalue);
+        if (msg) {
+           fMsg += CPyCppyy_PyText_AsString(msg);
+           Py_DECREF(msg);
+        }
+    }
+    PyErr_Restore(pytype, pyvalue, pytrace);
+
+    if (fMsg.empty())
+        fMsg = "python exception";
+
+#ifdef WITH_THREAD
+    PyGILState_Release(state);
+#endif
 }
 
 CPyCppyy::PyException::~PyException() noexcept
@@ -34,5 +65,5 @@ CPyCppyy::PyException::~PyException() noexcept
 const char* CPyCppyy::PyException::what() const noexcept
 {
 // Return reason for throwing this exception: a python exception was raised.
-    return "python exception";
+    return fMsg.c_str();
 }

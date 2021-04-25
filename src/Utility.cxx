@@ -650,7 +650,7 @@ void CPyCppyy::Utility::ConstructCallbackPreamble(const std::string& retType,
         }
         code << "    } catch(int) {\n"
              << "      for (auto pyarg : pyargs) Py_XDECREF(pyarg);\n"
-             << "      PyGILState_Release(state); throw CPyCppyy::PyException{};\n"
+             << "      CPyCppyy::PyException pyexc; PyGILState_Release(state); throw pyexc;\n"
              << "    }\n";
     }
 }
@@ -681,7 +681,7 @@ void CPyCppyy::Utility::ConstructCallbackReturn(const std::string& retType, int 
 #ifdef _WIN32
             " /* do nothing */ }\n"
 #else
-            " PyGILState_Release(state); throw CPyCppyy::PyException{}; }\n"
+            " CPyCppyy::PyException pyexc; PyGILState_Release(state); throw pyexc; }\n"
 #endif
             "    PyGILState_Release(state);\n"
             "    return";

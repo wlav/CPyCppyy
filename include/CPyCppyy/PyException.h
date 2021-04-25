@@ -28,6 +28,7 @@
 
 // Standard
 #include <exception>
+#include <string>
 
 // Bindings
 #include "CPyCppyy/CommonDefs.h"
@@ -42,6 +43,9 @@ public:
 
 // give reason for raised exception
     virtual const char* what() const noexcept;
+
+private:
+    std::string fMsg;
 };
 
 } // namespace CPyCppyy
