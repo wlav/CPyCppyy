@@ -313,7 +313,7 @@ static inline long CPyCppyy_PyLong_AsStrictLong(PyObject* pyobject)
     return (long)PyLong_AsLong(pyobject);   // already does long range check
 }
 
-static inline long CPyCppyy_PyLong_AsStrictLongLong(PyObject* pyobject)
+static inline PY_LONG_LONG CPyCppyy_PyLong_AsStrictLongLong(PyObject* pyobject)
 {
 // strict python integer to C++ long long integer conversion
 
@@ -323,7 +323,7 @@ static inline long CPyCppyy_PyLong_AsStrictLongLong(PyObject* pyobject)
         return (long)-1;
    }
 
-    return (long)PyLong_AsLongLong(pyobject);   // already does long range check
+    return PyLong_AsLongLong(pyobject);     // already does long range check
 }
 
 
