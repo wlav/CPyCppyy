@@ -548,12 +548,29 @@ PyObject* CPyCppyy::CPPMethod::GetArgDefault(int iarg, bool silent)
             TypeManip::cppscope_to_pyscope(defvalue);
         }
 
-    // attempt to evaluate the string representation
-        PyObject* pyval = (PyObject*)PyRun_String((char*)defvalue.c_str(), Py_eval_input, gdct, gdct);
+    // a couple of common cases that python doesn't like (technically, 'L' is okay with older
+    // pythons, but C long will always fit in Python int, so no need to bother)
+        char c = defvalue.back();
+        if (c == 'F' || c == 'D' || c == 'L') {
+            int offset = 1;
+            if (2 < defvalue.size() && defvalue[defvalue.size()-2] == 'U')
+                offset = 2;
+            defvalue = defvalue.substr(0, defvalue.size()-offset);
+        }
+
+    // attempt to evaluate the string representation (compilation is first to code to allow
+    // the error message to indicate where it's coming from)
+        PyObject* pyval = nullptr;
+
+        PyObject* pycode = Py_CompileString((char*)defvalue.c_str(), "cppyy_default_compiler", Py_eval_input);
+        if (pycode) {
+            pyval = PyEval_EvalCode(pycode, gdct, gdct);
+            Py_DECREF(pycode);
+        }
 
         if (!pyval && PyErr_Occurred() && silent) {
             PyErr_Clear();
-            pyval = CPyCppyy_PyText_FromString(defvalue.c_str());
+            pyval = CPyCppyy_PyText_FromString(defvalue.c_str());    // allows continuation, but is likely to fail
         }
 
         Py_XDECREF(scope);
@@ -711,7 +728,7 @@ bool CPyCppyy::CPPMethod::ProcessKwds(PyObject* self_in, PyCallArgs& cargs)
             CPyCppyy_PyArgs_SET_ITEM(newArgs, i, item);
         } else {
         // try retrieving the default
-            item = GetArgDefault((int)i, false);
+            item = GetArgDefault((int)i, false /* i.e. not silent */);
             if (!item) {
                 Py_DECREF(newArgs);
                 return false;
