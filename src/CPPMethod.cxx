@@ -42,6 +42,11 @@ CPyCppyy::PyCallArgs::~PyCallArgs() {
 #if PY_VERSION_HEX >= 0x03080000
     if (fFlags & kIsOffset) fArgs -= 1;
 
+    if (fFlags & kDoItemDecref) {
+        for (Py_ssize_t iarg = 0; iarg < CPyCppyy_PyArgs_GET_SIZE(fArgs, fNArgsf); ++iarg)
+            Py_DECREF(fArgs[iarg]);
+    }
+
     if (fFlags & kDoFree)
         PyMem_Free((void*)fArgs);
     else if (fFlags & kArgsSwap)
@@ -712,9 +717,7 @@ bool CPyCppyy::CPPMethod::ProcessKwds(PyObject* self_in, PyCallArgs& cargs)
         }
 
         PyObject* item = CPyCppyy_PyArgs_GET_ITEM(cargs.fArgs, i);
-#if PY_VERSION_HEX < 0x03080000
         Py_INCREF(item);
-#endif
         CPyCppyy_PyArgs_SET_ITEM(newArgs, i, item);
     }
 
@@ -722,9 +725,7 @@ bool CPyCppyy::CPPMethod::ProcessKwds(PyObject* self_in, PyCallArgs& cargs)
     for (Py_ssize_t i = nArgs; i < maxargs; ++i) {
         PyObject* item = vArgs[i];
         if (item) {
-#if PY_VERSION_HEX < 0x03080000
             Py_INCREF(item);
-#endif
             CPyCppyy_PyArgs_SET_ITEM(newArgs, i, item);
         } else {
         // try retrieving the default
@@ -733,23 +734,26 @@ bool CPyCppyy::CPPMethod::ProcessKwds(PyObject* self_in, PyCallArgs& cargs)
                 Py_DECREF(newArgs);
                 return false;
             }
-            // TODO: who owns item here for vector calls?
             CPyCppyy_PyArgs_SET_ITEM(newArgs, i, item);
         }
     }
 
+#if PY_VERSION_HEX >= 0x03080000
     if (cargs.fFlags & PyCallArgs::kDoFree) {
         if (cargs.fFlags & PyCallArgs::kIsOffset)
             cargs.fArgs -= 1;
         PyMem_Free((void*)cargs.fArgs);
-    } else if (cargs.fFlags & PyCallArgs::kDoDecref) {
+    }
+#else
+    if (cargs.fFlags & PyCallArgs::kDoDecref) {
         Py_DECREF(cargs.fArgs);
     }
+#endif
 
     cargs.fArgs = newArgs;
     cargs.fNArgsf = maxargs;
 #if PY_VERSION_HEX >= 0x03080000
-    cargs.fFlags = PyCallArgs::kDoFree;
+    cargs.fFlags = PyCallArgs::kDoFree | PyCallArgs::kDoItemDecref;
 #else
     cargs.fFlags = PyCallArgs::kDoDecref;
 #endif
