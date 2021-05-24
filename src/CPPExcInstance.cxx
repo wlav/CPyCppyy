@@ -229,10 +229,10 @@ PyTypeObject CPPExcInstance_Type = {
     sizeof(CPPExcInstance),        // tp_basicsize
     0,                             // tp_itemsize
     (destructor)ep_dealloc,        // tp_dealloc
-    0,                             // tp_as_async / tp_print
+    0,                             // tp_vectorcall_offset / tp_print
     0,                             // tp_getattr
     0,                             // tp_setattr
-    0,                             // tp_compare
+    0,                             // tp_as_async / tp_compare
     (reprfunc)ep_repr,             // tp_repr
     &ep_as_number,                 // tp_as_number
     0,                             // tp_as_sequence

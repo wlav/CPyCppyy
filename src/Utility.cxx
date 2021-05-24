@@ -276,6 +276,7 @@ CPyCppyy::PyCallable* CPyCppyy::Utility::FindUnaryOperator(PyObject* pyclass, co
 {
 // Find a callable matching named operator (op) and klass arguments in the global
 // namespace or the klass' namespace.
+
     if (!CPPScope_Check(pyclass))
         return nullptr;
 

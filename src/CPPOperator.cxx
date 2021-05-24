@@ -27,22 +27,32 @@ CPyCppyy::CPPOperator::CPPOperator(
 }
 
 //-----------------------------------------------------------------------------
-PyObject* CPyCppyy::CPPOperator::Call(
-    CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt)
+PyObject* CPyCppyy::CPPOperator::Call(CPPInstance*& self,
+    CPyCppyy_PyArgs_t args, size_t nargsf, PyObject* kwds, CallContext* ctxt)
 {
 // some operators can be a mix of global and class overloads; this method will
 // first try class overloads (the existence of this method means that such were
 // defined) and if failed, fall back on the global stubs
 // TODO: the fact that this is a method and not an overload means that the global
 // ones are tried for each method that fails during the overload resolution
-    PyObject* result = this->CPPMethod::Call(self, args, kwds, ctxt);
-    if (result || !fStub || !self || PyTuple_GET_SIZE(args) != 1)
+    PyObject* result = this->CPPMethod::Call(self, args, nargsf, kwds, ctxt);
+    if (result || !fStub || !self)
         return result;
+
+    Py_ssize_t idx_other = 0;
+    if (CPyCppyy_PyArgs_GET_SIZE(args, nargsf) != 1) {
+#if PY_VERSION_HEX >= 0x03080000
+        if ((CPyCppyy_PyArgs_GET_SIZE(args, nargsf) == 2 && CPyCppyy_PyArgs_GET_ITEM(args, 0) == (PyObject*)self))
+            idx_other = 1;
+        else
+#endif
+        return result;
+    }
 
     PyObject* pytype = 0, *pyvalue = 0, *pytrace = 0;
     PyErr_Fetch(&pytype, &pyvalue, &pytrace);
 
-    result = fStub((PyObject*)self, PyTuple_GET_ITEM(args, 0));
+    result = fStub((PyObject*)self, CPyCppyy_PyArgs_GET_ITEM(args, idx_other));
 
     if (!result)
         PyErr_Restore(pytype, pyvalue, pytrace);

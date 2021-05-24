@@ -14,10 +14,8 @@ public:
 public:
     virtual PyObject* GetDocString();
     virtual PyCallable* Clone() { return new CPPConstructor(*this); }
-
-public:
-    virtual PyObject* Call(
-        CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt = nullptr);
+    virtual PyObject* Call(CPPInstance*& self,
+        CPyCppyy_PyArgs_t args, size_t nargsf, PyObject* kwds, CallContext* ctxt = nullptr);
 
 protected:
     virtual bool InitExecutor_(Executor*&, CallContext* ctxt = nullptr);
@@ -32,7 +30,9 @@ public:
     CPPMultiConstructor& operator=(const CPPMultiConstructor&);
 
 public:
-    virtual PyObject* Call(CPPInstance*&, PyObject*, PyObject*, CallContext* = nullptr);
+    virtual PyCallable* Clone() { return new CPPMultiConstructor(*this); }
+    virtual PyObject* Call(CPPInstance*& self,
+        CPyCppyy_PyArgs_t args, size_t nargsf, PyObject* kwds, CallContext* ctxt = nullptr);
 
 private:
     Py_ssize_t fNumBases;
@@ -45,7 +45,9 @@ public:
     using CPPConstructor::CPPConstructor;
 
 public:
-    virtual PyObject* Call(CPPInstance*&, PyObject*, PyObject*, CallContext* = nullptr);
+    virtual PyCallable* Clone() { return new CPPAbstractClassConstructor(*this); }
+    virtual PyObject* Call(CPPInstance*& self,
+        CPyCppyy_PyArgs_t args, size_t nargsf, PyObject* kwds, CallContext* ctxt = nullptr);
 };
 
 class CPPNamespaceConstructor : public CPPConstructor {
@@ -53,7 +55,9 @@ public:
     using CPPConstructor::CPPConstructor;
 
 public:
-    virtual PyObject* Call(CPPInstance*&, PyObject*, PyObject*, CallContext* = nullptr);
+    virtual PyCallable* Clone() { return new CPPNamespaceConstructor(*this); }
+    virtual PyObject* Call(CPPInstance*& self,
+        CPyCppyy_PyArgs_t args, size_t nargsf, PyObject* kwds, CallContext* ctxt = nullptr);
 };
 
 class CPPIncompleteClassConstructor : public CPPConstructor {
@@ -61,7 +65,9 @@ public:
     using CPPConstructor::CPPConstructor;
 
 public:
-    virtual PyObject* Call(CPPInstance*&, PyObject*, PyObject*, CallContext* = nullptr);
+    virtual PyCallable* Clone() { return new CPPIncompleteClassConstructor(*this); }
+    virtual PyObject* Call(CPPInstance*& self,
+        CPyCppyy_PyArgs_t args, size_t nargsf, PyObject* kwds, CallContext* ctxt = nullptr);
 };
 
 } // namespace CPyCppyy

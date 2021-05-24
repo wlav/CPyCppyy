@@ -625,6 +625,10 @@ static PyObject* op_str(CPPInstance* self)
 // Additionally, there may be a mapped __str__ from the C++ type defining `operator char*`
 // or `operator const char*`. Results are memoized for performance reasons.
 
+// 0. Protect against trying to print a typed nullptr object through an insertion operator
+    if (!self->GetObject())
+        return op_repr(self);
+
 // 1. Available operator<< to convert through an ostringstream
     if (!ScopeFlagCheck(self, CPPScope::kNoOSInsertion)) {
         for (PyObject* pyname : {PyStrings::gLShift, PyStrings::gLShiftC, (PyObject*)0x01, (PyObject*)0x02}) {
@@ -909,10 +913,10 @@ PyTypeObject CPPInstance_Type = {
     sizeof(CPPInstance),           // tp_basicsize
     0,                             // tp_itemsize
     (destructor)op_dealloc,        // tp_dealloc
-    0,                             // tp_as_async / tp_print
+    0,                             // tp_vectorcall_offset / tp_print
     0,                             // tp_getattr
     0,                             // tp_setattr
-    0,                             // tp_compare
+    0,                             // tp_as_async / tp_compare
     (reprfunc)op_repr,             // tp_repr
     &op_as_number,                 // tp_as_number
     0,                             // tp_as_sequence

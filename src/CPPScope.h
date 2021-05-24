@@ -45,9 +45,10 @@ public:
         kIsPython        = 0x0010,
         kIsMultiCross    = 0x0020,
         kIsInComplete    = 0x0040,
-        kNoOSInsertion   = 0x0080,
-        kGblOSInsertion  = 0x0100,
-        kNoPrettyPrint   = 0x0200 };
+        kNoImplicit      = 0x0080,
+        kNoOSInsertion   = 0x0100,
+        kGblOSInsertion  = 0x0200,
+        kNoPrettyPrint   = 0x0400 };
 
 public:
     PyHeapTypeObject  fType;

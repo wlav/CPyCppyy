@@ -15,6 +15,29 @@ namespace CPyCppyy {
 class Executor;
 class Converter;
 
+class PyCallArgs {
+public:
+    PyCallArgs(CPPInstance*& self, CPyCppyy_PyArgs_t args, size_t nargsf, PyObject* kwds)
+        : fSelf(self), fArgs(args), fNArgsf(nargsf), fKwds(kwds), fFlags(kNone) {}
+    ~PyCallArgs();
+
+    enum ECleanupFlags {
+        kNone           = 0x0000,
+        kIsOffset       = 0x0001, // args were offset by 1 to drop self
+        kSelfSwap       = 0x0002, // args[-1] and self need swapping
+        kArgsSwap       = 0x0004, // args[0] and args[1] need swapping
+        kDoFree         = 0x0008, // args need to be free'd
+        kDoDecref       = 0x0010, // args need a decref
+    };
+
+public:
+    CPPInstance*&     fSelf;
+    CPyCppyy_PyArgs_t fArgs;
+    size_t            fNArgsf;
+    PyObject*         fKwds;
+    int               fFlags;
+};
+
 class CPPMethod : public PyCallable {
 public:
     CPPMethod(Cppyy::TCppScope_t scope, Cppyy::TCppMethod_t method);
@@ -41,15 +64,15 @@ public:
     virtual PyCallable* Clone() { return new CPPMethod(*this); }
 
 public:
-    virtual PyObject* Call(
-        CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt = nullptr);
+    virtual PyObject* Call(CPPInstance*& self,
+        CPyCppyy_PyArgs_t args, size_t nargsf, PyObject* kwds, CallContext* ctxt = nullptr);
 
 protected:
-    virtual PyObject* PreProcessArgs(CPPInstance*& self, PyObject* args, PyObject* kwds);
+    virtual bool ProcessArgs(PyCallArgs& args);
 
-    bool      Initialize(CallContext* ctxt = nullptr);
-    PyObject* ProcessKeywords(PyObject* self, PyObject* args, PyObject* kwds);
-    bool      ConvertAndSetArgs(PyObject* args, CallContext* ctxt = nullptr);
+    bool Initialize(CallContext* ctxt = nullptr);
+    bool ProcessKwds(PyObject* self_in, PyCallArgs& args);
+    bool ConvertAndSetArgs(CPyCppyy_PyArgs_t, size_t nargsf, CallContext* ctxt = nullptr);
     PyObject* Execute(void* self, ptrdiff_t offset, CallContext* ctxt = nullptr);
 
     Cppyy::TCppMethod_t GetMethod()   { return fMethod; }
@@ -63,6 +86,7 @@ protected:
 private:
     void Copy_(const CPPMethod&);
     void Destroy_();
+    bool VerifyArgCount_(Py_ssize_t);
 
     PyObject* ExecuteFast(void*, ptrdiff_t, CallContext*);
     PyObject* ExecuteProtected(void*, ptrdiff_t, CallContext*);

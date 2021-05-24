@@ -44,12 +44,15 @@ namespace CPyCppyy {
 
 #if PY_VERSION_HEX < 0x03000000
 const Py_ssize_t MOVE_REFCOUNT_CUTOFF = 1;
-#else
+#elif PY_VERSION_HEX < 0x03080000
 // p3 has at least 2 ref-counts, as contrary to p2, it will create a descriptor
 // copy for the method holding self in the case of __init__; but there can also
 // be a reference held by the frame object, which is indistinguishable from a
 // local variable reference, so the cut-off has to remain 2.
 const Py_ssize_t MOVE_REFCOUNT_CUTOFF = 2;
+#else
+// since py3.8, vector calls behave again as expected
+const Py_ssize_t MOVE_REFCOUNT_CUTOFF = 1;
 #endif
 
 //- pretend-ctypes helpers ---------------------------------------------------
@@ -379,23 +382,21 @@ static inline CPyCppyy::CPPInstance* ConvertImplicit(Cppyy::TCppType_t klass,
         return nullptr;
     }
 
-// add a pseudo-keyword argument to prevent recursion
-    PyObject* kwds = PyDict_New();
-    PyDict_SetItem(kwds, PyStrings::gNoImplicit, Py_True);
+// call constructor of argument type to attempt implicit conversion (disallow any
+// implicit conversions by the scope's constructor itself)
     PyObject* args = PyTuple_New(1);
     Py_INCREF(pyobject); PyTuple_SET_ITEM(args, 0, pyobject);
 
-// call constructor of argument type to attempt implicit conversion
-    CPPInstance* pytmp = (CPPInstance*)PyObject_Call(pyscope, args, kwds);
+    ((CPPScope*)pyscope)->fFlags |= CPPScope::kNoImplicit;
+    CPPInstance* pytmp = (CPPInstance*)PyObject_Call(pyscope, args, NULL);
     if (!pytmp && PyTuple_CheckExact(pyobject)) {
     // special case: allow implicit conversion from given set of arguments in tuple
         PyErr_Clear();
-        PyDict_SetItem(kwds, PyStrings::gNoImplicit, Py_True); // was deleted
-        pytmp = (CPPInstance*)PyObject_Call(pyscope, pyobject, kwds);
+        pytmp = (CPPInstance*)PyObject_Call(pyscope, pyobject, NULL);
     }
+    ((CPPScope*)pyscope)->fFlags &= ~CPPScope::kNoImplicit;
 
     Py_DECREF(args);
-    Py_DECREF(kwds);
     Py_DECREF(pyscope);
 
     if (pytmp) {
@@ -2397,7 +2398,7 @@ static void* PyFunction_AsCPointer(PyObject* pyobject,
     if (TemplateProxy_Check(pyobject)) {
     // get the actual underlying template matching the signature
         TemplateProxy* pytmpl = (TemplateProxy*)pyobject;
-        std::string fullname = CPyCppyy_PyText_AsString(pytmpl->fTI->fCppName);
+        std::string fullname = pytmpl->fTI->fCppName;
         if (pytmpl->fTemplateArgs)
             fullname += CPyCppyy_PyText_AsString(pytmpl->fTemplateArgs);
         Cppyy::TCppScope_t scope = ((CPPClass*)pytmpl->fTI->fPyClass)->fCppType;

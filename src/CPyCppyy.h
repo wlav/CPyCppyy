@@ -287,6 +287,54 @@ inline void CPyCppyy_PyBuffer_Release(PyObject* /* unused */, Py_buffer* view) {
 #define CPyCppyy_PyCFunction_Call PyCFunction_Call
 #endif
 
+// vector call support
+#if PY_VERSION_HEX >= 0x03080000
+typedef PyObject* const* CPyCppyy_PyArgs_t;
+static inline PyObject* CPyCppyy_PyArgs_GET_ITEM(CPyCppyy_PyArgs_t args, Py_ssize_t i) {
+    return args[i];
+}
+static inline PyObject* CPyCppyy_PyArgs_SET_ITEM(CPyCppyy_PyArgs_t args, Py_ssize_t i, PyObject* item) {
+    return ((PyObject**)args)[i] = item;
+}
+static inline Py_ssize_t CPyCppyy_PyArgs_GET_SIZE(CPyCppyy_PyArgs_t, size_t nargsf) {
+    return PyVectorcall_NARGS(nargsf);
+}
+#if PY_VERSION_HEX >= 0x03090000
+#define CPyCppyy_PyObject_Call  PyObject_Vectorcall
+#else
+#define CPyCppyy_PyObject_Call _PyObject_Vectorcall
+#endif
+inline PyObject* CPyCppyy_tp_call(
+        PyObject* cb, CPyCppyy_PyArgs_t args, size_t nargsf, PyObject* kwds) {
+    Py_ssize_t offset = Py_TYPE(cb)->tp_vectorcall_offset;
+    vectorcallfunc func = *(vectorcallfunc*)(((char*)cb) + offset);
+    return func(cb, args, nargsf, kwds);
+}
+
+#ifndef Py_TPFLAGS_HAVE_VECTORCALL
+#define Py_TPFLAGS_HAVE_VECTORCALL _Py_TPFLAGS_HAVE_VECTORCALL
+#endif
+
+#else
+
+typedef PyObject* CPyCppyy_PyArgs_t;
+static inline PyObject* CPyCppyy_PyArgs_GET_ITEM(CPyCppyy_PyArgs_t args, Py_ssize_t i) {
+    return PyTuple_GET_ITEM(args, i);
+}
+static inline PyObject* CPyCppyy_PyArgs_SET_ITEM(CPyCppyy_PyArgs_t args, Py_ssize_t i, PyObject* item) {
+    return PyTuple_SET_ITEM(args, i, item);
+}
+static inline Py_ssize_t CPyCppyy_PyArgs_GET_SIZE(CPyCppyy_PyArgs_t args, size_t) {
+    return PyTuple_GET_SIZE(args);
+}
+inline PyObject* CPyCppyy_PyObject_Call(PyObject* cb, PyObject* args, size_t, PyObject* kwds) {
+    return PyObject_Call(cb, args, kwds);
+}
+inline PyObject* CPyCppyy_tp_call(PyObject* cb, PyObject* args, size_t, PyObject* kwds) {
+    return Py_TYPE(cb)->tp_call(cb, args, kwds);
+}
+#endif
+
 // C++ version of the cppyy API
 #include "Cppyy.h"
 

@@ -70,10 +70,8 @@ static PyObject* CreateNewCppProxyClass(Cppyy::TCppScope_t klass, PyObject* pyba
 
     PyObject* pymeta = (PyObject*)CPPScopeMeta_New(klass, args);
     Py_DECREF(args);
-    if (!pymeta) {
-        PyErr_Print();
+    if (!pymeta)
         return nullptr;
-    }
 
 // alright, and now we really badly want to get rid of the dummy ...
     PyObject* dictproxy = PyObject_GetAttr(pymeta, PyStrings::gDict);

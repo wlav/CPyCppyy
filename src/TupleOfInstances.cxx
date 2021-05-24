@@ -174,7 +174,6 @@ PyObject* TupleOfInstances_New(
         PyObject* args = PyTuple_New(1);
         Py_INCREF(tup); PyTuple_SET_ITEM(args, 0, tup);
         PyObject* arr = PyTuple_Type.tp_new(&TupleOfInstances_Type, args, nullptr);
-        if (PyErr_Occurred()) PyErr_Print();
 
         Py_DECREF(args);
         // tup ref eaten by SET_ITEM on args
@@ -193,10 +192,10 @@ PyTypeObject TupleOfInstances_Type = {
     0,                             // tp_basicsize
     0,                             // tp_itemsize
     0,                             // tp_dealloc
-    0,                             // tp_as_async / tp_print
+    0,                             // tp_vectorcall_offset / tp_print
     0,                             // tp_getattr
     0,                             // tp_setattr
-    0,                             // tp_compare
+    0,                             // tp_as_async / tp_compare
     0,                             // tp_repr
     0,                             // tp_as_number
     0,                             // tp_as_sequence

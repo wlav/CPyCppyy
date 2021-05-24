@@ -61,14 +61,15 @@ struct CallContext {
         kAllowImplicit  = 0x0010, // indicate that implicit coversions are allowed
         kNoImplicit     = 0x0020, // disable implicit to prevent recursion
         kCallDirect     = 0x0040, // call wrapped method directly, no inheritance
-        kUseHeuristics  = 0x0080, // if method applies heuristics memory policy
-        kUseStrict      = 0x0100, // if method applies strict memory policy
-        kReleaseGIL     = 0x0200, // if method should release the GIL
-        kSetLifeLine    = 0x0400, // if return value is part of 'this'
-        kNeverLifeLine  = 0x0800, // if the return value is never part of 'this'
-        kProtected      = 0x1000, // if method should return on signals
-        kUseFFI         = 0x2000, // not implemented
-        kIsPseudoFunc   = 0x4000, // internal, used for introspection
+        kFromDescr      = 0x0080, // initiated from a descriptor
+        kUseHeuristics  = 0x0100, // if method applies heuristics memory policy
+        kUseStrict      = 0x0200, // if method applies strict memory policy
+        kReleaseGIL     = 0x0400, // if method should release the GIL
+        kSetLifeLine    = 0x0800, // if return value is part of 'this'
+        kNeverLifeLine  = 0x1000, // if the return value is never part of 'this'
+        kProtected      = 0x2000, // if method should return on signals
+        kUseFFI         = 0x4000, // not implemented
+        kIsPseudoFunc   = 0x8000, // internal, used for introspection
     };
 
 // memory handling

@@ -33,8 +33,8 @@ public:
     virtual PyCallable* Clone() = 0;
 
 public:
-    virtual PyObject* Call(
-        CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt = nullptr) = 0;
+    virtual PyObject* Call(CPPInstance*& self,
+        CPyCppyy_PyArgs_t args, size_t nargsf, PyObject* kwds, CallContext* ctxt = nullptr) = 0;
 };
 
 } // namespace CPyCppyy

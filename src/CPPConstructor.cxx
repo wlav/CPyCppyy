@@ -8,6 +8,7 @@
 #include "PyStrings.h"
 
 // Standard
+#include <memory>
 #include <string>
 
 
@@ -35,30 +36,33 @@ PyObject* CPyCppyy::CPPConstructor::GetDocString()
 }
 
 //----------------------------------------------------------------------------
-PyObject* CPyCppyy::CPPConstructor::Call(
-    CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt)
+PyObject* CPyCppyy::CPPConstructor::Call(CPPInstance*& self,
+    CPyCppyy_PyArgs_t args, size_t nargsf, PyObject* kwds, CallContext* ctxt)
 {
 // setup as necessary
     if (fArgsRequired == -1 && !this->Initialize(ctxt))
         return nullptr;                     // important: 0, not Py_None
 
 // fetch self, verify, and put the arguments in usable order
-    if (!(args = this->PreProcessArgs(self, args, kwds)))
+    PyCallArgs cargs{self, args, nargsf, kwds};
+    if (!this->ProcessArgs(cargs))
         return nullptr;
 
 // verify existence of self (i.e. tp_new called)
     if (!self) {
-        PyErr_Print();
         PyErr_SetString(PyExc_ReferenceError, "no python object allocated");
         return nullptr;
     }
 
     if (self->GetObject()) {
-        Py_DECREF(args);
         PyErr_SetString(PyExc_ReferenceError,
             "object already constructed; use __assign__ instead of __init__");
         return nullptr;
     }
+
+// self provides the python context for lifelines
+    if (!ctxt->fPyContext)
+        ctxt->fPyContext = (PyObject*)cargs.fSelf;    // no Py_INCREF as no ownership
 
 // perform the call, nullptr 'this' makes the other side allocate the memory
     Cppyy::TCppScope_t disp = self->ObjectIsA(false /* check_smart */);
@@ -81,7 +85,7 @@ PyObject* CPyCppyy::CPPConstructor::Call(
             return nullptr;
         }
 
-        PyObject* pyobj = PyObject_Call(dispproxy, args, kwds);
+        PyObject* pyobj = CPyCppyy_PyObject_Call(dispproxy, cargs.fArgs, cargs.fNArgsf, kwds);
         if (!pyobj)
             return nullptr;
 
@@ -97,16 +101,13 @@ PyObject* CPyCppyy::CPPConstructor::Call(
 
     } else {
     // translate the arguments
-        if (!this->ConvertAndSetArgs(args, ctxt)) {
-            Py_DECREF(args);
+        if (((CPPClass*)Py_TYPE(self))->fFlags & CPPScope::kNoImplicit)
+            ctxt->fFlags |= CallContext::kNoImplicit;
+        if (!this->ConvertAndSetArgs(cargs.fArgs, cargs.fNArgsf, ctxt))
             return nullptr;
-        }
 
         address = (intptr_t)this->Execute(nullptr, 0, ctxt);
     }
-
-// done with filtered args
-    Py_DECREF(args);
 
 // return object if successful, lament if not
     if (address) {
@@ -172,8 +173,8 @@ CPyCppyy::CPPMultiConstructor& CPyCppyy::CPPMultiConstructor::operator=(const CP
 }
 
 //----------------------------------------------------------------------------
-PyObject* CPyCppyy::CPPMultiConstructor::Call(
-    CPPInstance*& self, PyObject* _args, PyObject* kwds, CallContext* ctxt)
+PyObject* CPyCppyy::CPPMultiConstructor::Call(CPPInstance*& self,
+    CPyCppyy_PyArgs_t argsin, size_t nargsf, PyObject* kwds, CallContext* ctxt)
 {
 // By convention, initialization parameters of multiple base classes are grouped
 // by target base class. Here, we disambiguate and put in "sentinel" parameters
@@ -185,8 +186,32 @@ PyObject* CPyCppyy::CPPMultiConstructor::Call(
 //  2. less than fNumBases, assuming (void) for the missing base constructors
 //  3. normal arguments, going to the first base only
 
-    Py_INCREF(_args);
-    PyObject* args = _args;
+// TODO: this way of forwarding is expensive as the loop is external to this call;
+// it would be more efficient to have the argument handling happen beforehand
+
+#if PY_VERSION_HEX >= 0x03080000
+// fetch self, verify, and put the arguments in usable order (if self is not handled
+// first, arguments can not be reordered with sentinels in place)
+    PyCallArgs cargs{self, argsin, nargsf, kwds};
+    if (!this->ProcessArgs(cargs))
+        return nullptr;
+
+// to re-use the argument handling, simply change the argument array into a tuple (the
+// benefits of not allocating the tuple are relatively minor in this case)
+    Py_ssize_t nargs = CPyCppyy_PyArgs_GET_SIZE(cargs.fArgs, cargs.fNArgsf);
+    PyObject* args = PyTuple_New(nargs);
+    for (Py_ssize_t i = 0; i < nargs; ++i) {
+        Py_INCREF(cargs.fArgs[i]);
+        PyTuple_SET_ITEM(args, i, cargs.fArgs[i]);
+    }
+
+// copy out self as it may have been updated
+    self = cargs.fSelf;
+
+#else
+    PyObject* args = argsin;
+    Py_INCREF(args);
+#endif
 
     if (PyTuple_CheckExact(args) && PyTuple_GET_SIZE(args)) {   // case 0. falls through
         Py_ssize_t nArgs = PyTuple_GET_SIZE(args);
@@ -250,20 +275,42 @@ PyObject* CPyCppyy::CPPMultiConstructor::Call(
         }
     }
 
-    PyObject* result = CPPConstructor::Call(self, args, kwds, ctxt);
+#if PY_VERSION_HEX < 0x03080000
+    Py_ssize_t
+#endif
+    nargs = PyTuple_GET_SIZE(args);
+
+#if PY_VERSION_HEX >= 0x03080000
+// now unroll the new args tuple into a vector of objects
+    auto argsu = std::unique_ptr<PyObject*[]>{new PyObject*[nargs]};
+    for (Py_ssize_t i = 0; i < nargs; ++i)
+        argsu[i] = PyTuple_GET_ITEM(args, i);
+    CPyCppyy_PyArgs_t _args = argsu.get();
+#else
+    CPyCppyy_PyArgs_t _args = args;
+#endif
+
+    PyObject* result = CPPConstructor::Call(self, _args, nargs, kwds, ctxt);
     Py_DECREF(args);
+
     return result;
 }
 
 
 //----------------------------------------------------------------------------
-PyObject* CPyCppyy::CPPAbstractClassConstructor::Call(
-    CPPInstance*& self, PyObject* args, PyObject* kwds, CallContext* ctxt)
+PyObject* CPyCppyy::CPPAbstractClassConstructor::Call(CPPInstance*& self,
+    CPyCppyy_PyArgs_t args, size_t nargsf, PyObject* kwds, CallContext* ctxt)
 {
 // do not allow instantiation of abstract classes
-    if (self && GetScope() != self->ObjectIsA()) {
+    if ((self && GetScope() != self->ObjectIsA()
+#if PY_VERSION_HEX >= 0x03080000
+        ) || (!self && !(ctxt->fFlags & CallContext::kFromDescr) && \
+              CPyCppyy_PyArgs_GET_SIZE(args, nargsf) && CPPInstance_Check(args[0]) && \
+              GetScope() != ((CPPInstance*)args[0])->ObjectIsA()
+#endif
+        )) {
     // happens if a dispatcher is inserted; allow constructor call
-        return CPPConstructor::Call(self, args, kwds, ctxt);
+        return CPPConstructor::Call(self, args, nargsf, kwds, ctxt);
     }
 
     PyErr_Format(PyExc_TypeError, "cannot instantiate abstract class \'%s\'"
@@ -275,7 +322,7 @@ PyObject* CPyCppyy::CPPAbstractClassConstructor::Call(
 
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::CPPNamespaceConstructor::Call(
-    CPPInstance*&, PyObject*, PyObject*, CallContext*)
+    CPPInstance*&, CPyCppyy_PyArgs_t, size_t, PyObject*, CallContext*)
 {
 // do not allow instantiation of namespaces
     PyErr_Format(PyExc_TypeError, "cannot instantiate namespace \'%s\'",
@@ -286,7 +333,7 @@ PyObject* CPyCppyy::CPPNamespaceConstructor::Call(
 
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::CPPIncompleteClassConstructor::Call(
-    CPPInstance*&, PyObject*, PyObject*, CallContext*)
+    CPPInstance*&, CPyCppyy_PyArgs_t, size_t, PyObject*, CallContext*)
 {
 // do not allow instantiation of incomplete (forward declared) classes)
     PyErr_Format(PyExc_TypeError, "cannot instantiate incomplete class \'%s\'",

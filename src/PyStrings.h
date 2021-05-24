@@ -62,7 +62,6 @@ namespace PyStrings {
 
     extern PyObject* gThisModule;
 
-    extern PyObject* gNoImplicit;
     extern PyObject* gDispInit;
     extern PyObject* gDispGet;
 
