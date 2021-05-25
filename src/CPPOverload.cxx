@@ -591,7 +591,7 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
     CPPInstance* oldSelf = pymeth->fSelf;
 
 // get local handles to proxy internals
-    auto& methods     = pymeth->fMethodInfo->fMethods;
+    auto& methods = pymeth->fMethodInfo->fMethods;
 
     CPPOverload::Methods_t::size_type nMethods = methods.size();
 

@@ -299,6 +299,12 @@ static inline PyObject* CPyCppyy_PyArgs_SET_ITEM(CPyCppyy_PyArgs_t args, Py_ssiz
 static inline Py_ssize_t CPyCppyy_PyArgs_GET_SIZE(CPyCppyy_PyArgs_t, size_t nargsf) {
     return PyVectorcall_NARGS(nargsf);
 }
+static inline CPyCppyy_PyArgs_t CPyCppyy_PyArgs_New(Py_ssize_t N) {
+    return (CPyCppyy_PyArgs_t)PyMem_Malloc(N*sizeof(PyObject*));
+}
+static inline void CPyCppyy_PyArgs_DEL(CPyCppyy_PyArgs_t args) {
+    PyMem_Free((void*)args);
+}
 #if PY_VERSION_HEX >= 0x03090000
 #define CPyCppyy_PyObject_Call  PyObject_Vectorcall
 #else
@@ -326,6 +332,12 @@ static inline PyObject* CPyCppyy_PyArgs_SET_ITEM(CPyCppyy_PyArgs_t args, Py_ssiz
 }
 static inline Py_ssize_t CPyCppyy_PyArgs_GET_SIZE(CPyCppyy_PyArgs_t args, size_t) {
     return PyTuple_GET_SIZE(args);
+}
+static inline CPyCppyy_PyArgs_t CPyCppyy_PyArgs_New(Py_ssize_t N) {
+    return PyTuple_New(N);
+}
+static inline void CPyCppyy_PyArgs_DEL(CPyCppyy_PyArgs_t args) {
+    Py_DECREF(args);
 }
 inline PyObject* CPyCppyy_PyObject_Call(PyObject* cb, PyObject* args, size_t, PyObject* kwds) {
     return PyObject_Call(cb, args, kwds);

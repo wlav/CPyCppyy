@@ -553,14 +553,16 @@ PyObject* CPyCppyy::CPPMethod::GetArgDefault(int iarg, bool silent)
             TypeManip::cppscope_to_pyscope(defvalue);
         }
 
-    // a couple of common cases that python doesn't like (technically, 'L' is okay with older
-    // pythons, but C long will always fit in Python int, so no need to bother)
-        char c = defvalue.back();
-        if (c == 'F' || c == 'D' || c == 'L') {
-            int offset = 1;
-            if (2 < defvalue.size() && defvalue[defvalue.size()-2] == 'U')
-                offset = 2;
-            defvalue = defvalue.substr(0, defvalue.size()-offset);
+        if (!scope) {
+        // a couple of common cases that python doesn't like (technically, 'L' is okay with older
+        // pythons, but C long will always fit in Python int, so no need to bother)
+            char c = defvalue.back();
+            if (c == 'F' || c == 'D' || c == 'L') {
+                int offset = 1;
+                if (2 < defvalue.size() && defvalue[defvalue.size()-2] == 'U')
+                    offset = 2;
+                defvalue = defvalue.substr(0, defvalue.size()-offset);
+            }
         }
 
     // attempt to evaluate the string representation (compilation is first to code to allow
@@ -569,7 +571,11 @@ PyObject* CPyCppyy::CPPMethod::GetArgDefault(int iarg, bool silent)
 
         PyObject* pycode = Py_CompileString((char*)defvalue.c_str(), "cppyy_default_compiler", Py_eval_input);
         if (pycode) {
-            pyval = PyEval_EvalCode(pycode, gdct, gdct);
+            pyval = PyEval_EvalCode(
+#if PY_VERSION_HEX < 0x03000000
+                (PyCodeObject*)
+#endif
+                pycode, gdct, gdct);
             Py_DECREF(pycode);
         }
 
@@ -689,11 +695,7 @@ bool CPyCppyy::CPPMethod::ProcessKwds(PyObject* self_in, PyCallArgs& cargs)
 
 // if maxpos < nArgs, it will be detected & reported as a duplicate below
     Py_ssize_t maxargs = maxpos + 1;
-#if PY_VERSION_HEX >= 0x03080000
-    CPyCppyy_PyArgs_t newArgs = (CPyCppyy_PyArgs_t)PyMem_Malloc(maxargs*sizeof(PyObject*));
-#else
-    CPyCppyy_PyArgs_t newArgs = PyTuple_New(maxargs);
-#endif
+    CPyCppyy_PyArgs_t newArgs = CPyCppyy_PyArgs_New(maxargs);
 
 // set all values to zero to be able to check them later (this also guarantees normal
 // cleanup by the tuple deallocation)
@@ -712,7 +714,7 @@ bool CPyCppyy::CPPMethod::ProcessKwds(PyObject* self_in, PyCallArgs& cargs)
         if (vArgs[i]) {
             SetPyError_(CPyCppyy_PyText_FromFormat("%s::%s got multiple values for argument %d",
                 Cppyy::GetFinalName(fScope).c_str(), Cppyy::GetMethodName(fMethod).c_str(), (int)i+1));
-            Py_DECREF(newArgs);
+            CPyCppyy_PyArgs_DEL(newArgs);
             return false;
         }
 
@@ -731,7 +733,7 @@ bool CPyCppyy::CPPMethod::ProcessKwds(PyObject* self_in, PyCallArgs& cargs)
         // try retrieving the default
             item = GetArgDefault((int)i, false /* i.e. not silent */);
             if (!item) {
-                Py_DECREF(newArgs);
+                CPyCppyy_PyArgs_DEL(newArgs);
                 return false;
             }
             CPyCppyy_PyArgs_SET_ITEM(newArgs, i, item);
@@ -742,13 +744,11 @@ bool CPyCppyy::CPPMethod::ProcessKwds(PyObject* self_in, PyCallArgs& cargs)
     if (cargs.fFlags & PyCallArgs::kDoFree) {
         if (cargs.fFlags & PyCallArgs::kIsOffset)
             cargs.fArgs -= 1;
-        PyMem_Free((void*)cargs.fArgs);
-    }
 #else
     if (cargs.fFlags & PyCallArgs::kDoDecref) {
-        Py_DECREF(cargs.fArgs);
-    }
 #endif
+       CPyCppyy_PyArgs_DEL(cargs.fArgs);
+    }
 
     cargs.fArgs = newArgs;
     cargs.fNArgsf = maxargs;
@@ -772,11 +772,7 @@ bool CPyCppyy::CPPMethod::ProcessArgs(PyCallArgs& cargs)
 
 // otherwise, check for a suitable 'self' in args and update accordingly
     if (CPyCppyy_PyArgs_GET_SIZE(cargs.fArgs, cargs.fNArgsf) != 0) {
-#if PY_VERSION_HEX >= 0x03080000
-        CPPInstance* pyobj = (CPPInstance*)cargs.fArgs[0];
-#else
-        CPPInstance* pyobj = (CPPInstance*)PyTuple_GET_ITEM(cargs.fArgs, 0);
-#endif
+        CPPInstance* pyobj = (CPPInstance*)CPyCppyy_PyArgs_GET_ITEM(cargs.fArgs, 0);
 
     // demand CPyCppyy object, and an argument that may match down the road
         if (CPPInstance_Check(pyobj)) {
@@ -795,6 +791,8 @@ bool CPyCppyy::CPPMethod::ProcessArgs(PyCallArgs& cargs)
                 cargs.fArgs += 1;
                 cargs.fFlags |= PyCallArgs::kIsOffset;
 #else
+                if (cargs.fFlags & PyCallArgs::kDoDecref)
+                    Py_DECREF((PyObject*)cargs.fArgs);
                 cargs.fArgs = PyTuple_GetSlice(cargs.fArgs, 1, PyTuple_GET_SIZE(cargs.fArgs));
                 cargs.fFlags |= PyCallArgs::kDoDecref;
 #endif

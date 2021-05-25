@@ -114,11 +114,10 @@ bool CPyCppyy::CPPReverseBinary::ProcessArgs(PyCallArgs& cargs)
 // swap the arguments
 #if PY_VERSION_HEX >= 0x03080000
     std::swap(((PyObject**)cargs.fArgs)[0], ((PyObject**)cargs.fArgs)[1]);
-    cargs.fFlags |= PyCallArgs::kArgsSwap;
 #else
     std::swap(PyTuple_GET_ITEM(cargs.fArgs, 0), PyTuple_GET_ITEM(cargs.fArgs, 1));
-    cargs.fFlags |= PyCallArgs::kArgsSwap;
 #endif
+    cargs.fFlags |= PyCallArgs::kArgsSwap;
 
     return true;
 }
