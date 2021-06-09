@@ -83,17 +83,6 @@ static PyObject* ll_typecode(CPyCppyy::LowLevelView* self, void*)
     return CPyCppyy_PyText_FromString((char*)self->fBufInfo.format);
 }
 
-//---------------------------------------------------------------------------
-static PyGetSetDef ll_getset[] = {
-    {(char*)"__python_owns__", (getter)ll_getownership, (setter)ll_setownership,
-        (char*)"If true, python manages the life time of this buffer", nullptr},
-    {(char*)"__cpp_array__",   (getter)ll_getcpparray,  (setter)ll_setcpparray,
-        (char*)"If true, this array was allocated with C++\'s new[]", nullptr},
-    {(char*)"format",   (getter)ll_typecode, nullptr, nullptr, nullptr},
-    {(char*)"typecode", (getter)ll_typecode, nullptr, nullptr, nullptr},
-    {(char*)nullptr, nullptr, nullptr, nullptr, nullptr }
-};
-
 
 //- Copy memoryview buffers =================================================
 
@@ -668,34 +657,83 @@ static PyBufferProcs ll_as_buffer = {
 };
 
 
+
+//---------------------------------------------------------------------------
+static PyObject* ll_shape(CPyCppyy::LowLevelView* self)
+{
+    Py_buffer& view = self->fBufInfo;
+
+    PyObject* shape = PyTuple_New(view.ndim);
+    for (Py_ssize_t idim = 0; idim < view.ndim; ++idim)
+        PyTuple_SET_ITEM(shape, idim, PyInt_FromSsize_t(view.shape[idim]));
+
+    return shape;
+}
+
 //---------------------------------------------------------------------------
 static PyObject* ll_reshape(CPyCppyy::LowLevelView* self, PyObject* shape)
 {
 // Allow the user to fix up the actual (type-strided) size of the buffer.
-    if (!PyTuple_Check(shape) || PyTuple_GET_SIZE(shape) != 1) {
+    if (!PyTuple_Check(shape)) {
         if (shape) {
             PyObject* pystr = PyObject_Str(shape);
             if (pystr) {
-                PyErr_Format(PyExc_TypeError, "tuple object of length 1 expected, received %s",
+                PyErr_Format(PyExc_TypeError, "tuple object expected, received %s",
                     CPyCppyy_PyText_AsStringChecked(pystr));
                 Py_DECREF(pystr);
                 return nullptr;
             }
         }
-        PyErr_SetString(PyExc_TypeError, "tuple object of length 1 expected");
+        PyErr_SetString(PyExc_TypeError, "tuple object expected");
         return nullptr;
     }
 
-    Py_ssize_t nlen = PyInt_AsSsize_t(PyTuple_GET_ITEM(shape, 0));
-    if (nlen == -1 && PyErr_Occurred())
-        return nullptr;
+    Py_buffer& view = self->fBufInfo;
 
-    self->fBufInfo.len = nlen * self->fBufInfo.itemsize;
-    if (self->fBufInfo.ndim == 1 && self->fBufInfo.shape)
-        self->fBufInfo.shape[0] = nlen;
-    else {
-        PyErr_SetString(PyExc_TypeError, "unsupported buffer dimensions");
-        return nullptr;
+// verify size match
+    long oldsz = 0;
+    for (Py_ssize_t idim = 0; idim < view.ndim; ++idim) {
+        Py_ssize_t nlen = view.shape[idim];
+        if (nlen == CPyCppyy::UNKNOWN_SIZE || nlen == INT_MAX/view.itemsize /* fake 'max' */) {
+            oldsz = -1;      // meaning, unable to check size match
+            break;
+        }
+        oldsz += (long)view.shape[idim];
+    }
+
+    if (0 < oldsz) {
+        Py_ssize_t newsz = 0;
+        for (Py_ssize_t idim = 0; idim < PyTuple_GET_SIZE(shape); ++idim)
+            newsz += PyInt_AsSsize_t(PyTuple_GET_ITEM(shape, idim));
+        if ((Py_ssize_t)oldsz != newsz) {
+            PyObject* tas = PyObject_Str(shape);
+            PyErr_Format(PyExc_ValueError,
+                "cannot reshape array of size %ld into shape %s", oldsz, CPyCppyy_PyText_AsString(tas));
+            Py_DECREF(tas);
+            return nullptr;
+        }
+    }
+
+// reshape
+    if (view.ndim != PyTuple_GET_SIZE(shape)) {
+        PyMem_Free(view.shape);
+        PyMem_Free(view.strides);
+
+        view.ndim      = PyTuple_GET_SIZE(shape);
+        view.shape     = (Py_ssize_t*)PyMem_Malloc(view.ndim * sizeof(Py_ssize_t));
+        view.strides   = (Py_ssize_t*)PyMem_Malloc(view.ndim * sizeof(Py_ssize_t));
+    }
+
+    for (Py_ssize_t idim = 0; idim < PyTuple_GET_SIZE(shape); ++idim) {
+        Py_ssize_t nlen = PyInt_AsSsize_t(PyTuple_GET_ITEM(shape, idim));
+        if (nlen == -1 && PyErr_Occurred())
+            return nullptr;
+
+        if (idim == 0)
+            view.len = nlen * (view.ndim == 1 ? view.itemsize : sizeof(void*));
+
+        view.strides[idim] = view.itemsize;
+        view.shape[idim]   = nlen;
     }
 
     Py_RETURN_NONE;
@@ -744,6 +782,18 @@ static PyMethodDef ll_methods[] = {
     {(char*)"__array__",   (PyCFunction)ll_array,   METH_VARARGS | METH_KEYWORDS,
         (char*)"return a numpy array from the low level view"},
     {(char*)nullptr, nullptr, 0, nullptr}
+};
+
+//---------------------------------------------------------------------------
+static PyGetSetDef ll_getset[] = {
+    {(char*)"__python_owns__", (getter)ll_getownership, (setter)ll_setownership,
+        (char*)"If true, python manages the life time of this buffer", nullptr},
+    {(char*)"__cpp_array__",   (getter)ll_getcpparray,  (setter)ll_setcpparray,
+        (char*)"If true, this array was allocated with C++\'s new[]", nullptr},
+    {(char*)"format",   (getter)ll_typecode, nullptr, nullptr, nullptr},
+    {(char*)"typecode", (getter)ll_typecode, nullptr, nullptr, nullptr},
+    {(char*)"shape", (getter)ll_shape, (setter)ll_reshape, nullptr, nullptr},
+    {(char*)nullptr, nullptr, nullptr, nullptr, nullptr }
 };
 
 
@@ -834,13 +884,7 @@ template<> struct typecode_traits<int> {
 template<> struct typecode_traits<unsigned int> {
     static constexpr const char* format = "I"; static constexpr const char* name = "unsigned int"; };
 template<> struct typecode_traits<long> {
-    static constexpr const char* format = "l"; static constexpr const char*
-#if PY_VERSION_HEX < 0x03000000
-        name = "int";
-#else
-        name = "long";
-#endif
-};
+    static constexpr const char* format = "l"; static constexpr const char* name = "long"; };
 template<> struct typecode_traits<unsigned long> {
     static constexpr const char* format = "L"; static constexpr const char* name = "unsigned long"; };
 template<> struct typecode_traits<long long> {
@@ -908,7 +952,8 @@ static inline PyObject* CreateLowLevelViewT(T* address, Py_ssize_t* shape)
         shape[1] = res;
     }
 
-    view.strides[0]     = view.itemsize;
+    for (Py_ssize_t idim = 0; idim < view.ndim; ++idim)
+        view.strides[idim] = view.itemsize;
 
     return (PyObject*)llp;
 }
