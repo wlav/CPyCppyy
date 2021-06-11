@@ -941,6 +941,8 @@ static inline PyObject* CreateLowLevelViewT(T* address, Py_ssize_t* shape)
     // multi-dim array; sub-views are projected by using more LLViews
         view.len        = nx * sizeof(void*);
         view.itemsize   = sizeof(void*);
+        for (Py_ssize_t idim = 1; idim < view.ndim; ++idim)
+            view.shape[idim] = shape[idim];
 
     // peel off one dimension and create a new LLView converter
         Py_ssize_t res = shape[1];
