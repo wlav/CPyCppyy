@@ -224,6 +224,8 @@ CPPYY_DECLARE_ARRAY_CONVERTER(Double);
 CPPYY_DECLARE_ARRAY_CONVERTER(LDouble);
 CPPYY_DECLARE_ARRAY_CONVERTER(ComplexF);
 CPPYY_DECLARE_ARRAY_CONVERTER(ComplexD);
+CPPYY_DECLARE_ARRAY_CONVERTER(CComplexF);
+CPPYY_DECLARE_ARRAY_CONVERTER(CComplexD);
 
 class CStringArrayConverter : public SCharArrayPtrConverter {
 public:
@@ -320,6 +322,12 @@ public:
 
 private:
     std::complex<double> fBuffer;
+};
+
+class CComplexDConverter: public ComplexDConverter {
+public:
+    virtual PyObject* FromMemory(void* address);
+    virtual bool ToMemory(PyObject* value, void* address, PyObject* = nullptr);
 };
 
 

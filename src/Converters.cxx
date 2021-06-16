@@ -983,8 +983,8 @@ bool CPyCppyy::ComplexDConverter::SetArg(
     }
 
     return this->InstanceConverter::SetArg(pyobject, para, ctxt);
-}                                                                            \
-                                                                             \
+}
+
 PyObject* CPyCppyy::ComplexDConverter::FromMemory(void* address)
 {
     std::complex<double>* dc = (std::complex<double>*)address;
@@ -998,6 +998,25 @@ bool CPyCppyy::ComplexDConverter::ToMemory(PyObject* value, void* address, PyObj
          std::complex<double>* dc = (std::complex<double>*)address;
          dc->real(pc.real);
          dc->imag(pc.imag);
+         return true;
+    }
+    return this->InstanceConverter::ToMemory(value, address, ctxt);
+}
+
+
+PyObject* CPyCppyy::CComplexDConverter::FromMemory(void* address)
+{
+    double* dc = (double*) address;
+    return PyComplex_FromDoubles(dc[0], dc[1]);
+}
+
+bool CPyCppyy::CComplexDConverter::ToMemory(PyObject* value, void* address, PyObject* ctxt)
+{
+    const Py_complex& pc = PyComplex_AsCComplex(value);
+    if (pc.real != -1.0 || !PyErr_Occurred()) {
+         double* dc = (double*) address;
+         dc[0] = pc.real;
+         dc[1] = pc.imag;
          return true;
     }
     return this->InstanceConverter::ToMemory(value, address, ctxt);
@@ -1621,6 +1640,8 @@ CPPYY_IMPL_ARRAY_CONVERTER(Double,   c_double,     double,               'd')
 CPPYY_IMPL_ARRAY_CONVERTER(LDouble,  c_longdouble, long double,          'D')
 CPPYY_IMPL_ARRAY_CONVERTER(ComplexF, c_fcomplex,   std::complex<float>,  'z')
 CPPYY_IMPL_ARRAY_CONVERTER(ComplexD, c_complex,    std::complex<double>, 'Z')
+CPPYY_IMPL_ARRAY_CONVERTER(CComplexF,c_fcomplex,  _Complex float,        'z')
+CPPYY_IMPL_ARRAY_CONVERTER(CComplexD,c_complex,   _Complex double,       'Z')
 
 
 //----------------------------------------------------------------------------
@@ -3166,6 +3187,8 @@ public:
         gf["long double&"] =                (cf_t)+[](dims_t) { static LDoubleRefConverter c{};      return &c; };
         gf["std::complex<double>"] =        (cf_t)+[](dims_t) { return new ComplexDConverter{}; };
         gf["const std::complex<double>&"] = (cf_t)+[](dims_t) { return new ComplexDConverter{}; };
+        gf["_Complex double"] =             (cf_t)+[](dims_t) { return new CComplexDConverter{}; };
+        gf["const _Complex double&"] =      (cf_t)+[](dims_t) { return new CComplexDConverter{}; };
         gf["void"] =                        (cf_t)+[](dims_t) { static VoidConverter c{};            return &c; };
 
     // pointer/array factories
@@ -3210,6 +3233,10 @@ public:
         gf["std::complex<double>*"] =       (cf_t)+[](dims_t d) { return new ComplexDArrayConverter{d}; };
         gf["complex<double>*"] =            (cf_t)+[](dims_t d) { return new ComplexDArrayConverter{d}; };
         gf["std::complex<double>**"] =      (cf_t)+[](dims_t d) { return new ComplexDArrayPtrConverter{d}; };
+        gf["_Complex float*"] =            (cf_t)+[](dims_t d) { return new CComplexFArrayConverter{d}; };
+        gf["_Complex float**"] =           (cf_t)+[](dims_t d) { return new CComplexFArrayPtrConverter{d}; };
+        gf["_Complex double*"] =            (cf_t)+[](dims_t d) { return new CComplexDArrayConverter{d}; };
+        gf["_Complex double**"] =           (cf_t)+[](dims_t d) { return new CComplexDArrayPtrConverter{d}; };
         gf["void*"] =                       (cf_t)+[](dims_t d) { return new VoidArrayConverter{(bool)d}; };
 
     // aliases
