@@ -15,6 +15,7 @@
 #include <sstream>
 #include <utility>
 #include <sys/types.h>
+#include <complex.h>
 
 
 //- data _____________________________________________________________________
@@ -74,6 +75,7 @@ CPPYY_IMPL_GILCALL(long,           L)
 CPPYY_IMPL_GILCALL(PY_LONG_LONG,   LL)
 CPPYY_IMPL_GILCALL(float,          F)
 CPPYY_IMPL_GILCALL(double,         D)
+CPPYY_IMPL_GILCALL(_Complex double,Z)
 CPPYY_IMPL_GILCALL(PY_LONG_DOUBLE, LD)
 CPPYY_IMPL_GILCALL(void*,          R)
 
@@ -308,6 +310,15 @@ PyObject* CPyCppyy::DoubleExecutor::Execute(
 }
 
 //----------------------------------------------------------------------------
+PyObject* CPyCppyy::CComplexDExecutor::Execute(
+    Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
+{
+// execute <method> with argument <self, ctxt>, construct python complex return value
+    _Complex double result = (_Complex double)GILCallZ(method, self, ctxt);
+    return PyComplex_FromDoubles(creal(result), cimag(result));
+}
+
+//----------------------------------------------------------------------------
 PyObject* CPyCppyy::LongDoubleExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
@@ -382,6 +393,20 @@ static inline std::complex<T> PyComplex_AsComplex(PyObject* pycplx) {
 
 CPPYY_IMPL_REFEXEC(ComplexD, std::complex<double>,
     std::complex<double>, PyComplex_FromComplex<double>, PyComplex_AsComplex<double>)
+
+template<typename T>
+static inline PyObject* PyComplex_FromCComplex(const T& c) {
+    return PyComplex_FromDoubles(creal(c), cimag(c));
+}
+
+template<typename T>
+static inline T PyComplex_AsCComplex(PyObject* pycplx) {
+    Py_complex cplx = PyComplex_AsCComplex(pycplx);
+    return {cplx.real, cplx.imag};
+}
+
+CPPYY_IMPL_REFEXEC(CComplexD, _Complex double,
+    _Complex double, PyComplex_FromCComplex<_Complex double>, PyComplex_AsCComplex<_Complex double>)
 
 
 //----------------------------------------------------------------------------
@@ -514,6 +539,8 @@ CPPYY_IMPL_ARRAY_EXEC(ComplexF, std::complex<float>)
 CPPYY_IMPL_ARRAY_EXEC(ComplexD, std::complex<double>)
 CPPYY_IMPL_ARRAY_EXEC(ComplexI, std::complex<int>)
 CPPYY_IMPL_ARRAY_EXEC(ComplexL, std::complex<long>)
+CPPYY_IMPL_ARRAY_EXEC(CComplexF, _Complex float)
+CPPYY_IMPL_ARRAY_EXEC(CComplexD, _Complex double)
 
 
 //- special cases ------------------------------------------------------------
@@ -957,6 +984,8 @@ public:
         gf["std::complex<double>*"] =       (ef_t)+[]() { static ComplexDArrayExecutor e{}; return &e; };
         gf["std::complex<int>*"] =          (ef_t)+[]() { static ComplexIArrayExecutor e{}; return &e; };
         gf["std::complex<long>*"] =         (ef_t)+[]() { static ComplexLArrayExecutor e{}; return &e; };
+        gf["_Complex float*"] =             (ef_t)+[]() { static CComplexFArrayExecutor e{}; return &e; };
+        gf["_Complex double*"] =            (ef_t)+[]() { static CComplexDArrayExecutor e{}; return &e; };
 
      // TODO: factor out or generalize the below with the above pointers for any number of '*'
         gf["void**"] =                      (ef_t)+[]() { static VoidArrayExecutor e{2};     return &e; };
@@ -981,6 +1010,8 @@ public:
         gf["std::complex<double>**"] =      (ef_t)+[]() { static ComplexDArrayExecutor e{2}; return &e; };
         gf["std::complex<int>**"] =         (ef_t)+[]() { static ComplexIArrayExecutor e{2}; return &e; };
         gf["std::complex<long>**"] =        (ef_t)+[]() { static ComplexLArrayExecutor e{2}; return &e; };
+        gf["_Complex float**"] =            (ef_t)+[]() { static CComplexFArrayExecutor e{2}; return &e; };
+        gf["_Complex double**"] =           (ef_t)+[]() { static CComplexDArrayExecutor e{2}; return &e; };
 
     // aliases
         gf["internal_enum_type_t"] =        gf["int"];
@@ -1020,6 +1051,8 @@ public:
         gf[WSTRING] =                       gf["std::wstring"];
         gf["std::complex<double>"] =        (ef_t)+[]() { static ComplexDExecutor e{};    return &e; };
         gf["std::complex<double>&"] =       (ef_t)+[]() { return new ComplexDRefExecutor{}; };
+        gf["_Complex double"] =             (ef_t)+[]() { static CComplexDExecutor e{};    return &e; };
+        gf["_Complex double&"] =            (ef_t)+[]() { return new CComplexDRefExecutor{}; };
         gf["__init__"] =                    (ef_t)+[]() { static ConstructorExecutor e{}; return &e; };
         gf["PyObject*"] =                   (ef_t)+[]() { static PyObjectExecutor e{};    return &e; };
         gf["_object*"] =                    gf["PyObject*"];

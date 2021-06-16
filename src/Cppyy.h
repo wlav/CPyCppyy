@@ -106,6 +106,8 @@ namespace Cppyy {
     CPPYY_IMPORT
     double        CallD(TCppMethod_t method, TCppObject_t self, size_t nargs, void* args);
     CPPYY_IMPORT
+    _Complex double CallZ(TCppMethod_t method, TCppObject_t self, size_t nargs, void* args);
+    CPPYY_IMPORT
     PY_LONG_DOUBLE CallLD(TCppMethod_t method, TCppObject_t self, size_t nargs, void* args);
     CPPYY_IMPORT
     void*         CallR(TCppMethod_t method, TCppObject_t self, size_t nargs, void* args);
