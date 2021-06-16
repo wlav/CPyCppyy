@@ -905,6 +905,10 @@ template<> struct typecode_traits<std::complex<int>> {
     static constexpr const char* format = "Zi"; static constexpr const char* name = "std::complex<int>"; };
 template<> struct typecode_traits<std::complex<long>> {
     static constexpr const char* format = "Zl"; static constexpr const char* name = "std::complex<long>"; };
+template<> struct typecode_traits<_Complex float> {
+    static constexpr const char* format = "Zf"; static constexpr const char* name = "_Complex float"; };
+template<> struct typecode_traits<_Complex double> {
+    static constexpr const char* format = "Zd"; static constexpr const char* name = "_Complex double"; };
 
 } // unnamed namespace
 
@@ -1000,6 +1004,8 @@ CPPYY_IMPL_VIEW_CREATOR(std::complex<float>);
 CPPYY_IMPL_VIEW_CREATOR(std::complex<double>);
 CPPYY_IMPL_VIEW_CREATOR(std::complex<int>);
 CPPYY_IMPL_VIEW_CREATOR(std::complex<long>);
+CPPYY_IMPL_VIEW_CREATOR(_Complex float);
+CPPYY_IMPL_VIEW_CREATOR(_Complex double);
 
 PyObject* CPyCppyy::CreateLowLevelView(const char** address, Py_ssize_t* shape) {
     return CreateLowLevelViewT<const char*>(address, shape);
