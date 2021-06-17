@@ -795,8 +795,8 @@ CPyCppyy::Executor* CPyCppyy::CreateExecutor(const std::string& fullType)
     }
 
 //-- special case: C complex (is binary compatible with C++ std::complex)
-#ifndef _WIN32
     std::string cmplx_type = "";
+#ifndef _WIN32
     if (realType == "_Complex double") cmplx_type = "std::complex<double>";
     else if (realType == "_Complex float") cmplx_type = "std::complex<float>";
 #else
