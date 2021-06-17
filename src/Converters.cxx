@@ -1622,6 +1622,7 @@ CPPYY_IMPL_ARRAY_CONVERTER(LDouble,  c_longdouble, long double,          'D')
 CPPYY_IMPL_ARRAY_CONVERTER(ComplexF, c_fcomplex,   std::complex<float>,  'z')
 CPPYY_IMPL_ARRAY_CONVERTER(ComplexD, c_complex,    std::complex<double>, 'Z')
 
+
 //----------------------------------------------------------------------------
 bool CPyCppyy::CStringArrayConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* ctxt)

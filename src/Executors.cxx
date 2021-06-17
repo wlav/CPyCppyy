@@ -384,6 +384,7 @@ static inline std::complex<T> PyComplex_AsComplex(PyObject* pycplx) {
 CPPYY_IMPL_REFEXEC(ComplexD, std::complex<double>,
     std::complex<double>, PyComplex_FromComplex<double>, PyComplex_AsComplex<double>)
 
+
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::STLStringRefExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
