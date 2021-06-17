@@ -58,8 +58,6 @@ CPPYY_DECL_VIEW_CREATOR(std::complex<float>);
 CPPYY_DECL_VIEW_CREATOR(std::complex<double>);
 CPPYY_DECL_VIEW_CREATOR(std::complex<int>);
 CPPYY_DECL_VIEW_CREATOR(std::complex<long>);
-CPPYY_DECL_VIEW_CREATOR(_Complex float);
-CPPYY_DECL_VIEW_CREATOR(_Complex double);
 
 PyObject* CreateLowLevelView(const char**, Py_ssize_t* shape = nullptr);
 
