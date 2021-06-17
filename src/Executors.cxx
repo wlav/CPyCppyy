@@ -15,6 +15,7 @@
 #include <sstream>
 #include <utility>
 #include <sys/types.h>
+#include <complex.h>
 
 
 //- data _____________________________________________________________________
@@ -972,6 +973,8 @@ public:
         gf["std::complex<double>*"] =       (ef_t)+[]() { static ComplexDArrayExecutor e{}; return &e; };
         gf["std::complex<int>*"] =          (ef_t)+[]() { static ComplexIArrayExecutor e{}; return &e; };
         gf["std::complex<long>*"] =         (ef_t)+[]() { static ComplexLArrayExecutor e{}; return &e; };
+        gf["_Complex float*"] =             (ef_t)+[]() { static ComplexFArrayExecutor e{}; return &e; };
+        gf["_Complex double*"] =            (ef_t)+[]() { static ComplexDArrayExecutor e{}; return &e; };
 
      // TODO: factor out or generalize the below with the above pointers for any number of '*'
         gf["void**"] =                      (ef_t)+[]() { static VoidArrayExecutor e{2};     return &e; };
@@ -996,6 +999,8 @@ public:
         gf["std::complex<double>**"] =      (ef_t)+[]() { static ComplexDArrayExecutor e{2}; return &e; };
         gf["std::complex<int>**"] =         (ef_t)+[]() { static ComplexIArrayExecutor e{2}; return &e; };
         gf["std::complex<long>**"] =        (ef_t)+[]() { static ComplexLArrayExecutor e{2}; return &e; };
+        gf["_Complex float**"] =            (ef_t)+[]() { static ComplexFArrayExecutor e{2}; return &e; };
+        gf["_Complex double**"] =           (ef_t)+[]() { static ComplexDArrayExecutor e{2}; return &e; };
 
     // aliases
         gf["internal_enum_type_t"] =        gf["int"];
@@ -1035,6 +1040,8 @@ public:
         gf[WSTRING] =                       gf["std::wstring"];
         gf["std::complex<double>"] =        (ef_t)+[]() { static ComplexDExecutor e{};    return &e; };
         gf["std::complex<double>&"] =       (ef_t)+[]() { return new ComplexDRefExecutor{}; };
+        gf["_Complex double"] =             (ef_t)+[]() { static ComplexDExecutor e{};    return &e; };
+        gf["_Complex double&"] =            (ef_t)+[]() { return new ComplexDRefExecutor{}; };
         gf["__init__"] =                    (ef_t)+[]() { static ConstructorExecutor e{}; return &e; };
         gf["PyObject*"] =                   (ef_t)+[]() { static PyObjectExecutor e{};    return &e; };
         gf["_object*"] =                    gf["PyObject*"];

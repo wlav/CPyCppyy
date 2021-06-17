@@ -983,8 +983,8 @@ bool CPyCppyy::ComplexDConverter::SetArg(
     }
 
     return this->InstanceConverter::SetArg(pyobject, para, ctxt);
-}                                                                            \
-                                                                             \
+}
+
 PyObject* CPyCppyy::ComplexDConverter::FromMemory(void* address)
 {
     std::complex<double>* dc = (std::complex<double>*)address;
@@ -3181,6 +3181,8 @@ public:
         gf["long double&"] =                (cf_t)+[](dims_t) { static LDoubleRefConverter c{};      return &c; };
         gf["std::complex<double>"] =        (cf_t)+[](dims_t) { return new ComplexDConverter{}; };
         gf["const std::complex<double>&"] = (cf_t)+[](dims_t) { return new ComplexDConverter{}; };
+        gf["_Complex double"] =             (cf_t)+[](dims_t) { return new ComplexDConverter{}; };
+        gf["const _Complex double&"] =      (cf_t)+[](dims_t) { return new ComplexDConverter{}; };
         gf["void"] =                        (cf_t)+[](dims_t) { static VoidConverter c{};            return &c; };
 
     // pointer/array factories
@@ -3223,6 +3225,10 @@ public:
         gf["std::complex<float>**"] =       (cf_t)+[](dims_t d) { return new ComplexFArrayPtrConverter{d}; };
         gf["std::complex<double>*"] =       (cf_t)+[](dims_t d) { return new ComplexDArrayConverter{d}; };
         gf["std::complex<double>**"] =      (cf_t)+[](dims_t d) { return new ComplexDArrayPtrConverter{d}; };
+        gf["_Complex float*"] =            (cf_t)+[](dims_t d) { return new ComplexFArrayConverter{d}; };
+        gf["_Complex float**"] =           (cf_t)+[](dims_t d) { return new ComplexFArrayPtrConverter{d}; };
+        gf["_Complex double*"] =            (cf_t)+[](dims_t d) { return new ComplexDArrayConverter{d}; };
+        gf["_Complex double**"] =           (cf_t)+[](dims_t d) { return new ComplexDArrayPtrConverter{d}; };
         gf["void*"] =                       (cf_t)+[](dims_t d) { return new VoidArrayConverter{(bool)d}; };
 
     // aliases
