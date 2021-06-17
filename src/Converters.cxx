@@ -2993,6 +2993,21 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, dims
         }
     }
 
+//-- special case: C complex (is binary compatible with C++ std::complex)
+#ifndef _WIN32
+    std::string cmplx_type = "";
+    if (realType == "_Complex double") cmplx_type = "std::complex<double>";
+    else if (realType == "_Complex float") cmplx_type = "std::complex<float>";
+#else
+    if (realType == "_C_double_complex") cmplx_type = "std::complex<double>";
+    else if (realType == "_C_float_complex") cmplx_type = "std::complex<float>";
+#endif
+    if (!cmplx_type.empty()) {
+        h = gConvFactories.find((isConst ? "const " : "") + cmplx_type + cpd);
+        if (h != gConvFactories.end())
+            return (h->second)(dims);
+    }
+
 // converters for known C++ classes and default (void*)
     Converter* result = nullptr;
     if (Cppyy::TCppScope_t klass = Cppyy::GetScope(realType)) {
@@ -3205,10 +3220,8 @@ public:
         gf["long double*"] =                (cf_t)+[](dims_t d) { return new LDoubleArrayConverter{d}; };
         gf["long double**"] =               (cf_t)+[](dims_t d) { return new LDoubleArrayPtrConverter{d}; };
         gf["std::complex<float>*"] =        (cf_t)+[](dims_t d) { return new ComplexFArrayConverter{d}; };
-        gf["complex<float>*"] =             (cf_t)+[](dims_t d) { return new ComplexFArrayConverter{d}; };
         gf["std::complex<float>**"] =       (cf_t)+[](dims_t d) { return new ComplexFArrayPtrConverter{d}; };
         gf["std::complex<double>*"] =       (cf_t)+[](dims_t d) { return new ComplexDArrayConverter{d}; };
-        gf["complex<double>*"] =            (cf_t)+[](dims_t d) { return new ComplexDArrayConverter{d}; };
         gf["std::complex<double>**"] =      (cf_t)+[](dims_t d) { return new ComplexDArrayPtrConverter{d}; };
         gf["void*"] =                       (cf_t)+[](dims_t d) { return new VoidArrayConverter{(bool)d}; };
 

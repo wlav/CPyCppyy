@@ -794,6 +794,21 @@ CPyCppyy::Executor* CPyCppyy::CreateExecutor(const std::string& fullType)
             return (h->second)();           // TODO: use array size
     }
 
+//-- special case: C complex (is binary compatible with C++ std::complex)
+#ifndef _WIN32
+    std::string cmplx_type = "";
+    if (realType == "_Complex double") cmplx_type = "std::complex<double>";
+    else if (realType == "_Complex float") cmplx_type = "std::complex<float>";
+#else
+    if (realType == "_C_double_complex") cmplx_type = "std::complex<double>";
+    else if (realType == "_C_float_complex") cmplx_type = "std::complex<float>";
+#endif
+    if (!cmplx_type.empty()) {
+        h = gExecFactories.find(cmplx_type + cpd);    // do not add "const" back
+        if (h != gExecFactories.end())
+            return (h->second)();
+    }
+
 // C++ classes and special cases
     Executor* result = 0;
     if (Cppyy::TCppType_t klass = Cppyy::GetScope(realType)) {
