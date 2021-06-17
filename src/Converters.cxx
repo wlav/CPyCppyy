@@ -2993,21 +2993,6 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, dims
         }
     }
 
-//-- special case: C complex (is binary compatible with C++ std::complex)
-    std::string cmplx_type = "";
-#ifndef _WIN32
-    if (realType == "_Complex double") cmplx_type = "std::complex<double>";
-    else if (realType == "_Complex float") cmplx_type = "std::complex<float>";
-#else
-    if (realType == "_C_double_complex") cmplx_type = "std::complex<double>";
-    else if (realType == "_C_float_complex") cmplx_type = "std::complex<float>";
-#endif
-    if (!cmplx_type.empty()) {
-        h = gConvFactories.find((isConst ? "const " : "") + cmplx_type + cpd);
-        if (h != gConvFactories.end())
-            return (h->second)(dims);
-    }
-
 // converters for known C++ classes and default (void*)
     Converter* result = nullptr;
     if (Cppyy::TCppScope_t klass = Cppyy::GetScope(realType)) {
@@ -3115,6 +3100,15 @@ using namespace CPyCppyy;
 #define STRINGVIEW "std::basic_string_view<char,std::char_traits<char> >"
 #define WSTRING "std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >"
 
+//-- aliasing special case: C complex (is binary compatible with C++ std::complex)
+#ifndef _WIN32
+#define CCOMPLEX_D "_Complex double"
+#define CCOMPLEX_F "_Complex float"
+#else
+#define CCOMPLEX_D "_C_double_complex"
+#define CCOMPLEX_F "_C_float_complex"
+#endif
+
 static struct InitConvFactories_t {
 public:
     InitConvFactories_t() {
@@ -3181,8 +3175,6 @@ public:
         gf["long double&"] =                (cf_t)+[](dims_t) { static LDoubleRefConverter c{};      return &c; };
         gf["std::complex<double>"] =        (cf_t)+[](dims_t) { return new ComplexDConverter{}; };
         gf["const std::complex<double>&"] = (cf_t)+[](dims_t) { return new ComplexDConverter{}; };
-        gf["_Complex double"] =             (cf_t)+[](dims_t) { return new ComplexDConverter{}; };
-        gf["const _Complex double&"] =      (cf_t)+[](dims_t) { return new ComplexDConverter{}; };
         gf["void"] =                        (cf_t)+[](dims_t) { static VoidConverter c{};            return &c; };
 
     // pointer/array factories
@@ -3225,10 +3217,6 @@ public:
         gf["std::complex<float>**"] =       (cf_t)+[](dims_t d) { return new ComplexFArrayPtrConverter{d}; };
         gf["std::complex<double>*"] =       (cf_t)+[](dims_t d) { return new ComplexDArrayConverter{d}; };
         gf["std::complex<double>**"] =      (cf_t)+[](dims_t d) { return new ComplexDArrayPtrConverter{d}; };
-        gf["_Complex float*"] =            (cf_t)+[](dims_t d) { return new ComplexFArrayConverter{d}; };
-        gf["_Complex float**"] =           (cf_t)+[](dims_t d) { return new ComplexFArrayPtrConverter{d}; };
-        gf["_Complex double*"] =            (cf_t)+[](dims_t d) { return new ComplexDArrayConverter{d}; };
-        gf["_Complex double**"] =           (cf_t)+[](dims_t d) { return new ComplexDArrayPtrConverter{d}; };
         gf["void*"] =                       (cf_t)+[](dims_t d) { return new VoidArrayConverter{(bool)d}; };
 
     // aliases
@@ -3262,6 +3250,12 @@ public:
         gf["unsigned __int64*"] =           gf["unsigned long long*"];
         gf["unsigned __int64**"] =          gf["unsigned long long**"];
 #endif
+        gf[CCOMPLEX_D] =                    gf["std::complex<double>"];
+        gf["const " CCOMPLEX_D "&"] =       gf["const std::complex<double>&"];
+        gf[CCOMPLEX_F "*"] =                gf["std::complex<float>*"];
+        gf[CCOMPLEX_F "**"] =               gf["std::complex<float>**"];
+        gf[CCOMPLEX_D "*"] =                gf["std::complex<double>*"];
+        gf[CCOMPLEX_D "**"] =               gf["std::complex<double>**"];
 
     // factories for special cases
         gf["nullptr_t"] =                   (cf_t)+[](dims_t) { static NullptrConverter c{};        return &c;};

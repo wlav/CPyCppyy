@@ -795,21 +795,6 @@ CPyCppyy::Executor* CPyCppyy::CreateExecutor(const std::string& fullType)
             return (h->second)();           // TODO: use array size
     }
 
-//-- special case: C complex (is binary compatible with C++ std::complex)
-    std::string cmplx_type = "";
-#ifndef _WIN32
-    if (realType == "_Complex double") cmplx_type = "std::complex<double>";
-    else if (realType == "_Complex float") cmplx_type = "std::complex<float>";
-#else
-    if (realType == "_C_double_complex") cmplx_type = "std::complex<double>";
-    else if (realType == "_C_float_complex") cmplx_type = "std::complex<float>";
-#endif
-    if (!cmplx_type.empty()) {
-        h = gExecFactories.find(cmplx_type + cpd);    // do not add "const" back
-        if (h != gExecFactories.end())
-            return (h->second)();
-    }
-
 // C++ classes and special cases
     Executor* result = 0;
     if (Cppyy::TCppType_t klass = Cppyy::GetScope(realType)) {
@@ -895,6 +880,15 @@ using namespace CPyCppyy;
 
 #define WSTRING "std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >"
 
+//-- aliasing special case: C complex (is binary compatible with C++ std::complex)
+#ifndef _WIN32
+#define CCOMPLEX_D "_Complex double"
+#define CCOMPLEX_F "_Complex float"
+#else
+#define CCOMPLEX_D "_C_double_complex"
+#define CCOMPLEX_F "_C_float_complex"
+#endif
+
 struct InitExecFactories_t {
 public:
     InitExecFactories_t() {
@@ -948,6 +942,8 @@ public:
         gf["double&"] =                     (ef_t)+[]() { return new DoubleRefExecutor{}; };
         gf["long double"] =                 (ef_t)+[]() { static LongDoubleExecutor e{}; return &e; }; // TODO: lost precision
         gf["long double&"] =                (ef_t)+[]() { return new LongDoubleRefExecutor{}; };
+        gf["std::complex<double>"] =        (ef_t)+[]() { static ComplexDExecutor e{};    return &e; };
+        gf["std::complex<double>&"] =       (ef_t)+[]() { return new ComplexDRefExecutor{}; };
         gf["void"] =                        (ef_t)+[]() { static VoidExecutor e{};       return &e; };
 
     // pointer/array factories
@@ -973,8 +969,6 @@ public:
         gf["std::complex<double>*"] =       (ef_t)+[]() { static ComplexDArrayExecutor e{}; return &e; };
         gf["std::complex<int>*"] =          (ef_t)+[]() { static ComplexIArrayExecutor e{}; return &e; };
         gf["std::complex<long>*"] =         (ef_t)+[]() { static ComplexLArrayExecutor e{}; return &e; };
-        gf["_Complex float*"] =             (ef_t)+[]() { static ComplexFArrayExecutor e{}; return &e; };
-        gf["_Complex double*"] =            (ef_t)+[]() { static ComplexDArrayExecutor e{}; return &e; };
 
      // TODO: factor out or generalize the below with the above pointers for any number of '*'
         gf["void**"] =                      (ef_t)+[]() { static VoidArrayExecutor e{2};     return &e; };
@@ -999,8 +993,6 @@ public:
         gf["std::complex<double>**"] =      (ef_t)+[]() { static ComplexDArrayExecutor e{2}; return &e; };
         gf["std::complex<int>**"] =         (ef_t)+[]() { static ComplexIArrayExecutor e{2}; return &e; };
         gf["std::complex<long>**"] =        (ef_t)+[]() { static ComplexLArrayExecutor e{2}; return &e; };
-        gf["_Complex float**"] =            (ef_t)+[]() { static ComplexFArrayExecutor e{2}; return &e; };
-        gf["_Complex double**"] =           (ef_t)+[]() { static ComplexDArrayExecutor e{2}; return &e; };
 
     // aliases
         gf["internal_enum_type_t"] =        gf["int"];
@@ -1025,6 +1017,12 @@ public:
         gf["unsigned __int64&"] =           gf["unsigned long long&"];
         gf["unsigned __int64*"] =           gf["unsigned long long*"];
 #endif
+        gf[CCOMPLEX_D] =                    gf["std::complex<double>"];
+        gf[CCOMPLEX_D "&"] =                gf["std::complex<double>&"];
+        gf[CCOMPLEX_F "*"] =                gf["std::complex<float>*"];
+        gf[CCOMPLEX_F "**"] =               gf["std::complex<float>**"];
+        gf[CCOMPLEX_D "*"] =                gf["std::complex<double>*"];
+        gf[CCOMPLEX_D "**"] =               gf["std::complex<double>**"];
 
     // factories for special cases
         gf["const char*"] =                 (ef_t)+[]() { static CStringExecutor e{};     return &e; };
@@ -1038,10 +1036,6 @@ public:
         gf["std::string&"] =                (ef_t)+[]() { return new STLStringRefExecutor{}; };
         gf["std::wstring"] =                (ef_t)+[]() { static STLWStringExecutor e{};  return &e; };
         gf[WSTRING] =                       gf["std::wstring"];
-        gf["std::complex<double>"] =        (ef_t)+[]() { static ComplexDExecutor e{};    return &e; };
-        gf["std::complex<double>&"] =       (ef_t)+[]() { return new ComplexDRefExecutor{}; };
-        gf["_Complex double"] =             (ef_t)+[]() { static ComplexDExecutor e{};    return &e; };
-        gf["_Complex double&"] =            (ef_t)+[]() { return new ComplexDRefExecutor{}; };
         gf["__init__"] =                    (ef_t)+[]() { static ConstructorExecutor e{}; return &e; };
         gf["PyObject*"] =                   (ef_t)+[]() { static PyObjectExecutor e{};    return &e; };
         gf["_object*"] =                    gf["PyObject*"];
