@@ -1,17 +1,18 @@
 #ifndef CPYCPPYY_LOWLEVELVIEWS_H
 #define CPYCPPYY_LOWLEVELVIEWS_H
 
+// Bindings
+#include "Dimensions.h"
+
+// Standard
 #include <complex>
 #include <stddef.h>
-
 #if __cplusplus > 201402L
 #include <cstddef>
 #endif
 
 
 namespace CPyCppyy {
-
-static const Py_ssize_t UNKNOWN_SIZE       = (Py_ssize_t)-1;
 
 class Converter;
 
@@ -34,8 +35,8 @@ public:
 };
 
 #define CPPYY_DECL_VIEW_CREATOR(type)                                        \
-    PyObject* CreateLowLevelView(type*,  Py_ssize_t* shape = nullptr);       \
-    PyObject* CreateLowLevelView(type**, Py_ssize_t* shape = nullptr)
+    PyObject* CreateLowLevelView(type*,  dims_t shape);                      \
+    PyObject* CreateLowLevelView(type**, dims_t shape)
 
 CPPYY_DECL_VIEW_CREATOR(bool);
 CPPYY_DECL_VIEW_CREATOR(signed char);
@@ -59,9 +60,9 @@ CPPYY_DECL_VIEW_CREATOR(std::complex<double>);
 CPPYY_DECL_VIEW_CREATOR(std::complex<int>);
 CPPYY_DECL_VIEW_CREATOR(std::complex<long>);
 
-PyObject* CreateLowLevelView(const char**, Py_ssize_t* shape = nullptr);
+PyObject* CreateLowLevelView(const char**, dims_t shape = 0);
 
-inline PyObject* CreatePointerView(void* ptr, Py_ssize_t* shape = nullptr) {
+inline PyObject* CreatePointerView(void* ptr, dims_t shape = 0) {
     return CreateLowLevelView((uintptr_t*)ptr, shape);
 }
 

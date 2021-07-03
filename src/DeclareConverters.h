@@ -3,6 +3,7 @@
 
 // Bindings
 #include "Converters.h"
+#include "Dimensions.h"
 
 // Standard
 #include <complex>
@@ -51,26 +52,16 @@ public:                                                                      \
 #define CPPYY_DECLARE_ARRAY_CONVERTER(name)                                  \
 class name##ArrayConverter : public Converter {                              \
 public:                                                                      \
-    name##ArrayConverter(dims_t shape, bool init = true);                    \
+    name##ArrayConverter(dims_t dims);                                       \
     name##ArrayConverter(const name##ArrayConverter&) = delete;              \
     name##ArrayConverter& operator=(const name##ArrayConverter&) = delete;   \
-    virtual ~name##ArrayConverter() { delete [] fShape; }                    \
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);      \
     virtual PyObject* FromMemory(void*);                                     \
     virtual bool ToMemory(PyObject*, void*, PyObject* = nullptr);            \
     virtual bool HasState() { return true; }                                 \
 protected:                                                                   \
-    Py_ssize_t* fShape;                                                      \
+    dims_t fShape;                                                           \
     bool fIsFixed;                                                           \
-};                                                                           \
-                                                                             \
-class name##ArrayPtrConverter : public name##ArrayConverter {                \
-public:                                                                      \
-    name##ArrayPtrConverter(dims_t shape);                                   \
-    name##ArrayPtrConverter(const name##ArrayPtrConverter&) = delete;        \
-    name##ArrayPtrConverter& operator=(const name##ArrayPtrConverter&) = delete;\
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);      \
-    virtual PyObject* FromMemory(void*);                                     \
 };
 
 
@@ -128,7 +119,7 @@ public:
 
 class CStringConverter : public Converter {
 public:
-    CStringConverter(long maxSize = -1) : fMaxSize(maxSize) {}
+    CStringConverter(std::string::size_type maxSize = std::string::npos) : fMaxSize(maxSize) {}
 
 public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
@@ -138,12 +129,12 @@ public:
 
 protected:
     std::string fBuffer;
-    long fMaxSize;
+    std::string::size_type fMaxSize;
 };
 
 class NonConstCStringConverter : public CStringConverter {
 public:
-    NonConstCStringConverter(long maxSize = -1) : CStringConverter(maxSize) {}
+    using CStringConverter::CStringConverter;
 
 public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
@@ -152,7 +143,8 @@ public:
 
 class WCStringConverter : public Converter {
 public:
-    WCStringConverter(long maxSize = -1) : fBuffer(nullptr), fMaxSize(maxSize) {}
+    WCStringConverter(std::wstring::size_type maxSize = std::wstring::npos) :
+        fBuffer(nullptr), fMaxSize(maxSize) {}
     WCStringConverter(const WCStringConverter&) = delete;
     WCStringConverter& operator=(const WCStringConverter&) = delete;
     virtual ~WCStringConverter() { free(fBuffer); }
@@ -165,12 +157,13 @@ public:
 
 protected:
     wchar_t* fBuffer;
-    long fMaxSize;
+    std::wstring::size_type fMaxSize;
 };
 
 class CString16Converter : public Converter {
 public:
-    CString16Converter(long maxSize = -1) : fBuffer(nullptr), fMaxSize(maxSize) {}
+    CString16Converter(std::wstring::size_type maxSize = std::wstring::npos) :
+        fBuffer(nullptr), fMaxSize(maxSize) {}
     CString16Converter(const CString16Converter&) = delete;
     CString16Converter& operator=(const CString16Converter&) = delete;
     virtual ~CString16Converter() { free(fBuffer); }
@@ -183,12 +176,13 @@ public:
 
 protected:
     char16_t* fBuffer;
-    long fMaxSize;
+    std::wstring::size_type fMaxSize;
 };
 
 class CString32Converter : public Converter {
 public:
-    CString32Converter(long maxSize = -1) : fBuffer(nullptr), fMaxSize(maxSize) {}
+    CString32Converter(std::wstring::size_type maxSize = std::wstring::npos) :
+        fBuffer(nullptr), fMaxSize(maxSize) {}
     CString32Converter(const CString32Converter&) = delete;
     CString32Converter& operator=(const CString32Converter&) = delete;
     virtual ~CString32Converter() { free(fBuffer); }
@@ -201,7 +195,7 @@ public:
 
 protected:
     char32_t* fBuffer;
-    long fMaxSize;
+    std::wstring::size_type fMaxSize;
 };
 
 // pointer/array conversions
@@ -225,9 +219,9 @@ CPPYY_DECLARE_ARRAY_CONVERTER(LDouble);
 CPPYY_DECLARE_ARRAY_CONVERTER(ComplexF);
 CPPYY_DECLARE_ARRAY_CONVERTER(ComplexD);
 
-class CStringArrayConverter : public SCharArrayPtrConverter {
+class CStringArrayConverter : public SCharArrayConverter {
 public:
-    using SCharArrayPtrConverter::SCharArrayPtrConverter;
+    using SCharArrayConverter::SCharArrayConverter;
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
     virtual PyObject* FromMemory(void* address);
 
@@ -285,18 +279,9 @@ public:
 class InstanceArrayConverter : public InstancePtrConverter {
 public:
     InstanceArrayConverter(Cppyy::TCppType_t klass, dims_t dims, bool keepControl = false) :
-            InstancePtrConverter(klass, keepControl) {
-        dim_t size = (dims && 0 < dims[0]) ? dims[0]+1: 1;
-        fDims = new dim_t[size];
-        if (dims) {
-            for (int i = 0; i < size; ++i) fDims[i] = dims[i];
-        } else {
-            fDims[0] = -1;
-        }
-    }
+            InstancePtrConverter(klass, keepControl), fShape(dims) { }
     InstanceArrayConverter(const InstanceArrayConverter&) = delete;
     InstanceArrayConverter& operator=(const InstanceArrayConverter&) = delete;
-    virtual ~InstanceArrayConverter() { delete [] fDims; }
 
 public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
@@ -304,7 +289,7 @@ public:
     virtual bool ToMemory(PyObject* value, void* address, PyObject* = nullptr);
 
 protected:
-    dims_t fDims;
+    dims_t fShape;
 };
 
 
@@ -339,13 +324,13 @@ public:
 
 class VoidPtrPtrConverter : public Converter {
 public:
-    VoidPtrPtrConverter(size_t size) { fSize = size; }
+    VoidPtrPtrConverter(dim_t size) { fSize = size; }
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
     virtual PyObject* FromMemory(void* address);
     virtual bool HasState() { return true; }
 
 protected:
-    size_t fSize;
+    dim_t fSize;
 };
 
 CPPYY_DECLARE_BASIC_CONVERTER(PyObject);

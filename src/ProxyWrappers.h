@@ -23,7 +23,7 @@ PyObject* BindCppObjectNoCast(Cppyy::TCppObject_t object,
 PyObject* BindCppObject(Cppyy::TCppObject_t object,
     Cppyy::TCppType_t klass, const unsigned flags = 0);
 PyObject* BindCppObjectArray(
-    Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, Py_ssize_t* dims);
+    Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, dims_t dims);
 
 } // namespace CPyCppyy
 

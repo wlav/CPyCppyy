@@ -84,6 +84,23 @@ struct Parameter {
 // CallContext is not currently exposed
 struct CallContext;
 
+// Dimensions class not currently exposed
+#ifndef CPYCPPYY_DIMENSIONS_H
+typedef Py_ssize_t dim_t;
+
+class Dimensions {
+    dim_t* fDims;
+
+public:
+    Dimensions(dim_t ndim = 0, dim_t* dims = nullptr) : fDims(nullptr) {}
+    ~Dimensions() { delete [] fDims; }
+
+public:
+    operator bool() { return (bool)fDims; }
+};
+
+typedef Dimensions dims_t;
+#endif // !CPYCPPYY_DIMENSIONS_H
 
 // type converter base class
 class CPYCPPYY_CLASS_EXTERN Converter {
@@ -104,13 +121,13 @@ public:
 };
 
 // create a converter based on its full type name and dimensions
-CPYCPPYY_EXTERN Converter* CreateConverter(const std::string& name, Py_ssize_t* dims = nullptr);
+CPYCPPYY_EXTERN Converter* CreateConverter(const std::string& name, dims_t = 0);
 
 // delete a previously created converter
 CPYCPPYY_EXTERN void DestroyConverter(Converter* p);
 
 // register a custom converter
-typedef Converter* (*ConverterFactory_t)(Py_ssize_t* dims);
+typedef Converter* (*ConverterFactory_t)(dims_t);
 CPYCPPYY_EXTERN bool RegisterConverter(const std::string& name, ConverterFactory_t);
 
 // remove a custom converter
@@ -131,13 +148,13 @@ public:
 };
 
 // create an executor based on its full type name
-CPYCPPYY_EXTERN Executor* CreateExecutor(const std::string& name);
+CPYCPPYY_EXTERN Executor* CreateExecutor(const std::string& name, dims_t = 0);
 
 // delete a previously created executor
 CPYCPPYY_EXTERN void DestroyConverter(Converter* p);
 
 // register a custom executor
-typedef Executor* (*ExecutorFactory_t)();
+typedef Executor* (*ExecutorFactory_t)(dims_t);
 CPYCPPYY_EXTERN bool RegisterExecutor(const std::string& name, ExecutorFactory_t);
 
 // remove a custom executor

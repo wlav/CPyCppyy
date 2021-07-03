@@ -1,6 +1,9 @@
 #ifndef CPYCPPYY_CONVERTERS_H
 #define CPYCPPYY_CONVERTERS_H
 
+// Bindings
+#include "Dimensions.h"
+
 // Standard
 #include <string>
 
@@ -22,7 +25,7 @@ public:
 };
 
 // create/destroy converter from fully qualified type (public API)
-CPYCPPYY_EXPORT Converter* CreateConverter(const std::string& fullType, dims_t dims = nullptr);
+CPYCPPYY_EXPORT Converter* CreateConverter(const std::string& fullType, dims_t dims = 0);
 CPYCPPYY_EXPORT void DestroyConverter(Converter* p);
 typedef Converter* (*cf_t)(dims_t d);
 CPYCPPYY_EXPORT bool RegisterConverter(const std::string& name, cf_t fac);

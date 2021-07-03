@@ -35,8 +35,11 @@
 #include "Python.h"
 #include <sys/types.h>
 
-typedef Py_ssize_t dim_t;
-typedef dim_t* dims_t;
+namespace CPyCppyy {
+    class Dimensions;
+    typedef Dimensions dims_t;
+    typedef Py_ssize_t dim_t;
+} // namespace CPyCppyy
 
 // for 3.3 support
 #if PY_VERSION_HEX < 0x03030000

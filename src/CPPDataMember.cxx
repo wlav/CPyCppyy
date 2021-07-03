@@ -3,6 +3,7 @@
 #include "PyStrings.h"
 #include "CPPDataMember.h"
 #include "CPPInstance.h"
+#include "Dimensions.h"
 #include "LowLevelViews.h"
 #include "ProxyWrappers.h"
 #include "PyStrings.h"
@@ -271,18 +272,16 @@ void CPyCppyy::CPPDataMember::Set(Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t i
     fFlags          = Cppyy::IsStaticData(scope, idata) ? kIsStaticData : 0;
 
     std::vector<dim_t> dims;
-    int ndim = 0; dim_t size = 0;
+    int ndim = 0; Py_ssize_t size = 0;
     while (0 < (size = Cppyy::GetDimensionSize(scope, idata, ndim))) {
          ndim += 1;
          if (size == INT_MAX)      // meaning: incomplete array type
-             size = -1;
-         if (ndim == 1) { dims.reserve(4); dims.push_back(0); }
-         dims.push_back(size);
+             size = UNKNOWN_SIZE;
+         if (ndim == 1) dims.reserve(4);
+         dims.push_back((dim_t)size);
     }
-    if (ndim) {
-        dims[0] = ndim;
+    if (!dims.empty())
         fFlags |= kIsArrayType;
-    }
 
     const std::string name = Cppyy::GetDatamemberName(scope, idata);
     std::string fullType = Cppyy::GetDatamemberType(scope, idata);
@@ -299,10 +298,19 @@ void CPyCppyy::CPPDataMember::Set(Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t i
     }
 
 // if this data member is an array, the conversion needs to be pointer to object for instances,
-// to prevent the need for copying in the conversion
-    if (ndim && fullType.back() != '*' && Cppyy::GetScope(fullType)) fullType += '*';
+// to prevent the need for copying in the conversion; furthermore, fixed arrays' full type for
+// builtins are not declared as such if more than 1-dim (TODO: fix in clingwrapper)
+    if (!dims.empty() && fullType.back() != '*') {
+        if (Cppyy::GetScope(fullType)) fullType += '*';
+        else if (fullType.back() != ']') {
+            for (auto d: dims) fullType += d == UNKNOWN_SIZE ? "*" : "[]";
+        }
+    }
 
-    fConverter = CreateConverter(fullType, dims.empty() ? nullptr : dims.data());
+    if (dims.empty())
+        fConverter = CreateConverter(fullType);
+    else
+        fConverter = CreateConverter(fullType, {(dim_t)dims.size(), dims.data()});
 
     if (!(fFlags & kIsEnumPrep))
         fDescription = CPyCppyy_PyText_FromString(name.c_str());

@@ -940,5 +940,5 @@ PyObject* CPyCppyy::BindCppObjectArray(
     Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, dims_t dims)
 {
 // TODO: this function exists for symmetry; need to figure out if it's useful
-    return TupleOfInstances_New(address, klass, dims[0], dims+1);
+    return TupleOfInstances_New(address, klass, dims);
 }

@@ -4,7 +4,9 @@
 // Bindings
 #include "Executors.h"
 #include "CallContext.h"
+#include "Dimensions.h"
 
+// Standard
 #if __cplusplus > 201402L
 #include <cstddef>
 #endif
@@ -51,9 +53,9 @@ CPPYY_DECL_EXEC(CString32);
 // pointer/array executors
 #define CPPYY_ARRAY_DECL_EXEC(name)                                          \
 class name##ArrayExecutor : public Executor {                                \
-    Py_ssize_t fShape[3];                                                    \
+    dims_t fShape;                                                           \
 public:                                                                      \
-    name##ArrayExecutor(Py_ssize_t ndims = 1) : fShape{ndims, -1, -1} {}     \
+    name##ArrayExecutor(Py_ssize_t ndims = 1) : fShape(ndims) {}             \
     virtual PyObject* Execute(                                               \
         Cppyy::TCppMethod_t, Cppyy::TCppObject_t, CallContext*);             \
 }
@@ -167,13 +169,13 @@ public:
 
 class InstanceArrayExecutor : public InstancePtrExecutor {
 public:
-    InstanceArrayExecutor(Cppyy::TCppType_t klass, Py_ssize_t array_size)
-        : InstancePtrExecutor(klass), fArraySize(array_size) {}
+    InstanceArrayExecutor(Cppyy::TCppType_t klass, dim_t array_size)
+        : InstancePtrExecutor(klass), fSize(array_size) {}
     virtual PyObject* Execute(
         Cppyy::TCppMethod_t, Cppyy::TCppObject_t, CallContext*);
 
 protected:
-    Py_ssize_t fArraySize;
+    dim_t fSize;
 };
 
 } // unnamed namespace

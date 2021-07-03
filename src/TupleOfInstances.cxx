@@ -119,10 +119,10 @@ PyTypeObject InstanceArrayIter_Type = {
 
 //= support for C-style arrays of objects ====================================
 PyObject* TupleOfInstances_New(
-    Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, dim_t ndims, dims_t dims)
+    Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, dims_t dims)
 {
 // recursively set up tuples of instances on all dimensions
-    if (ndims == -1 /* unknown shape */ || dims[0] == -1 /* unknown size */) {
+    if (dims.ndim() == UNKNOWN_SIZE || dims[0] == UNKNOWN_SIZE /* unknown shape or size */) {
     // no known length ... return an iterable object and let the user figure it out
         ia_iterobject* ia = PyObject_GC_New(ia_iterobject, &InstanceArrayIter_Type);
         if (!ia) return nullptr;
@@ -135,17 +135,17 @@ PyObject* TupleOfInstances_New(
 
         PyObject_GC_Track(ia);
         return (PyObject*)ia;
-    } else if (1 < ndims) {
+    } else if (1 < dims.ndim()) {
     // not the innermost dimension, descend one level
-        int nelems = (int)dims[0];
         size_t block_size = 0;
-        for (int i = 1; i < (int)ndims; ++i) block_size += (size_t)dims[i];
+        for (Py_ssize_t i = 1; i < dims.ndim(); ++i) block_size += (size_t)dims[i];
         block_size *= Cppyy::SizeOf(klass);
 
+        Py_ssize_t nelems = dims[0];
         PyObject* tup = PyTuple_New(nelems);
-        for (int i = 0; i < nelems; ++i) {
+        for (Py_ssize_t i = 0; i < nelems; ++i) {
             PyTuple_SetItem(tup, i, TupleOfInstances_New(
-                (char*)address + i*block_size, klass, ndims-1, dims+1));
+                (char*)address + i*block_size, klass, dims.sub()));
         }
         return tup;
     } else {
