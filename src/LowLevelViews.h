@@ -29,6 +29,7 @@ public:
     Py_buffer   fBufInfo;
     void**      fBuf;
     Converter*  fConverter;
+    Converter*  fElemCnv;
 
 public:
     void* get_buf() { return fBuf ? *fBuf : fBufInfo.buf; }

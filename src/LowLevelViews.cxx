@@ -30,6 +30,7 @@ static CPyCppyy::LowLevelView* ll_new(PyTypeObject* subtype, PyObject*, PyObject
     (intptr_t&)pyobj->fBufInfo.internal |= CPyCppyy::LowLevelView::kIsCppArray;
     pyobj->fBuf = nullptr;
     pyobj->fConverter = nullptr;
+    pyobj->fElemCnv   = nullptr;
 
     return pyobj;
 }
@@ -46,6 +47,10 @@ static void ll_dealloc(CPyCppyy::LowLevelView* pyobj)
        else
            free(pyobj->fBuf);
     }
+
+    if (pyobj->fElemCnv != pyobj->fConverter &&\
+            pyobj->fElemCnv && pyobj->fElemCnv->HasState())
+        delete pyobj->fElemCnv;
 
     if (pyobj->fConverter && pyobj->fConverter->HasState())
         delete pyobj->fConverter;
@@ -219,10 +224,23 @@ static char* lookup_dimension(Py_buffer& view, char* ptr, int dim, Py_ssize_t in
     assert(view.strides);
 
     nitems = view.shape[dim];
-    if (index < 0)
-        index += nitems;
+    if (index < 0) {
+        if (nitems != CPyCppyy::UNKNOWN_SIZE)
+            index += nitems;
+        else {
+            PyErr_Format(PyExc_IndexError,
+                "negative index not supporte on dimension %d with unknown size", dim + 1);
+            return nullptr;
+        }
+    }
 
-    if (index < 0 || index >= nitems) {
+    if (view.strides[dim] == CPyCppyy::UNKNOWN_SIZE) {
+        PyErr_Format(PyExc_IndexError,
+            "multi index not supporte on dimension %d with unknown stride", dim + 1);
+        return nullptr;
+    }
+
+    if (nitems != CPyCppyy::UNKNOWN_SIZE && (index < 0 || index >= nitems)) {
         PyErr_Format(PyExc_IndexError,
             "index out of bounds on dimension %d", dim + 1);
         return nullptr;
@@ -247,6 +265,7 @@ static inline void* ptr_from_index(CPyCppyy::LowLevelView* llview, Py_ssize_t in
 static void* ptr_from_tuple(CPyCppyy::LowLevelView* llview, PyObject* tup)
 {
     Py_buffer& view = llview->fBufInfo;
+
     Py_ssize_t nindices = PyTuple_GET_SIZE(tup);
     if (nindices > view.ndim) {
         PyErr_Format(PyExc_TypeError,
@@ -261,9 +280,13 @@ static void* ptr_from_tuple(CPyCppyy::LowLevelView* llview, PyObject* tup)
                                    PyExc_IndexError);
         if (index == -1 && PyErr_Occurred())
             return nullptr;
+
         ptr = lookup_dimension(view, ptr, (int)dim, index);
         if (!ptr)
             return nullptr;
+
+        if (!((intptr_t&)view.internal & CPyCppyy::LowLevelView::kIsFixed) && dim != view.ndim-1)
+            ptr = *(char**)ptr;
     }
     return ptr;
 }
@@ -388,10 +411,9 @@ static PyObject* ll_item_multi(CPyCppyy::LowLevelView* self, PyObject *tup)
 
     void* ptr = ptr_from_tuple(self, tup);
     if (ptr) {
-        bool isfix = (intptr_t&)view.internal & CPyCppyy::LowLevelView::kIsFixed;
-        if (self->fBufInfo.ndim == 1 || !isfix)
-            return self->fConverter->FromMemory(ptr);
-        return self->fConverter->FromMemory((void*)&ptr);
+        if ((intptr_t&)view.internal & CPyCppyy::LowLevelView::kIsFixed)
+            return self->fElemCnv->FromMemory(ptr);
+        return self->fElemCnv->FromMemory(ptr);
     }
 
     return nullptr;      // error already set by lookup_dimension
@@ -532,7 +554,7 @@ static int ll_ass_sub(CPyCppyy::LowLevelView* self, PyObject* key, PyObject* val
         void* ptr = ptr_from_tuple(self, key);
         if (ptr == nullptr)
             return -1;
-        return self->fConverter->ToMemory(value, ptr) ? 0 : -1;
+        return self->fElemCnv->ToMemory(value, ptr) ? 0 : -1;
     }
 
     if (PySlice_Check(key) || is_multislice(key)) {
@@ -951,11 +973,12 @@ static inline PyObject* CreateLowLevelViewT(T* address, CPyCppyy::dims_t shape)
         if (isfix) (intptr_t&)view.internal |= CPyCppyy::LowLevelView::kIsFixed;
     }
 
+    llp->fElemCnv = CreateConverter(typecode_traits<T>::name);
     if (view.ndim == 1) {
     // simple 1-dim array of the declared type
         view.len        = nx * sizeof(T);
         view.itemsize   = sizeof(T);
-        llp->fConverter = CreateConverter(typecode_traits<T>::name);
+        llp->fConverter = llp->fElemCnv;
     } else {
     // multi-dim array; sub-views are projected by using more LLViews
         view.len        = nx * sizeof(void*);
@@ -970,8 +993,17 @@ static inline PyObject* CreateLowLevelViewT(T* address, CPyCppyy::dims_t shape)
         llp->fConverter = CreateConverter(tname, shape.sub());
     }
 
-    for (Py_ssize_t idim = 0; idim < view.ndim; ++idim)
-        view.strides[idim] = view.itemsize;
+    if (isfix) {
+        Py_ssize_t stride = sizeof(T);
+        for (Py_ssize_t idim = view.ndim-1; 0 <= idim; --idim) {
+            view.strides[idim] = stride;
+            stride *= view.shape[view.ndim-1-idim];
+        }
+    } else {
+       for (Py_ssize_t idim = 0; idim < view.ndim-1; ++idim)
+           view.strides[idim] = view.itemsize;
+       view.strides[view.ndim-1] = sizeof(T);
+    }
 
     return (PyObject*)llp;
 }
