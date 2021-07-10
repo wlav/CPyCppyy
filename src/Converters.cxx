@@ -2883,7 +2883,6 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, dims
 //
 // If all fails, void is used, which will generate a run-time warning when used.
 
-
 // an exactly matching converter is best
     ConvFactories_t::iterator h = gConvFactories.find(fullType);
     if (h != gConvFactories.end()) {

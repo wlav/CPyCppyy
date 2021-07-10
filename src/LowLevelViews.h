@@ -21,7 +21,8 @@ public:
     enum EFlags {
         kDefault     = 0x0000,
         kIsCppArray  = 0x0001,
-        kIsOwner     = 0x0002 };
+        kIsFixed     = 0x0002,
+        kIsOwner     = 0x0004 };
 
 public:
     PyObject_HEAD

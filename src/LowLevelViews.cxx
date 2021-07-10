@@ -46,7 +46,10 @@ static void ll_dealloc(CPyCppyy::LowLevelView* pyobj)
        else
            free(pyobj->fBuf);
     }
-    if (pyobj->fConverter && pyobj->fConverter->HasState()) delete pyobj->fConverter;
+
+    if (pyobj->fConverter && pyobj->fConverter->HasState())
+        delete pyobj->fConverter;
+
     Py_TYPE(pyobj)->tp_free((PyObject*)pyobj);
 }
 
@@ -359,8 +362,12 @@ static PyObject* ll_item(CPyCppyy::LowLevelView* self, Py_ssize_t index)
     }
 
     void* ptr = ptr_from_index(self, index);
-    if (ptr)
-        return self->fConverter->FromMemory(ptr);
+    if (ptr) {
+        bool isfix = (intptr_t&)view.internal & CPyCppyy::LowLevelView::kIsFixed;
+        if (self->fBufInfo.ndim == 1 || !isfix)
+            return self->fConverter->FromMemory(ptr);
+        return self->fConverter->FromMemory((void*)&ptr);
+    }
 
     return nullptr;      // error already set by lookup_dimension
 }
@@ -380,9 +387,14 @@ static PyObject* ll_item_multi(CPyCppyy::LowLevelView* self, PyObject *tup)
     }
 
     void* ptr = ptr_from_tuple(self, tup);
-    if (!ptr)
-        return nullptr;
-    return self->fConverter->FromMemory(ptr);
+    if (ptr) {
+        bool isfix = (intptr_t&)view.internal & CPyCppyy::LowLevelView::kIsFixed;
+        if (self->fBufInfo.ndim == 1 || !isfix)
+            return self->fConverter->FromMemory(ptr);
+        return self->fConverter->FromMemory((void*)&ptr);
+    }
+
+    return nullptr;      // error already set by lookup_dimension
 }
 
 
@@ -511,7 +523,7 @@ static int ll_ass_sub(CPyCppyy::LowLevelView* self, PyObject* key, PyObject* val
     }
 
     if (is_multiindex(key)) {
-    // TODO: implement
+        // TODO: implement
         if (PyTuple_GET_SIZE(key) < view.ndim) {
             PyErr_SetString(PyExc_NotImplementedError,
                             "sub-views are not implemented");
@@ -932,6 +944,12 @@ static inline PyObject* CreateLowLevelViewT(T* address, CPyCppyy::dims_t shape)
     view.strides        = (Py_ssize_t*)PyMem_Malloc(view.ndim * sizeof(Py_ssize_t));
     view.suboffsets     = nullptr;
     (intptr_t&)view.internal = CPyCppyy::LowLevelView::kIsCppArray;  // assumed
+    bool isfix = shape.ndim() != UNKNOWN_SIZE;
+    if (isfix) {
+        for (int i = 0; i < shape.ndim(); ++i)
+           isfix = isfix && (shape[i] != UNKNOWN_SIZE);
+        if (isfix) (intptr_t&)view.internal |= CPyCppyy::LowLevelView::kIsFixed;
+    }
 
     if (view.ndim == 1) {
     // simple 1-dim array of the declared type
