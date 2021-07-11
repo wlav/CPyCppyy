@@ -18,6 +18,23 @@
 // converters, and typed results and assignments are supported. Code reused
 // under PSF License Version 2.
 
+
+//- helpers ------------------------------------------------------------------
+static inline void set_strides(Py_buffer& view, size_t itemsize, bool isfix) {
+    if (isfix) {
+        Py_ssize_t stride = itemsize;
+        for (Py_ssize_t idim = view.ndim-1; 0 <= idim; --idim) {
+            view.strides[idim] = stride;
+            stride *= view.shape[idim];
+        }
+    } else {
+        view.strides[view.ndim-1] = itemsize;
+        for (Py_ssize_t idim = 0; idim < view.ndim-1; ++idim)
+            view.strides[idim] = view.itemsize;
+    }
+}
+
+
 //= CPyCppyy low level view construction/destruction =========================
 static CPyCppyy::LowLevelView* ll_new(PyTypeObject* subtype, PyObject*, PyObject*)
 {
@@ -285,7 +302,7 @@ static void* ptr_from_tuple(CPyCppyy::LowLevelView* llview, PyObject* tup)
         if (!ptr)
             return nullptr;
 
-        if (!((intptr_t&)view.internal & CPyCppyy::LowLevelView::kIsFixed) && dim != view.ndim-1)
+        if (!((intptr_t)view.internal & CPyCppyy::LowLevelView::kIsFixed) && dim != view.ndim-1)
             ptr = *(char**)ptr;
     }
     return ptr;
@@ -386,7 +403,7 @@ static PyObject* ll_item(CPyCppyy::LowLevelView* self, Py_ssize_t index)
 
     void* ptr = ptr_from_index(self, index);
     if (ptr) {
-        bool isfix = (intptr_t&)view.internal & CPyCppyy::LowLevelView::kIsFixed;
+        bool isfix = (intptr_t)view.internal & CPyCppyy::LowLevelView::kIsFixed;
         if (self->fBufInfo.ndim == 1 || !isfix)
             return self->fConverter->FromMemory(ptr);
         return self->fConverter->FromMemory((void*)&ptr);
@@ -410,13 +427,9 @@ static PyObject* ll_item_multi(CPyCppyy::LowLevelView* self, PyObject *tup)
     }
 
     void* ptr = ptr_from_tuple(self, tup);
-    if (ptr) {
-        if ((intptr_t&)view.internal & CPyCppyy::LowLevelView::kIsFixed)
-            return self->fElemCnv->FromMemory(ptr);
-        return self->fElemCnv->FromMemory(ptr);
-    }
 
-    return nullptr;      // error already set by lookup_dimension
+// if there's an error, it was already set by lookup_dimension
+    return ptr ? self->fElemCnv->FromMemory(ptr) : nullptr;
 }
 
 
@@ -749,6 +762,7 @@ static PyObject* ll_reshape(CPyCppyy::LowLevelView* self, PyObject* shape)
     }
 
 // reshape
+    size_t itemsize = view.strides[view.ndim-1];
     if (view.ndim != PyTuple_GET_SIZE(shape)) {
         PyMem_Free(view.shape);
         PyMem_Free(view.strides);
@@ -763,12 +777,12 @@ static PyObject* ll_reshape(CPyCppyy::LowLevelView* self, PyObject* shape)
         if (nlen == -1 && PyErr_Occurred())
             return nullptr;
 
-        if (idim == 0)
-            view.len = nlen * (view.ndim == 1 ? view.itemsize : sizeof(void*));
+        if (idim == 0) view.len = nlen * view.itemsize;
 
-        view.strides[idim] = view.itemsize;
-        view.shape[idim]   = nlen;
+        view.shape[idim] = nlen;
     }
+
+    set_strides(view, itemsize, false /* by definition not fixed */);
 
     Py_RETURN_NONE;
 }
@@ -993,17 +1007,7 @@ static inline PyObject* CreateLowLevelViewT(T* address, CPyCppyy::dims_t shape)
         llp->fConverter = CreateConverter(tname, shape.sub());
     }
 
-    if (isfix) {
-        Py_ssize_t stride = sizeof(T);
-        for (Py_ssize_t idim = view.ndim-1; 0 <= idim; --idim) {
-            view.strides[idim] = stride;
-            stride *= view.shape[view.ndim-1-idim];
-        }
-    } else {
-       for (Py_ssize_t idim = 0; idim < view.ndim-1; ++idim)
-           view.strides[idim] = view.itemsize;
-       view.strides[view.ndim-1] = sizeof(T);
-    }
+    set_strides(view, sizeof(T), isfix);
 
     return (PyObject*)llp;
 }
