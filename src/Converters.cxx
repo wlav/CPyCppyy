@@ -1260,7 +1260,7 @@ bool CPyCppyy::WCStringConverter::ToMemory(PyObject* value, void* address, PyObj
         return false;
 
 // verify (too long string will cause truncation, no crash)
-    if (fMaxSize != std::wstring::npos && fMaxSize < len)
+    if (fMaxSize != std::wstring::npos && fMaxSize < (std::wstring::size_type)len)
         PyErr_Warn(PyExc_RuntimeWarning, (char*)"string too long for wchar_t array (truncated)");
 
     Py_ssize_t res = -1;
@@ -2925,7 +2925,7 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, dims
         if (h != gConvFactories.end())
             return (h->second)(dims);
 
-    } else if (!cpd.empty() && std::count(cpd.begin(), cpd.end(), '*') == cpd.size()) {
+    } else if (!cpd.empty() && (std::string::size_type)std::count(cpd.begin(), cpd.end(), '*') == cpd.size()) {
     // simple array; set or resize as necessary
         if (!dims && 1 < cpd.size()) dims.ndim(cpd.size());
         h = gConvFactories.find(realType + " ptr");
