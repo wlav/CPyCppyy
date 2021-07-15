@@ -10,7 +10,7 @@ namespace CPyCppyy {
 
 static const dim_t UNKNOWN_SIZE = (dim_t)-1;
 
-class Dimensions {
+class CPYCPPYY_CLASS_EXPORT Dimensions {
     dim_t* fDims;
 
 public:
@@ -75,6 +75,8 @@ public:
 
     Dimensions sub() const { return fDims ? Dimensions(fDims[0]-1, fDims+2) : Dimensions(); }
 };
+
+typedef Dimensions dims_t;
 
 } // namespace CPyCppyy
 

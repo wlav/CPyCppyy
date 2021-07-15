@@ -36,8 +36,6 @@
 #include <sys/types.h>
 
 namespace CPyCppyy {
-    class Dimensions;
-    typedef Dimensions dims_t;
     typedef Py_ssize_t dim_t;
 } // namespace CPyCppyy
 

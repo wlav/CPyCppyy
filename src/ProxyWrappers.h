@@ -1,6 +1,9 @@
 #ifndef CPYCPPYY_PROXYWRAPPERS_H
 #define CPYCPPYY_PROXYWRAPPERS_H
 
+// Bindings
+#include "Dimensions.h"
+
 // Standard
 #include <string>
 
