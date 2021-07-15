@@ -86,9 +86,10 @@ struct CallContext;
 
 // Dimensions class not currently exposed
 #ifndef CPYCPPYY_DIMENSIONS_H
+#define CPYCPPYY_DIMENSIONS_H
 typedef Py_ssize_t dim_t;
 
-class Dimensions {
+class CPYCPPYY_CLASS_EXTERN Dimensions {
     dim_t* fDims;
 
 public:
