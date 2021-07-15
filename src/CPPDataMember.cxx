@@ -46,21 +46,10 @@ static PyObject* pp_get(CPPDataMember* pyprop, CPPInstance* pyobj, PyObject* /* 
         }
     }
 
-// normal getter access
+// non-initialized or public data accesses through class (e.g. by help())
     void* address = pyprop->GetAddress(pyobj);
     if (!address || (intptr_t)address == -1 /* Cling error */)
         return nullptr;
-
-// for fixed size arrays
-    void* ptr = address;
-    if (pyprop->fFlags & kIsArrayType)
-        ptr = &address;
-
-// non-initialized or public data accesses through class (e.g. by help())
-    if (!ptr || (intptr_t)ptr == -1 /* Cling error */) {
-        Py_INCREF(pyprop);
-        return (PyObject*)pyprop;
-    }
 
     if (pyprop->fFlags & (kIsEnumPrep | kIsEnumType)) {
         if (pyprop->fFlags & kIsEnumPrep) {
@@ -101,7 +90,7 @@ static PyObject* pp_get(CPPDataMember* pyprop, CPPInstance* pyobj, PyObject* /* 
     }
 
     if (pyprop->fConverter != 0) {
-        PyObject* result = pyprop->fConverter->FromMemory(ptr);
+        PyObject* result = pyprop->fConverter->FromMemory((pyprop->fFlags & kIsArrayType) ? &address : address);
         if (!result)
             return result;
 

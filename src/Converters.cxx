@@ -2928,13 +2928,8 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, cdim
     } else if (!cpd.empty() && (std::string::size_type)std::count(cpd.begin(), cpd.end(), '*') == cpd.size()) {
     // simple array; set or resize as necessary
         h = gConvFactories.find(realType + " ptr");
-        if (h != gConvFactories.end()) {
-            if (!dims && 1 < cpd.size()) {
-               dims_t dims2 = dims; dims2.ndim(cpd.size());
-               return (h->second)(dims2);
-            }
-            return (h->second)(dims);
-        }
+        if (h != gConvFactories.end())
+            return (h->second)((!dims && 1 < cpd.size()) ? dims_t(cpd.size()) : dims);
 
     } else if (cpd == "*[]") {
     // array of pointers
