@@ -56,7 +56,7 @@ public:
     }
 
 public:
-    operator bool() { return (bool)fDims; }
+    operator bool() const { return (bool)fDims; }
 
     dim_t ndim() const { return fDims ? fDims[0] : UNKNOWN_SIZE; }
     void ndim(dim_t d) {
@@ -77,6 +77,7 @@ public:
 };
 
 typedef Dimensions dims_t;
+typedef const dims_t& cdims_t;
 
 } // namespace CPyCppyy
 

@@ -30,7 +30,7 @@ inline bool TupleOfInstances_CheckExact(T* object)
 }
 
 PyObject* TupleOfInstances_New(
-    Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, dims_t dims);
+    Cppyy::TCppObject_t address, Cppyy::TCppType_t klass, cdims_t dims);
 
 } // namespace CPyCppyy
 

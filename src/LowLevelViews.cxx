@@ -959,7 +959,7 @@ template<> struct typecode_traits<std::complex<long>> {
 
 //---------------------------------------------------------------------------
 template<typename T>
-static inline PyObject* CreateLowLevelViewT(T* address, CPyCppyy::dims_t shape)
+static inline PyObject* CreateLowLevelViewT(T* address, CPyCppyy::cdims_t shape)
 {
     using namespace CPyCppyy;
     Py_ssize_t nx = (shape.ndim() != UNKNOWN_SIZE) ? shape[0] : INT_MAX/sizeof(T);
@@ -1014,7 +1014,7 @@ static inline PyObject* CreateLowLevelViewT(T* address, CPyCppyy::dims_t shape)
 
 //---------------------------------------------------------------------------
 template<typename T>
-static inline PyObject* CreateLowLevelViewT(T** address, CPyCppyy::dims_t shape)
+static inline PyObject* CreateLowLevelViewT(T** address, CPyCppyy::cdims_t shape)
 {
     using namespace CPyCppyy;
     LowLevelView* llp = (LowLevelView*)CreateLowLevelViewT((T*)address, shape);
@@ -1024,10 +1024,10 @@ static inline PyObject* CreateLowLevelViewT(T** address, CPyCppyy::dims_t shape)
 
 //---------------------------------------------------------------------------
 #define CPPYY_IMPL_VIEW_CREATOR(type)                                       \
-PyObject* CPyCppyy::CreateLowLevelView(type* address, dims_t shape) {       \
+PyObject* CPyCppyy::CreateLowLevelView(type* address, cdims_t shape) {      \
     return CreateLowLevelViewT<type>(address, shape);                       \
 }                                                                           \
-PyObject* CPyCppyy::CreateLowLevelView(type** address, dims_t shape) {      \
+PyObject* CPyCppyy::CreateLowLevelView(type** address, cdims_t shape) {     \
     return CreateLowLevelViewT<type>(address, shape);                       \
 }
 
@@ -1053,6 +1053,6 @@ CPPYY_IMPL_VIEW_CREATOR(std::complex<double>);
 CPPYY_IMPL_VIEW_CREATOR(std::complex<int>);
 CPPYY_IMPL_VIEW_CREATOR(std::complex<long>);
 
-PyObject* CPyCppyy::CreateLowLevelView(const char** address, dims_t shape) {
+PyObject* CPyCppyy::CreateLowLevelView(const char** address, cdims_t shape) {
     return CreateLowLevelViewT<const char*>(address, shape);
 }

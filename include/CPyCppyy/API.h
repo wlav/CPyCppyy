@@ -97,10 +97,11 @@ public:
     ~Dimensions() { delete [] fDims; }
 
 public:
-    operator bool() { return (bool)fDims; }
+    operator bool() const { return (bool)fDims; }
 };
 
 typedef Dimensions dims_t;
+typedef const dims_t& cdims_t;
 #endif // !CPYCPPYY_DIMENSIONS_H
 
 // type converter base class
@@ -122,13 +123,13 @@ public:
 };
 
 // create a converter based on its full type name and dimensions
-CPYCPPYY_EXTERN Converter* CreateConverter(const std::string& name, dims_t = 0);
+CPYCPPYY_EXTERN Converter* CreateConverter(const std::string& name, cdims_t = 0);
 
 // delete a previously created converter
 CPYCPPYY_EXTERN void DestroyConverter(Converter* p);
 
 // register a custom converter
-typedef Converter* (*ConverterFactory_t)(dims_t);
+typedef Converter* (*ConverterFactory_t)(cdims_t);
 CPYCPPYY_EXTERN bool RegisterConverter(const std::string& name, ConverterFactory_t);
 
 // remove a custom converter
@@ -149,13 +150,13 @@ public:
 };
 
 // create an executor based on its full type name
-CPYCPPYY_EXTERN Executor* CreateExecutor(const std::string& name, dims_t = 0);
+CPYCPPYY_EXTERN Executor* CreateExecutor(const std::string& name, cdims_t = 0);
 
 // delete a previously created executor
 CPYCPPYY_EXTERN void DestroyConverter(Converter* p);
 
 // register a custom executor
-typedef Executor* (*ExecutorFactory_t)(dims_t);
+typedef Executor* (*ExecutorFactory_t)(cdims_t);
 CPYCPPYY_EXTERN bool RegisterExecutor(const std::string& name, ExecutorFactory_t);
 
 // remove a custom executor

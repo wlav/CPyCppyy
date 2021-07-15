@@ -32,9 +32,9 @@ protected:
 };
 
 // create/destroy executor from fully qualified type (public API)
-CPYCPPYY_EXPORT Executor* CreateExecutor(const std::string& fullType, dims_t = 0);
+CPYCPPYY_EXPORT Executor* CreateExecutor(const std::string& fullType, cdims_t = 0);
 CPYCPPYY_EXPORT void DestroyExecutor(Executor* p);
-typedef Executor* (*ef_t) (dims_t);
+typedef Executor* (*ef_t) (cdims_t);
 CPYCPPYY_EXPORT bool RegisterExecutor(const std::string& name, ef_t fac);
 CPYCPPYY_EXPORT bool UnregisterExecutor(const std::string& name);
 

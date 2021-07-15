@@ -52,7 +52,7 @@ public:                                                                      \
 #define CPPYY_DECLARE_ARRAY_CONVERTER(name)                                  \
 class name##ArrayConverter : public Converter {                              \
 public:                                                                      \
-    name##ArrayConverter(dims_t dims);                                       \
+    name##ArrayConverter(cdims_t dims);                                      \
     name##ArrayConverter(const name##ArrayConverter&) = delete;              \
     name##ArrayConverter& operator=(const name##ArrayConverter&) = delete;   \
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);      \
@@ -278,7 +278,7 @@ public:
 
 class InstanceArrayConverter : public InstancePtrConverter {
 public:
-    InstanceArrayConverter(Cppyy::TCppType_t klass, dims_t dims, bool keepControl = false) :
+    InstanceArrayConverter(Cppyy::TCppType_t klass, cdims_t dims, bool keepControl = false) :
             InstancePtrConverter(klass, keepControl), fShape(dims) { }
     InstanceArrayConverter(const InstanceArrayConverter&) = delete;
     InstanceArrayConverter& operator=(const InstanceArrayConverter&) = delete;
