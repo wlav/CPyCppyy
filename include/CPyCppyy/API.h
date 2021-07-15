@@ -89,7 +89,7 @@ struct CallContext;
 #define CPYCPPYY_DIMENSIONS_H
 typedef Py_ssize_t dim_t;
 
-class CPYCPPYY_CLASS_EXTERN Dimensions {
+class Dimensions {      // Windows note: NOT exported/imported
     dim_t* fDims;
 
 public:
