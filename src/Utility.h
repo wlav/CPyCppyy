@@ -69,8 +69,6 @@ struct PyOperators {
 };
 
 // meta information
-const std::string Compound(const std::string& name);
-Py_ssize_t ArraySize(const std::string& name);
 std::string ClassName(PyObject* pyobj);
 
 // for threading: save call to PyErr_Occurred()

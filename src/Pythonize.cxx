@@ -1627,7 +1627,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
 
                 const std::string& txt = Cppyy::GetDatamemberType(kls, i);
                 const std::string& res = Cppyy::IsEnum(txt) ? txt : Cppyy::ResolveName(txt);
-                const std::string& cpd = Utility::Compound(res);
+                const std::string& cpd = TypeManip::compound(res);
                 std::string res_clean = TypeManip::clean_type(res, false, true);
 
                 if (res_clean == "internal_enum_type_t")
@@ -1808,7 +1808,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         Utility::AddToClass(pyclass, "__cpp_real", "real");
         PyObject_SetAttrString(pyclass, "real", PyDescr_NewGetSet((PyTypeObject*)pyclass, &realComplex));
         Utility::AddToClass(pyclass, "__cpp_imag", "imag");
-        PyObject_SetAttrString(pyclass, "imag", PyDescr_NewGetSet((PyTypeObject*)pyclass, &imagComplex)); 
+        PyObject_SetAttrString(pyclass, "imag", PyDescr_NewGetSet((PyTypeObject*)pyclass, &imagComplex));
         Utility::AddToClass(pyclass, "__complex__", (PyCFunction)ComplexComplex, METH_NOARGS);
         Utility::AddToClass(pyclass, "__repr__", (PyCFunction)ComplexRepr, METH_NOARGS);
     }

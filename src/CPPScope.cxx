@@ -394,7 +394,7 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
             const std::string& lookup = Cppyy::GetScopedFinalName(klass->fCppType) + "::" + name;
             const std::string& resolved = Cppyy::ResolveName(lookup);
             if (resolved != lookup) {
-                const std::string& cpd = Utility::Compound(resolved);
+                const std::string& cpd = TypeManip::compound(resolved);
                 if (cpd == "*") {
                     const std::string& clean = TypeManip::clean_type(resolved, false, true);
                     Cppyy::TCppType_t tcl = Cppyy::GetScope(clean);

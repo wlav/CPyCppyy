@@ -4,6 +4,7 @@
 
 // Standard
 #include <algorithm>
+#include <sstream>
 #include <ctype.h>
 
 
@@ -75,7 +76,6 @@ static inline void rstrip(std::string& name)
         name = name.substr(0, i);
 }
 
-
 //----------------------------------------------------------------------------
 std::string CPyCppyy::TypeManip::remove_const(const std::string& cppname)
 {
@@ -89,13 +89,12 @@ std::string CPyCppyy::TypeManip::remove_const(const std::string& cppname)
         std::string pre = cppname.substr(0, tmplt_start);
         erase_const(pre);
         std::string post = "";
-        if (type_stop != std::string::npos) {
+        if (type_stop != std::string::npos && type_stop != cppname.size()-1) {
             post = cppname.substr(type_stop+1, std::string::npos);
             erase_const(post);
         }
 
-        type_stop = type_stop == std::string::npos ? std::string::npos : type_stop+1;
-        return pre + cppname.substr(tmplt_start, type_stop) + post;
+        return pre + cppname.substr(tmplt_start, type_stop+1-tmplt_start) + post;
     }
 
     std::string clean_name = cppname;
@@ -151,6 +150,27 @@ std::string CPyCppyy::TypeManip::template_base(const std::string& cppname)
     }
 
     return cppname;
+}
+
+//----------------------------------------------------------------------------
+std::string CPyCppyy::TypeManip::compound(const std::string& name)
+{
+// Break down the compound of a fully qualified type name.
+    std::string cleanName = remove_const(name);
+    auto idx = find_qualifier_index(cleanName);
+
+    const std::string& cpd = cleanName.substr(idx, std::string::npos);
+
+// for easy identification of fixed size arrays
+    if (cpd.back() == ']') {
+        std::ostringstream scpd;
+        if (cpd.front() != '[') scpd << cpd.substr(0, cpd.find('['));
+        for (auto c : cpd)
+            if (c == '[') scpd << "[]";
+        return scpd.str();
+    }
+
+    return cpd;
 }
 
 //----------------------------------------------------------------------------
@@ -236,3 +256,18 @@ std::vector<std::string> CPyCppyy::TypeManip::extract_arg_types(const std::strin
     return result;
 }
 
+//----------------------------------------------------------------------------
+Py_ssize_t CPyCppyy::TypeManip::array_size(const std::string& name)
+{
+// Extrac the array size from a given type name (assumes 1D arrays)
+    std::string cleanName = remove_const(name);
+    if (cleanName[cleanName.size()-1] == ']') {
+        std::string::size_type idx = cleanName.rfind('[');
+        if (idx != std::string::npos) {
+            const std::string asize = cleanName.substr(idx+1, cleanName.size()-2);
+            return strtoul(asize.c_str(), nullptr, 0);
+        }
+    }
+
+    return -1;
+}

@@ -114,14 +114,6 @@ namespace {
         }
     } initOperatorMapping_;
 
-// TODO: this should live with Helpers
-    inline void RemoveConst(std::string& cleanName) {
-        std::string::size_type spos = std::string::npos;
-        while ((spos = cleanName.find("const")) != std::string::npos) {
-            cleanName.swap(cleanName.erase(spos, 5));
-        }
-    }
-
 } // unnamed namespace
 
 
@@ -884,49 +876,6 @@ std::string CPyCppyy::Utility::MapOperatorName(const std::string& name, bool bTa
 
 // might get here, as not all operator methods are handled (new, delete, etc.)
     return name;
-}
-
-//----------------------------------------------------------------------------
-const std::string CPyCppyy::Utility::Compound(const std::string& name)
-{
-// TODO: consolidate with other string manipulations in TypeManip.cxx
-// Break down the compound of a fully qualified type name.
-    std::string cleanName = name;
-    RemoveConst(cleanName);
-
-    std::string compound = "";
-    for (int ipos = (int)cleanName.size()-1; 0 <= ipos; --ipos) {
-        char c = cleanName[ipos];
-        if (isspace(c)) continue;
-        if (isalnum(c) || c == '_' || c == '>' || c == ')') break;
-
-        compound = c + compound;
-    }
-
-// for arrays (TODO: deal with the actual size)
-    if (compound == "]")
-        return "[]";
-
-    return compound;
-}
-
-//----------------------------------------------------------------------------
-Py_ssize_t CPyCppyy::Utility::ArraySize(const std::string& name)
-{
-// TODO: consolidate with other string manipulations in Helpers.cxx
-// Extract size from an array type, if available.
-    std::string cleanName = name;
-    RemoveConst(cleanName);
-
-    if (cleanName[cleanName.size()-1] == ']') {
-        std::string::size_type idx = cleanName.rfind('[');
-        if (idx != std::string::npos) {
-            const std::string asize = cleanName.substr(idx+1, cleanName.size()-2);
-            return strtoul(asize.c_str(), nullptr, 0);
-        }
-    }
-
-    return -1;
 }
 
 //----------------------------------------------------------------------------

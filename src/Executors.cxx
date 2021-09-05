@@ -769,7 +769,7 @@ CPyCppyy::Executor* CPyCppyy::CreateExecutor(const std::string& fullType, cdims_
 
 //-- nothing? ok, collect information about the type and possible qualifiers/decorators
     bool isConst = strncmp(resolvedType.c_str(), "const", 5)  == 0;
-    const std::string& cpd = Utility::Compound(resolvedType);
+    const std::string& cpd = TypeManip::compound(resolvedType);
     std::string realType = TypeManip::clean_type(resolvedType, false);
 
 // accept unqualified type (as python does not know about qualifiers)
@@ -810,7 +810,7 @@ CPyCppyy::Executor* CPyCppyy::CreateExecutor(const std::string& fullType, cdims_
         else if (cpd == "*&")
             result = new InstancePtrRefExecutor(klass);
         else if (cpd == "[]") {
-            Py_ssize_t asize = Utility::ArraySize(resolvedType);
+            Py_ssize_t asize = TypeManip::array_size(resolvedType);
             if (0 < asize)
                 result = new InstanceArrayExecutor(klass, asize);
             else

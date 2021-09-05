@@ -112,7 +112,7 @@ static void build_constructors(
             size_t first = (i != 0 ? arg_tots[i-1] : 0);
             for (size_t j = first; j < arg_tots[i]; ++j) {
                 if (j != first) code << ", ";
-                bool isRValue = CPyCppyy::Utility::Compound(\
+                bool isRValue = CPyCppyy::TypeManip::compound(\
                     Cppyy::GetMethodArgType(methods[i].first, j-first)) == "&&";
                 if (isRValue) code << "std::move(";
                 code << "a" << j;
@@ -230,7 +230,7 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
                     if (nreq == 0) default_found = true;
                     else if (!cctor_found && nreq == 1) {
                         const std::string& argtype = Cppyy::GetMethodArgType(method, 0);
-                        if (Utility::Compound(argtype) == "&" && TypeManip::clean_type(argtype, false) == binfo.bname_scoped)
+                        if (TypeManip::compound(argtype) == "&" && TypeManip::clean_type(argtype, false) == binfo.bname_scoped)
                             cctor_found = true;
                     }
                     ctors[ibase].push_back(method);

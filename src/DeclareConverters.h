@@ -324,13 +324,14 @@ public:
 
 class VoidPtrPtrConverter : public Converter {
 public:
-    VoidPtrPtrConverter(dim_t size) { fSize = size; }
+    VoidPtrPtrConverter(cdims_t dims);
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
     virtual PyObject* FromMemory(void* address);
     virtual bool HasState() { return true; }
 
 protected:
-    dim_t fSize;
+    dims_t fShape;
+    bool fIsFixed;
 };
 
 CPPYY_DECLARE_BASIC_CONVERTER(PyObject);

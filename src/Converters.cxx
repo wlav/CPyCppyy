@@ -1442,11 +1442,11 @@ bool CPyCppyy::VoidArrayConverter::SetArg(
 PyObject* CPyCppyy::VoidArrayConverter::FromMemory(void* address)
 {
 // nothing sensible can be done, just return <address> as pylong
-    if (!address || *(ptrdiff_t*)address == 0) {
+    if (!address || *(uintptr_t*)address == 0) {
         Py_INCREF(gNullPtrObject);
         return gNullPtrObject;
     }
-    return CreatePointerView(*(ptrdiff_t**)address);
+    return CreatePointerView(*(uintptr_t**)address);
 }
 
 //----------------------------------------------------------------------------
@@ -2253,6 +2253,12 @@ bool CPyCppyy::VoidPtrRefConverter::SetArg(
 }
 
 //----------------------------------------------------------------------------
+CPyCppyy::VoidPtrPtrConverter::VoidPtrPtrConverter(cdims_t dims) :
+        fShape(dims) {
+    fIsFixed = dims ? fShape[0] != UNKNOWN_SIZE : false;
+}
+
+//----------------------------------------------------------------------------
 bool CPyCppyy::VoidPtrPtrConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)
 {
@@ -2288,12 +2294,14 @@ bool CPyCppyy::VoidPtrPtrConverter::SetArg(
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::VoidPtrPtrConverter::FromMemory(void* address)
 {
-// read a void** from address; since this is unknown, ptrdiff_t is used (user can cast)
+// read a void** from address; since this is unknown, uintptr_t is used (user can cast)
     if (!address || *(ptrdiff_t*)address == 0) {
         Py_INCREF(gNullPtrObject);
         return gNullPtrObject;
     }
-    return CreatePointerView(*(ptrdiff_t**)address, {fSize});
+    if (!fIsFixed)
+        return CreatePointerView((uintptr_t**)address, fShape);
+    return CreatePointerView(*(uintptr_t**)address, fShape);
 }
 
 //----------------------------------------------------------------------------
@@ -2901,29 +2909,43 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, cdim
 
 //-- nothing? ok, collect information about the type and possible qualifiers/decorators
     bool isConst = strncmp(resolvedType.c_str(), "const", 5) == 0;
-    const std::string& cpd = Utility::Compound(resolvedType);
+    const std::string& cpd = TypeManip::compound(resolvedType);
     std::string realType   = TypeManip::clean_type(resolvedType, false, true);
 
 // accept unqualified type (as python does not know about qualifiers)
-    h = gConvFactories.find(realType + cpd);
+    h = gConvFactories.find((isConst ? "const " : "") + realType + cpd);
     if (h != gConvFactories.end())
         return (h->second)(dims);
 
 // drop const, as that is mostly meaningless to python (with the exception
 // of c-strings, but those are specialized in the converter map)
     if (isConst) {
-        realType = TypeManip::remove_const(realType);
         h = gConvFactories.find(realType + cpd);
         if (h != gConvFactories.end())
             return (h->second)(dims);
     }
 
 //-- still nothing? try pointer instead of array (for builtins)
-    if (cpd.compare(0, 2, "[]") == 0) {
-    // fixed array, dims will have size if available
+    if (cpd.compare(0, 3, "*[]") == 0) {
+    // special case, array of pointers
         h = gConvFactories.find(realType + " ptr");
-        if (h != gConvFactories.end())
+        if (h != gConvFactories.end()) {
+        // upstream treats the pointer type as the array element type, but that pointer is
+        // treated as a low-level view as well, unless it's a void*/char* so adjust the dims
+            if (realType != "void" && realType != "char") {
+                dim_t newdim = dims.ndim() == UNKNOWN_SIZE ? 2 : dims.ndim()+1;
+                dims_t newdims = dims_t(newdim);
+                newdims[0] = dims[0];            // the array
+                newdims[1] = UNKNOWN_SIZE;       // the pointer
+                if (2 < newdim) {
+                    for (int i = 2; i < (newdim-1); ++i)
+                        newdims[i] = dims[i-1];
+                }
+
+                return (h->second)(newdims);
+            }
             return (h->second)(dims);
+        }
 
     } else if (!cpd.empty() && (std::string::size_type)std::count(cpd.begin(), cpd.end(), '*') == cpd.size()) {
     // simple array; set or resize as necessary
@@ -2931,23 +2953,11 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, cdim
         if (h != gConvFactories.end())
             return (h->second)((!dims && 1 < cpd.size()) ? dims_t(cpd.size()) : dims);
 
-    } else if (cpd == "*[]") {
-    // array of pointers
+    }  else if (2 <= cpd.size() && (std::string::size_type)std::count(cpd.begin(), cpd.end(), '[') == cpd.size() / 2) {
+    // fixed array, dims will have size if available
         h = gConvFactories.find(realType + " ptr");
-        if (h != gConvFactories.end()) {
-        // upstream treats the pointer type as the array element type, but that pointer is
-        // treated as a low-level view as well, so adjust the dims
-            dim_t newdim = dims.ndim() == UNKNOWN_SIZE ? 2 : dims.ndim()+1;
-            dims_t newdims = dims_t(newdim);
-            newdims[0] = dims[0];          // the array
-            newdims[1] = UNKNOWN_SIZE;     // the pointer
-            if (2 < newdim) {
-                for (int i = 2; i < (newdim-1); ++i)
-                    newdims[i] = dims[i-1];
-            }
-            Converter* cnv = (h->second)(newdims);
-            return cnv;
-        }
+        if (h != gConvFactories.end())
+            return (h->second)(dims);
     }
 
 //-- special case: initializer list
@@ -3243,6 +3253,7 @@ public:
         gf["const signed char*"] =          gf["const char*"];
         gf["const char[]"] =                (cf_t)+[](cdims_t) { return new CStringConverter{}; };
         gf["char*"] =                       (cf_t)+[](cdims_t) { return new NonConstCStringConverter{}; };
+        gf["char[]"] =                      (cf_t)+[](cdims_t d) { return new NonConstCStringConverter{d.ndim() != UNKNOWN_SIZE ? d[0] : std::string::npos}; };
         gf["signed char*"] =                gf["char*"];
         gf["wchar_t*"] =                    (cf_t)+[](cdims_t) { return new WCStringConverter{}; };
         gf["char16_t*"] =                   (cf_t)+[](cdims_t) { return new CString16Converter{}; };
@@ -3253,7 +3264,7 @@ public:
         gf["const char**"] =                (cf_t)+[](cdims_t) { return new CStringArrayConverter{{UNKNOWN_SIZE, UNKNOWN_SIZE}}; };
         gf["char**"] =                      gf["const char**"];
         gf["const char*[]"] =               (cf_t)+[](cdims_t d) { return new CStringArrayConverter{d}; };
-        gf["char*[]"] =                     gf["const char*[]"];
+        gf["char ptr"] =                    gf["const char*[]"];
         gf["std::string"] =                 (cf_t)+[](cdims_t) { return new STLStringConverter{}; };
         gf["const std::string&"] =          gf["std::string"];
         gf["std::string&&"] =               (cf_t)+[](cdims_t) { return new STLStringMoveConverter{}; };
@@ -3268,8 +3279,8 @@ public:
         gf["const std::wstring&"] =         gf["std::wstring"];
         gf["const " WSTRING "&"] =          gf["std::wstring"];
         gf["void*&"] =                      (cf_t)+[](cdims_t) { static VoidPtrRefConverter c{};     return &c; };
-        gf["void**"] =                      (cf_t)+[](cdims_t d) { return new VoidPtrPtrConverter{d.ndim() != UNKNOWN_SIZE ? d[0] : UNKNOWN_SIZE}; };
-        gf["void*[]"] =                     gf["void**"];
+        gf["void**"] =                      (cf_t)+[](cdims_t d) { return new VoidPtrPtrConverter{d}; };
+        gf["void ptr"] =                    gf["void**"];
         gf["PyObject*"] =                   (cf_t)+[](cdims_t) { static PyObjectConverter c{};       return &c; };
         gf["_object*"] =                    gf["PyObject*"];
         gf["FILE*"] =                       (cf_t)+[](cdims_t) { return new VoidArrayConverter{}; };

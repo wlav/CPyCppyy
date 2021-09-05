@@ -209,7 +209,7 @@ static int BuildScopeProxyDict(Cppyy::TCppScope_t scope, PyObject* pyclass, cons
         bool isCall = mtName == "__call__";
         if (isCall || mtName == "__getitem__") {
             const std::string& qual_return = Cppyy::ResolveName(Cppyy::GetMethodResultType(method));
-            const std::string& cpd = Utility::Compound(qual_return);
+            const std::string& cpd = TypeManip::compound(qual_return);
             if (!cpd.empty() && cpd[cpd.size()-1] == '&' && \
                     qual_return.find("const", 0, 5) == std::string::npos) {
                 if (isCall && !potGetItem) potGetItem = method;
