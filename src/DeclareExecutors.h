@@ -55,9 +55,10 @@ CPPYY_DECL_EXEC(CString32);
 class name##ArrayExecutor : public Executor {                                \
     dims_t fShape;                                                           \
 public:                                                                      \
-    name##ArrayExecutor(Py_ssize_t ndims = 1) : fShape(ndims) {}             \
+    name##ArrayExecutor(dims_t dims) : fShape(dims) {}                       \
     virtual PyObject* Execute(                                               \
         Cppyy::TCppMethod_t, Cppyy::TCppObject_t, CallContext*);             \
+    virtual bool HasState() { return true; }                                 \
 }
 CPPYY_ARRAY_DECL_EXEC(Void);
 CPPYY_ARRAY_DECL_EXEC(Bool);
