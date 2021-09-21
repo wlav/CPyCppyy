@@ -49,7 +49,7 @@ static PyObject* TC2CppName(PyObject* pytc, const char* cpd, bool allow_voidp)
 
 //----------------------------------------------------------------------------
 TemplateInfo::TemplateInfo() : fPyClass(nullptr), fNonTemplated(nullptr),
-    fTemplated(nullptr), fLowPriority(nullptr)
+    fTemplated(nullptr), fLowPriority(nullptr), fDoc(nullptr)
 {
     /* empty */
 }
@@ -59,6 +59,7 @@ TemplateInfo::~TemplateInfo()
 {
     Py_XDECREF(fPyClass);
 
+    Py_XDECREF(fDoc);
     Py_DECREF(fNonTemplated);
     Py_DECREF(fTemplated);
     Py_DECREF(fLowPriority);
@@ -364,6 +365,11 @@ static int tpp_traverse(TemplateProxy* pytmpl, visitproc visit, void* arg)
 //----------------------------------------------------------------------------
 static PyObject* tpp_doc(TemplateProxy* pytmpl, void*)
 {
+    if (pytmpl->fTI->fDoc) {
+        Py_INCREF(pytmpl->fTI->fDoc);
+        return pytmpl->fTI->fDoc;
+    }
+
 // Forward to method proxies to doc all overloads
     PyObject* doc = nullptr;
     if (pytmpl->fTI->fNonTemplated->HasMethods())
@@ -391,6 +397,14 @@ static PyObject* tpp_doc(TemplateProxy* pytmpl, void*)
         return doc;
 
     return CPyCppyy_PyText_FromString(TemplateProxy_Type.tp_doc);
+}
+
+static int tpp_doc_set(TemplateProxy* pytmpl, PyObject *val, void *)
+{
+    Py_XDECREF(pytmpl->fTI->fDoc);
+    Py_INCREF(val);
+    pytmpl->fTI->fDoc = val;
+    return 0;
 }
 
 //----------------------------------------------------------------------------
@@ -724,7 +738,7 @@ static PyMappingMethods tpp_as_mapping = {
 };
 
 static PyGetSetDef tpp_getset[] = {
-    {(char*)"__doc__", (getter)tpp_doc, nullptr, nullptr, nullptr},
+    {(char*)"__doc__", (getter)tpp_doc, (setter)tpp_doc_set, nullptr, nullptr},
     {(char*)"__useffi__", (getter)tpp_getuseffi, (setter)tpp_setuseffi,
       (char*)"unused", nullptr},
     {(char*)nullptr,   nullptr,         nullptr, nullptr, nullptr}

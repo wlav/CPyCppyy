@@ -244,6 +244,11 @@ static PyObject* mp_module(CPPOverload* /* pymeth */, void*)
 //----------------------------------------------------------------------------
 static PyObject* mp_doc(CPPOverload* pymeth, void*)
 {
+    if (pymeth->fMethodInfo->fDoc) {
+        Py_INCREF(pymeth->fMethodInfo->fDoc);
+        return pymeth->fMethodInfo->fDoc;
+    }
+
 // Build python document string ('__doc__') from all C++-side overloads.
     CPPOverload::Methods_t& methods = pymeth->fMethodInfo->fMethods;
 
@@ -266,6 +271,14 @@ static PyObject* mp_doc(CPPOverload* pymeth, void*)
     Py_DECREF(separator);
 
     return doc;
+}
+
+static int mp_doc_set(CPPOverload* pymeth, PyObject *val, void *)
+{
+    Py_XDECREF(pymeth->fMethodInfo->fDoc);
+    Py_INCREF(val);
+    pymeth->fMethodInfo->fDoc = val;
+    return 0;
 }
 
 //----------------------------------------------------------------------------
@@ -543,7 +556,7 @@ static PyObject* mp_getcppname(CPPOverload* pymeth, void*)
 static PyGetSetDef mp_getset[] = {
     {(char*)"__name__",   (getter)mp_name,   nullptr, nullptr, nullptr},
     {(char*)"__module__", (getter)mp_module, nullptr, nullptr, nullptr},
-    {(char*)"__doc__",    (getter)mp_doc,    nullptr, nullptr, nullptr},
+    {(char*)"__doc__",    (getter)mp_doc,    (setter)mp_doc_set, nullptr, nullptr},
 
 // to be more python-like, where these are duplicated as well; to actually
 // derive from the python method or function type is too memory-expensive,
@@ -556,7 +569,7 @@ static PyGetSetDef mp_getset[] = {
     {(char*)"func_code",     (getter)mp_func_code,     nullptr, nullptr, nullptr},
     {(char*)"func_defaults", (getter)mp_func_defaults, nullptr, nullptr, nullptr},
     {(char*)"func_globals",  (getter)mp_func_globals,  nullptr, nullptr, nullptr},
-    {(char*)"func_doc",      (getter)mp_doc,           nullptr, nullptr, nullptr},
+    {(char*)"func_doc",      (getter)mp_doc,           (setter)mp_doc_set, nullptr, nullptr},
     {(char*)"func_name",     (getter)mp_name,          nullptr, nullptr, nullptr},
 
     {(char*)"__creates__",         (getter)mp_getcreates, (setter)mp_setcreates,
@@ -1103,6 +1116,7 @@ CPyCppyy::CPPOverload::MethodInfo_t::~MethodInfo_t()
     }
     fMethods.clear();
     delete fRefCount;
+    Py_XDECREF(fDoc);
 }
 
 // TODO: something like PyMethod_Fini to clear up the free_list
