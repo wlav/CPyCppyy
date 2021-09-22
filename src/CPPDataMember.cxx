@@ -177,7 +177,7 @@ static CPPDataMember* pp_new(PyTypeObject* pytype, PyObject*, PyObject*)
     pyprop->fConverter      = nullptr;
     pyprop->fEnclosingScope = 0;
     pyprop->fDescription    = nullptr;
-    pyprop->fDoc            = PyUnicode_FromString("");
+    pyprop->fDoc            = nullptr;
 
     return pyprop;
 }
@@ -195,7 +195,7 @@ static void pp_dealloc(CPPDataMember* pyprop)
 }
 
 static PyMemberDef pp_members[] = {
-        {(char*)"__doc__", T_OBJECT_EX, offsetof(CPPDataMember, fDoc), 0,
+        {(char*)"__doc__", T_OBJECT, offsetof(CPPDataMember, fDoc), 0,
                 (char*)"writable documentation"},
         {NULL}  /* Sentinel */
 };
