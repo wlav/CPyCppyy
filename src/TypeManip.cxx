@@ -162,7 +162,7 @@ std::string CPyCppyy::TypeManip::compound(const std::string& name)
     const std::string& cpd = cleanName.substr(idx, std::string::npos);
 
 // for easy identification of fixed size arrays
-    if (cpd.back() == ']') {
+    if (!cpd.empty() && cpd.back() == ']') {
         std::ostringstream scpd;
         if (cpd.front() != '[') scpd << cpd.substr(0, cpd.find('['));
         for (auto c : cpd)
