@@ -47,8 +47,8 @@ public:
         std::string                 fName;
         CPPOverload::DispatchMap_t  fDispatchMap;
         CPPOverload::Methods_t      fMethods;
-        uint32_t                    fFlags;
         PyObject*                   fDoc;
+        uint32_t                    fFlags;
 
         int* fRefCount;
 
