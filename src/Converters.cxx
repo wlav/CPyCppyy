@@ -2059,7 +2059,7 @@ bool CPyCppyy::InstanceRefConverter::SetArg(
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::InstanceRefConverter::FromMemory(void* address)
 {
-    return BindCppObjectNoCast((Cppyy::TCppObject_t)address, fClass);
+    return BindCppObjectNoCast((Cppyy::TCppObject_t)address, fClass, CPPInstance::kIsReference);
 }
 
 //----------------------------------------------------------------------------

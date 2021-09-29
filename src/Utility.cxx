@@ -595,7 +595,7 @@ std::string CPyCppyy::Utility::ConstructTemplateArgs(
 //----------------------------------------------------------------------------
 static inline bool check_scope(const std::string& name)
 {
-    return (bool)Cppyy::GetScope(CPyCppyy::TypeManip::clean_type(Cppyy::ResolveName(name)));
+    return (bool)Cppyy::GetScope(CPyCppyy::TypeManip::clean_type(name));
 }
 
 void CPyCppyy::Utility::ConstructCallbackPreamble(const std::string& retType,
@@ -610,15 +610,31 @@ void CPyCppyy::Utility::ConstructCallbackPreamble(const std::string& retType,
         code << "    CPYCPPYY_STATIC std::unique_ptr<CPyCppyy::Converter, std::function<void(CPyCppyy::Converter*)>> "
                      "retconv{CPyCppyy::CreateConverter(\""
              << retType << "\"), CPyCppyy::DestroyConverter};\n";
+    std::vector<bool> arg_is_ptr;
     if (nArgs) {
+        arg_is_ptr.reserve(nArgs);
         code << "    CPYCPPYY_STATIC std::vector<std::unique_ptr<CPyCppyy::Converter, std::function<void(CPyCppyy::Converter*)>>> argcvs;\n"
              << "    if (argcvs.empty()) {\n"
              << "      argcvs.reserve(" << nArgs << ");\n";
         for (int i = 0; i < nArgs; ++i) {
+            arg_is_ptr[i] = false;
+            code << "      argcvs.emplace_back(CPyCppyy::CreateConverter(\"";
             const std::string& at = argtypes[i];
-            code << "      argcvs.emplace_back(CPyCppyy::CreateConverter(\""
-                 << ((at.back() == '*' && check_scope(at)) ? at.substr(0, at.size()-1) : at)
-                 << "\"), CPyCppyy::DestroyConverter);\n";
+            const std::string& res_at = Cppyy::ResolveName(at);
+            const std::string& cpd = TypeManip::compound(res_at);
+            if (!cpd.empty() && check_scope(res_at)) {
+            // in case of a pointer, the original argument needs to be used to ensure
+            // the pointer-value remains comparable
+            //
+            // in case of a reference, there is no extra indirection on the C++ side as
+            // would be when converting a data member, so adjust the converter
+                arg_is_ptr[i] = cpd.back() == '*';
+                if (arg_is_ptr[i] || cpd.back() == '&') {
+                    code << res_at.substr(0, res_at.size()-1);
+                } else code << at;
+            } else
+                 code << at;
+            code << "\"), CPyCppyy::DestroyConverter);\n";
         }
         code << "    }\n";
     }
@@ -637,7 +653,7 @@ void CPyCppyy::Utility::ConstructCallbackPreamble(const std::string& retType,
              << "    try {\n";
         for (int i = 0; i < nArgs; ++i) {
             code << "      pyargs.emplace_back(argcvs[" << i << "]->FromMemory((void*)";
-            if (!(argtypes[i].back() == '*' && check_scope(argtypes[i]))) code << '&';
+            if (!arg_is_ptr[i]) code << '&';
             code << "arg" << i << "));\n"
                  << "      if (!pyargs.back()) throw " << i << ";\n";
         }
