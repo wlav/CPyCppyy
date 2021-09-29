@@ -1758,7 +1758,8 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         Utility::AddToClass(pyclass, "__init__", (PyCFunction)SmartPtrInit, METH_VARARGS | METH_KEYWORDS);
     }
 
-    else if (name.find("iterator") != std::string::npos || gIteratorTypes.find(name) != gIteratorTypes.end()) {
+    else if (!((PyTypeObject*)pyclass)->tp_iter && \
+             (name.find("iterator") != std::string::npos || gIteratorTypes.find(name) != gIteratorTypes.end())) {
         ((PyTypeObject*)pyclass)->tp_iternext = (iternextfunc)STLIterNext;
         Utility::AddToClass(pyclass, CPPYY__next__, (PyCFunction)STLIterNext, METH_NOARGS);
         ((PyTypeObject*)pyclass)->tp_iter = (getiterfunc)PyObject_SelfIter;
