@@ -2935,8 +2935,10 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, cdim
             if (realType != "void" && realType != "char") {
                 dim_t newdim = dims.ndim() == UNKNOWN_SIZE ? 2 : dims.ndim()+1;
                 dims_t newdims = dims_t(newdim);
-                newdims[0] = dims[0];            // the array
-                newdims[1] = UNKNOWN_SIZE;       // the pointer
+            // TODO: sometimes the array size is known and can thus be verified; however,
+            // currently the meta layer does not provide this information
+                newdims[0] = dims ? dims[0] : UNKNOWN_SIZE;     // the array
+                newdims[1] = UNKNOWN_SIZE;                      // the pointer
                 if (2 < newdim) {
                     for (int i = 2; i < (newdim-1); ++i)
                         newdims[i] = dims[i-1];
