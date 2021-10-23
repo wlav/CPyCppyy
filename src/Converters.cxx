@@ -1507,7 +1507,8 @@ bool CPyCppyy::name##ArrayConverter::SetArg(                                 \
             para.fTypeCode = 'p';                                            \
             convOk = true;                                                   \
         } else if (LowLevelView_Check(pyobject) &&                           \
-                ((LowLevelView*)pyobject)->fBufInfo.ndim == 2) {             \
+                ((LowLevelView*)pyobject)->fBufInfo.ndim == 2 &&             \
+                strchr(((LowLevelView*)pyobject)->fBufInfo.format, code)) {  \
             para.fValue.fVoidp = ((LowLevelView*)pyobject)->get_buf();       \
             para.fTypeCode = 'p';                                            \
             convOk = true;                                                   \
