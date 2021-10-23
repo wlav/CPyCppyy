@@ -408,13 +408,6 @@ static int tpp_doc_set(TemplateProxy* pytmpl, PyObject *val, void *)
 }
 
 //----------------------------------------------------------------------------
-static PyObject* tpp_repr(TemplateProxy* pytmpl)
-{
-// Simply return the doc string as that's the most useful info (this will appear
-// on clsses on calling help()).
-     return tpp_doc(pytmpl, nullptr);
-}
-
 
 //= CPyCppyy template proxy callable behavior ================================
 
@@ -782,7 +775,7 @@ PyTypeObject TemplateProxy_Type = {
     0,                                 // tp_getattr
     0,                                 // tp_setattr
     0,                                 // tp_as_async / tp_compare
-    (reprfunc)tpp_repr,                // tp_repr
+    0,                                 // tp_repr
     0,                                 // tp_as_number
     0,                                 // tp_as_sequence
     &tpp_as_mapping,                   // tp_as_mapping
