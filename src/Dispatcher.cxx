@@ -11,8 +11,6 @@
 #include <set>
 #include <sstream>
 
-#include <iostream>
-
 
 //----------------------------------------------------------------------------
 static inline void InjectMethod(Cppyy::TCppMethod_t method, const std::string& mtCppName, std::ostringstream& code)
