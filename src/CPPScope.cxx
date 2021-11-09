@@ -402,6 +402,7 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
                         typedefpointertoclassobject* tpc =
                             PyObject_GC_New(typedefpointertoclassobject, &TypedefPointerToClass_Type);
                         tpc->fType = tcl;
+                        tpc->fDict = PyDict_New();
                         attr = (PyObject*)tpc;
                     }
                 }

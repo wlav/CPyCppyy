@@ -39,6 +39,7 @@ public:
     CPPOverload* fLowPriority;    // low priority overloads such as void*/void**
 
     TP_DispatchMap_t fDispatchMap;
+    PyObject* fDoc;
 };
 
 typedef std::shared_ptr<TemplateInfo> TP_TInfo_t;

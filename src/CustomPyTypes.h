@@ -43,6 +43,11 @@ inline bool RefInt_CheckExact(T* object)
 struct typedefpointertoclassobject {
     PyObject_HEAD
     Cppyy::TCppType_t        fType;
+    PyObject*                fDict;
+
+    ~typedefpointertoclassobject() {
+        Py_DECREF(fDict);
+    }
 };
 
 extern PyTypeObject TypedefPointerToClass_Type;

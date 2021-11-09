@@ -40,12 +40,14 @@ public:
     typedef std::vector<PyCallable*> Methods_t;
 
     struct MethodInfo_t {
-        MethodInfo_t() : fFlags(CallContext::kNone) { fRefCount = new int(1); }
+        MethodInfo_t() : fFlags(CallContext::kNone), fDoc(nullptr)
+            { fRefCount = new int(1); }
         ~MethodInfo_t();
 
         std::string                 fName;
         CPPOverload::DispatchMap_t  fDispatchMap;
         CPPOverload::Methods_t      fMethods;
+        PyObject*                   fDoc;
         uint32_t                    fFlags;
 
         int* fRefCount;

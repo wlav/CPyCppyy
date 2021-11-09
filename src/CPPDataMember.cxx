@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <vector>
 #include <limits.h>
+#include <structmember.h>
 
 
 namespace CPyCppyy {
@@ -176,6 +177,7 @@ static CPPDataMember* pp_new(PyTypeObject* pytype, PyObject*, PyObject*)
     pyprop->fConverter      = nullptr;
     pyprop->fEnclosingScope = 0;
     pyprop->fDescription    = nullptr;
+    pyprop->fDoc            = nullptr;
 
     return pyprop;
 }
@@ -187,10 +189,16 @@ static void pp_dealloc(CPPDataMember* pyprop)
     using namespace std;
     if (pyprop->fConverter && pyprop->fConverter->HasState()) delete pyprop->fConverter;
     Py_XDECREF(pyprop->fDescription);  // never exposed so no GC necessary
+    Py_XDECREF(pyprop->fDoc);
 
     Py_TYPE(pyprop)->tp_free((PyObject*)pyprop);
 }
 
+static PyMemberDef pp_members[] = {
+        {(char*)"__doc__", T_OBJECT, offsetof(CPPDataMember, fDoc), 0,
+                (char*)"writable documentation"},
+        {NULL}  /* Sentinel */
+};
 
 //= CPyCppyy data member type ================================================
 PyTypeObject CPPDataMember_Type = {
@@ -222,7 +230,7 @@ PyTypeObject CPPDataMember_Type = {
     0,                             // tp_iter
     0,                             // tp_iternext
     0,                             // tp_methods
-    0,                             // tp_members
+    pp_members,                    // tp_members
     0,                             // tp_getset
     0,                             // tp_base
     0,                             // tp_dict
