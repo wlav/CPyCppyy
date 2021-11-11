@@ -40,7 +40,7 @@ public:
     typedef std::vector<PyCallable*> Methods_t;
 
     struct MethodInfo_t {
-        MethodInfo_t() : fFlags(CallContext::kNone), fDoc(nullptr)
+        MethodInfo_t() : fDoc(nullptr), fFlags(CallContext::kNone)
             { fRefCount = new int(1); }
         ~MethodInfo_t();
 
