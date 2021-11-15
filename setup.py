@@ -9,7 +9,7 @@ try:
 except ImportError:
     has_wheel = False
 
-requirements = ['cppyy-cling>=6.25.1', 'cppyy-backend>=1.14.6']
+requirements = ['cppyy-cling>=6.25.2', 'cppyy-backend>=1.14.7']
 setup_requirements = ['wheel']
 if 'build' in sys.argv or 'install' in sys.argv:
     setup_requirements += requirements
@@ -80,7 +80,7 @@ cmdclass = {
 
 setup(
     name='CPyCppyy',
-    version='1.12.7',
+    version='1.12.8',
     description='Cling-based Python-C++ bindings for CPython',
     long_description=long_description,
 
@@ -102,13 +102,12 @@ setup(
 
         'License :: OSI Approved :: BSD License',
 
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
         'Programming Language :: C',
         'Programming Language :: C++',
 
