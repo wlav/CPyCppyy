@@ -1631,7 +1631,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
                 std::string res_clean = TypeManip::clean_type(res, false, true);
 
                 if (res_clean == "internal_enum_type_t")
-                    res_clean = Cppyy::GetDatamemberType(kls, i);     // restore (properly scoped name)
+                    res_clean = txt;        // restore (properly scoped name)
 
                 if (res.rfind(']') == std::string::npos && res.rfind(')') == std::string::npos) {
                     if (!cpd.empty()) arg_types.push_back(res_clean+cpd);
