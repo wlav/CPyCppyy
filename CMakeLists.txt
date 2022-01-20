@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.4.3 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
 project (cppyy)
 
 set (CMAKE_CXX_STANDARD 17)
@@ -10,26 +10,19 @@ if (CMAKE_COMPILER_IS_GNUCXX)
    set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-Bsymbolic-functions")
 endif()
 
-message(STATUS "Looking for python interpreter")
-#---First look for the python interpreter and fix the version of it for the libraries--
-find_package(PythonInterp)
-
-if (PYTHONINTERP_FOUND)
-   execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import sys;sys.stdout.write(sys.version[:3])"
-                   OUTPUT_VARIABLE PYTHON_VERSION)
-   execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import sys;sys.stdout.write(sys.prefix)"
-                   OUTPUT_VARIABLE PYTHON_PREFIX)
-   set (CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${PYTHON_PREFIX})
+message(STATUS "Looking for python ...")
+set(Python_FIND_VIRTUALENV ONLY)
+find_package (Python COMPONENTS Interpreter Development)
+if (NOT Python_FOUND)
+   set(Python_FIND_VIRTUALENV STANDARD)
+   find_package (Python COMPONENTS Interpreter Development)
 endif()
 
-set(Python_ADDITIONAL_VERSIONS ${PYTHON_VERSION})
-find_package(PythonLibs REQUIRED)
-
-if (NOT PYTHONLIBS_FOUND)
-   message(FATAL_ERROR "PythonLibs package not found and python component required")
+if (NOT Python_Development_FOUND)
+   message(FATAL_ERROR "Python development package not found and python component required")
 endif()
 
-include_directories("${PROJECT_SOURCE_DIR}/include" "${PYTHON_INCLUDE_PATH}")
+include_directories("${PROJECT_SOURCE_DIR}/include" "${Python_INCLUDE_DIRS}")
 
 file (GLOB cppyy_src src/*.cxx)
 
