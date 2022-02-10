@@ -68,7 +68,7 @@ static inline void rstrip(std::string& name)
 // Remove space from the right side of name.
     std::string::size_type i = name.size();
     for ( ; 0 < i; --i) {
-       if (!isspace(name[i]))
+       if (!isspace(name[i-1]))
            break;
     }
 
