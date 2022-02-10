@@ -571,16 +571,25 @@ static PyObject* meta_dir(CPPScope* klass)
     std::set<std::string> cppnames;
     Cppyy::GetAllCppNames(klass->fCppType, cppnames);
 
+// cleanup names
+    std::set<std::string> dir_cppnames;
+    for (const std::string& name : cppnames) {
+        if (name.find("__", 0, 2) != std::string::npos || \
+            name.find("<") != std::string::npos || \
+            name.find("operator", 0, 8) != std::string::npos) continue;
+        dir_cppnames.insert(name);
+    }
+
 // get rid of duplicates
     for (Py_ssize_t i = 0; i < PyList_GET_SIZE(dirlist); ++i)
-        cppnames.insert(CPyCppyy_PyText_AsString(PyList_GET_ITEM(dirlist, i)));
+        dir_cppnames.insert(CPyCppyy_PyText_AsString(PyList_GET_ITEM(dirlist, i)));
 
     Py_DECREF(dirlist);
-    dirlist = PyList_New(cppnames.size());
+    dirlist = PyList_New(dir_cppnames.size());
 
 // copy total onto python list
     Py_ssize_t i = 0;
-    for (const auto& name : cppnames) {
+    for (const auto& name : dir_cppnames) {
         PyList_SET_ITEM(dirlist, i++, CPyCppyy_PyText_FromString(name.c_str()));
     }
     return dirlist;
