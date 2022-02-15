@@ -28,15 +28,20 @@
 #include <cstddef>
 #include <string_view>
 #endif
+// codecvt does not exist for gcc4.8.5 and is in principle deprecated; it is
+// only used in py2 for char -> wchar_t conversion for std::wstring; if not
+// available, the conversion is done through Python (requires an extra copy)
 #if PY_VERSION_HEX < 0x03000000
-#if defined(__GNUC__) && __has_include("codecvt")
-#include <codecvt>
-#define HAS_CODECVT 1
+#if defined(__GNUC__)
+# if __GNUC__ > 4 && __has_include("codecvt")
+# include <codecvt>
+# define HAS_CODECVT 1
+# endif
 #else
 #include <codecvt>
 #define HAS_CODECVT 1
 #endif
-#endif
+#endif // py2
 
 
 //- data _____________________________________________________________________
