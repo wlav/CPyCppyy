@@ -29,7 +29,13 @@
 #include <string_view>
 #endif
 #if PY_VERSION_HEX < 0x03000000
+#if defined(__GNUC__) && __has_include("codecvt")
 #include <codecvt>
+#define HAS_CODECVT 1
+#else
+#include <codecvt>
+#define HAS_CODECVT 1
+#endif
 #endif
 
 
@@ -1802,8 +1808,16 @@ bool CPyCppyy::STLWStringConverter::SetArg(
     }
 #if PY_VERSION_HEX < 0x03000000
     else if (PyString_Check(pyobject)) {
+#ifdef HAS_CODECVT
         std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> cnv;
         fBuffer = cnv.from_bytes(PyString_AS_STRING(pyobject));
+#else
+        PyObject* pyu = PyUnicode_FromObject(pyobject);
+        if (!pyu) return false;
+        Py_ssize_t len = CPyCppyy_PyUnicode_GET_SIZE(pyu);
+        fBuffer.resize(len);
+        CPyCppyy_PyUnicode_AsWideChar(pyu, &fBuffer[0], len);
+#endif
         para.fValue.fVoidp = &fBuffer;
         para.fTypeCode = 'V';
         return true;
