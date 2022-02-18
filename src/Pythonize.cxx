@@ -1324,6 +1324,48 @@ Py_hash_t STLStringHash(PyObject* self)
 }
 
 
+//- string_view behavior as primitive ----------------------------------------
+PyObject* StringViewInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
+{
+// if constructed from a Python unicode object, the constructor will convert it
+// to a temporary byte string, which is likely to go out of scope too soon; so
+// buffer it as needed
+    PyObject* realInit = PyObject_GetAttr(self, PyStrings::gRealInit);
+    if (realInit) {
+        PyObject *strbuf = nullptr, *newArgs = nullptr;
+        if (PyTuple_GET_SIZE(args) == 1) {
+            PyObject* arg0 = PyTuple_GET_ITEM(args, 0);
+            if (PyUnicode_Check(arg0)) {
+            // convert to the expected bytes array to control the temporary
+                strbuf = PyUnicode_AsEncodedString(arg0, "UTF-8", "strict");
+                newArgs = PyTuple_New(1);
+                Py_INCREF(strbuf);
+                PyTuple_SET_ITEM(newArgs, 0, strbuf);
+            } else if (PyBytes_Check(arg0)) {
+            // tie the life time of the provided string to the string_view
+                Py_INCREF(arg0);
+                strbuf = arg0;
+            }
+        }
+
+        PyObject* result = PyObject_Call(realInit, newArgs ? newArgs : args, nullptr);
+
+        Py_XDECREF(newArgs);
+        Py_DECREF(realInit);
+
+    // if construction was successful and a string buffer was used, add a
+    // life line to it from the string_view bound object
+        if (result && self && strbuf)
+            PyObject_SetAttr(self, PyStrings::gLifeLine, strbuf);
+        Py_XDECREF(strbuf);
+
+        return result;
+    }
+    return nullptr;
+}
+
+
+
 //- STL iterator behavior ----------------------------------------------------
 PyObject* STLIterNext(PyObject* self)
 {
@@ -1785,6 +1827,11 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
 
     // to allow use of std::string in dictionaries and findable with str
         ((PyTypeObject*)pyclass)->tp_hash = (hashfunc)STLStringHash;
+    }
+
+    else if (name == "std::basic_string_view<char>") {
+        Utility::AddToClass(pyclass, "__real_init", "__init__");
+        Utility::AddToClass(pyclass, "__init__", (PyCFunction)StringViewInit, METH_VARARGS | METH_KEYWORDS);
     }
 
     else if (name == "std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >") {
