@@ -379,7 +379,7 @@ static PyMethodDef op_methods[] = {
       (char*)"get associated smart pointer, if any"},
     {(char*)"__getitem__",  (PyCFunction)op_getitem, METH_O,
       (char*)"pointer dereferencing"},
-    {(char*)"reshape",      (PyCFunction)op_reshape, METH_O,
+    {(char*)"__reshape__",  (PyCFunction)op_reshape, METH_O,
         (char*)"cast pointer to 1D array type"},
     {(char*)nullptr, nullptr, 0, nullptr}
 };
