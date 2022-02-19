@@ -45,7 +45,7 @@ namespace {
 // extended data can slot in place of fObject for those use cases.
 
 struct ExtendedData {
-    ExtendedData() : fObject(nullptr), fSmartClass(nullptr), fDispatchPtr(nullptr) {}
+    ExtendedData() : fObject(nullptr), fSmartClass(nullptr), fDispatchPtr(nullptr), fArraySize(0) {}
     ~ExtendedData() {
         for (auto& pc : fDatamemberCache)
             Py_XDECREF(pc.second);
@@ -56,23 +56,27 @@ struct ExtendedData {
 // in GetObjectRaw(), e.g. for ptr-ptr passing)
     void* fObject;
 
-// for smart pointer types
-    CPyCppyy::CPPSmartClass* fSmartClass;
-
 // for caching expensive-to-create data member representations
     CPyCppyy::CI_DatamemberCache_t fDatamemberCache;
 
+// for smart pointer types
+    CPyCppyy::CPPSmartClass* fSmartClass;
+
 // for back-referencing from Python-derived instances
     CPyCppyy::DispatchPtr* fDispatchPtr;
+
+// for representing T* as a low-level array
+    size_t fArraySize;
 };
 
 } // unnamed namespace
 
 #define EXT_OBJECT(pyobj)  ((ExtendedData*)((pyobj)->fObject))->fObject
+#define DATA_CACHE(pyobj)  ((ExtendedData*)((pyobj)->fObject))->fDatamemberCache
 #define SMART_CLS(pyobj)   ((ExtendedData*)((pyobj)->fObject))->fSmartClass
 #define SMART_TYPE(pyobj)  SMART_CLS(pyobj)->fCppType
 #define DISPATCHPTR(pyobj) ((ExtendedData*)((pyobj)->fObject))->fDispatchPtr
-#define DATA_CACHE(pyobj)  ((ExtendedData*)((pyobj)->fObject))->fDatamemberCache
+#define ARRAY_SIZE(pyobj)  ((ExtendedData*)((pyobj)->fObject))->fArraySize
 
 inline void CPyCppyy::CPPInstance::CreateExtension() {
     if (fFlags & kIsExtended)
@@ -298,6 +302,29 @@ static PyObject* op_get_smartptr(CPPInstance* self)
 }
 
 //= pointer-as-array support for legacy C code ===============================
+void CPyCppyy::CPPInstance::CastToArray(ssize_t sz)
+{
+    CreateExtension();
+    fFlags |= kIsArray;
+    ARRAY_SIZE(this) = sz;
+}
+
+static PyObject* op_reshape(CPPInstance* self, PyObject* shape)
+{
+// Allow the user to fix up the actual (type-strided) size of the buffer.
+    if (!PyTuple_Check(shape) || PyTuple_GET_SIZE(shape) != 1) {
+        PyErr_SetString(PyExc_TypeError, "tuple object of size 1 expected");
+        return nullptr;
+    }
+
+    long sz = PyLong_AsLong(PyTuple_GET_ITEM(shape, 0));
+    if (sz == -1) return nullptr;
+
+    self->CastToArray(sz);
+
+    Py_RETURN_NONE;
+}
+
 static PyObject* op_getitem(CPPInstance* self, PyObject* pyidx)
 {
 // In C, it is common to represent an array of structs as a pointer to the first
@@ -305,7 +332,7 @@ static PyObject* op_getitem(CPPInstance* self, PyObject* pyidx)
 // define indexing, then highly likely such C-style indexing is the goal. Just
 // like C, this is potentially unsafe, so caveat emptor.
 
-    if (!(self->fFlags & CPPInstance::kIsReference)) {
+    if (!(self->fFlags & (CPPInstance::kIsReference | CPPInstance::kIsArray))) {
         PyErr_Format(PyExc_TypeError, "%s object does not support indexing", Py_TYPE(self)->tp_name);
         return nullptr;
     }
@@ -319,6 +346,14 @@ static PyObject* op_getitem(CPPInstance* self, PyObject* pyidx)
     // circumscribed anyway, so might as well keep the functionality simple
         PyErr_SetString(PyExc_IndexError, "negative indices not supported for array of structs");
         return nullptr;
+    }
+
+    if (self->fFlags & CPPInstance::kIsArray) {
+        ssize_t maxidx = ARRAY_SIZE(self);
+        if (0 <= maxidx && maxidx <= idx) {
+            PyErr_SetString(PyExc_IndexError, "index out of range");
+            return nullptr;
+        }
     }
 
     unsigned flags = 0; size_t sz = sizeof(void*);
@@ -344,6 +379,8 @@ static PyMethodDef op_methods[] = {
       (char*)"get associated smart pointer, if any"},
     {(char*)"__getitem__",  (PyCFunction)op_getitem, METH_O,
       (char*)"pointer dereferencing"},
+    {(char*)"reshape",      (PyCFunction)op_reshape, METH_O,
+        (char*)"cast pointer to 1D array type"},
     {(char*)nullptr, nullptr, 0, nullptr}
 };
 

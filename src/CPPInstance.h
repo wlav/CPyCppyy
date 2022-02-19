@@ -35,11 +35,12 @@ public:
         kIsLValue    = 0x0020,
         kIsValue     = 0x0040,
         kIsPtrPtr    = 0x0080,
-        kIsSmartPtr  = 0x0100,
-        kNoMemReg    = 0x0200,
-        kHasLifeLine = 0x0400,
-        kIsRegulated = 0x0800,
-        kIsActual    = 0x1000 };
+        kIsArray     = 0x0100,
+        kIsSmartPtr  = 0x0200,
+        kNoMemReg    = 0x0400,
+        kHasLifeLine = 0x0800,
+        kIsRegulated = 0x1000,
+        kIsActual    = 0x2000 };
 
 public:                 // public, as the python C-API works with C structs
     PyObject_HEAD
@@ -66,16 +67,19 @@ public:
     void PythonOwns();
     void CppOwns();
 
+// data member cache
+    CI_DatamemberCache_t& GetDatamemberCache();
+
 // smart pointer management
     void SetSmart(PyObject* smart_type);
     void* GetSmartObject() { return GetObjectRaw(); }
     Cppyy::TCppType_t GetSmartIsA() const;
 
-// data member cache
-    CI_DatamemberCache_t& GetDatamemberCache();
-
 // cross-inheritence dispatch
-    void  SetDispatchPtr(void*);
+    void SetDispatchPtr(void*);
+
+// redefine pointer to object as fixed-size array
+    void CastToArray(ssize_t sz);
 
 private:
     void  CreateExtension();
