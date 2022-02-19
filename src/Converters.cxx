@@ -1310,7 +1310,7 @@ PyObject* CPyCppyy::name##Converter::FromMemory(void* address)               \
 /* construct python object from C++ <type>* read at <address> */             \
     if (address && *(type**)address) {                                       \
         if (fMaxSize != std::wstring::npos)                                  \
-            return decode(*(const char**)address, (Py_ssize_t)fMaxSize, nullptr, nullptr);\
+            return decode(*(const char**)address, (Py_ssize_t)fMaxSize*sizeof(type), nullptr, nullptr);\
         return decode(*(const char**)address,                                \
             std::char_traits<type>::length(*(type**)address)*sizeof(type), nullptr, nullptr);\
     }                                                                        \
@@ -1327,16 +1327,18 @@ bool CPyCppyy::name##Converter::ToMemory(PyObject* value, void* address, PyObjec
     if (!bstr) return false;                                                 \
                                                                              \
     Py_ssize_t len = PyBytes_GET_SIZE(bstr) - sizeof(type) /*BOM*/;          \
+    Py_ssize_t maxbytes = (Py_ssize_t)fMaxSize*sizeof(type);                 \
                                                                              \
 /* verify (too long string will cause truncation, no crash) */               \
-    if (fMaxSize != std::wstring::npos && fMaxSize < std::wstring::size_type(len/sizeof(type))) {\
+    if (fMaxSize != std::wstring::npos && maxbytes < len) {                  \
         PyErr_Warn(PyExc_RuntimeWarning, (char*)"string too long for "#type" array (truncated)");\
-        len = (Py_ssize_t)fMaxSize-sizeof(type);                             \
+        len = maxbytes;                                                      \
     }                                                                        \
                                                                              \
     memcpy(*((void**)address), PyBytes_AS_STRING(bstr) + sizeof(type) /*BOM*/, len);\
     Py_DECREF(bstr);                                                         \
-    *((type**)address)[len/sizeof(type)] = snull;                            \
+/* debatable, but probably more convenient in most cases to null-terminate if enough space */\
+    if (len/sizeof(type) < fMaxSize) (*(type**)address)[len/sizeof(type)] = snull;\
     return true;                                                             \
 }
 
@@ -3130,6 +3132,11 @@ namespace {
 
 using namespace CPyCppyy;
 
+inline static
+std::string::size_type dims2stringsz(cdims_t d) {
+    return (d && d.ndim() != UNKNOWN_SIZE) ? d[0] : std::string::npos;
+}
+
 #define STRINGVIEW "std::basic_string_view<char,std::char_traits<char> >"
 #define WSTRING "std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >"
 
@@ -3275,11 +3282,13 @@ public:
         gf["const signed char*"] =          gf["const char*"];
         gf["const char[]"] =                (cf_t)+[](cdims_t) { return new CStringConverter{}; };
         gf["char*"] =                       (cf_t)+[](cdims_t) { return new NonConstCStringConverter{}; };
-        gf["char[]"] =                      (cf_t)+[](cdims_t d) { return new NonConstCStringConverter{d.ndim() != UNKNOWN_SIZE ? d[0] : std::string::npos}; };
+        gf["char[]"] =                      (cf_t)+[](cdims_t d) { return new NonConstCStringConverter{dims2stringsz(d)}; };
         gf["signed char*"] =                gf["char*"];
         gf["wchar_t*"] =                    (cf_t)+[](cdims_t) { return new WCStringConverter{}; };
         gf["char16_t*"] =                   (cf_t)+[](cdims_t) { return new CString16Converter{}; };
+        gf["char16_t[]"] =                  (cf_t)+[](cdims_t d) { return new CString16Converter{dims2stringsz(d)}; };
         gf["char32_t*"] =                   (cf_t)+[](cdims_t) { return new CString32Converter{}; };
+        gf["char32_t[]"] =                  (cf_t)+[](cdims_t d) { return new CString32Converter{dims2stringsz(d)}; };
     // TODO: the following are handled incorrectly upstream (char16_t** where char16_t* intended)?!
         gf["char16_t**"] =                  gf["char16_t*"];
         gf["char32_t**"] =                  gf["char32_t*"];
