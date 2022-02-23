@@ -168,8 +168,8 @@ inline PyObject* CPyCppyy::CPPMethod::ExecuteFast(
 
         result = nullptr;
     } catch (...) {
-        ctxt->fFlags |= CallContext::kCppException;
-
+    // don't set the kCppException flag here, as there is basically no useful
+    // extra information to be had and caller has to catch Exception either way
         PyErr_SetString(PyExc_Exception, "unhandled, unknown C++ exception");
         result = nullptr;
     }
