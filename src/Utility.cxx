@@ -949,11 +949,11 @@ PyObject* CPyCppyy::Utility::PyErr_Occurred_WithGIL()
 
 
 //----------------------------------------------------------------------------
-size_t CPyCppyy::Utility::FetchError(std::vector<PyError_t>& errors)
+size_t CPyCppyy::Utility::FetchError(std::vector<PyError_t>& errors, bool is_cpp)
 {
 // Fetch the current python error, if any, and store it for future use.
     if (PyErr_Occurred()) {
-        PyError_t e;
+        PyError_t e{is_cpp};
         PyErr_Fetch(&e.fType, &e.fValue, &e.fTrace);
         errors.push_back(e);
     }
@@ -971,34 +971,62 @@ void CPyCppyy::Utility::SetDetailedException(std::vector<PyError_t>& errors, PyO
         return;
     }
 
-// add the details to the topmsg
-    PyObject* separator = CPyCppyy_PyText_FromString("\n  ");
-
+// if a _single_ exception was from C++, assume it has priority
     PyObject* exc_type = nullptr;
+    PyError_t* unique_from_cpp = nullptr;
     for (auto& e : errors) {
-        if (!exc_type) exc_type = e.fType;
-        else if (exc_type != e.fType) exc_type = defexc;
-        CPyCppyy_PyText_Append(&topmsg, separator);
-        if (CPyCppyy_PyText_Check(e.fValue)) {
-            CPyCppyy_PyText_Append(&topmsg, e.fValue);
-        } else if (e.fValue) {
-            PyObject* excstr = PyObject_Str(e.fValue);
-            if (!excstr) {
-                PyErr_Clear();
-                excstr = PyObject_Str((PyObject*)Py_TYPE(e.fValue));
-            }
-            CPyCppyy_PyText_AppendAndDel(&topmsg, excstr);
-        } else {
-            CPyCppyy_PyText_AppendAndDel(&topmsg,
-                CPyCppyy_PyText_FromString("unknown exception"));
+        if (e.fIsCpp) {
+            if (!unique_from_cpp) {
+                unique_from_cpp = &e;
+                exc_type = e.fType;
+            } else
+                exc_type = defexc;     // two C++ exceptions, resort to default
+        } else if (!unique_from_cpp) {
+        // try to consolidate Python exceptions, otherwise select default
+            if (!exc_type) exc_type = e.fType;
+            else if (exc_type != e.fType) exc_type = defexc;
         }
     }
 
-    Py_DECREF(separator);
-    std::for_each(errors.begin(), errors.end(), PyError_t::Clear);
+    if (unique_from_cpp) {
+    // report only this error; the idea here is that all other errors come from
+    // the bindings (e.g. argument conversion errors), while the exception from
+    // C++ means that it originated from an otherwise successful call
 
-// set the python exception
-    PyErr_SetString(exc_type, CPyCppyy_PyText_AsString(topmsg));
+    // bind the original C++ object, rather than constructing from topmsg, as it
+    // is expected to have informative state
+        Py_INCREF(unique_from_cpp->fType); Py_INCREF(unique_from_cpp->fValue); Py_XINCREF(unique_from_cpp->fTrace);
+        PyErr_Restore(unique_from_cpp->fType, unique_from_cpp->fValue, unique_from_cpp->fTrace);
+    } else {
+    // add the details to the topmsg
+        PyObject* separator = CPyCppyy_PyText_FromString("\n  ");
+        for (auto& e : errors) {
+            if (!exc_type) exc_type = e.fType;
+            else if (exc_type != e.fType) exc_type = defexc;
+            CPyCppyy_PyText_Append(&topmsg, separator);
+            if (CPyCppyy_PyText_Check(e.fValue)) {
+                CPyCppyy_PyText_Append(&topmsg, e.fValue);
+            } else if (e.fValue) {
+                PyObject* excstr = PyObject_Str(e.fValue);
+                if (!excstr) {
+                    PyErr_Clear();
+                    excstr = PyObject_Str((PyObject*)Py_TYPE(e.fValue));
+                }
+                CPyCppyy_PyText_AppendAndDel(&topmsg, excstr);
+            } else {
+                CPyCppyy_PyText_AppendAndDel(&topmsg,
+                    CPyCppyy_PyText_FromString("unknown exception"));
+            }
+        }
+
+        Py_DECREF(separator);
+
+    // set the python exception
+        PyErr_SetString(exc_type, CPyCppyy_PyText_AsString(topmsg));
+    }
+
+// cleanup stored errors and done with topmsg (whether used or not)
+    std::for_each(errors.begin(), errors.end(), PyError_t::Clear);
     Py_DECREF(topmsg);
 }
 

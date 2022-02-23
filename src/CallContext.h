@@ -53,23 +53,25 @@ struct CallContext {
     ~CallContext() { if (fTemps) Cleanup(); delete fArgsVec; }
 
     enum ECallFlags {
-        kNone           = 0x0000,
-        kIsSorted       = 0x0001, // if method overload priority determined
-        kIsCreator      = 0x0002, // if method creates python-owned objects
-        kIsConstructor  = 0x0004, // if method is a C++ constructor
-        kHaveImplicit   = 0x0008, // indicate that implicit converters are available
-        kAllowImplicit  = 0x0010, // indicate that implicit coversions are allowed
-        kNoImplicit     = 0x0020, // disable implicit to prevent recursion
-        kCallDirect     = 0x0040, // call wrapped method directly, no inheritance
-        kFromDescr      = 0x0080, // initiated from a descriptor
-        kUseHeuristics  = 0x0100, // if method applies heuristics memory policy
-        kUseStrict      = 0x0200, // if method applies strict memory policy
-        kReleaseGIL     = 0x0400, // if method should release the GIL
-        kSetLifeLine    = 0x0800, // if return value is part of 'this'
-        kNeverLifeLine  = 0x1000, // if the return value is never part of 'this'
-        kProtected      = 0x2000, // if method should return on signals
-        kUseFFI         = 0x4000, // not implemented
-        kIsPseudoFunc   = 0x8000, // internal, used for introspection
+        kNone           = 0x000000,
+        kIsSorted       = 0x000001, // if method overload priority determined
+        kIsCreator      = 0x000002, // if method creates python-owned objects
+        kIsConstructor  = 0x000004, // if method is a C++ constructor
+        kHaveImplicit   = 0x000008, // indicate that implicit converters are available
+        kAllowImplicit  = 0x000010, // indicate that implicit coversions are allowed
+        kNoImplicit     = 0x000020, // disable implicit to prevent recursion
+        kCallDirect     = 0x000040, // call wrapped method directly, no inheritance
+        kFromDescr      = 0x000080, // initiated from a descriptor
+        kUseHeuristics  = 0x000100, // if method applies heuristics memory policy
+        kUseStrict      = 0x000200, // if method applies strict memory policy
+        kReleaseGIL     = 0x000400, // if method should release the GIL
+        kSetLifeLine    = 0x000800, // if return value is part of 'this'
+        kNeverLifeLine  = 0x001000, // if the return value is never part of 'this'
+        kPyException    = 0x002000, // Python exception during method execution
+        kCppException   = 0x004000, // C++ exception during method execution
+        kProtected      = 0x008000, // if method should return on signals
+        kUseFFI         = 0x010000, // not implemented
+        kIsPseudoFunc   = 0x020000, // internal, used for introspection
     };
 
 // memory handling

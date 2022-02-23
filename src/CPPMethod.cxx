@@ -118,10 +118,13 @@ inline PyObject* CPyCppyy::CPPMethod::ExecuteFast(
     try {       // C++ try block
         result = fExecutor->Execute(fMethod, (Cppyy::TCppObject_t)((intptr_t)self+offset), ctxt);
     } catch (PyException&) {
+        ctxt->fFlags |= CallContext::kPyException;
         result = nullptr;           // error already set
     } catch (std::exception& e) {
     // attempt to set the exception to the actual type, to allow catching with the Python C++ type
         static Cppyy::TCppType_t exc_type = (Cppyy::TCppType_t)Cppyy::GetScope("std::exception");
+
+        ctxt->fFlags |= CallContext::kCppException;
 
         PyObject* pyexc_type = nullptr;
         PyObject* pyexc_obj  = nullptr;
@@ -165,6 +168,8 @@ inline PyObject* CPyCppyy::CPPMethod::ExecuteFast(
 
         result = nullptr;
     } catch (...) {
+        ctxt->fFlags |= CallContext::kCppException;
+
         PyErr_SetString(PyExc_Exception, "unhandled, unknown C++ exception");
         result = nullptr;
     }

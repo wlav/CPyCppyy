@@ -76,7 +76,7 @@ PyObject* PyErr_Occurred_WithGIL();
 
 // helpers for collecting/maintaining python exception data
 struct PyError_t {
-    PyError_t() { fType = fValue = fTrace = 0; }
+    PyError_t(bool is_cpp = false) : fIsCpp(is_cpp) { fType = fValue = fTrace = 0; }
 
     static void Clear(PyError_t& e)
     {
@@ -86,9 +86,10 @@ struct PyError_t {
     }
 
     PyObject *fType, *fValue, *fTrace;
+    bool fIsCpp;
 };
 
-size_t FetchError(std::vector<PyError_t>&);
+size_t FetchError(std::vector<PyError_t>&, bool is_cpp = false);
 void SetDetailedException(
     std::vector<PyError_t>& errors /* clears */, PyObject* topmsg /* steals ref */, PyObject* defexc);
 
