@@ -713,7 +713,11 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
                     CPyCppyy_PyText_AsString(sig), (char*)"nullptr result without error in overload call");
                 Py_DECREF(sig);
             }
-            Utility::FetchError(errors, ctxt.fFlags & (CallContext::kPyException | CallContext::kCppException));
+
+        // retrieve, store, and clear errors
+            bool callee_error = ctxt.fFlags & (CallContext::kPyException | CallContext::kCppException);
+            ctxt.fFlags &= ~(CallContext::kPyException | CallContext::kCppException);
+            Utility::FetchError(errors, callee_error);
 
             if (HaveImplicit(&ctxt)) {
                 bHaveImplicit = true;

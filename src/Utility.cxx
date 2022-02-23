@@ -976,11 +976,14 @@ void CPyCppyy::Utility::SetDetailedException(std::vector<PyError_t>& errors, PyO
     PyError_t* unique_from_cpp = nullptr;
     for (auto& e : errors) {
         if (e.fIsCpp) {
-            if (!unique_from_cpp) {
+            if (!unique_from_cpp)
                 unique_from_cpp = &e;
-                exc_type = e.fType;
-            } else
-                exc_type = defexc;     // two C++ exceptions, resort to default
+            else {
+            // two C++ exceptions, resort to default
+                unique_from_cpp = nullptr;
+                exc_type = defexc;
+                break;
+            }
         } else if (!unique_from_cpp) {
         // try to consolidate Python exceptions, otherwise select default
             if (!exc_type) exc_type = e.fType;
@@ -1001,8 +1004,6 @@ void CPyCppyy::Utility::SetDetailedException(std::vector<PyError_t>& errors, PyO
     // add the details to the topmsg
         PyObject* separator = CPyCppyy_PyText_FromString("\n  ");
         for (auto& e : errors) {
-            if (!exc_type) exc_type = e.fType;
-            else if (exc_type != e.fType) exc_type = defexc;
             CPyCppyy_PyText_Append(&topmsg, separator);
             if (CPyCppyy_PyText_Check(e.fValue)) {
                 CPyCppyy_PyText_Append(&topmsg, e.fValue);
