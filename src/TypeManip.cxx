@@ -84,7 +84,7 @@ std::string CPyCppyy::TypeManip::remove_const(const std::string& cppname)
     std::string::size_type type_stop   = cppname.rfind('>');
     if (cppname.find("::", type_stop+1) != std::string::npos) // e.g. klass<T>::some_typedef
         type_stop = cppname.find(' ', type_stop+1);
-    if (tmplt_start != std::string::npos) {
+    if (tmplt_start != std::string::npos && cppname[tmplt_start+1] != '<') {
     // only replace const qualifying cppname, not in template parameters
         std::string pre = cppname.substr(0, tmplt_start);
         erase_const(pre);
@@ -141,9 +141,9 @@ std::string CPyCppyy::TypeManip::template_base(const std::string& cppname)
 
     // count '<' and '>' to be able to skip template contents
         if (c == '>')
-            ++tpl_open;
-        else if (c == '<')
             --tpl_open;
+        else if (c == '<' && cppname[pos+1] != '<')
+            ++tpl_open;
 
         if (tpl_open == 0)
             return cppname.substr(0, pos);
@@ -207,9 +207,9 @@ std::string CPyCppyy::TypeManip::extract_namespace(const std::string& name)
 
     // count '<' and '>' to be able to skip template contents
         if (c == '>')
-            ++tpl_open;
-        else if (c == '<')
             --tpl_open;
+        else if (c == '<' && name[pos+1] != '<')
+            ++tpl_open;
 
     // collect name up to "::"
         else if (tpl_open == 0 && c == ':' && name[pos-1] == ':') {
@@ -238,9 +238,9 @@ std::vector<std::string> CPyCppyy::TypeManip::extract_arg_types(const std::strin
 
     // count '<' and '>' to be able to skip template contents
         if (c == '>')
-            ++tpl_open;
-        else if (c == '<')
             --tpl_open;
+        else if (c == '<' && sig[pos+1] != '<')
+            ++tpl_open;
 
     // collect type name up to ',' or end ')'
         else if (tpl_open == 0 && c == ',') {
