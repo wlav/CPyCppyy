@@ -32,7 +32,7 @@
 // only used in py2 for char -> wchar_t conversion for std::wstring; if not
 // available, the conversion is done through Python (requires an extra copy)
 #if PY_VERSION_HEX < 0x03000000
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !defined(__APPLE__)
 # if __GNUC__ > 4 && __has_include("codecvt")
 # include <codecvt>
 # define HAS_CODECVT 1
@@ -1819,7 +1819,7 @@ bool CPyCppyy::STLWStringConverter::SetArg(
         std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> cnv;
         fBuffer = cnv.from_bytes(PyString_AS_STRING(pyobject));
 #else
-        PyObject* pyu = PyUnicode_FromObject(pyobject);
+        PyObject* pyu = PyUnicode_FromString(PyString_AS_STRING(pyobject));
         if (!pyu) return false;
         Py_ssize_t len = CPyCppyy_PyUnicode_GET_SIZE(pyu);
         fBuffer.resize(len);
