@@ -68,8 +68,9 @@ PyObject* CPyCppyy::CPPConstructor::Call(CPPInstance*& self,
     Cppyy::TCppScope_t disp = self->ObjectIsA(false /* check_smart */);
     intptr_t address = 0;
     if (GetScope() != disp) {
-    // happens for Python derived types, which have a dispatcher inserted that
-    // is not otherwise user-visible: call it instead
+    // happens for Python derived types (which have a dispatcher inserted that
+    // is not otherwise user-visible: call it instead) and C++ derived classes
+    // without public constructors
 
     // first, check whether we at least had a proper meta class, or whether that
     // was also replaced user-side
@@ -78,10 +79,16 @@ PyObject* CPyCppyy::CPPConstructor::Call(CPPInstance*& self,
             return nullptr;
         }
 
-    // get the dispatcher class
+    // get the dispatcher class and verify
         PyObject* dispproxy = CPyCppyy::GetScopeProxy(disp);
         if (!dispproxy) {
             PyErr_SetString(PyExc_TypeError, "dispatcher proxy was never created");
+            return nullptr;
+        }
+
+        if (!(((CPPClass*)dispproxy)->fFlags & CPPScope::kIsPython)) {
+            PyErr_SetString(PyExc_TypeError, const_cast<char*>((
+                "constructor for " + Cppyy::GetScopedFinalName(disp) + " is not a dispatcher").c_str()));
             return nullptr;
         }
 
@@ -337,6 +344,16 @@ PyObject* CPyCppyy::CPPIncompleteClassConstructor::Call(
 {
 // do not allow instantiation of incomplete (forward declared) classes)
     PyErr_Format(PyExc_TypeError, "cannot instantiate incomplete class \'%s\'",
+        Cppyy::GetScopedFinalName(this->GetScope()).c_str());
+    return nullptr;
+}
+
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::CPPAllPrivateClassConstructor::Call(
+    CPPInstance*&, CPyCppyy_PyArgs_t, size_t, PyObject*, CallContext*)
+{
+// do not allow instantiation of classes with only private constructors
+    PyErr_Format(PyExc_TypeError, "cannot instantiate class \'%s\' that has no public constructors",
         Cppyy::GetScopedFinalName(this->GetScope()).c_str());
     return nullptr;
 }

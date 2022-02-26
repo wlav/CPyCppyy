@@ -416,6 +416,7 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
     unsigned int flags = (unsigned int)(klass->fFlags & CPPScope::kIsMultiCross);
     PyObject* disp_proxy = CPyCppyy::CreateScopeProxy(disp, flags);
     if (flags) ((CPPScope*)disp_proxy)->fFlags |= CPPScope::kIsMultiCross;
+    ((CPPScope*)disp_proxy)->fFlags |= CPPScope::kIsPython;
 
 // finally, to expose protected members, copy them over from the C++ dispatcher base
 // to the Python dictionary (the C++ dispatcher's Python proxy is not a base of the

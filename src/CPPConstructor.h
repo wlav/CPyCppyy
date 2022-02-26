@@ -70,6 +70,16 @@ public:
         CPyCppyy_PyArgs_t args, size_t nargsf, PyObject* kwds, CallContext* ctxt = nullptr);
 };
 
+class CPPAllPrivateClassConstructor : public CPPConstructor {
+public:
+    using CPPConstructor::CPPConstructor;
+
+public:
+    virtual PyCallable* Clone() { return new CPPAllPrivateClassConstructor(*this); }
+    virtual PyObject* Call(CPPInstance*& self,
+        CPyCppyy_PyArgs_t args, size_t nargsf, PyObject* kwds, CallContext* ctxt = nullptr);
+};
+
 } // namespace CPyCppyy
 
 #endif // !CPYCPPYY_CPPCONSTRUCTOR_H
