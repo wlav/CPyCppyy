@@ -136,7 +136,7 @@ PyObject* CPyCppyy::CPPConstructor::Call(CPPInstance*& self,
             if (pyclass) {
                 self->SetSmart((PyObject*)Py_TYPE(self));
                 Py_DECREF((PyObject*)Py_TYPE(self));
-                Py_TYPE(self) = (PyTypeObject*)pyclass;
+                Py_SET_TYPE(self, (PyTypeObject*)pyclass);
             }
         }
 
