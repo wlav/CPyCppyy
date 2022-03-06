@@ -767,7 +767,7 @@ static PyObject* ll_reshape(CPyCppyy::LowLevelView* self, PyObject* shape)
         PyMem_Free(view.shape);
         PyMem_Free(view.strides);
 
-        view.ndim      = PyTuple_GET_SIZE(shape);
+        view.ndim      = (int)PyTuple_GET_SIZE(shape);
         view.shape     = (Py_ssize_t*)PyMem_Malloc(view.ndim * sizeof(Py_ssize_t));
         view.strides   = (Py_ssize_t*)PyMem_Malloc(view.ndim * sizeof(Py_ssize_t));
     }
@@ -974,7 +974,7 @@ static inline PyObject* CreateLowLevelViewT(T* address, CPyCppyy::cdims_t shape)
     view.obj            = nullptr;
     view.readonly       = 0;
     view.format         = (char*)typecode_traits<T>::format;
-    view.ndim           = shape.ndim() != UNKNOWN_SIZE ? shape.ndim() : 1;
+    view.ndim           = int(shape.ndim() != UNKNOWN_SIZE ? shape.ndim() : 1);
     view.shape          = (Py_ssize_t*)PyMem_Malloc(view.ndim * sizeof(Py_ssize_t));
     view.shape[0]       = nx;      // view.len / view.itemsize
     view.strides        = (Py_ssize_t*)PyMem_Malloc(view.ndim * sizeof(Py_ssize_t));
