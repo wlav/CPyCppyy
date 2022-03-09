@@ -486,45 +486,93 @@ static inline void* cast_actual(void* obj) {
     return address;
 }
 
+
+#define CPYCPPYY_ORDERED_OPERATOR_STUB(op, ometh, label)                      \
+    if (!ometh) {                                                             \
+        PyCallable* pyfunc = Utility::FindBinaryOperator((PyObject*)self, other, #op);\
+        if (pyfunc)                                                           \
+            ometh = (PyObject*)CPPOverload_New(#label, pyfunc);               \
+        }                                                                     \
+    meth = ometh;
+
 static PyObject* op_richcompare(CPPInstance* self, PyObject* other, int op)
 {
-// Rich set of comparison objects; only equals and not-equals are defined.
-    if (op != Py_EQ && op != Py_NE) {
-        Py_INCREF(Py_NotImplemented);
-        return Py_NotImplemented;
-    }
+// Rich set of comparison objects; currently supported:
+//   == : Py_EQ
+//   != : Py_NE
+//
+//   <  : Py_LT
+//   <= : Py_LE
+//   >  : Py_GT
+//   >= : Py_GE
+//
 
-// special case for None to compare True to a null-pointer
-    if ((PyObject*)other == Py_None && !self->fObject) {
-        if (op == Py_EQ) { Py_RETURN_TRUE; }
+// associative comparison operators
+    if (op == Py_EQ || op == Py_NE) {
+    // special case for None to compare True to a null-pointer
+        if ((PyObject*)other == Py_None && !self->fObject) {
+            if (op == Py_EQ) { Py_RETURN_TRUE; }
+            Py_RETURN_FALSE;
+        }
+
+    // use C++-side operators if available
+        PyObject* result = eqneq_binop((CPPClass*)Py_TYPE(self), (PyObject*)self, other, op);
+        if (!result && CPPInstance_Check(other))
+            result = eqneq_binop((CPPClass*)Py_TYPE(other), other, (PyObject*)self, op);
+        if (result) return result;
+
+    // default behavior: type + held pointer value defines identity; if both are
+    // CPPInstance objects, perform an additional autocast if need be
+        bool bIsEq = false;
+
+        if ((Py_TYPE(self) == Py_TYPE(other) && \
+                self->GetObject() == ((CPPInstance*)other)->GetObject())) {
+        // direct match
+            bIsEq = true;
+        } else if (CPPInstance_Check(other)) {
+        // try auto-cast match
+            void* addr1 = cast_actual(self);
+            void* addr2 = cast_actual(other);
+            bIsEq = addr1 && addr2 && (addr1 == addr2);
+        }
+
+        if ((op == Py_EQ && bIsEq) || (op == Py_NE && !bIsEq))
+            Py_RETURN_TRUE;
+
         Py_RETURN_FALSE;
     }
 
-// use C++-side operators if available
-    PyObject* result = eqneq_binop((CPPClass*)Py_TYPE(self), (PyObject*)self, other, op);
-    if (!result && CPPInstance_Check(other))
-        result = eqneq_binop((CPPClass*)Py_TYPE(other), other, (PyObject*)self, op);
-    if (result) return result;
+// ordered comparison operators
+    else if (op == Py_LT || op == Py_LE || op == Py_GT || op == Py_GE) {
+        CPPClass* klass = (CPPClass*)Py_TYPE(self);
+        if (!klass->fOperators) klass->fOperators = new Utility::PyOperators{};
+        PyObject* meth = nullptr;
 
-// default behavior: type + held pointer value defines identity; if both are
-// CPPInstance objects, perform an additional autocast if need be
-    bool bIsEq = false;
+        switch (op) {
+        case Py_LT:
+            CPYCPPYY_ORDERED_OPERATOR_STUB(<,  klass->fOperators->fLt, __lt__)
+            break;
+        case Py_LE:
+            CPYCPPYY_ORDERED_OPERATOR_STUB(<=, klass->fOperators->fLe, __ge__)
+            break;
+        case Py_GT:
+            CPYCPPYY_ORDERED_OPERATOR_STUB(>,  klass->fOperators->fGt, __gt__)
+            break;
+        case Py_GE:
+            CPYCPPYY_ORDERED_OPERATOR_STUB(>=, klass->fOperators->fGe, __ge__)
+            break;
+        }
 
-    if ((Py_TYPE(self) == Py_TYPE(other) && \
-            self->GetObject() == ((CPPInstance*)other)->GetObject())) {
-    // direct match
-        bIsEq = true;
-    } else if (CPPInstance_Check(other)) {
-    // try auto-cast match
-        void* addr1 = cast_actual(self);
-        void* addr2 = cast_actual(other);
-        bIsEq = addr1 && addr2 && (addr1 == addr2);
+        if (!meth) {
+            PyErr_SetString(PyExc_NotImplementedError, "");
+            return nullptr;
+        }
+
+        return PyObject_CallFunctionObjArgs(meth, (PyObject*)self, other, nullptr);
     }
 
-    if ((op == Py_EQ && bIsEq) || (op == Py_NE && !bIsEq))
-        Py_RETURN_TRUE;
-
-    Py_RETURN_FALSE;
+    Py_INCREF(Py_NotImplemented);
+    return Py_NotImplemented;
 }
 
 //----------------------------------------------------------------------------
@@ -802,6 +850,7 @@ static PyGetSetDef op_getset[] = {
 
 //= CPyCppyy type number stubs to allow dynamic overrides =====================
 #define CPYCPPYY_STUB_BODY(name, op)                                          \
+    bool previously_resolved_overload = (bool)meth;                           \
     if (!meth) {                                                              \
         PyErr_Clear();                                                        \
         PyCallable* pyfunc = Utility::FindBinaryOperator(left, right, #op);   \
@@ -812,8 +861,8 @@ static PyGetSetDef op_getset[] = {
         }                                                                     \
     }                                                                         \
     PyObject* res = PyObject_CallFunctionObjArgs(meth, cppobj, other, nullptr);\
-    if (!res) {                                                               \
-    /* try again, in case there is a better overload out there */             \
+    if (!res && previously_resolved_overload) {                               \
+    /* try again, in case (left, right) are different types than before */    \
         PyErr_Clear();                                                        \
         PyCallable* pyfunc = Utility::FindBinaryOperator(left, right, #op);   \
         if (pyfunc) ((CPPOverload*&)meth)->AdoptMethod(pyfunc);               \

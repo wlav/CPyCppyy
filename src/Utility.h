@@ -55,12 +55,15 @@ Py_ssize_t GetBuffer(PyObject* pyobject, char tc, int size, void*& buf, bool che
 std::string MapOperatorName(const std::string& name, bool bTakesParames, bool* stubbed = nullptr);
 
 struct PyOperators {
-    PyOperators() : fEq(nullptr), fNe(nullptr), fLAdd(nullptr), fRAdd(nullptr),
-        fSub(nullptr), fLMul(nullptr), fRMul(nullptr), fDiv(nullptr), fHash(nullptr) {}
+    PyOperators() : fEq(nullptr), fNe(nullptr), fLt(nullptr), fLe(nullptr), fGt(nullptr), fGe(nullptr),
+        fLAdd(nullptr), fRAdd(nullptr), fSub(nullptr), fLMul(nullptr), fRMul(nullptr), fDiv(nullptr),
+        fHash(nullptr) {}
     ~PyOperators();
 
     PyObject* fEq;
     PyObject* fNe;
+    PyObject *fLt, *fLe;
+    PyObject *fGt, *fGe;
     PyObject *fLAdd, *fRAdd;
     PyObject* fSub;
     PyObject *fLMul, *fRMul;
