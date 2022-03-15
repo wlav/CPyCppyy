@@ -79,7 +79,7 @@ public:
     void SetDispatchPtr(void*);
 
 // redefine pointer to object as fixed-size array
-    void CastToArray(ssize_t sz);
+    void CastToArray(Py_ssize_t sz);
 
 private:
     void  CreateExtension();

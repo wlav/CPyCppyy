@@ -66,7 +66,7 @@ struct ExtendedData {
     CPyCppyy::DispatchPtr* fDispatchPtr;
 
 // for representing T* as a low-level array
-    size_t fArraySize;
+    Py_ssize_t fArraySize;
 };
 
 } // unnamed namespace
@@ -302,7 +302,7 @@ static PyObject* op_get_smartptr(CPPInstance* self)
 }
 
 //= pointer-as-array support for legacy C code ===============================
-void CPyCppyy::CPPInstance::CastToArray(ssize_t sz)
+void CPyCppyy::CPPInstance::CastToArray(Py_ssize_t sz)
 {
     CreateExtension();
     fFlags |= kIsArray;
@@ -349,7 +349,7 @@ static PyObject* op_getitem(CPPInstance* self, PyObject* pyidx)
     }
 
     if (self->fFlags & CPPInstance::kIsArray) {
-        ssize_t maxidx = ARRAY_SIZE(self);
+        Py_ssize_t maxidx = ARRAY_SIZE(self);
         if (0 <= maxidx && maxidx <= idx) {
             PyErr_SetString(PyExc_IndexError, "index out of range");
             return nullptr;
