@@ -917,64 +917,7 @@ static PyObject* mp_overload(CPPOverload* pymeth, PyObject* args)
         return nullptr;
     want_const = PyTuple_GET_SIZE(args) == 1 ? -1 : want_const;
 
-    bool accept_any = strcmp(sigarg, ":any:") == 0;
-    CPPOverload* newmeth = nullptr;
-
-    std::string sig1{"("};
-    if (!accept_any) {
-        sig1.append(sigarg); sig1.append(")");
-        sig1.erase(std::remove(sig1.begin(), sig1.end(), ' '), std::end(sig1));
-    }
-
-    CPPOverload::Methods_t& methods = pymeth->fMethodInfo->fMethods;
-    for (auto& meth : methods) {
-
-        bool found = accept_any;
-        if (!found) {
-            PyObject* pysig2 = meth->GetSignature(false);
-            std::string sig2(CPyCppyy_PyText_AsString(pysig2));
-            sig2.erase(std::remove(sig2.begin(), sig2.end(), ' '), std::end(sig2));
-            Py_DECREF(pysig2);
-            if (sig1 == sig2) found = true;
-
-            if (!found) {
-                pysig2 = meth->GetSignature(true);
-                std::string sig3(CPyCppyy_PyText_AsString(pysig2));
-                sig3.erase(std::remove(sig3.begin(), sig3.end(), ' '), std::end(sig3));
-                Py_DECREF(pysig2);
-                if (sig1 == sig3) found = true;
-            }
-        }
-
-        if (found && 0 <= want_const) {
-            bool isconst = meth->IsConst();
-            if (!((want_const && isconst) || (!want_const && !isconst)))
-                found = false;
-        }
-
-        if (found) {
-            if (!newmeth) {
-                newmeth = mp_new(nullptr, nullptr, nullptr);
-                CPPOverload::Methods_t vec; vec.push_back(meth->Clone());
-                newmeth->Set(pymeth->fMethodInfo->fName, vec);
-
-                if (pymeth->fSelf) {
-                    Py_INCREF(pymeth->fSelf);
-                    newmeth->fSelf = pymeth->fSelf;
-                }
-                newmeth->fMethodInfo->fFlags = pymeth->fMethodInfo->fFlags;
-            } else
-                newmeth->AdoptMethod(meth->Clone());
-
-            if (!accept_any)
-                return (PyObject*)newmeth;
-        }
-    }
-
-    if (!newmeth)
-        PyErr_Format(PyExc_LookupError, "signature \"%s\" not found", sigarg);
-
-    return (PyObject*)newmeth;
+    return pymeth->FindOverload(sigarg, want_const);
 }
 
 //= CPyCppyy method proxy access to internals ================================
@@ -1109,6 +1052,69 @@ void CPyCppyy::CPPOverload::MergeOverload(CPPOverload* meth)
     fMethodInfo->fFlags &= ~CallContext::kIsSorted;
     meth->fMethodInfo->fDispatchMap.clear();
     meth->fMethodInfo->fMethods.clear();
+}
+
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::CPPOverload::FindOverload(const std::string& signature, int want_const)
+{
+    bool accept_any = signature == ":any:";
+    CPPOverload* newmeth = nullptr;
+
+    std::string sig1{"("};
+    if (!accept_any) {
+        sig1.append(signature); sig1.append(")");
+        sig1.erase(std::remove(sig1.begin(), sig1.end(), ' '), std::end(sig1));
+    }
+
+    CPPOverload::Methods_t& methods = fMethodInfo->fMethods;
+    for (auto& meth : methods) {
+
+        bool found = accept_any;
+        if (!found) {
+            PyObject* pysig2 = meth->GetSignature(false);
+            std::string sig2(CPyCppyy_PyText_AsString(pysig2));
+            sig2.erase(std::remove(sig2.begin(), sig2.end(), ' '), std::end(sig2));
+            Py_DECREF(pysig2);
+            if (sig1 == sig2) found = true;
+
+            if (!found) {
+                pysig2 = meth->GetSignature(true);
+                std::string sig3(CPyCppyy_PyText_AsString(pysig2));
+                sig3.erase(std::remove(sig3.begin(), sig3.end(), ' '), std::end(sig3));
+                Py_DECREF(pysig2);
+                if (sig1 == sig3) found = true;
+            }
+        }
+
+        if (found && 0 <= want_const) {
+            bool isconst = meth->IsConst();
+            if (!((want_const && isconst) || (!want_const && !isconst)))
+                found = false;
+        }
+
+        if (found) {
+            if (!newmeth) {
+                newmeth = mp_new(nullptr, nullptr, nullptr);
+                CPPOverload::Methods_t vec; vec.push_back(meth->Clone());
+                newmeth->Set(fMethodInfo->fName, vec);
+
+                if (fSelf) {
+                    Py_INCREF(fSelf);
+                    newmeth->fSelf = fSelf;
+                }
+                newmeth->fMethodInfo->fFlags = fMethodInfo->fFlags;
+            } else
+                newmeth->AdoptMethod(meth->Clone());
+
+            if (!accept_any)
+                return (PyObject*)newmeth;
+        }
+    }
+
+    if (!newmeth)
+        PyErr_Format(PyExc_LookupError, "signature \"%s\" not found", signature.c_str());
+
+    return (PyObject*)newmeth;
 }
 
 //----------------------------------------------------------------------------
