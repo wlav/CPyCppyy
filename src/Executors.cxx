@@ -500,6 +500,8 @@ CPPYY_IMPL_ARRAY_EXEC(UChar,    unsigned char)
 #if __cplusplus > 201402L
 CPPYY_IMPL_ARRAY_EXEC(Byte,     std::byte)
 #endif
+CPPYY_IMPL_ARRAY_EXEC(Int8,     int8_t)
+CPPYY_IMPL_ARRAY_EXEC(UInt8,    uint8_t)
 CPPYY_IMPL_ARRAY_EXEC(Short,    short)
 CPPYY_IMPL_ARRAY_EXEC(UShort,   unsigned short)
 CPPYY_IMPL_ARRAY_EXEC(Int,      int)
@@ -960,6 +962,8 @@ public:
         gf["std::byte ptr"] =               (ef_t)+[](cdims_t d) { return new ByteArrayExecutor{d};     };
         gf["const std::byte ptr"] =         gf["std::byte ptr"];
 #endif
+        gf["int8_t ptr"] =                  (ef_t)+[](cdims_t d) { return new Int8ArrayExecutor{d};    };
+        gf["uint8_t ptr"] =                 (ef_t)+[](cdims_t d) { return new UInt8ArrayExecutor{d};   };
         gf["short ptr"] =                   (ef_t)+[](cdims_t d) { return new ShortArrayExecutor{d};    };
         gf["unsigned short ptr"] =          (ef_t)+[](cdims_t d) { return new UShortArrayExecutor{d};   };
         gf["int ptr"] =                     (ef_t)+[](cdims_t d) { return new IntArrayExecutor{d};      };
@@ -987,9 +991,11 @@ public:
         gf["std::int8_t"] =                 gf["int8_t"];
         gf["std::int8_t&"] =                gf["int8_t&"];
         gf["const std::int8_t&"] =          gf["const int8_t&"];
+        gf["std::int8_t ptr"] =             gf["int8_t ptr"];
         gf["std::uint8_t"] =                gf["uint8_t"];
         gf["std::uint8_t&"] =               gf["uint8_t&"];
         gf["const std::uint8_t&"] =         gf["const uint8_t&"];
+        gf["std::uint8_t ptr"] =            gf["uint8_t ptr"];
 #ifdef _WIN32
         gf["__int64"] =                     gf["long long"];
         gf["__int64&"] =                    gf["long long&"];
