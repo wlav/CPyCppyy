@@ -355,6 +355,17 @@ void _Py_SET_TYPE(PyObject *ob, PyTypeObject *type) { ob->ob_type = type; }
 #define Py_SET_TYPE(ob, type) _Py_SET_TYPE((PyObject*)(ob), type)
 #endif
 
+// py39 gained several faster (through vector call) equivalent method call API
+#if PY_VERSION_HEX < 0x03090000
+static inline PyObject* PyObject_CallMethodNoArgs(PyObject* obj, PyObject* name) {
+    return PyObject_CallMethodObjArgs(obj, name, nullptr);
+}
+
+static inline PyObject* PyObject_CallMethodOneArg(PyObject* obj, PyObject* name, PyObject* arg) {
+    return PyObject_CallMethodObjArgs(obj, name, arg, nullptr);
+}
+#endif
+
 // C++ version of the cppyy API
 #include "Cppyy.h"
 

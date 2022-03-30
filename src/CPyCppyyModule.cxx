@@ -609,8 +609,7 @@ static PyObject* BindObject(PyObject*, PyObject* args, PyObject* kwds)
             ((CPPInstance*)pyobj)->GetObjectRaw() = cast_address;
 
             PyObject* dispproxy = CPyCppyy::GetScopeProxy(cast_type);
-            PyObject* res = PyObject_CallMethodObjArgs(
-                    dispproxy, PyStrings::gDispGet, pyobj, nullptr);
+            PyObject* res = PyObject_CallMethodOneArg(dispproxy, PyStrings::gDispGet, pyobj);
             /* Note: the resultant object is borrowed */
             if (CPPInstance_Check(res) && ((CPPInstance*)res)->GetObject() == cast_address) {
                 ((CPPInstance*)pyobj)->CppOwns();     // make sure C++ object isn't deleted

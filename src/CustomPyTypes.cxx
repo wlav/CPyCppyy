@@ -313,7 +313,7 @@ static PyObject* indexiter_iternext(indexiterobject* ii) {
         return nullptr;
 
     PyObject* pyindex = PyLong_FromSsize_t(ii->ii_pos);
-    PyObject* result = PyObject_CallMethodObjArgs((PyObject*)ii->ii_container, PyStrings::gGetItem, pyindex, nullptr);
+    PyObject* result = PyObject_CallMethodOneArg((PyObject*)ii->ii_container, PyStrings::gGetItem, pyindex);
     Py_DECREF(pyindex);
 
     ii->ii_pos += 1;
@@ -371,7 +371,7 @@ static PyObject* vectoriter_iternext(vectoriterobject* vi) {
             PyObject_SetAttr(result, PyStrings::gLifeLine, vi->ii_container);
     } else {
         PyObject* pyindex = PyLong_FromSsize_t(vi->ii_pos);
-        result = PyObject_CallMethodObjArgs((PyObject*)vi->ii_container, PyStrings::gGetNoCheck, pyindex, nullptr);
+        result = PyObject_CallMethodOneArg((PyObject*)vi->ii_container, PyStrings::gGetNoCheck, pyindex);
         Py_DECREF(pyindex);
     }
 

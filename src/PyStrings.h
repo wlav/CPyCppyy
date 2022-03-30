@@ -31,6 +31,10 @@ namespace PyStrings {
     extern PyObject* gMRO;
     extern PyObject* gName;
     extern PyObject* gNe;
+    extern PyObject* gRepr;
+    extern PyObject* gCppRepr;
+    extern PyObject* gStr;
+    extern PyObject* gCppStr;
     extern PyObject* gTypeCode;
     extern PyObject* gCTypesType;
 

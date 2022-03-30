@@ -141,7 +141,7 @@ inline PyObject* CallSelfIndex(CPPInstance* self, PyObject* idx, PyObject* pymet
         return nullptr;
     }
 
-    PyObject* result = PyObject_CallMethodObjArgs((PyObject*)self, pymeth, pyindex, nullptr);
+    PyObject* result = PyObject_CallMethodOneArg((PyObject*)self, pymeth, pyindex);
     Py_DECREF(pyindex);
     Py_DECREF((PyObject*)self);
     return result;
@@ -163,7 +163,7 @@ PyObject* DeRefGetAttr(PyObject* self, PyObject* name)
     if (!CPyCppyy_PyText_Check(name))
         PyErr_SetString(PyExc_TypeError, "getattr(): attribute name must be string");
 
-    PyObject* pyptr = PyObject_CallMethodObjArgs(self, PyStrings::gDeref, nullptr);
+    PyObject* pyptr = PyObject_CallMethodNoArgs(self, PyStrings::gDeref);
     if (!pyptr)
         return nullptr;
 
@@ -193,7 +193,7 @@ PyObject* FollowGetAttr(PyObject* self, PyObject* name)
     if (!CPyCppyy_PyText_Check(name))
         PyErr_SetString(PyExc_TypeError, "getattr(): attribute name must be string");
 
-    PyObject* pyptr = PyObject_CallMethodObjArgs(self, PyStrings::gFollow, nullptr);
+    PyObject* pyptr = PyObject_CallMethodNoArgs(self, PyStrings::gFollow);
     if (!pyptr)
          return nullptr;
 
@@ -433,7 +433,7 @@ PyObject* VectorIAdd(PyObject* self, PyObject* args, PyObject* /* kwds */)
     if (PyTuple_GET_SIZE(args) == 1) {
         PyObject* fi = PyTuple_GET_ITEM(args, 0);
         if (PyObject_CheckBuffer(fi) && !(CPyCppyy_PyText_Check(fi) || PyBytes_Check(fi))) {
-            PyObject* vend = PyObject_CallMethodObjArgs(self, PyStrings::gEnd, nullptr);
+            PyObject* vend = PyObject_CallMethodNoArgs(self, PyStrings::gEnd);
             if (vend) {
                 PyObject* result = PyObject_CallMethodObjArgs(self, PyStrings::gInsert, vend, fi, nullptr);
                 Py_DECREF(vend);
@@ -460,7 +460,7 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 
     if (getter) {
     // construct an empty vector, then back-fill it
-        PyObject* result = PyObject_CallMethodObjArgs(self, PyStrings::gRealInit, nullptr);
+        PyObject* result = PyObject_CallMethodNoArgs(self, PyStrings::gRealInit);
         if (!result) {
             delete getter;
             return nullptr;
@@ -494,7 +494,7 @@ PyObject* VectorData(PyObject* self, PyObject*)
     PyObject* pydata = CallPyObjMethod(self, "__real_data");
     if (!LowLevelView_Check(pydata)) return pydata;
 
-    PyObject* pylen = PyObject_CallMethodObjArgs(self, PyStrings::gSize, nullptr);
+    PyObject* pylen = PyObject_CallMethodNoArgs(self, PyStrings::gSize);
     if (!pylen) {
         PyErr_Clear();
         return pydata;
@@ -517,7 +517,7 @@ PyObject* VectorData(PyObject* self, PyObject*)
 PyObject* VectorArray(PyObject* self, PyObject* /* args */)
 {
     PyObject* pydata = VectorData(self, nullptr);
-    PyObject* view = PyObject_CallMethodObjArgs(pydata, PyStrings::gArray, nullptr);
+    PyObject* view = PyObject_CallMethodNoArgs(pydata, PyStrings::gArray);
     Py_DECREF(pydata);
     return view;
 }
@@ -613,7 +613,7 @@ PyObject* VectorGetItem(CPPInstance* self, PySliceObject* index)
         const Py_ssize_t sign = step < 0 ? -1 : 1;
         for (Py_ssize_t i = start; i*sign < stop*sign; i += step) {
             PyObject* pyidx = PyInt_FromSsize_t(i);
-            PyObject* item = PyObject_CallMethodObjArgs((PyObject*)self, PyStrings::gGetNoCheck, pyidx, nullptr);
+            PyObject* item = PyObject_CallMethodOneArg((PyObject*)self, PyStrings::gGetNoCheck, pyidx);
             CallPyObjMethod(nseq, "push_back", item);
             Py_DECREF(item);
             Py_DECREF(pyidx);
@@ -657,7 +657,7 @@ PyObject* VectorBoolGetItem(CPPInstance* self, PyObject* idx)
         const Py_ssize_t sign = step < 0 ? -1 : 1;
         for (Py_ssize_t i = start; i*sign < stop*sign; i += step) {
             PyObject* pyidx = PyInt_FromSsize_t(i);
-            PyObject* item = PyObject_CallMethodObjArgs((PyObject*)self, PyStrings::gGetItem, pyidx, nullptr);
+            PyObject* item = PyObject_CallMethodOneArg((PyObject*)self, PyStrings::gGetItem, pyidx);
             CallPyObjMethod(nseq, "push_back", item);
             Py_DECREF(item);
             Py_DECREF(pyidx);
@@ -728,7 +728,7 @@ PyObject* ArrayInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 
     if (args && PyTuple_GET_SIZE(args) == 1 && PySequence_Check(PyTuple_GET_ITEM(args, 0))) {
     // construct the empty array, then fill it
-        PyObject* result = PyObject_CallMethodObjArgs(self, PyStrings::gRealInit, nullptr);
+        PyObject* result = PyObject_CallMethodNoArgs(self, PyStrings::gRealInit);
         if (!result)
             return nullptr;
 
@@ -777,7 +777,7 @@ PyObject* ArrayInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 static PyObject* MapFromPairs(PyObject* self, PyObject* pairs)
 {
 // construct an empty map, then fill it with the key, value pairs
-    PyObject* result = PyObject_CallMethodObjArgs(self, PyStrings::gRealInit, nullptr);
+    PyObject* result = PyObject_CallMethodNoArgs(self, PyStrings::gRealInit);
     if (!result)
         return nullptr;
 
@@ -859,7 +859,7 @@ PyObject* STLContainsWithFind(PyObject* self, PyObject* obj)
 
     PyObject* iter = CallPyObjMethod(self, "find", obj);
     if (CPPInstance_Check(iter)) {
-        PyObject* end = PyObject_CallMethodObjArgs(self, PyStrings::gEnd, nullptr);
+        PyObject* end = PyObject_CallMethodNoArgs(self, PyStrings::gEnd);
         if (CPPInstance_Check(end)) {
             if (!PyObject_RichCompareBool(iter, end, Py_EQ)) {
                 Py_INCREF(Py_True);
@@ -888,7 +888,7 @@ PyObject* SetInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
         PyObject* pyset = PyTuple_GET_ITEM(args, 0);
 
     // construct an empty set, then fill it
-        PyObject* result = PyObject_CallMethodObjArgs(self, PyStrings::gRealInit, nullptr);
+        PyObject* result = PyObject_CallMethodNoArgs(self, PyStrings::gRealInit);
         if (!result)
             return nullptr;
 
@@ -937,7 +937,7 @@ static const ptrdiff_t PS_COLL_ADDR = 13;   // id.
 PyObject* LLSequenceIter(PyObject* self)
 {
 // Implement python's __iter__ for low level views used through STL-type begin()/end()
-    PyObject* iter = PyObject_CallMethodObjArgs(self, PyStrings::gBegin, nullptr);
+    PyObject* iter = PyObject_CallMethodNoArgs(self, PyStrings::gBegin);
 
     if (LowLevelView_Check(iter)) {
     // builtin pointer iteration: can only succeed if a size is available
@@ -963,9 +963,9 @@ PyObject* LLSequenceIter(PyObject* self)
 PyObject* STLSequenceIter(PyObject* self)
 {
 // Implement python's __iter__ for std::iterator<>s
-    PyObject* iter = PyObject_CallMethodObjArgs(self, PyStrings::gBegin, nullptr);
+    PyObject* iter = PyObject_CallMethodNoArgs(self, PyStrings::gBegin);
     if (iter) {
-        PyObject* end = PyObject_CallMethodObjArgs(self, PyStrings::gEnd, nullptr);
+        PyObject* end = PyObject_CallMethodNoArgs(self, PyStrings::gEnd);
         if (end) {
             if (CPPInstance_Check(iter)) {
             // use the data member cache to store extra state on the iterator object,
@@ -1018,7 +1018,7 @@ PyObject* CheckedGetItem(PyObject* self, PyObject* obj)
     if ((size == (Py_ssize_t)-1 || idx == (Py_ssize_t)-1) && PyErr_Occurred()) {
     // argument conversion problem: let method itself resolve anew and report
         PyErr_Clear();
-        return PyObject_CallMethodObjArgs(self, PyStrings::gGetNoCheck, obj, nullptr);
+        return PyObject_CallMethodOneArg(self, PyStrings::gGetNoCheck, obj);
     }
 
     bool inbounds = false;
@@ -1027,7 +1027,7 @@ PyObject* CheckedGetItem(PyObject* self, PyObject* obj)
         inbounds = true;
 
     if (inbounds)
-        return PyObject_CallMethodObjArgs(self, PyStrings::gGetNoCheck, obj, nullptr);
+        return PyObject_CallMethodOneArg(self, PyStrings::gGetNoCheck, obj);
     else
         PyErr_SetString( PyExc_IndexError, "index out of range" );
 
@@ -1313,6 +1313,28 @@ PyObject* STLStringGetAttr(CPPInstance* self, PyObject* attr_name)
 }
 
 
+PyObject* UTF8Repr(PyObject* self)
+{
+// force C++ string types conversion to Python str per Python __repr__ requirements
+    PyObject* res = PyObject_CallMethodNoArgs(self, PyStrings::gCppRepr);
+    if (!res || CPyCppyy_PyText_Check(res))
+        return res;
+    PyObject* str_res = PyObject_Str(res);
+    Py_DECREF(res);
+    return str_res;
+}
+
+PyObject* UTF8Str(PyObject* self)
+{
+// force C++ string types conversion to Python str per Python __str__ requirements
+    PyObject* res = PyObject_CallMethodNoArgs(self, PyStrings::gCppStr);
+    if (!res || CPyCppyy_PyText_Check(res))
+        return res;
+    PyObject* str_res = PyObject_Str(res);
+    Py_DECREF(res);
+    return str_res;
+}
+
 Py_hash_t STLStringHash(PyObject* self)
 {
 // std::string objects hash to the same values as Python strings to allow
@@ -1397,18 +1419,18 @@ PyObject* STLIterNext(PyObject* self)
             if (mustIncrement) {
             // prefer preinc, but allow post-inc; in both cases, it is "self" that has
             // the updated state to dereference
-                PyObject* iter = PyObject_CallMethodObjArgs(self, PyStrings::gPreInc, nullptr);
+                PyObject* iter = PyObject_CallMethodNoArgs(self, PyStrings::gPreInc);
                 if (!iter) {
                     PyErr_Clear();
                     static PyObject* dummy = PyInt_FromLong(1l);
-                    iter = PyObject_CallMethodObjArgs(self, PyStrings::gPostInc, dummy, nullptr);
+                    iter = PyObject_CallMethodOneArg(self, PyStrings::gPostInc, dummy);
                 }
                 iter_valid = iter && PyObject_RichCompareBool(last, self, Py_NE);
                 Py_XDECREF(iter);
             }
 
             if (iter_valid) {
-                next = PyObject_CallMethodObjArgs(self, PyStrings::gDeref, nullptr);
+                next = PyObject_CallMethodNoArgs(self, PyStrings::gDeref);
                 if (!next) PyErr_Clear();
             }
         }
@@ -1423,10 +1445,10 @@ PyObject* STLIterNext(PyObject* self)
 //- STL complex<T> behavior --------------------------------------------------
 #define COMPLEX_METH_GETSET(name, cppname)                                   \
 static PyObject* name##ComplexGet(PyObject* self, void*) {                   \
-    return PyObject_CallMethodObjArgs(self, cppname, nullptr);               \
+    return PyObject_CallMethodNoArgs(self, cppname);                         \
 }                                                                            \
 static int name##ComplexSet(PyObject* self, PyObject* value, void*) {        \
-    PyObject* result = PyObject_CallMethodObjArgs(self, cppname, value, nullptr);\
+    PyObject* result = PyObject_CallMethodOneArg(self, cppname, value);      \
     if (result) {                                                            \
         Py_DECREF(result);                                                   \
         return 0;                                                            \
@@ -1439,14 +1461,14 @@ COMPLEX_METH_GETSET(real, PyStrings::gCppReal)
 COMPLEX_METH_GETSET(imag, PyStrings::gCppImag)
 
 static PyObject* ComplexComplex(PyObject* self) {
-    PyObject* real = PyObject_CallMethodObjArgs(self, PyStrings::gCppReal, nullptr);
+    PyObject* real = PyObject_CallMethodNoArgs(self, PyStrings::gCppReal);
     if (!real) return nullptr;
     double r = PyFloat_AsDouble(real);
     Py_DECREF(real);
     if (r == -1. && PyErr_Occurred())
         return nullptr;
 
-    PyObject* imag = PyObject_CallMethodObjArgs(self, PyStrings::gCppImag, nullptr);
+    PyObject* imag = PyObject_CallMethodNoArgs(self, PyStrings::gCppImag);
     if (!imag) return nullptr;
     double i = PyFloat_AsDouble(imag);
     Py_DECREF(imag);
@@ -1457,14 +1479,14 @@ static PyObject* ComplexComplex(PyObject* self) {
 }
 
 static PyObject* ComplexRepr(PyObject* self) {
-    PyObject* real = PyObject_CallMethodObjArgs(self, PyStrings::gCppReal, nullptr);
+    PyObject* real = PyObject_CallMethodNoArgs(self, PyStrings::gCppReal);
     if (!real) return nullptr;
     double r = PyFloat_AsDouble(real);
     Py_DECREF(real);
     if (r == -1. && PyErr_Occurred())
         return nullptr;
 
-    PyObject* imag = PyObject_CallMethodObjArgs(self, PyStrings::gCppImag, nullptr);
+    PyObject* imag = PyObject_CallMethodNoArgs(self, PyStrings::gCppImag);
     if (!imag) return nullptr;
     double i = PyFloat_AsDouble(imag);
     Py_DECREF(imag);
@@ -1647,6 +1669,18 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
             Py_DECREF(top_cls);
         }
         PyObject_SetAttr(pyclass, PyStrings::gNe, top_ne);
+    }
+
+    if (HasAttrDirect(pyclass, PyStrings::gRepr, true)) {
+    // guarantee that the result of __repr__ is a Python string
+        Utility::AddToClass(pyclass, "__cpp_repr", "__repr__");
+        Utility::AddToClass(pyclass, "__repr__", (PyCFunction)UTF8Repr, METH_NOARGS);
+    }
+
+    if (HasAttrDirect(pyclass, PyStrings::gStr, true)) {
+    // guarantee that the result of __str__ is a Python string
+        Utility::AddToClass(pyclass, "__cpp_str", "__str__");
+        Utility::AddToClass(pyclass, "__str__", (PyCFunction)UTF8Str, METH_NOARGS);
     }
 
     if (Cppyy::IsAggregate(((CPPClass*)pyclass)->fCppType) && name.compare(0, 5, "std::", 5) != 0) {

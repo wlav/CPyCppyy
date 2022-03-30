@@ -28,6 +28,10 @@ PyObject* CPyCppyy::PyStrings::gModule           = nullptr;
 PyObject* CPyCppyy::PyStrings::gMRO              = nullptr;
 PyObject* CPyCppyy::PyStrings::gName             = nullptr;
 PyObject* CPyCppyy::PyStrings::gNe               = nullptr;
+PyObject* CPyCppyy::PyStrings::gRepr             = nullptr;
+PyObject* CPyCppyy::PyStrings::gCppRepr          = nullptr;
+PyObject* CPyCppyy::PyStrings::gStr              = nullptr;
+PyObject* CPyCppyy::PyStrings::gCppStr           = nullptr;
 PyObject* CPyCppyy::PyStrings::gTypeCode         = nullptr;
 PyObject* CPyCppyy::PyStrings::gCTypesType       = nullptr;
 
@@ -103,6 +107,10 @@ bool CPyCppyy::CreatePyStrings() {
     CPPYY_INITIALIZE_STRING(gMRO,            __mro__);
     CPPYY_INITIALIZE_STRING(gName,           __name__);
     CPPYY_INITIALIZE_STRING(gNe,             __ne__);
+    CPPYY_INITIALIZE_STRING(gRepr,           __repr__);
+    CPPYY_INITIALIZE_STRING(gCppRepr,        __cpp_repr);
+    CPPYY_INITIALIZE_STRING(gStr,            __str__);
+    CPPYY_INITIALIZE_STRING(gCppStr,         __cpp_str);
     CPPYY_INITIALIZE_STRING(gTypeCode,       typecode);
     CPPYY_INITIALIZE_STRING(gCTypesType,     _type_);
 
