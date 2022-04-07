@@ -336,7 +336,7 @@ static inline PY_LONG_LONG CPyCppyy_PyLong_AsStrictLongLong(PyObject* pyobject)
     if (!(PyLong_Check(pyobject) || PyInt_Check(pyobject))) {
         PyErr_SetString(PyExc_TypeError, "int/long conversion expects an integer object");
         return (long)-1;
-   }
+    }
 
     return PyLong_AsLongLong(pyobject);     // already does long range check
 }
