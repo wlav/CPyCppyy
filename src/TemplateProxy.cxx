@@ -331,6 +331,29 @@ static TemplateProxy* tpp_new(PyTypeObject*, PyObject*, PyObject*)
 }
 
 //----------------------------------------------------------------------------
+static Py_hash_t tpp_hash(TemplateProxy* self)
+{
+    return (Py_hash_t)self;
+}
+
+//----------------------------------------------------------------------------
+static PyObject* tpp_richcompare(TemplateProxy* self, PyObject* other, int op)
+{
+    if (op == Py_EQ || op == Py_NE) {
+        if (!TemplateProxy_CheckExact(other))
+            Py_RETURN_FALSE;
+
+        if (self->fTI == ((TemplateProxy*)other)->fTI)
+            Py_RETURN_TRUE;
+
+        Py_RETURN_FALSE;
+    }
+
+    Py_INCREF(Py_NotImplemented);
+    return Py_NotImplemented;
+}
+
+//----------------------------------------------------------------------------
 static int tpp_clear(TemplateProxy* pytmpl)
 {
 // Garbage collector clear of held python member objects.
@@ -780,12 +803,40 @@ static PyObject* tpp_overload(TemplateProxy* pytmpl, PyObject* args)
     ol = pytmpl->fTI->fLowPriority->FindOverload(sigarg, want_const);
     if (ol) return ol;
 
-// TODO: else attempt instantiation
-    return ol;
+// else attempt instantiation
+    PyObject* pytype = 0, *pyvalue = 0, *pytrace = 0;
+    PyErr_Fetch(&pytype, &pyvalue, &pytrace);
+
+    std::string proto = Utility::ConstructTemplateArgs(nullptr, args);
+    Cppyy::TCppScope_t scope = ((CPPClass*)pytmpl->fTI->fPyClass)->fCppType;
+    Cppyy::TCppMethod_t cppmeth = Cppyy::GetMethodTemplate(
+        scope, pytmpl->fTI->fCppName, proto.substr(1, proto.size()-2));
+
+    if (!cppmeth) {
+        PyErr_Restore(pytype, pyvalue, pytrace);
+        return nullptr;
+    }
+
+    Py_XDECREF(pytype);
+    Py_XDECREF(pyvalue);
+    Py_XDECREF(pytrace);
+
+    // TODO: the next step should be consolidated with Instantiate()
+    PyCallable* meth = nullptr;
+    if (Cppyy::IsNamespace(scope)) {
+        meth = new CPPFunction(scope, cppmeth);
+    } else if (Cppyy::IsStaticMethod(cppmeth)) {
+        meth = new CPPClassMethod(scope, cppmeth);
+    } else if (Cppyy::IsConstructor(cppmeth)) {
+       meth = new CPPConstructor(scope, cppmeth);
+    } else
+        meth = new CPPMethod(scope, cppmeth);
+
+    return (PyObject*)CPPOverload_New(pytmpl->fTI->fCppName+proto, meth);
 }
 
 static PyMethodDef tpp_methods[] = {
-    {(char*)"__overload__",     (PyCFunction)tpp_overload, METH_VARARGS,
+    {(char*)"__overload__", (PyCFunction)tpp_overload, METH_VARARGS,
       (char*)"select overload for dispatch" },
     {(char*)nullptr, nullptr, 0, nullptr }
 };
@@ -810,7 +861,7 @@ PyTypeObject TemplateProxy_Type = {
     0,                                 // tp_as_number
     0,                                 // tp_as_sequence
     &tpp_as_mapping,                   // tp_as_mapping
-    0,                                 // tp_hash
+    (hashfunc)tpp_hash,                // tp_hash
 #if PY_VERSION_HEX >= 0x03080000
     (ternaryfunc)PyVectorcall_Call,    // tp_call
 #else
@@ -828,7 +879,7 @@ PyTypeObject TemplateProxy_Type = {
     (char*)"cppyy template proxy (internal)",     // tp_doc
     (traverseproc)tpp_traverse,        // tp_traverse
     (inquiry)tpp_clear,                // tp_clear
-    0,                                 // tp_richcompare
+    (richcmpfunc)tpp_richcompare,      // tp_richcompare
     offsetof(TemplateProxy, fWeakrefList),        // tp_weaklistoffset
     0,                                 // tp_iter
     0,                                 // tp_iternext
