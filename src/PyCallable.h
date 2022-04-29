@@ -17,6 +17,7 @@ public:
     virtual PyObject* GetSignature(bool show_formalargs = true) = 0;
     virtual PyObject* GetPrototype(bool show_formalargs = true) = 0;
     virtual PyObject* GetTypeName() { return GetPrototype(false); }
+    virtual PyObject* GetResultType() { return CPyCppyy_PyText_FromString("PyObject*"); }
     virtual PyObject* GetDocString() { return GetPrototype(); }
 
     virtual int GetPriority() = 0;

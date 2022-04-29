@@ -53,6 +53,7 @@ public:
     virtual PyObject* GetSignature(bool show_formalargs = true);
     virtual PyObject* GetPrototype(bool show_formalargs = true);
     virtual PyObject* GetTypeName();
+    virtual PyObject* GetResultType();
 
     virtual int       GetPriority();
     virtual bool      IsGreedy();

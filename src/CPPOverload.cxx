@@ -552,6 +552,18 @@ static PyObject* mp_getcppname(CPPOverload* pymeth, void*)
     return CPyCppyy_PyText_FromString("void* (*)(...)");   // id.
 }
 
+static PyObject* mp_getrettype(CPPOverload* pymeth, void*)
+{
+    if ((void*)pymeth == (void*)&CPPOverload_Type ||
+            pymeth->fMethodInfo->fMethods.empty()) {
+        PyErr_SetString(PyExc_RuntimeError, "no methods");
+        return nullptr;
+    }
+
+    return pymeth->fMethodInfo->fMethods[0]->GetResultType();
+}
+
+
 //----------------------------------------------------------------------------
 static PyGetSetDef mp_getset[] = {
     {(char*)"__name__",   (getter)mp_name,   nullptr, nullptr, nullptr},
@@ -572,6 +584,8 @@ static PyGetSetDef mp_getset[] = {
     {(char*)"func_doc",      (getter)mp_doc,           (setter)mp_doc_set, nullptr, nullptr},
     {(char*)"func_name",     (getter)mp_name,          nullptr, nullptr, nullptr},
 
+
+// flags to control behavior
     {(char*)"__creates__",         (getter)mp_getcreates, (setter)mp_setcreates,
       (char*)"For ownership rules of result: if true, objects are python-owned", nullptr},
     {(char*)"__mempolicy__",       (getter)mp_getmempolicy, (setter)mp_setmempolicy,
@@ -584,7 +598,11 @@ static PyGetSetDef mp_getset[] = {
       (char*)"not implemented", nullptr},
     {(char*)"__sig2exc__",         (getter)mp_getsig2exc, (setter)mp_setsig2exc,
       (char*)"If true, turn signals into Python exceptions", nullptr},
+
+// basic reflection information
     {(char*)"__cpp_name__",        (getter)mp_getcppname, nullptr, nullptr, nullptr},
+    {(char*)"__cpp_rettype__",     (getter)mp_getrettype, nullptr, nullptr, nullptr},
+
     {(char*)nullptr, nullptr, nullptr, nullptr, nullptr}
 };
 

@@ -369,10 +369,17 @@ PyObject* CPyCppyy::CPPMethod::GetPrototype(bool fa)
 }
 
 //----------------------------------------------------------------------------
-PyObject* CPyCppyy::CPPMethod::GetTypeName() {
+PyObject* CPyCppyy::CPPMethod::GetTypeName()
+{
     PyObject* cppname = CPyCppyy_PyText_FromString((GetReturnTypeName() + " (*)").c_str());
     CPyCppyy_PyText_AppendAndDel(&cppname, GetSignature(false /* show_formalargs */));
     return cppname;
+}
+
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::CPPMethod::GetResultType()
+{
+    return CPyCppyy_PyText_FromString(GetReturnTypeName().c_str());
 }
 
 //----------------------------------------------------------------------------
