@@ -18,6 +18,7 @@
 #include <assert.h>
 #include <string.h>
 #include <exception>
+#include <iostream>
 #include <sstream>
 #include <string>
 #include <typeinfo>
@@ -198,7 +199,14 @@ inline PyObject* CPyCppyy::CPPMethod::ExecuteProtected(
     CLING_EXCEPTION_TRY {    // copy call environment to be able to jump back on signal
         result = ExecuteFast(self, offset, ctxt);
     } CLING_EXCEPTION_CATCH(excode) {
-    // Unfortunately, the excodes are not the ones from signal.h, but enums from TSysEvtHandler.h
+    // report any outstanding Python exceptions first
+        if (PyErr_Occurred()) {
+            std::cerr << "Python exception outstanding during C++ longjmp:" << std::endl;
+            PyErr_Print();
+            std::cerr << std::endl;
+        }
+
+    // unfortunately, the excodes are not the ones from signal.h, but enums from TSysEvtHandler.h
         if (excode == 0)
             PyErr_SetString(gBusException, "bus error in C++; program state was reset");
         else if (excode == 1)
