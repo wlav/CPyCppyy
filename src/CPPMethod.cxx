@@ -37,8 +37,8 @@ namespace CPyCppyy {
 
 //- public helper ------------------------------------------------------------
 CPyCppyy::PyCallArgs::~PyCallArgs() {
-    if (fFlags & kSelfSwap)
-        std::swap((PyObject*&)fSelf, ((PyObject**)fArgs-1)[0]);
+    if (fFlags & kSelfSwap)            // if self swap, fArgs has been offset by -1
+        std::swap((PyObject*&)fSelf, ((PyObject**)fArgs)[0]);
 
 #if PY_VERSION_HEX >= 0x03080000
     if (fFlags & kIsOffset) fArgs -= 1;
@@ -50,8 +50,11 @@ CPyCppyy::PyCallArgs::~PyCallArgs() {
 
     if (fFlags & kDoFree)
         PyMem_Free((void*)fArgs);
-    else if (fFlags & kArgsSwap)
-        std::swap(((PyObject**)fArgs)[0], ((PyObject**)fArgs)[1]);
+    else if (fFlags & kArgsSwap) {
+    // if self swap, fArgs has been offset by -1
+        int offset = (fFlags & kSelfSwap) ? 1 : 0;
+        std::swap(((PyObject**)fArgs+offset)[0], ((PyObject**)fArgs+offset)[1]);
+    }
 #else
     if (fFlags & kDoDecref)
         Py_DECREF((PyObject*)fArgs);

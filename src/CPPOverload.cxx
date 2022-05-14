@@ -27,7 +27,7 @@ namespace CPyCppyy {
 namespace {
 
 // from CPython's instancemethod: Free list for method objects to safe malloc/free overhead
-// The im_self element is used to chain the elements.
+// The fSelf field is used to chain the elements.
 static CPPOverload* free_list;
 static int numfree = 0;
 #ifndef CPPOverload_MAXFREELIST
@@ -98,6 +98,8 @@ public:
         if (self) {
             if (nargsf & PY_VECTORCALL_ARGUMENTS_OFFSET) {      // mutation allowed?
                 std::swap(((PyObject**)args-1)[0], (PyObject*&)self);
+                nargsf &= ~PY_VECTORCALL_ARGUMENTS_OFFSET;
+                args = args-1;
             } else {
                 Py_ssize_t nkwargs = kwds ? PyTuple_GET_SIZE(kwds) : 0;
                 Py_ssize_t totalargs = PyVectorcall_NARGS(nargsf)+nkwargs;
@@ -155,18 +157,18 @@ static int PriorityCmp(const std::pair<int, PyCallable*>& left, const std::pair<
 }
 
 // return helper
-static inline void ResetCallState(CPPInstance*& selfnew, CPPInstance* selfold)
+static inline void ResetCallState(CPPInstance* descr_self, CPPInstance*& im_self)
 {
-// reset self if needed, allow this CPPOverload to be re-used
-    if (selfnew != selfold) {
-        Py_XDECREF(selfnew);
-        selfnew = selfold;
+// reset self if needed, allowing simple re-use
+    if (descr_self != im_self) {
+        Py_XDECREF(im_self);
+        im_self = descr_self;
     }
 }
 
 // helper to factor out return logic of mp_call / mp_vectorcall
 static inline PyObject* HandleReturn(
-    CPPOverload* pymeth, CPPInstance* oldSelf, PyObject* result)
+    CPPOverload* pymeth, CPPInstance* im_self, PyObject* result)
 {
 // special case for python exceptions, propagated through C++ layer
     if (result) {
@@ -177,8 +179,8 @@ static inline PyObject* HandleReturn(
 
         // either be a constructor with a fresh object proxy self ...
             if (IsConstructor(pymeth->fMethodInfo->fFlags)) {
-                if (pymeth->fSelf)
-                    pymeth->fSelf->PythonOwns();
+                if (im_self)
+                    im_self->PythonOwns();
             }
 
         // ... or be a regular method with an object proxy return value
@@ -189,21 +191,20 @@ static inline PyObject* HandleReturn(
     // if this new object falls inside self, make sure its lifetime is proper
         if (!(pymeth->fMethodInfo->fFlags & CallContext::kNeverLifeLine)) {
             int ll_action = 0;
-            if ((PyObject*)pymeth->fSelf != result) {
+            if ((PyObject*)im_self != result) {
                 if (pymeth->fMethodInfo->fFlags & CallContext::kSetLifeLine)
                     ll_action = 1;
-                else if (cppres && CPPInstance_Check(pymeth->fSelf)) {
+                else if (cppres && CPPInstance_Check(im_self)) {
                 // if self was a by-value return and result is not, pro-actively protect result;
                 // else if the return value falls within the memory of 'this', force a lifeline
-                    CPPInstance* cppself = (CPPInstance*)pymeth->fSelf;
                     if (!(cppres->fFlags & CPPInstance::kIsValue)) {     // no need if the result is temporary
-                        if (cppself->fFlags & CPPInstance::kIsValue)
+                        if (im_self->fFlags & CPPInstance::kIsValue)
                             ll_action = 2;
-                        else if (cppself->fFlags & CPPInstance::kHasLifeLine)
+                        else if (im_self->fFlags & CPPInstance::kHasLifeLine)
                             ll_action = 3;
                         else {
-                            ptrdiff_t offset = (ptrdiff_t)cppres->GetObject() - (ptrdiff_t)cppself->GetObject();
-                            if (0 <= offset && offset < (ptrdiff_t)Cppyy::SizeOf(cppself->ObjectIsA()))
+                            ptrdiff_t offset = (ptrdiff_t)cppres->GetObject() - (ptrdiff_t)im_self->GetObject();
+                            if (0 <= offset && offset < (ptrdiff_t)Cppyy::SizeOf(im_self->ObjectIsA()))
                                  ll_action = 4;
                         }
                     }
@@ -213,7 +214,7 @@ static inline PyObject* HandleReturn(
             if (!ll_action)
                 pymeth->fMethodInfo->fFlags |= CallContext::kNeverLifeLine;       // assume invariant semantics
             else {
-                if (PyObject_SetAttr(result, PyStrings::gLifeLine, (PyObject*)pymeth->fSelf) == -1)
+                if (PyObject_SetAttr(result, PyStrings::gLifeLine, (PyObject*)im_self) == -1)
                     PyErr_Clear();         // ignored
                 if (cppres) cppres->fFlags |= CPPInstance::kHasLifeLine;          // for chaining
                 pymeth->fMethodInfo->fFlags |= CallContext::kSetLifeLine;         // for next time
@@ -222,7 +223,7 @@ static inline PyObject* HandleReturn(
     }
 
 // reset self as necessary to allow re-use of the CPPOverload
-    ResetCallState(pymeth->fSelf, oldSelf);
+    ResetCallState(pymeth->fSelf, im_self);
 
     return result;
 }
@@ -619,7 +620,11 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
 #endif
 
 // Call the appropriate overload of this method.
-    CPPInstance* oldSelf = pymeth->fSelf;
+
+// If called from a descriptor, then this could be a bound function with
+// non-zero self; otherwise pymeth->fSelf is expected to always be nullptr.
+
+    CPPInstance* im_self = pymeth->fSelf;
 
 // get local handles to proxy internals
     auto& methods = pymeth->fMethodInfo->fMethods;
@@ -634,7 +639,7 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
     ctxt.fFlags |= (mflags & CallContext::kProtected);
     if (IsConstructor(pymeth->fMethodInfo->fFlags)) ctxt.fFlags |= CallContext::kIsConstructor;
     ctxt.fFlags |= (pymeth->fFlags & (CallContext::kCallDirect | CallContext::kFromDescr));
-    ctxt.fPyContext = (PyObject*)pymeth->fSelf;  // no Py_INCREF as no ownership
+    ctxt.fPyContext = (PyObject*)im_self;  // no Py_INCREF as no ownership
 
 // check implicit conversions status (may be disallowed to prevent recursion)
     ctxt.fFlags |= (pymeth->fFlags & CallContext::kNoImplicit);
@@ -642,8 +647,8 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
 // simple case
     if (nMethods == 1) {
         if (!NoImplicit(&ctxt)) ctxt.fFlags |= CallContext::kAllowImplicit;    // no two rounds needed
-        PyObject* result = methods[0]->Call(pymeth->fSelf, args, nargsf, kwds, &ctxt);
-        return HandleReturn(pymeth, oldSelf, result);
+        PyObject* result = methods[0]->Call(im_self, args, nargsf, kwds, &ctxt);
+        return HandleReturn(pymeth, im_self, result);
     }
 
 // otherwise, handle overloading
@@ -662,15 +667,14 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
     // it is necessary to enable implicit conversions as the memoized call may be from
     // such a conversion case; if the call fails, the implicit flag is reset below
         if (!NoImplicit(&ctxt)) ctxt.fFlags |= CallContext::kAllowImplicit;
-        PyObject* result = memoized_pc->Call(pymeth->fSelf, args, nargsf, kwds, &ctxt);
-        result = HandleReturn(pymeth, oldSelf, result);
-
+        PyObject* result = memoized_pc->Call(im_self, args, nargsf, kwds, &ctxt);
         if (result)
-            return result;
+            return HandleReturn(pymeth, im_self, result);
 
     // fall through: python is dynamic, and so, the hashing isn't infallible
         ctxt.fFlags &= ~CallContext::kAllowImplicit;
         PyErr_Clear();
+        ResetCallState(pymeth->fSelf, im_self);
     }
 
 // ... otherwise loop over all methods and find the one that does not fail
@@ -695,7 +699,7 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
             if (stage && !implicit_possible[i])
                 continue;    // did not set implicit conversion, so don't try again
 
-            PyObject* result = methods[i]->Call(pymeth->fSelf, args, nargsf, kwds, &ctxt);
+            PyObject* result = methods[i]->Call(im_self, args, nargsf, kwds, &ctxt);
             if (result != 0) {
             // success: update the dispatch map for subsequent calls
                 if (!memoized_pc)
@@ -714,12 +718,13 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
             // clear collected errors
                 if (!errors.empty())
                     std::for_each(errors.begin(), errors.end(), Utility::PyError_t::Clear);
-                return HandleReturn(pymeth, oldSelf, result);
+                return HandleReturn(pymeth, im_self, result);
             }
 
         // else failure ..
             if (stage != 0) {
                 PyErr_Clear();    // first stage errors should be the more informative
+                ResetCallState(pymeth->fSelf, im_self);
                 continue;
             }
 
@@ -743,7 +748,7 @@ static PyObject* mp_call(CPPOverload* pymeth, PyObject* args, PyObject* kwds)
                 ctxt.fFlags &= ~CallContext::kHaveImplicit;
             } else
                 implicit_possible[i] = false;
-            ResetCallState(pymeth->fSelf, oldSelf);
+            ResetCallState(pymeth->fSelf, im_self);
         }
 
     // only move forward if implicit conversions are available
@@ -875,8 +880,7 @@ static void mp_dealloc(CPPOverload* pymeth)
         pymeth->fSelf = (CPyCppyy::CPPInstance*)free_list;
         free_list = pymeth;
         numfree++;
-    }
-    else {
+    } else {
         PyObject_GC_Del(pymeth);
     }
 }
@@ -938,7 +942,6 @@ static PyObject* mp_overload(CPPOverload* pymeth, PyObject* args)
     return pymeth->FindOverload(sigarg, want_const);
 }
 
-//= CPyCppyy method proxy access to internals ================================
 static PyObject* mp_add_overload(CPPOverload* pymeth, PyObject* new_overload)
 {
     TPythonCallback* cb = new TPythonCallback(new_overload);

@@ -15,6 +15,7 @@ bool CPyCppyy::AdjustSelf(PyCallArgs& cargs)
         std::swap(((PyObject**)cargs.fArgs-1)[0], (PyObject*&)cargs.fSelf);
         cargs.fFlags |= PyCallArgs::kSelfSwap;
         cargs.fArgs -= 1;
+        cargs.fNArgsf &= ~PY_VECTORCALL_ARGUMENTS_OFFSET;
         cargs.fNArgsf += 1;
     } else {
         Py_ssize_t nkwargs = cargs.fKwds ? PyTuple_GET_SIZE(cargs.fKwds) : 0;
