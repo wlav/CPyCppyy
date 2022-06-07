@@ -13,6 +13,9 @@ public:
 
 public:
     virtual PyObject* GetDocString();
+    virtual PyObject* Reflex(Cppyy::Reflex::RequestId_t,
+                             Cppyy::Reflex::FormatId_t = Cppyy::Reflex::OPTIMAL);
+
     virtual PyCallable* Clone() { return new CPPConstructor(*this); }
     virtual PyObject* Call(CPPInstance*& self,
         CPyCppyy_PyArgs_t args, size_t nargsf, PyObject* kwds, CallContext* ctxt = nullptr);

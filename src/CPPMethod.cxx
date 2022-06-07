@@ -388,9 +388,25 @@ PyObject* CPyCppyy::CPPMethod::GetTypeName()
 }
 
 //----------------------------------------------------------------------------
-PyObject* CPyCppyy::CPPMethod::GetResultType()
+PyObject* CPyCppyy::CPPMethod::Reflex(Cppyy::Reflex::RequestId_t request, Cppyy::Reflex::FormatId_t format)
 {
-    return CPyCppyy_PyText_FromString(GetReturnTypeName().c_str());
+// C++ reflection tooling for methods.
+
+    if (request == Cppyy::Reflex::RETURN_TYPE) {
+        std::string rtn = GetReturnTypeName();
+        Cppyy::TCppScope_t scope = 0;
+        if (format == Cppyy::Reflex::OPTIMAL || format == Cppyy::Reflex::AS_TYPE)
+            scope = Cppyy::GetScope(rtn);
+
+        if (format == Cppyy::Reflex::AS_STRING || (format == Cppyy::Reflex::OPTIMAL && !scope))
+            return CPyCppyy_PyText_FromString(rtn.c_str());
+        else if (format == Cppyy::Reflex::AS_TYPE || format == Cppyy::Reflex::OPTIMAL) {
+            if (scope) return CreateScopeProxy(scope);
+            /* TODO: builtins as type */
+        }
+    }
+
+    return PyCallable::Reflex(request, format);
 }
 
 //----------------------------------------------------------------------------

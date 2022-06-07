@@ -29,6 +29,10 @@ public:                 // public, as the python C-API works with C structs
     PyObject*          fDescription;
     PyObject*          fDoc;
 
+    // TODO: data members should have a unique identifier, just like methods,
+    // so that reflection information can be recovered post-initialization
+    std::string        fFullType;
+
 private:                // private, as the python C-API will handle creation
     CPPDataMember() = delete;
 };

@@ -1,5 +1,6 @@
 // Bindings
 #include "CPyCppyy.h"
+#include "CPyCppyy/Reflex.h"
 #include "structmember.h"    // from Python
 #if PY_VERSION_HEX >= 0x02050000
 #include "code.h"            // from Python
@@ -553,17 +554,6 @@ static PyObject* mp_getcppname(CPPOverload* pymeth, void*)
     return CPyCppyy_PyText_FromString("void* (*)(...)");   // id.
 }
 
-static PyObject* mp_getrettype(CPPOverload* pymeth, void*)
-{
-    if ((void*)pymeth == (void*)&CPPOverload_Type ||
-            pymeth->fMethodInfo->fMethods.empty()) {
-        PyErr_SetString(PyExc_RuntimeError, "no methods");
-        return nullptr;
-    }
-
-    return pymeth->fMethodInfo->fMethods[0]->GetResultType();
-}
-
 
 //----------------------------------------------------------------------------
 static PyGetSetDef mp_getset[] = {
@@ -602,7 +592,6 @@ static PyGetSetDef mp_getset[] = {
 
 // basic reflection information
     {(char*)"__cpp_name__",        (getter)mp_getcppname, nullptr, nullptr, nullptr},
-    {(char*)"__cpp_rettype__",     (getter)mp_getrettype, nullptr, nullptr, nullptr},
 
     {(char*)nullptr, nullptr, nullptr, nullptr, nullptr}
 };
@@ -949,11 +938,25 @@ static PyObject* mp_add_overload(CPPOverload* pymeth, PyObject* new_overload)
     Py_RETURN_NONE;
 }
 
+static PyObject* mp_reflex(CPPOverload* pymeth, PyObject* args)
+{
+// Provide the requested reflection information.
+    Cppyy::Reflex::RequestId_t request = -1;
+    Cppyy::Reflex::FormatId_t  format  = Cppyy::Reflex::OPTIMAL;
+    if (!PyArg_ParseTuple(args, const_cast<char*>("i|i:__cpp_reflex__"), &request, &format))
+        return nullptr;
+
+    return pymeth->fMethodInfo->fMethods[0]->Reflex(request, format);
+}
+
+//----------------------------------------------------------------------------
 static PyMethodDef mp_methods[] = {
     {(char*)"__overload__",     (PyCFunction)mp_overload, METH_VARARGS,
       (char*)"select overload for dispatch" },
     {(char*)"__add_overload__", (PyCFunction)mp_add_overload, METH_O,
       (char*)"add a new overload" },
+    {(char*)"__cpp_reflex__",   (PyCFunction)mp_reflex, METH_VARARGS,
+      (char*)"C++ overload reflection information" },
     {(char*)nullptr, nullptr, 0, nullptr }
 };
 
