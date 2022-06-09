@@ -924,11 +924,12 @@ static PyObject* mp_overload(CPPOverload* pymeth, PyObject* args)
 // Select and call a specific C++ overload, based on its signature.
     const char* sigarg = nullptr;
     int want_const = -1;
-    if (!PyArg_ParseTuple(args, const_cast<char*>("s|i:__overload__"), &sigarg, &want_const))
+    if (PyTuple_GET_SIZE(args) && \
+            !PyArg_ParseTuple(args, const_cast<char*>("s|i:__overload__"), &sigarg, &want_const))
         return nullptr;
     want_const = PyTuple_GET_SIZE(args) == 1 ? -1 : want_const;
 
-    return pymeth->FindOverload(sigarg, want_const);
+    return pymeth->FindOverload(sigarg ? sigarg : "", want_const);
 }
 
 static PyObject* mp_add_overload(CPPOverload* pymeth, PyObject* new_overload)
