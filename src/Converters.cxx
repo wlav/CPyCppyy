@@ -2554,51 +2554,15 @@ bool CPyCppyy::FunctionPointerConverter::SetArg(
     return false;
 }
 
-static std::map<void*, std::string> sFuncWrapperLookup;
 PyObject* CPyCppyy::FunctionPointerConverter::FromMemory(void* address)
 {
 // A function pointer in clang is represented by a Type, not a FunctionDecl and it's
 // not possible to get the latter from the former: the backend will need to support
 // both. Since that is far in the future, we'll use a std::function instead.
-    static int func_count = 0;
-
-    if (!(address && *(void**)address)) {
-        PyErr_SetString(PyExc_TypeError, "can not convert null function pointer");
-        return nullptr;
-    }
-
-    void* faddr = *(void**)address;
-    auto cached = sFuncWrapperLookup.find(faddr);
-    if (cached == sFuncWrapperLookup.end()) {
-        std::ostringstream fname;
-        fname << "ptr2func" << ++func_count;
-
-        std::ostringstream code;
-        code << "namespace __cppyy_internal {\n  std::function<"
-             << fRetType << fSignature << "> " << fname.str()
-             << " = (" << fRetType << "(*)" << fSignature << ")" << (intptr_t)faddr
-             << ";\n}";
-
-        if (!Cppyy::Compile(code.str())) {
-            PyErr_SetString(PyExc_TypeError, "conversion to std::function failed");
-            return nullptr;
-        }
-
-     // cache the new wrapper (TODO: does it make sense to use weakrefs on the data
-     // member?)
-        sFuncWrapperLookup[faddr] = fname.str();
-        cached = sFuncWrapperLookup.find(faddr);
-    }
-
-    static Cppyy::TCppScope_t scope = Cppyy::GetScope("__cppyy_internal");
-    PyObject* pyscope = CreateScopeProxy(scope);
-    PyObject* func = PyObject_GetAttrString(pyscope, cached->second.c_str());
-    Py_DECREF(pyscope);
-
-    if (func)      // prevent moving this func object, since then it can not be reused
-        ((CPPInstance*)func)->fFlags |= CPPInstance::kIsLValue;
-
-    return func;
+    if (address)
+        return Utility::FuncPtr2StdFunction(fRetType, fSignature, *(void**)address);
+    PyErr_SetString(PyExc_TypeError, "can not convert null function pointer");
+    return nullptr;
 }
 
 bool CPyCppyy::FunctionPointerConverter::ToMemory(
@@ -3058,7 +3022,7 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, cdim
         }
     } else if (resolvedType.find("(*)") != std::string::npos ||
                (resolvedType.find("::*)") != std::string::npos)) {
-    // this is a function function pointer
+    // this is a function pointer
     // TODO: find better way of finding the type
         auto pos1 = resolvedType.find('(');
         auto pos2 = resolvedType.find("*)");
