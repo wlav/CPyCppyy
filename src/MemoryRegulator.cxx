@@ -45,7 +45,7 @@ struct InitCPyCppyy_NoneType_t {
         ((PyVarObject&)CPyCppyy_NoneType).ob_size = 0;
 
         CPyCppyy_NoneType.tp_name        = const_cast<char*>("CPyCppyy_NoneType");
-        CPyCppyy_NoneType.tp_flags       = Py_TPFLAGS_HAVE_RICHCOMPARE | Py_TPFLAGS_HAVE_GC;
+        CPyCppyy_NoneType.tp_flags       = Py_TPFLAGS_HAVE_RICHCOMPARE;
 
         CPyCppyy_NoneType.tp_traverse    = (traverseproc)0;
         CPyCppyy_NoneType.tp_clear       = (inquiry)0;

@@ -31,6 +31,11 @@
 #include <vector>
 
 
+// Note: as of py3.11, dictionary objects no longer carry a function pointer for
+// the lookup, so it can no longer be shimmed and "from cppyy.interactive import *"
+// thus no longer works.
+#if PY_VERSION_HEX < 0x030b0000
+
 //- from Python's dictobject.c -------------------------------------------------
 #if PY_VERSION_HEX >= 0x03030000
     typedef struct PyDictKeyEntry {
@@ -69,6 +74,8 @@
     ((dict_lookup_func&)mp->ma_lookup)
 
 #endif
+
+#endif // PY_VERSION_HEX < 0x030b0000
 
 //- data -----------------------------------------------------------------------
 static PyObject* nullptr_repr(PyObject*)
@@ -184,7 +191,9 @@ namespace {
 
 using namespace CPyCppyy;
 
+
 //----------------------------------------------------------------------------
+#if PY_VERSION_HEX < 0x030b0000
 namespace {
 
 class GblGetter {
@@ -337,9 +346,12 @@ PyDictEntry* CPyCppyyLookDictString(PyDictObject* mp, PyObject* key, long hash)
     return ep;
 }
 
+#endif // PY_VERSION_HEX < 0x030b0000
+
 //----------------------------------------------------------------------------
 static PyObject* SetCppLazyLookup(PyObject*, PyObject* args)
 {
+#if PY_VERSION_HEX < 0x030b0000
 // Modify the given dictionary to install the lookup function that also
 // tries the global C++ namespace before failing. Called on a module's dictionary,
 // this allows for lazy lookups. This works fine for p3.2 and earlier, but should
@@ -350,6 +362,11 @@ static PyObject* SetCppLazyLookup(PyObject*, PyObject* args)
         return nullptr;
 
     CPYCPPYY_GET_DICT_LOOKUP(dict) = CPyCppyyLookDictString;
+#else
+// As of py3.11, there is no longer a lookup function pointer in the dict object
+// to replace. Since this feature is not widely advertised, it's simply droped
+    PyErr_Warn(PyExc_RuntimeWarning, (char*)"lazy lookup is no longer supported");
+#endif
 
     Py_RETURN_NONE;
 }
@@ -941,6 +958,7 @@ extern "C" void initlibcppyy()
     PyEval_InitThreads();
 #endif
 
+#if PY_VERSION_HEX < 0x030b0000
 // prepare for lazyness (the insert is needed to capture the most generic lookup
 // function, just in case ...)
     PyObject* dict = PyDict_New();
@@ -953,6 +971,7 @@ extern "C" void initlibcppyy()
     gDictLookupOrg = (dict_lookup_func)((PyDictObject*)dict)->ma_lookup;
 #endif
     Py_DECREF(dict);
+#endif // PY_VERSION_HEX < 0x030b0000
 
 // setup this module
 #if PY_VERSION_HEX >= 0x03000000

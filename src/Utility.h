@@ -11,8 +11,10 @@ namespace CPyCppyy {
 
 class PyCallable;
 
+#if PY_VERSION_HEX < 0x030b0000
 extern dict_lookup_func gDictLookupOrg;
 extern bool gDictLookupActive;
+#endif
 
 // additional converter functions
 unsigned long PyLongOrInt_AsULong(PyObject* pyobject);

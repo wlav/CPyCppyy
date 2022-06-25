@@ -3,7 +3,9 @@
 #include "CPyCppyy/Reflex.h"
 #include "structmember.h"    // from Python
 #if PY_VERSION_HEX >= 0x02050000
+#if PY_VERSION_HEX <  0x030b0000
 #include "code.h"            // from Python
+#endif
 #else
 #include "compile.h"         // from Python
 #endif

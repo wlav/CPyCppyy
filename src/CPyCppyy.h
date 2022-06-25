@@ -43,7 +43,10 @@ namespace CPyCppyy {
 #if PY_VERSION_HEX < 0x03030000
    typedef PyDictEntry* (*dict_lookup_func)(PyDictObject*, PyObject*, long);
 #else
-#if PY_VERSION_HEX >= 0x03060000
+#if PY_VERSION_HEX >= 0x030b0000
+   typedef Py_ssize_t (*dict_lookup_func)(
+       PyDictObject*, PyObject*, Py_hash_t, PyObject**);
+#elif PY_VERSION_HEX >= 0x03060000
    typedef Py_ssize_t (*dict_lookup_func)(
        PyDictObject*, PyObject*, Py_hash_t, PyObject***, Py_ssize_t*);
 #else
