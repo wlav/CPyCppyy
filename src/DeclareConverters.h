@@ -266,7 +266,7 @@ public:
 };
 
 template <bool ISREFERENCE>
-class InstancePtrPtrConverter : public InstancePtrConverter {
+class InstancePtrPtrConverter : public InstancePtrConverter<false> {
 public:
     using InstancePtrConverter::InstancePtrConverter;
 
@@ -276,10 +276,10 @@ public:
     virtual bool ToMemory(PyObject* value, void* address, PyObject* = nullptr);
 };
 
-class InstanceArrayConverter : public InstancePtrConverter {
+class InstanceArrayConverter : public InstancePtrConverter<false> {
 public:
     InstanceArrayConverter(Cppyy::TCppType_t klass, cdims_t dims, bool keepControl = false) :
-            InstancePtrConverter(klass, keepControl), fShape(dims) { }
+            InstancePtrConverter<false>(klass, keepControl), fShape(dims) { }
     InstanceArrayConverter(const InstanceArrayConverter&) = delete;
     InstanceArrayConverter& operator=(const InstanceArrayConverter&) = delete;
 

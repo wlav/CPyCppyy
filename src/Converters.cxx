@@ -1832,7 +1832,7 @@ bool CPyCppyy::STLWStringConverter::SetArg(
 #endif
 
     if (!(PyInt_Check(pyobject) || PyLong_Check(pyobject))) {
-        bool result = InstancePtrConverter::SetArg(pyobject, para, ctxt);
+        bool result = InstancePtrConverter<false>::SetArg(pyobject, para, ctxt);
         para.fTypeCode = 'V';
         return result;
     }
@@ -1891,7 +1891,8 @@ bool CPyCppyy::STLStringMoveConverter::SetArg(
 
 
 //----------------------------------------------------------------------------
-bool CPyCppyy::InstancePtrConverter::SetArg(
+template <bool ISCONST>
+bool CPyCppyy::InstancePtrConverter<ISCONST>::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* ctxt)
 {
 // convert <pyobject> to C++ instance*, set arg for call
@@ -1933,14 +1934,18 @@ bool CPyCppyy::InstancePtrConverter::SetArg(
 }
 
 //----------------------------------------------------------------------------
-PyObject* CPyCppyy::InstancePtrConverter::FromMemory(void* address)
+template <bool ISCONST>
+PyObject* CPyCppyy::InstancePtrConverter<ISCONST>::FromMemory(void* address)
 {
 // construct python object from C++ instance read at <address>
-    return BindCppObject(address, fClass, CPPInstance::kIsReference);
+    if (ISCONST)
+        return BindCppObject(*(void**)address, fClass);                   // by pointer value
+    return BindCppObject(address, fClass, CPPInstance::kIsReference);     // modifiable
 }
 
 //----------------------------------------------------------------------------
-bool CPyCppyy::InstancePtrConverter::ToMemory(PyObject* value, void* address, PyObject* /* ctxt */)
+template <bool ISCONST>
+bool CPyCppyy::InstancePtrConverter<ISCONST>::ToMemory(PyObject* value, void* address, PyObject* /* ctxt */)
 {
 // convert <value> to C++ instance, write it at <address>
     CPPInstance* pyobj = GetCppInstance(value);
@@ -2192,6 +2197,8 @@ bool CPyCppyy::InstancePtrPtrConverter<ISREFERENCE>::ToMemory(
 
 namespace CPyCppyy {
 // Instantiate the templates
+    template class CPyCppyy::InstancePtrConverter<true>;
+    template class CPyCppyy::InstancePtrConverter<false>;
     template class CPyCppyy::InstancePtrPtrConverter<true>;
     template class CPyCppyy::InstancePtrPtrConverter<false>;
 }
@@ -2850,8 +2857,10 @@ static inline CPyCppyy::Converter* selectInstanceCnv(Cppyy::TCppScope_t klass,
         result = new InstancePtrPtrConverter<false>(klass, control);
     else if (cpd == "*&")
         result = new InstancePtrPtrConverter<true>(klass, control);
-    else if (cpd == "*" && dims.ndim() == UNKNOWN_SIZE)
-        result = new InstancePtrConverter(klass, control);
+    else if (cpd == "*" && dims.ndim() == UNKNOWN_SIZE) {
+        if (isConst) result = new InstancePtrConverter<true>(klass);
+        else result = new InstancePtrConverter<false>(klass, control);
+    }
     else if (cpd == "&")
         result = new InstanceRefConverter(klass, isConst);
     else if (cpd == "&&")

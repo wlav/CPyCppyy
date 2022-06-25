@@ -51,6 +51,7 @@ private:
     bool fKeepControl;
 };
 
+template <bool ISCONST>
 class InstancePtrConverter : public VoidArrayConverter {
 public:
     InstancePtrConverter(Cppyy::TCppType_t klass, bool keepControl = false) :
@@ -65,9 +66,9 @@ protected:
     Cppyy::TCppType_t fClass;
 };
 
-class StrictInstancePtrConverter : public InstancePtrConverter {
+class StrictInstancePtrConverter : public InstancePtrConverter<false> {
 public:
-    using InstancePtrConverter::InstancePtrConverter;
+    using InstancePtrConverter<false>::InstancePtrConverter;
 
 protected:
     virtual bool GetAddressSpecialCase(PyObject*, void*&) { return false; }
