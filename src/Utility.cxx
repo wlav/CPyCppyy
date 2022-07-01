@@ -33,6 +33,12 @@ static TC2POperatorMapping_t gC2POperatorMapping;
 static std::set<std::string> gOpSkip;
 static std::set<std::string> gOpRemove;
 
+namespace CPyCppyy {
+// special objects
+    extern PyObject* gNullPtrObject;
+    extern PyObject* gDefaultObject;
+}
+
 namespace {
 
     using namespace CPyCppyy::Utility;
@@ -125,7 +131,9 @@ unsigned long CPyCppyy::PyLongOrInt_AsULong(PyObject* pyobject)
 // Convert <pybject> to C++ unsigned long, with bounds checking, allow int -> ulong.
     if (PyFloat_Check(pyobject)) {
         PyErr_SetString(PyExc_TypeError, "can\'t convert float to unsigned long");
-        return -1;
+        return (unsigned long)-1;
+    } else if (pyobject == CPyCppyy::gDefaultObject) {
+        return (unsigned long)0;
     }
 
     unsigned long ul = PyLong_AsUnsignedLong(pyobject);
@@ -151,6 +159,8 @@ PY_ULONG_LONG CPyCppyy::PyLongOrInt_AsULong64(PyObject* pyobject)
     if (PyFloat_Check(pyobject)) {
         PyErr_SetString(PyExc_TypeError, "can\'t convert float to unsigned long long");
         return -1;
+    } else if (pyobject == CPyCppyy::gDefaultObject) {
+        return (unsigned long)0;
     }
 
     PY_ULONG_LONG ull = PyLong_AsUnsignedLongLong(pyobject);

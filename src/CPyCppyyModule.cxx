@@ -160,11 +160,50 @@ static PyTypeObject PyNullPtr_t_Type = {
 #endif
 };
 
+
+static PyObject* default_repr(PyObject*)
+{
+    return CPyCppyy_PyText_FromString("type default");
+}
+
+static void default_dealloc(PyObject*)
+{
+    Py_FatalError("deallocating default");
+}
+
+static PyTypeObject PyDefault_t_Type = {
+    PyVarObject_HEAD_INIT(&PyType_Type, 0)
+    "default_t",         // tp_name
+    sizeof(PyObject),    // tp_basicsize
+    0,                   // tp_itemsize
+    default_dealloc,     // tp_dealloc (never called)
+    0, 0, 0, 0,
+    default_repr,        // tp_repr
+    0, 0, 0,
+    (hashfunc)_Py_HashPointer, // tp_hash
+    0, 0, 0, 0, 0, Py_TPFLAGS_DEFAULT, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+#if PY_VERSION_HEX >= 0x02030000
+    , 0                  // tp_del
+#endif
+#if PY_VERSION_HEX >= 0x02060000
+    , 0                  // tp_version_tag
+#endif
+#if PY_VERSION_HEX >= 0x03040000
+    , 0                  // tp_finalize
+#endif
+};
+
 namespace {
 
 PyObject _CPyCppyy_NullPtrStruct = {
     _PyObject_EXTRA_INIT
     1, &PyNullPtr_t_Type
+};
+
+PyObject _CPyCppyy_DefaultStruct = {
+    _PyObject_EXTRA_INIT
+    1, &PyDefault_t_Type
 };
 
 // TOOD: refactor with Converters.cxx
@@ -180,6 +219,7 @@ namespace CPyCppyy {
     PyObject* gThisModule    = nullptr;
     PyObject* gPyTypeMap     = nullptr;
     PyObject* gNullPtrObject = nullptr;
+    PyObject* gDefaultObject = nullptr;
     PyObject* gBusException  = nullptr;
     PyObject* gSegvException = nullptr;
     PyObject* gIllException  = nullptr;
@@ -1062,10 +1102,14 @@ extern "C" void initlibcppyy()
     if (PyType_Ready(&VectorIter_Type) < 0)
         CPYCPPYY_INIT_ERROR;
 
-// inject identifiable nullptr
+// inject identifiable nullptr and default
     gNullPtrObject = (PyObject*)&_CPyCppyy_NullPtrStruct;
     Py_INCREF(gNullPtrObject);
     PyModule_AddObject(gThisModule, (char*)"nullptr", gNullPtrObject);
+
+    gDefaultObject = (PyObject*)&_CPyCppyy_DefaultStruct;
+    Py_INCREF(gDefaultObject);
+    PyModule_AddObject(gThisModule, (char*)"default", gDefaultObject);
 
 // C++-specific exceptions
     PyObject* cppfatal = PyErr_NewException((char*)"cppyy.ll.FatalError", nullptr, nullptr);
