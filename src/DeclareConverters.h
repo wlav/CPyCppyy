@@ -432,10 +432,10 @@ protected:
 
 
 // initializer lists
-class InitializerListConverter : public Converter {
+class InitializerListConverter : public InstanceConverter {
 public:
-    InitializerListConverter(Converter* cnv, size_t sz) :
-        fConverter(cnv), fValueSize(sz) {}
+    InitializerListConverter(Cppyy::TCppType_t klass, Converter* cnv, size_t sz) :
+        InstanceConverter(klass), fConverter(cnv), fValueSize(sz) {}
     InitializerListConverter(const InitializerListConverter&) = delete;
     InitializerListConverter& operator=(const InitializerListConverter&) = delete;
     virtual ~InitializerListConverter();

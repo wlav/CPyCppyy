@@ -2810,15 +2810,15 @@ CPyCppyy::InitializerListConverter::~InitializerListConverter()
 }
 
 bool CPyCppyy::InitializerListConverter::SetArg(
-    PyObject* pyobject, Parameter& para, CallContext* /*ctxt*/)
+    PyObject* pyobject, Parameter& para, CallContext* ctxt)
 {
 #ifdef NO_KNOWN_INITIALIZER_LIST
     return false;
 #else
 // convert the given argument to an initializer list temporary; this is purely meant
 // to be a syntactic thing, so only _python_ sequences are allowed; bound C++ proxies
-// are therefore rejected (should go through eg. a copy constructor etc.)
-    if (CPPInstance_Check(pyobject) || !PySequence_Check(pyobject) || CPyCppyy_PyText_Check(pyobject)
+// (likely explicitly created std::initializer_list, go through an instance converter
+    if (!PySequence_Check(pyobject) || CPyCppyy_PyText_Check(pyobject)
 #if PY_VERSION_HEX >= 0x03000000
         || PyBytes_Check(pyobject)
 #else
@@ -2826,6 +2826,9 @@ bool CPyCppyy::InitializerListConverter::SetArg(
 #endif
         )
         return false;
+
+    if (CPPInstance_Check(pyobject))
+        return this->InstanceConverter::SetArg(pyobject, para, ctxt);
 
     void* buf = nullptr;
     Py_ssize_t buflen = Utility::GetBuffer(pyobject, '*', (int)fValueSize, buf, true);
@@ -3018,8 +3021,11 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, cdim
             use_byte_cnv = true;
         } else
             cnv = CreateConverter(value_type);
-        if (cnv || use_byte_cnv)
-            return new InitializerListConverter(cnv, Cppyy::SizeOf(value_type));
+
+        if (cnv || use_byte_cnv) {
+            return new InitializerListConverter(
+                Cppyy::GetScope(realType), cnv, Cppyy::SizeOf(value_type));
+        }
     }
 
 //-- still nothing? use a generalized converter
