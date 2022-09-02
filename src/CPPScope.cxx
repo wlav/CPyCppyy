@@ -553,10 +553,20 @@ static PyObject* meta_reflex(CPPScope* klass, PyObject* args)
     if (!PyArg_ParseTuple(args, const_cast<char*>("i|i:__cpp_reflex__"), &request, &format))
         return nullptr;
 
-    if (request == Cppyy::Reflex::IS_NAMESPACE) {
+    switch (request) {
+    case Cppyy::Reflex::IS_NAMESPACE:
         if (klass->fFlags & CPPScope::kIsNamespace)
             Py_RETURN_TRUE;
         Py_RETURN_FALSE;
+        break;
+    case Cppyy::Reflex::IS_AGGREGATE:
+      // this is not the strict C++ definition of aggregates, but is closer to what
+      // is needed for Numba and C calling conventions (TODO: probably have to check
+      // for all public data types, too, and maybe for no padding?)
+        if (Cppyy::IsAggregate(klass->fCppType) || !Cppyy::HasVirtualDestructor(klass->fCppType))
+            Py_RETURN_TRUE;
+        Py_RETURN_FALSE;
+        break;
     }
 
     PyErr_Format(PyExc_ValueError, "unsupported reflex request %d or format %d", request, format);
