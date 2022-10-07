@@ -37,6 +37,18 @@ CPyCppyy::DispatchPtr::DispatchPtr(const DispatchPtr& other, void* cppinst) : fP
 }
 
 //-----------------------------------------------------------------------------
+CPyCppyy::DispatchPtr::~DispatchPtr() {
+    Py_XDECREF(fPyWeakRef);
+    if (fPyHardRef) {
+    // if we're holding a hard reference and getting deleted, then this delete is
+    // from the C++ side, and Python is "notified" by nulling out the reference and
+    // an exception will be raised on continued access
+        ((CPPInstance*)fPyHardRef)->GetObjectRaw() = nullptr;
+        Py_DECREF(fPyHardRef);
+    }
+}
+
+//-----------------------------------------------------------------------------
 CPyCppyy::DispatchPtr& CPyCppyy::DispatchPtr::assign(const DispatchPtr& other, void* cppinst)
 {
     if (this != &other) {

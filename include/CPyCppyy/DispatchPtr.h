@@ -47,10 +47,7 @@ public:
     DispatchPtr& operator=(const DispatchPtr& other) = delete;
 
 // lifetime is directly bound to the lifetime of the dispatcher object
-    ~DispatchPtr() {
-        Py_XDECREF(fPyWeakRef);
-        Py_XDECREF(fPyHardRef);
-    }
+    ~DispatchPtr();
 
 // either C++ owns the Python object through a reference count (on fPyHardRef) or
 // Python owns the C++ object and we only have a weak reference (through fPyWeakRef)
