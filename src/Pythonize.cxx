@@ -276,28 +276,28 @@ static ItemGetter* GetGetter(PyObject* args)
 
     if (PyTuple_GET_SIZE(args) == 1) {
         PyObject* fi = PyTuple_GET_ITEM(args, 0);
-        if (CPyCppyy_PyText_Check(fi) || PyBytes_Check(fi)) {
-            PyErr_SetString(PyExc_TypeError, "can not convert string to vector");
-            return nullptr;
-        }
+        if (CPyCppyy_PyText_Check(fi) || PyBytes_Check(fi))
+            return nullptr;       // do not accept string to fill std::vector<char>
+
     // TODO: this only tests for new-style buffers, which is too strict, but a
     // generic check for Py_TYPE(fi)->tp_as_buffer is too loose (note that the
     // main use case is numpy, which offers the new interface)
-        if (!PyObject_CheckBuffer(fi)) {
-            if (PyTuple_CheckExact(fi))
-                getter = new TupleItemGetter(fi);
-            else if (PyList_CheckExact(fi))
-                getter = new ListItemGetter(fi);
-            else if (PySequence_Check(fi))
-                getter = new SequenceItemGetter(fi);
-            else {
-                PyObject* iter = PyObject_GetIter(fi);
-                if (iter) {
-                    getter = new IterItemGetter{iter};
-                    Py_DECREF(iter);
-                }
-                else PyErr_Clear();
+        if (PyObject_CheckBuffer(fi))
+            return nullptr;
+
+        if (PyTuple_CheckExact(fi))
+            getter = new TupleItemGetter(fi);
+        else if (PyList_CheckExact(fi))
+            getter = new ListItemGetter(fi);
+        else if (PySequence_Check(fi))
+            getter = new SequenceItemGetter(fi);
+        else {
+            PyObject* iter = PyObject_GetIter(fi);
+            if (iter) {
+                getter = new IterItemGetter{iter};
+                Py_DECREF(iter);
             }
+            else PyErr_Clear();
         }
     }
 
@@ -314,7 +314,7 @@ static bool FillVector(PyObject* vecin, PyObject* args, ItemGetter* getter)
     if (0 < sz) {
         PyObject* res = PyObject_CallMethod(vecin, (char*)"reserve", (char*)"n", sz);
         Py_DECREF(res);
-    } else   // i.e. sze == 0, so empty container: done
+    } else   // i.e. sz == 0, so empty container: done
         return true;
 
     bool fill_ok = true;
