@@ -356,20 +356,21 @@ static inline PY_LONG_LONG CPyCppyy_PyLong_AsStrictLongLong(PyObject* pyobject)
 
 
 //- helper for pointer/array/reference conversions ---------------------------
-static inline bool CArraySetArg(PyObject* pyobject, CPyCppyy::Parameter& para, char tc, int size)
+static inline bool CArraySetArg(
+    PyObject* pyobject, CPyCppyy::Parameter& para, char tc, int size, bool check=true)
 {
 // general case of loading a C array pointer (void* + type code) as function argument
     if (pyobject == CPyCppyy::gNullPtrObject || pyobject == CPyCppyy::gDefaultObject)
         para.fValue.fVoidp = nullptr;
     else {
-        Py_ssize_t buflen = CPyCppyy::Utility::GetBuffer(pyobject, tc, size, para.fValue.fVoidp);
+        Py_ssize_t buflen = CPyCppyy::Utility::GetBuffer(pyobject, tc, size, para.fValue.fVoidp, check);
         if (!buflen) {
         // stuck here as it's the least common
             if (CPyCppyy_PyLong_AsStrictInt(pyobject) == 0)
                 para.fValue.fVoidp = nullptr;
             else {
                 PyErr_Format(PyExc_TypeError,     // ValueError?
-                   "could not convert argument to buffer or nullptr");
+                    "could not convert argument to buffer or nullptr");
                 return false;
             }
         }
@@ -1599,7 +1600,7 @@ bool CPyCppyy::name##ArrayConverter::SetArg(                                 \
                                                                              \
     /* cast pointer type */                                                  \
     if (!convOk) {                                                           \
-         convOk = CArraySetArg(pyobject, para, code, sizeof(type));          \
+         convOk = CArraySetArg(pyobject, para, code, sizeof(type), false);   \
          if (convOk && para.fTypeCode == 'p' && fShape.ndim() == 2) {        \
             para.fRef = para.fValue.fVoidp;                                  \
             para.fValue.fVoidp = &para.fRef;                                 \
@@ -1652,7 +1653,7 @@ bool CPyCppyy::name##ArrayConverter::ToMemory(                               \
                                                                              \
     } else { /* multi-dim, non-flat array; assume structure matches */       \
         void* buf = nullptr; /* TODO: GetBuffer() assumes flat? */           \
-        Py_ssize_t buflen = Utility::GetBuffer(value, code, sizeof(type), buf);\
+        Py_ssize_t buflen = Utility::GetBuffer(value, code, sizeof(void*), buf);\
         if (buflen == 0) return false;                                       \
         *(type**)address = (type*)buf;                                       \
         SetLifeLine(ctxt, value, (intptr_t)address);                         \
