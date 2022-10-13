@@ -16,6 +16,11 @@
 #include <sstream>
 
 
+//- data _____________________________________________________________________
+namespace CPyCppyy {
+    extern PyObject* gNullPtrObject;
+}
+
 //______________________________________________________________________________
 //                          Python-side proxy objects
 //                          =========================
@@ -420,6 +425,21 @@ static int op_clear(CPPInstance* pyobj)
 static inline PyObject* eqneq_binop(CPPClass* klass, PyObject* self, PyObject* obj, int op)
 {
     using namespace Utility;
+
+// special case for C++11 style nullptr
+    if (obj == gNullPtrObject) {
+        void* rawcpp = ((CPPInstance*)self)->GetObjectRaw();
+        switch (op) {
+        case Py_EQ:
+            if (rawcpp == nullptr) Py_RETURN_TRUE;
+            Py_RETURN_FALSE;
+        case Py_NE:
+            if (rawcpp != nullptr) Py_RETURN_TRUE;
+            Py_RETURN_FALSE;
+        default:
+            return nullptr;       // not implemented
+        }
+    }
 
     if (!klass->fOperators)
         klass->fOperators = new PyOperators{};
