@@ -65,13 +65,41 @@ PyTypeObject RefInt_Type = {       // python int is a C/C++ long
 #endif
 
 //- custom type representing typedef to pointer of class ---------------------
-static PyObject* tpc_call(typedefpointertoclassobject* self, PyObject* args, PyObject* /* kwds */)
+static PyObject* tptc_call(typedefpointertoclassobject* self, PyObject* args, PyObject* /* kwds */)
 {
     long long addr = 0;
     if (!PyArg_ParseTuple(args, const_cast<char*>("|L"), &addr))
         return nullptr;
-    return BindCppObjectNoCast((Cppyy::TCppObject_t)(intptr_t)addr, self->fType);
+    return BindCppObjectNoCast((Cppyy::TCppObject_t)(intptr_t)addr, self->fCppType);
 }
+
+//-----------------------------------------------------------------------------
+static PyObject* tptc_getcppname(typedefpointertoclassobject* self, void*)
+{
+    return CPyCppyy_PyText_FromString(
+        (Cppyy::GetScopedFinalName(self->fCppType)+"*").c_str());
+}
+
+//-----------------------------------------------------------------------------
+static PyObject* tptc_name(typedefpointertoclassobject* self, void*)
+{
+    PyObject* pyclass = CPyCppyy::GetScopeProxy(self->fCppType);
+    if (pyclass) {
+        PyObject* pyname = PyObject_GetAttr(pyclass, PyStrings::gName);
+        Py_DECREF(pyclass);
+        return pyname;
+    }
+
+    return CPyCppyy_PyText_FromString("<unknown>*");
+}
+
+//-----------------------------------------------------------------------------
+static PyGetSetDef tptc_getset[] = {
+    {(char*)"__name__",     (getter)tptc_name, nullptr, nullptr, nullptr},
+    {(char*)"__cpp_name__", (getter)tptc_getcppname, nullptr, nullptr, nullptr},
+    {(char*)nullptr, nullptr, nullptr, nullptr, nullptr}
+};
+
 
 PyTypeObject TypedefPointerToClass_Type = {
     PyVarObject_HEAD_INIT(&PyType_Type, 0)
@@ -88,7 +116,7 @@ PyTypeObject TypedefPointerToClass_Type = {
     0,                              // tp_as_sequence
     0,                              // tp_as_mapping
     0,                              // tp_hash
-    (ternaryfunc)tpc_call,          // tp_call
+    (ternaryfunc)tptc_call,         // tp_call
     0,                              // tp_str
     PyObject_GenericGetAttr,        // tp_getattro
     PyObject_GenericSetAttr,        // tp_setattro
@@ -103,7 +131,7 @@ PyTypeObject TypedefPointerToClass_Type = {
     0,                              // tp_iternext
     0,                              // tp_methods
     0,                              // tp_members
-    0,                              // tp_getset
+    tptc_getset,                    // tp_getset
     0,                              // tp_base
     0,                              // tp_dict
     0,                              // tp_descr_get
