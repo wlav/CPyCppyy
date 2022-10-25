@@ -15,7 +15,7 @@
 #include <sstream>
 #include <utility>
 #include <sys/types.h>
-#include <complex.h>
+#include <complex>
 
 
 //- data _____________________________________________________________________
