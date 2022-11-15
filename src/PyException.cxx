@@ -45,10 +45,63 @@ CPyCppyy::PyException::PyException()
            Py_DECREF(msg);
         }
     }
+
+    PyObject *traceback = pytrace; // to keep the original unchanged
+    Py_INCREF(traceback);
+
+    std::string locName;
+    std::string locFile;
+    int locLine = 0;
+
+    while (traceback && traceback != Py_None) {
+        PyObject* frame = PyObject_GetAttrString(traceback, "tb_frame");
+        PyObject* code = PyObject_GetAttrString(frame, "f_code");
+
+        PyObject* filename = PyObject_GetAttrString(code, "co_filename");
+        PyObject* filenameStr = PyObject_Str(filename);
+        locFile = PyUnicode_AsUTF8(filenameStr);
+
+        PyObject* name = PyObject_GetAttrString(code, "co_name");
+        PyObject* nameStr = PyObject_Str(name);
+        locName = PyUnicode_AsUTF8(nameStr);
+
+        PyObject* lineno = PyObject_GetAttrString(traceback, "tb_lineno");
+        locLine = PyLong_AsLong(lineno);
+
+        Py_DECREF(frame);
+        Py_DECREF(code);
+        Py_DECREF(filename);
+        Py_DECREF(filenameStr);
+        Py_DECREF(name);
+        Py_DECREF(nameStr);
+        Py_DECREF(lineno);
+
+        if (locFile == "<string>") { // these are not that useful, skipping
+            PyObject* nextTraceback = PyObject_GetAttrString(traceback, "tb_next");
+            Py_DECREF(traceback);
+            traceback = nextTraceback;
+            continue;
+        }
+
+        break;
+    }
+
+    Py_DECREF(traceback);
+
     PyErr_Restore(pytype, pyvalue, pytrace);
 
     if (fMsg.empty())
         fMsg = "python exception";
+
+// only keeping the filename, not the full path
+    locFile = locFile.substr(locFile.find_last_of("/\\") + 1);
+
+    fMsg += " (at " + locFile + ":" + std::to_string(locLine);
+
+    if (locName != "<module>")
+        fMsg += " in " + locName;
+
+    fMsg += ")";
 
 #ifdef WITH_THREAD
     PyGILState_Release(state);
