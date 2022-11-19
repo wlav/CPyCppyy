@@ -213,8 +213,22 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
         code << "protected:\n  CPyCppyy::DispatchPtr _internal_self;\n";
     code << "public:\n";
 
-// add a virtual destructor for good measure
-    code << "  virtual ~" << derivedName << "() {}\n";
+// add a virtual destructor for good measure, which is allowed to be "overridden" by
+// the conventional __destruct__ method (note that __del__ is always called, too, if
+// provided, but only when the Python object goes away)
+    if (PyMapping_HasKeyString(dct, (char*)"__destruct__")) {
+        code << "  virtual ~" << derivedName << "() {\n"
+                "    PyObject* mtPyName = PyUnicode_FromString(\"__destruct__\");\n"
+                "    PyObject* pyresult = PyObject_CallMethodObjArgs((PyObject*)_internal_self, mtPyName, NULL);\n"
+                "    Py_DECREF(mtPyName);\n";
+
+    // this being a destructor, print on exception rather than propagate using the
+    // magic C++ exception ...
+        code << "    if (!pyresult) PyErr_Print();\n"
+                "    else { Py_DECREF(pyresult); }\n"
+                "  }\n";
+    } else
+        code << "  virtual ~" << derivedName << "() {}\n";
 
 // methods: first collect all callables, then get overrides from base classes, for
 // those that are still missing, search the hierarchy
