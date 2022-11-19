@@ -180,10 +180,9 @@ static inline PyObject* HandleReturn(
     // if this method creates new objects, always take ownership
         if (IsCreator(pymeth->fMethodInfo->fFlags)) {
 
-        // either be a constructor with a fresh object proxy self, except for Python
-        // derived objects, which are owned/managed by the dispatcher in C++
+        // either be a constructor with a fresh object proxy self ...
             if (IsConstructor(pymeth->fMethodInfo->fFlags)) {
-                if (im_self && !(((CPPScope*)Py_TYPE(im_self))->fFlags & CPPScope::kIsPython))
+                if (im_self)
                     im_self->PythonOwns();
             }
 
