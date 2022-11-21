@@ -128,6 +128,21 @@ static int dm_set(CPPDataMember* dm, CPPInstance* pyobj, PyObject* value)
 // Set the value of the C++ datum held.
     const int errret = -1;
 
+    if (!value) {
+    // we're being deleted; fine for namespaces (redo lookup next time), but makes
+    // no sense for classes/structs
+        if (!Cppyy::IsNamespace(dm->fEnclosingScope)) {
+            PyErr_SetString(PyExc_TypeError, "data member deletion is not supported");
+            return errret;
+        }
+
+    // deletion removes the proxy, with the idea that a fresh lookup can be made,
+    // to support Cling's shadowing of declarations (TODO: the use case here is
+    // redeclared variables, for which fDescription is indeed th ename; it might
+    // fail for enums).
+        return PyObject_DelAttr((PyObject*)Py_TYPE(pyobj), dm->fDescription);
+    }
+
 // filter const objects to prevent changing their values
     if (dm->fFlags & kIsConstData) {
         PyErr_SetString(PyExc_TypeError, "assignment to const data not allowed");
