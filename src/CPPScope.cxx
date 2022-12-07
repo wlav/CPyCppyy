@@ -410,7 +410,7 @@ static PyObject* meta_getattro(PyObject* pyclass, PyObject* pyname)
         }
 
     // function templates that have not been instantiated (namespaces _may_ have already
-    //  been taken care of, by their general function lookup above)
+    // been taken care of, by their general function lookup above)
         if (!attr && !templated_functions_checked) {
             if (Cppyy::ExistsMethodTemplate(scope, name))
                 attr = add_template(pyclass, name);

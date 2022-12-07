@@ -19,7 +19,7 @@ static PyObject* pytype_from_enum_type(const std::string& enum_type)
 
 //----------------------------------------------------------------------------
 static PyObject* pyval_from_enum(const std::string& enum_type, PyObject* pytype,
-        PyObject* btype, Cppyy::TCppEnum_t etype, Cppyy::TCppIndex_t idata ) {
+        PyObject* btype, Cppyy::TCppEnum_t etype, Cppyy::TCppIndex_t idata) {
     long long llval = Cppyy::GetEnumDataValue(etype, idata);
 
     if (enum_type == "bool") {
