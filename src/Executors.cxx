@@ -412,6 +412,7 @@ PyObject* CPyCppyy::VoidExecutor::Execute(
 {
 // execute <method> with argument <self, ctxt>, return None
     GILCallV(method, self, ctxt);
+    if (PyErr_Occurred()) return nullptr;
     Py_RETURN_NONE;
 }
 
