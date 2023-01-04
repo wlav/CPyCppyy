@@ -719,11 +719,6 @@ PyObject* CPyCppyy::Utility::FuncPtr2StdFunction(
 // Convert a function pointer to an equivalent std::function<> object.
     static int maker_count = 0;
 
-    if (!address) {
-        PyErr_SetString(PyExc_TypeError, "can not convert null function pointer");
-        return nullptr;
-    }
-
     auto pf = sStdFuncLookup.find(address);
     if (pf != sStdFuncLookup.end()) {
         Py_INCREF(pf->second);
