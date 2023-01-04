@@ -550,6 +550,10 @@ PyObject* CPyCppyy::STLStringExecutor::Execute(
     std::string* result = (std::string*)GILCallO(method, self, ctxt, sSTLStringScope);
     if (!result)
         result = new std::string{};
+    else if (PyErr_Occurred()) {
+        delete result;
+        return nullptr;
+    }
 
     return BindCppObjectNoCast((void*)result, sSTLStringScope, CPPInstance::kIsOwner);
 }
