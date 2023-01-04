@@ -46,7 +46,7 @@ CPyCppyy::PyException::PyException()
         }
     }
 
-    PyObject *traceback = pytrace; // to keep the original unchanged
+    PyObject* traceback = pytrace; // to keep the original unchanged
     Py_INCREF(traceback);
 
     std::string locName;
@@ -56,24 +56,24 @@ CPyCppyy::PyException::PyException()
     while (traceback && traceback != Py_None) {
         PyObject* frame = PyObject_GetAttrString(traceback, "tb_frame");
         PyObject* code = PyObject_GetAttrString(frame, "f_code");
+        Py_DECREF(frame);
 
         PyObject* filename = PyObject_GetAttrString(code, "co_filename");
+        Py_DECREF(code);
+
         PyObject* filenameStr = PyObject_Str(filename);
-        locFile = PyUnicode_AsUTF8(filenameStr);
+        locFile = CPyCppyy_PyText_AsString(filenameStr);
+        Py_DECREF(filenameStr);
+        Py_DECREF(filename);
 
         PyObject* name = PyObject_GetAttrString(code, "co_name");
         PyObject* nameStr = PyObject_Str(name);
-        locName = PyUnicode_AsUTF8(nameStr);
+        locName = CPyCppyy_PyText_AsString(nameStr);
+        Py_DECREF(nameStr);
+        Py_DECREF(name);
 
         PyObject* lineno = PyObject_GetAttrString(traceback, "tb_lineno");
         locLine = PyLong_AsLong(lineno);
-
-        Py_DECREF(frame);
-        Py_DECREF(code);
-        Py_DECREF(filename);
-        Py_DECREF(filenameStr);
-        Py_DECREF(name);
-        Py_DECREF(nameStr);
         Py_DECREF(lineno);
 
         if (locFile == "<string>") { // these are not that useful, skipping
