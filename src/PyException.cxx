@@ -47,7 +47,7 @@ CPyCppyy::PyException::PyException()
     }
 
     PyObject* traceback = pytrace; // to keep the original unchanged
-    Py_INCREF(traceback);
+    Py_XINCREF(traceback);
 
     std::string locName;
     std::string locFile;
@@ -86,7 +86,7 @@ CPyCppyy::PyException::PyException()
         break;
     }
 
-    Py_DECREF(traceback);
+    Py_XDECREF(traceback);
 
     PyErr_Restore(pytype, pyvalue, pytrace);
 
@@ -94,7 +94,8 @@ CPyCppyy::PyException::PyException()
         fMsg = "python exception";
 
 // only keeping the filename, not the full path
-    locFile = locFile.substr(locFile.find_last_of("/\\") + 1);
+    if (!locFile.empty())
+        locFile = locFile.substr(locFile.find_last_of("/\\") + 1);
 
     fMsg += " (at " + locFile + ":" + std::to_string(locLine);
 
@@ -119,4 +120,10 @@ const char* CPyCppyy::PyException::what() const noexcept
 {
 // Return reason for throwing this exception: a python exception was raised.
     return fMsg.c_str();
+}
+
+void CPyCppyy::PyException::clear() const noexcept
+{
+// clear Python error, to allow full error handling C++ side
+    PyErr_Clear();
 }
