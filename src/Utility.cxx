@@ -822,7 +822,7 @@ Py_ssize_t CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, v
 
                 if (check && bufinfo.itemsize != size) {
                     PyErr_Format(PyExc_TypeError,
-                        "buffer itemsize (%d) does not match expected size (%d)", bufinfo.itemsize, size);
+                        "buffer itemsize (%ld) does not match expected size (%d)", bufinfo.itemsize, size);
                     CPyCppyy_PyBuffer_Release(pyobject, &bufinfo);
                     return 0;
                 }
