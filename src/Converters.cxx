@@ -1601,7 +1601,7 @@ bool CPyCppyy::name##ArrayConverter::SetArg(                                 \
                                                                              \
     /* cast pointer type */                                                  \
     if (!convOk) {                                                           \
-         convOk = CArraySetArg(pyobject, para, code, sizeof(type), false);   \
+         convOk = CArraySetArg(pyobject, para, code, sizeof(type), true);    \
          if (convOk && para.fTypeCode == 'p' && fShape.ndim() == 2) {        \
             para.fRef = para.fValue.fVoidp;                                  \
             para.fValue.fVoidp = &para.fRef;                                 \
