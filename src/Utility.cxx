@@ -872,7 +872,7 @@ Py_ssize_t CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, v
 
         if (buf && check == true) {
         // determine buffer compatibility (use "buf" as a status flag)
-            PyObject* pytc = PyObject_GetAttr(pyobject, PyStrings::gTypeCode);
+            PyObject* pytc = tc != '*' ? PyObject_GetAttr(pyobject, PyStrings::gTypeCode) : nullptr;
             if (pytc != 0) {      // for array objects
                 char cpytc = CPyCppyy_PyText_AsString(pytc)[0];
                 if (!(cpytc == tc || (tc == '?' && cpytc == 'b')))
