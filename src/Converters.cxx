@@ -1601,11 +1601,8 @@ bool CPyCppyy::name##ArrayConverter::SetArg(                                 \
                                                                              \
     /* cast pointer type */                                                  \
     if (!convOk) {                                                           \
-         convOk = CArraySetArg(pyobject, para, code, sizeof(type), true);    \
-         if (convOk && para.fTypeCode == 'p' && fShape.ndim() == 2) {        \
-            para.fRef = para.fValue.fVoidp;                                  \
-            para.fValue.fVoidp = &para.fRef;                                 \
-        }                                                                    \
+        bool ismulti = fShape.ndim() > 1;                                   \
+        convOk = CArraySetArg(pyobject, para, code, ismulti ? sizeof(void*) : sizeof(type), true);\
     }                                                                        \
                                                                              \
     /* memory management and offsetting */                                   \
