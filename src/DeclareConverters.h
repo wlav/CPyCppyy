@@ -229,6 +229,11 @@ private:
     std::vector<const char*> fBuffer;
 };
 
+class NonConstCStringArrayConverter : public CStringArrayConverter {
+public:
+    using CStringArrayConverter::CStringArrayConverter;
+    virtual PyObject* FromMemory(void* address);
+};
 
 // converters for special cases
 class NullptrConverter : public Converter {

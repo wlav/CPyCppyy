@@ -163,10 +163,11 @@ std::string CPyCppyy::TypeManip::compound(const std::string& name)
 
 // for easy identification of fixed size arrays
     if (!cpd.empty() && cpd.back() == ']') {
+        if (cpd.front() == '[')
+            return "[]";    // fixed array any; dimensions handled seperately
+
         std::ostringstream scpd;
-        if (cpd.front() != '[') scpd << cpd.substr(0, cpd.find('['));
-        for (auto c : cpd)
-            if (c == '[') scpd << "[]";
+        scpd << cpd.substr(0, cpd.find('[')) << "[]";
         return scpd.str();
     }
 

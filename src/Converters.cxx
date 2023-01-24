@@ -1743,6 +1743,13 @@ PyObject* CPyCppyy::CStringArrayConverter::FromMemory(void* address)
     return CreateLowLevelView(*(const char***)address, fShape);
 }
 
+//----------------------------------------------------------------------------
+PyObject* CPyCppyy::NonConstCStringArrayConverter::FromMemory(void* address)
+{
+    if (fShape[0] == UNKNOWN_SIZE)
+        return CreateLowLevelView((char**)address, fShape);
+    return CreateLowLevelView(*(char***)address, fShape);
+}
 
 //- converters for special cases ---------------------------------------------
 bool CPyCppyy::NullptrConverter::SetArg(PyObject* pyobject, Parameter& para, CallContext* /* ctxt */)
@@ -3314,8 +3321,8 @@ public:
         gf["const char*"] =                 (cf_t)+[](cdims_t) { return new CStringConverter{}; };
         gf["const signed char*"] =          gf["const char*"];
         gf["const char[]"] =                (cf_t)+[](cdims_t) { return new CStringConverter{}; };
-        gf["char*"] =                       (cf_t)+[](cdims_t) { return new NonConstCStringConverter{}; };
-        gf["char[]"] =                      (cf_t)+[](cdims_t d) { return new NonConstCStringConverter{dims2stringsz(d)}; };
+        gf["char*"] =                       (cf_t)+[](cdims_t d) { return new NonConstCStringConverter{dims2stringsz(d)}; };
+        gf["char[]"] =                      (cf_t)+[](cdims_t d) { return new NonConstCStringArrayConverter{d}; };
         gf["signed char*"] =                gf["char*"];
         gf["wchar_t*"] =                    (cf_t)+[](cdims_t) { return new WCStringConverter{}; };
         gf["char16_t*"] =                   (cf_t)+[](cdims_t) { return new CString16Converter{}; };
@@ -3328,7 +3335,8 @@ public:
         gf["const char**"] =                (cf_t)+[](cdims_t) { return new CStringArrayConverter{{UNKNOWN_SIZE, UNKNOWN_SIZE}}; };
         gf["char**"] =                      gf["const char**"];
         gf["const char*[]"] =               (cf_t)+[](cdims_t d) { return new CStringArrayConverter{d}; };
-        gf["char ptr"] =                    gf["const char*[]"];
+        gf["char*[]"] =                     (cf_t)+[](cdims_t d) { return new NonConstCStringArrayConverter{d}; };
+        gf["char ptr"] =                    gf["char*[]"];
         gf["std::string"] =                 (cf_t)+[](cdims_t) { return new STLStringConverter{}; };
         gf["const std::string&"] =          gf["std::string"];
         gf["std::string&&"] =               (cf_t)+[](cdims_t) { return new STLStringMoveConverter{}; };

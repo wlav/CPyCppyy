@@ -41,6 +41,7 @@ public:
     PyObject* CreateLowLevelView(type**, cdims_t shape)
 
 CPPYY_DECL_VIEW_CREATOR(bool);
+CPPYY_DECL_VIEW_CREATOR(char);
 CPPYY_DECL_VIEW_CREATOR(signed char);
 CPPYY_DECL_VIEW_CREATOR(unsigned char);
 #if __cplusplus > 201402L
@@ -64,6 +65,7 @@ CPPYY_DECL_VIEW_CREATOR(std::complex<double>);
 CPPYY_DECL_VIEW_CREATOR(std::complex<int>);
 CPPYY_DECL_VIEW_CREATOR(std::complex<long>);
 
+PyObject* CreateLowLevelView(char**, cdims_t shape = 0);
 PyObject* CreateLowLevelView(const char**, cdims_t shape = 0);
 
 inline PyObject* CreatePointerView(void* ptr, cdims_t shape = 0) {
