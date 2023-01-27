@@ -3320,6 +3320,7 @@ public:
         gf["nullptr_t"] =                   (cf_t)+[](cdims_t) { static NullptrConverter c{};        return &c;};
         gf["const char*"] =                 (cf_t)+[](cdims_t) { return new CStringConverter{}; };
         gf["const signed char*"] =          gf["const char*"];
+        gf["const char*&&"] =               gf["const char*"];
         gf["const char[]"] =                (cf_t)+[](cdims_t) { return new CStringConverter{}; };
         gf["char*"] =                       (cf_t)+[](cdims_t d) { return new NonConstCStringConverter{dims2stringsz(d)}; };
         gf["char[]"] =                      (cf_t)+[](cdims_t d) { return new NonConstCStringArrayConverter{d}; };

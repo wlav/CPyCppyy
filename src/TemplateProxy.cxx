@@ -38,6 +38,8 @@ static PyObject* TC2CppName(PyObject* pytc, const char* cpd, bool allow_voidp)
             case 'f': name = "float";              break;
             case 'd': name = "double";             break;
             case 'g': name = "long double";        break;
+            case 'z':   // special case for C strings, ignore cpd
+                return CPyCppyy_PyText_FromString(std::string{"const char*"}.c_str());
             default:  name = (allow_voidp ? "void*" : nullptr); break;
         }
     }
