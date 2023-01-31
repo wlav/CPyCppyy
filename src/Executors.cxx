@@ -914,7 +914,8 @@ namespace {
 
 using namespace CPyCppyy;
 
-#define WSTRING "std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >"
+#define WSTRING1 "std::basic_string<wchar_t>"
+#define WSTRING2 "std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t>>"
 
 //-- aliasing special case: C complex (is binary compatible with C++ std::complex)
 #ifndef _WIN32
@@ -1049,7 +1050,8 @@ public:
         gf["std::string"] =                 (ef_t)+[](cdims_t) { static STLStringExecutor e{};   return &e; };
         gf["std::string&"] =                (ef_t)+[](cdims_t) { return new STLStringRefExecutor{}; };
         gf["std::wstring"] =                (ef_t)+[](cdims_t) { static STLWStringExecutor e{};  return &e; };
-        gf[WSTRING] =                       gf["std::wstring"];
+        gf[WSTRING1] =                      gf["std::wstring"];
+        gf[WSTRING2] =                      gf["std::wstring"];
         gf["__init__"] =                    (ef_t)+[](cdims_t) { static ConstructorExecutor e{}; return &e; };
         gf["PyObject*"] =                   (ef_t)+[](cdims_t) { static PyObjectExecutor e{};    return &e; };
         gf["_object*"] =                    gf["PyObject*"];

@@ -3177,8 +3177,9 @@ std::string::size_type dims2stringsz(cdims_t d) {
     return (d && d.ndim() != UNKNOWN_SIZE) ? d[0] : std::string::npos;
 }
 
-#define STRINGVIEW "std::basic_string_view<char,std::char_traits<char> >"
-#define WSTRING "std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >"
+#define STRINGVIEW "std::basic_string_view<char>"
+#define WSTRING1 "std::basic_string<wchar_t>"
+#define WSTRING2 "std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t>>"
 
 //-- aliasing special case: C complex (is binary compatible with C++ std::complex)
 #ifndef _WIN32
@@ -3348,9 +3349,11 @@ public:
         gf["const " STRINGVIEW "&"] =       gf["std::string_view"];
 #endif
         gf["std::wstring"] =                (cf_t)+[](cdims_t) { return new STLWStringConverter{}; };
-        gf[WSTRING] =                       gf["std::wstring"];
+        gf[WSTRING1] =                      gf["std::wstring"];
+        gf[WSTRING2] =                      gf["std::wstring"];
         gf["const std::wstring&"] =         gf["std::wstring"];
-        gf["const " WSTRING "&"] =          gf["std::wstring"];
+        gf["const " WSTRING1 "&"] =         gf["std::wstring"];
+        gf["const " WSTRING2 "&"] =         gf["std::wstring"];
         gf["void*&"] =                      (cf_t)+[](cdims_t) { static VoidPtrRefConverter c{};     return &c; };
         gf["void**"] =                      (cf_t)+[](cdims_t d) { return new VoidPtrPtrConverter{d}; };
         gf["void ptr"] =                    gf["void**"];
