@@ -2821,6 +2821,22 @@ struct faux_initlist
 CPyCppyy::InitializerListConverter::~InitializerListConverter()
 {
     if (fConverter && fConverter->HasState()) delete fConverter;
+    if (fBuffer) clear();
+}
+
+void CPyCppyy::InitializerListConverter::clear() {
+    faux_initlist* fake = (faux_initlist*)fBuffer;
+#if defined (_LIBCPP_INITIALIZER_LIST) || defined(__GNUC__)
+    for (faux_initlist::size_type i = 0; i < fake->_M_len; ++i) {
+#elif defined (_MSC_VER)
+    for (size_t i = 0; (fake->_M_array+i*fValueSize) != fake->_Last; ++i) {
+#endif
+        void* memloc = (char*)fake->_M_array + i*fValueSize;
+        Cppyy::CallDestructor(fValueType, (Cppyy::TCppObject_t)memloc);
+    }
+
+    free(fBuffer);
+    fBuffer = nullptr;
 }
 
 bool CPyCppyy::InitializerListConverter::SetArg(
@@ -2829,6 +2845,8 @@ bool CPyCppyy::InitializerListConverter::SetArg(
 #ifdef NO_KNOWN_INITIALIZER_LIST
     return false;
 #else
+    if (fBuffer) clear();
+
 // convert the given argument to an initializer list temporary; this is purely meant
 // to be a syntactic thing, so only _python_ sequences are allowed; bound C++ proxies
 // (likely explicitly created std::initializer_list, go through an instance converter
@@ -2847,6 +2865,7 @@ bool CPyCppyy::InitializerListConverter::SetArg(
     void* buf = nullptr;
     Py_ssize_t buflen = Utility::GetBuffer(pyobject, '*', (int)fValueSize, buf, true);
     faux_initlist* fake = nullptr;
+    size_t entries = 0;
     if (buf && buflen) {
     // dealing with an array here, pass on whole-sale
         fake = (faux_initlist*)malloc(sizeof(faux_initlist));
@@ -2878,15 +2897,30 @@ bool CPyCppyy::InitializerListConverter::SetArg(
                                ((CPPInstance*)item)->GetObject(), fValueSize);
                         convert_ok = true;
                     }
-                } else
-                    convert_ok = fConverter->ToMemory(item, (char*)fake->_M_array + i*fValueSize);
+                } else {
+                    void* memloc = (char*)fake->_M_array + i*fValueSize;
+                    if (fValueType) {
+                    // we need to construct a default object for the constructor to assign into; this is
+                    // clunky, but the use of a copy constructor isn't much better as the Python object
+                    // need not be a C++ object
+                        memloc = (void*)Cppyy::Construct(fValueType, memloc);
+                        entries += 1;
+                    }
+                    if (memloc) convert_ok = fConverter->ToMemory(item, memloc);
+                }
+
 
                 Py_DECREF(item);
             } else
                 PyErr_Format(PyExc_TypeError, "failed to get item %d from sequence", (int)i);
 
             if (!convert_ok) {
-                free((void*)fake);
+#if defined (_LIBCPP_INITIALIZER_LIST) || defined(__GNUC__)
+                fake->_M_len = (faux_initlist::size_type)entries;
+#elif defined (_MSC_VER)
+                fake->_Last = fake->_M_array+(entries+1)*fValueSize;
+#endif
+                clear();
                 return false;
             }
         }
@@ -2895,8 +2929,9 @@ bool CPyCppyy::InitializerListConverter::SetArg(
     if (!fake)     // no buffer and value size indeterminate
         return false;
 
+    fBuffer = (void*)fake;
     para.fValue.fVoidp = (void*)fake;
-    para.fTypeCode = 'X';     // means ptr that backend has to free after call
+    para.fTypeCode = 'V';     // means ptr that backend has to free after call
     return true;
 #endif
 }
@@ -3038,7 +3073,7 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, cdim
 
         if (cnv || use_byte_cnv) {
             return new InitializerListConverter(
-                Cppyy::GetScope(realType), cnv, Cppyy::SizeOf(value_type));
+                Cppyy::GetScope(realType), cnv, Cppyy::GetScope(value_type), Cppyy::SizeOf(value_type));
         }
     }
 

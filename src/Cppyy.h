@@ -82,7 +82,7 @@ namespace Cppyy {
     CPPYY_IMPORT
     void         Deallocate(TCppType_t type, TCppObject_t instance);
     CPPYY_IMPORT
-    TCppObject_t Construct(TCppType_t type);
+    TCppObject_t Construct(TCppType_t type, void* arena = 0);
     CPPYY_IMPORT
     void         Destruct(TCppType_t type, TCppObject_t instance);
 
