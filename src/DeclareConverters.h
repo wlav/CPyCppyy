@@ -451,7 +451,7 @@ public:
     virtual bool HasState() { return true; }
 
 protected:
-    void clear();
+    void Clear();
 
 protected:
     void*             fBuffer;

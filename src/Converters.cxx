@@ -2821,10 +2821,10 @@ struct faux_initlist
 CPyCppyy::InitializerListConverter::~InitializerListConverter()
 {
     if (fConverter && fConverter->HasState()) delete fConverter;
-    if (fBuffer) clear();
+    if (fBuffer) Clear();
 }
 
-void CPyCppyy::InitializerListConverter::clear() {
+void CPyCppyy::InitializerListConverter::Clear() {
     faux_initlist* fake = (faux_initlist*)fBuffer;
 #if defined (_LIBCPP_INITIALIZER_LIST) || defined(__GNUC__)
     for (faux_initlist::size_type i = 0; i < fake->_M_len; ++i) {
@@ -2845,7 +2845,7 @@ bool CPyCppyy::InitializerListConverter::SetArg(
 #ifdef NO_KNOWN_INITIALIZER_LIST
     return false;
 #else
-    if (fBuffer) clear();
+    if (fBuffer) Clear();
 
 // convert the given argument to an initializer list temporary; this is purely meant
 // to be a syntactic thing, so only _python_ sequences are allowed; bound C++ proxies
@@ -2869,6 +2869,7 @@ bool CPyCppyy::InitializerListConverter::SetArg(
     if (buf && buflen) {
     // dealing with an array here, pass on whole-sale
         fake = (faux_initlist*)malloc(sizeof(faux_initlist));
+        fBuffer = (void*)fake;
         fake->_M_array = (faux_initlist::iterator)buf;
 #if defined (_LIBCPP_INITIALIZER_LIST) || defined(__GNUC__)
         fake->_M_len = (faux_initlist::size_type)buflen;
@@ -2879,6 +2880,7 @@ bool CPyCppyy::InitializerListConverter::SetArg(
     // can only construct empty lists, so use a fake initializer list
         size_t len = (size_t)PySequence_Size(pyobject);
         fake = (faux_initlist*)malloc(sizeof(faux_initlist)+fValueSize*len);
+        fBuffer = (void*)fake;
         fake->_M_array = (faux_initlist::iterator)((char*)fake+sizeof(faux_initlist));
 #if defined (_LIBCPP_INITIALIZER_LIST) || defined(__GNUC__)
         fake->_M_len = (faux_initlist::size_type)len;
@@ -2920,7 +2922,7 @@ bool CPyCppyy::InitializerListConverter::SetArg(
 #elif defined (_MSC_VER)
                 fake->_Last = fake->_M_array+(entries+1)*fValueSize;
 #endif
-                clear();
+                Clear();
                 return false;
             }
         }
@@ -2929,7 +2931,6 @@ bool CPyCppyy::InitializerListConverter::SetArg(
     if (!fake)     // no buffer and value size indeterminate
         return false;
 
-    fBuffer = (void*)fake;
     para.fValue.fVoidp = (void*)fake;
     para.fTypeCode = 'V';     // means ptr that backend has to free after call
     return true;
