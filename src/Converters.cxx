@@ -2825,14 +2825,16 @@ CPyCppyy::InitializerListConverter::~InitializerListConverter()
 }
 
 void CPyCppyy::InitializerListConverter::Clear() {
-    faux_initlist* fake = (faux_initlist*)fBuffer;
+    if (fValueType) {
+        faux_initlist* fake = (faux_initlist*)fBuffer;
 #if defined (_LIBCPP_INITIALIZER_LIST) || defined(__GNUC__)
-    for (faux_initlist::size_type i = 0; i < fake->_M_len; ++i) {
+        for (faux_initlist::size_type i = 0; i < fake->_M_len; ++i) {
 #elif defined (_MSC_VER)
-    for (size_t i = 0; (fake->_M_array+i*fValueSize) != fake->_Last; ++i) {
+        for (size_t i = 0; (fake->_M_array+i*fValueSize) != fake->_Last; ++i) {
 #endif
-        void* memloc = (char*)fake->_M_array + i*fValueSize;
-        Cppyy::CallDestructor(fValueType, (Cppyy::TCppObject_t)memloc);
+            void* memloc = (char*)fake->_M_array + i*fValueSize;
+            Cppyy::CallDestructor(fValueType, (Cppyy::TCppObject_t)memloc);
+        }
     }
 
     free(fBuffer);
