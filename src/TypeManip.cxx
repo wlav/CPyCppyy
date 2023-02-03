@@ -11,7 +11,7 @@
 //- helpers ------------------------------------------------------------------
 static inline
 bool is_varchar(char c) {
-    return isalnum((int)c) || c == '_' || c == ')' || c == '(' /* for (anonymous) */;
+    return isalnum((int)c) || c == '_' || c == ')' || c == '(' /* for (anonymous)/(unnamed) */;
 }
 
 static inline

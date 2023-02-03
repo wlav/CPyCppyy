@@ -332,7 +332,8 @@ void CPyCppyy::CPPDataMember::Set(Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t i
     const std::string name = Cppyy::GetDatamemberName(scope, idata);
     fFullType = Cppyy::GetDatamemberType(scope, idata);
     if (Cppyy::IsEnumData(scope, idata)) {
-        if (fFullType.find("(anonymous)") == std::string::npos) {
+        if (fFullType.find("(anonymous)") == std::string::npos &&
+            fFullType.find("(unnamed)")   == std::string::npos) {
         // repurpose fDescription for lazy lookup of the enum later
             fDescription = CPyCppyy_PyText_FromString((fFullType + "::" + name).c_str());
             fFlags |= kIsEnumPrep;
