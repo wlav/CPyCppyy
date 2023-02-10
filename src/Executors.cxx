@@ -431,6 +431,20 @@ PyObject* CPyCppyy::CStringExecutor::Execute(
 }
 
 //----------------------------------------------------------------------------
+PyObject* CPyCppyy::CStringRefExecutor::Execute(
+    Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
+{
+// execute <method> with argument <self, ctxt>, construct python string return value
+    char** result = (char**)GILCallR(method, self, ctxt);
+    if (!result || !*result) {
+        Py_INCREF(PyStrings::gEmptyString);
+        return PyStrings::gEmptyString;
+    }
+
+    return CPyCppyy_PyText_FromString(*result);
+}
+
+//----------------------------------------------------------------------------
 PyObject* CPyCppyy::WCStringExecutor::Execute(
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
 {
@@ -1042,6 +1056,8 @@ public:
     // factories for special cases
         gf["const char*"] =                 (ef_t)+[]() { static CStringExecutor e{};     return &e; };
         gf["char*"] =                       gf["const char*"];
+        gf["const char*&"] =                (ef_t)+[]() { static CStringRefExecutor e{};     return &e; };
+        gf["char*&"] =                      gf["const char*&"];
         gf["const signed char*"] =          gf["const char*"];
         gf["signed char*"] =                gf["char*"];
         gf["wchar_t*"] =                    (ef_t)+[](cdims_t) { static WCStringExecutor e{};    return &e;};
