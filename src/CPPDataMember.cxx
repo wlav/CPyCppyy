@@ -109,7 +109,7 @@ static PyObject* dm_get(CPPDataMember* dm, CPPInstance* pyobj, PyObject* /* kls 
     // for builtin types, b/c those are copied over into python types and thus
     // end up being "stand-alone")
     // TODO: should be done for LLViews as well
-        else if (pyobj && CPPInstance_Check(result)) {
+        else if (pyobj && !(dm->fFlags & kIsStaticData) && CPPInstance_Check(result)) {
             if (PyObject_SetAttr(result, PyStrings::gLifeLine, (PyObject*)pyobj) == -1)
                 PyErr_Clear();     // ignored
         }
