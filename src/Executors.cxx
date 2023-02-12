@@ -397,6 +397,11 @@ PyObject* CPyCppyy::STLStringRefExecutor::Execute(
         return BindCppObjectNoCast((void*)rescp, sSTLStringScope, CPPInstance::kIsOwner);
     }
 
+    if (!CPyCppyy_PyText_Check(fAssignable)) {
+        PyErr_Format(PyExc_TypeError, "wrong type in assignment (string expected)");
+        return nullptr;
+    }
+
     *result = std::string(
         CPyCppyy_PyText_AsString(fAssignable), CPyCppyy_PyText_GET_SIZE(fAssignable));
 
