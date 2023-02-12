@@ -1808,7 +1808,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         Utility::AddToClass(pyclass, "__init__", (PyCFunction)ArrayInit, METH_VARARGS | METH_KEYWORDS);
     }
 
-    else if (IsTemplatedSTLClass(name, "map")) {
+    else if (IsTemplatedSTLClass(name, "map") || IsTemplatedSTLClass(name, "unordered_map")) {
     // constructor that takes python associative collections
         Utility::AddToClass(pyclass, "__real_init", "__init__");
         Utility::AddToClass(pyclass, "__init__", (PyCFunction)MapInit, METH_VARARGS | METH_KEYWORDS);
