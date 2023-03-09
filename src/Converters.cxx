@@ -2908,7 +2908,7 @@ bool CPyCppyy::InitializerListConverter::SetArg(
                     // clunky, but the use of a copy constructor isn't much better as the Python object
                     // need not be a C++ object
                         memloc = (void*)Cppyy::Construct(fValueType, memloc);
-                        entries += 1;
+                        if (memloc) entries += 1;
                     }
                     if (memloc) convert_ok = fConverter->ToMemory(item, memloc);
                 }
@@ -2922,7 +2922,7 @@ bool CPyCppyy::InitializerListConverter::SetArg(
 #if defined (_LIBCPP_INITIALIZER_LIST) || defined(__GNUC__)
                 fake->_M_len = (faux_initlist::size_type)entries;
 #elif defined (_MSC_VER)
-                fake->_Last = fake->_M_array+(entries+1)*fValueSize;
+                fake->_Last = fake->_M_array+entries*fValueSize;
 #endif
                 Clear();
                 return false;
