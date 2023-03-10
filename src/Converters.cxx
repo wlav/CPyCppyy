@@ -3064,20 +3064,8 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, cdim
     // get the type of the list and create a converter (TODO: get hold of value_type?)
         auto pos = realType.find('<');
         std::string value_type = realType.substr(pos+1, realType.size()-pos-2);
-        Converter* cnv = nullptr; bool use_byte_cnv = false;
-        if (cpd == "" && Cppyy::GetScope(value_type)) {
-        // initializer list of object values does not work as the target is raw
-        // memory; simply use byte copies
-
-        // by convention, leave cnv as nullptr
-            use_byte_cnv = true;
-        } else
-            cnv = CreateConverter(value_type);
-
-        if (cnv || use_byte_cnv) {
-            return new InitializerListConverter(
-                Cppyy::GetScope(realType), cnv, Cppyy::GetScope(value_type), Cppyy::SizeOf(value_type));
-        }
+        return new InitializerListConverter(Cppyy::GetScope(realType),
+            CreateConverter(value_type), Cppyy::GetScope(value_type), Cppyy::SizeOf(value_type));
     }
 
 //-- still nothing? use a generalized converter
