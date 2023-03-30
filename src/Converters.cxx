@@ -256,7 +256,8 @@ static bool HasLifeLine(PyObject* holder, intptr_t ref)
 
 
 //- helper to work with both CPPInstance and CPPExcInstance ------------------
-static inline CPyCppyy::CPPInstance* GetCppInstance(PyObject* pyobject)
+static inline CPyCppyy::CPPInstance* GetCppInstance(
+    PyObject* pyobject, Cppyy::TCppType_t klass = (Cppyy::TCppType_t)0, bool accept_rvalue = false)
 {
     using namespace CPyCppyy;
     if (CPPInstance_Check(pyobject))
@@ -269,6 +270,22 @@ static inline CPyCppyy::CPPInstance* GetCppInstance(PyObject* pyobject)
     if (castobj) {
         if (CPPInstance_Check(castobj))
             return (CPPInstance*)castobj;
+        else if (klass && PyTuple_CheckExact(castobj)) {
+        // allow implicit conversion from a tuple of arguments
+            PyObject* pyclass = GetScopeProxy(klass);
+            if (pyclass) {
+                CPPInstance* pytmp = (CPPInstance*)PyObject_Call(pyclass, castobj, NULL);
+                Py_DECREF(pyclass);
+                if (CPPInstance_Check(pytmp)) {
+                    if (accept_rvalue)
+                        pytmp->fFlags |= CPPInstance::kIsRValue;
+                    Py_DECREF(castobj);
+                    return pytmp;
+                }
+                Py_XDECREF(pytmp);
+            }
+        }
+
         Py_DECREF(castobj);
         return nullptr;
     }
@@ -1968,7 +1985,7 @@ bool CPyCppyy::InstancePtrConverter<ISCONST>::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* ctxt)
 {
 // convert <pyobject> to C++ instance*, set arg for call
-    CPPInstance* pyobj = GetCppInstance(pyobject);
+    CPPInstance* pyobj = GetCppInstance(pyobject, ISCONST ? fClass : (Cppyy::TCppType_t)0);
     if (!pyobj) {
         if (GetAddressSpecialCase(pyobject, para.fValue.fVoidp)) {
             para.fTypeCode = 'p';      // allow special cases such as nullptr
@@ -2020,7 +2037,7 @@ template <bool ISCONST>
 bool CPyCppyy::InstancePtrConverter<ISCONST>::ToMemory(PyObject* value, void* address, PyObject* /* ctxt */)
 {
 // convert <value> to C++ instance, write it at <address>
-    CPPInstance* pyobj = GetCppInstance(value);
+    CPPInstance* pyobj = GetCppInstance(value, ISCONST ? fClass : (Cppyy::TCppType_t)0);
     if (!pyobj) {
         void* ptr = nullptr;
         if (GetAddressSpecialCase(value, ptr)) {
@@ -2051,7 +2068,7 @@ bool CPyCppyy::InstanceConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* ctxt)
 {
 // convert <pyobject> to C++ instance, set arg for call
-    CPPInstance* pyobj = GetCppInstance(pyobject);
+    CPPInstance* pyobj = GetCppInstance(pyobject, fClass);
     if (pyobj) {
         auto oisa = pyobj->ObjectIsA();
         if (oisa && (oisa == fClass || Cppyy::IsSubtype(oisa, fClass))) {
@@ -2104,7 +2121,7 @@ bool CPyCppyy::InstanceRefConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* ctxt)
 {
 // convert <pyobject> to C++ instance&, set arg for call
-    CPPInstance* pyobj = GetCppInstance(pyobject);
+    CPPInstance* pyobj = GetCppInstance(pyobject, fIsConst ? fClass : (Cppyy::TCppType_t)0);
     if (pyobj) {
 
     // reject moves
@@ -2166,7 +2183,7 @@ bool CPyCppyy::InstanceMoveConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* ctxt)
 {
 // convert <pyobject> to C++ instance&&, set arg for call
-    CPPInstance* pyobj = GetCppInstance(pyobject);
+    CPPInstance* pyobj = GetCppInstance(pyobject, fClass, true /* accept_rvalue */);
     if (!pyobj || (pyobj->fFlags & CPPInstance::kIsLValue)) {
     // implicit conversion is fine as the temporary by definition is moveable
         return (bool)ConvertImplicit(fClass, pyobject, para, ctxt);
