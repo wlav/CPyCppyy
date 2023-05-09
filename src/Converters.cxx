@@ -830,7 +830,7 @@ CPPYY_IMPL_REFCONVERTER(LLong,   c_longlong,   long long,          'q');
 CPPYY_IMPL_REFCONVERTER(ULLong,  c_ulonglong,  unsigned long long, 'Q');
 CPPYY_IMPL_REFCONVERTER(Float,   c_float,      float,              'f');
 CPPYY_IMPL_REFCONVERTER_FROM_MEMORY(Double, c_double);
-CPPYY_IMPL_REFCONVERTER(LDouble, c_longdouble, PY_LONG_DOUBLE,     'D');
+CPPYY_IMPL_REFCONVERTER(LDouble, c_longdouble, PY_LONG_DOUBLE,     'g');
 
 
 //----------------------------------------------------------------------------
@@ -1705,7 +1705,7 @@ CPPYY_IMPL_ARRAY_CONVERTER(LLong,    c_longlong,   long long,            'q')
 CPPYY_IMPL_ARRAY_CONVERTER(ULLong,   c_ulonglong,  unsigned long long,   'Q')
 CPPYY_IMPL_ARRAY_CONVERTER(Float,    c_float,      float,                'f')
 CPPYY_IMPL_ARRAY_CONVERTER(Double,   c_double,     double,               'd')
-CPPYY_IMPL_ARRAY_CONVERTER(LDouble,  c_longdouble, long double,          'D')
+CPPYY_IMPL_ARRAY_CONVERTER(LDouble,  c_longdouble, long double,          'g')
 CPPYY_IMPL_ARRAY_CONVERTER(ComplexF, c_fcomplex,   std::complex<float>,  'z')
 CPPYY_IMPL_ARRAY_CONVERTER(ComplexD, c_complex,    std::complex<double>, 'Z')
 
