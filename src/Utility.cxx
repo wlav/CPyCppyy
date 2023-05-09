@@ -993,6 +993,29 @@ std::string CPyCppyy::Utility::ClassName(PyObject* pyobj)
     return clname;
 }
 
+//----------------------------------------------------------------------------
+static std::set<std::string> sIteratorTypes;
+bool CPyCppyy::Utility::IsSTLIterator(const std::string& classname)
+{
+// attempt to recognize STL iterators (TODO: probably belongs in the backend)
+    if (sIteratorTypes.empty()) {
+        std::string tt = "<int>::";
+        for (auto c : {"std::vector", "std::list", "std::deque"}) {
+            for (auto i : {"iterator", "const_iterator"}) {
+                const std::string& itname = Cppyy::ResolveName(c+tt+i);
+                auto pos = itname.find('<');
+                if (pos != std::string::npos)
+                    sIteratorTypes.insert(itname.substr(0, pos));
+            }
+        }
+    }
+
+    auto pos = classname.find('<');
+    if (pos != std::string::npos)
+        return sIteratorTypes.find(classname.substr(0, pos)) != sIteratorTypes.end();
+    return false;
+}
+
 
 //----------------------------------------------------------------------------
 CPyCppyy::Utility::PyOperators::~PyOperators()

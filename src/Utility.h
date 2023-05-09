@@ -78,6 +78,7 @@ struct PyOperators {
 
 // meta information
 std::string ClassName(PyObject* pyobj);
+bool IsSTLIterator(const std::string& classname);
 
 // for threading: save call to PyErr_Occurred()
 PyObject* PyErr_Occurred_WithGIL();

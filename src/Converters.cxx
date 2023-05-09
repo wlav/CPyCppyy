@@ -3138,12 +3138,7 @@ CPyCppyy::Converter* CPyCppyy::CreateConverter(const std::string& fullType, cdim
 
         if (!result) {
         // CLING WORKAROUND -- special case for STL iterators
-            if (realType.rfind("__gnu_cxx::__normal_iterator", 0) /* vector */ == 0
-#ifdef __APPLE__
-                || realType.rfind("__wrap_iter", 0) == 0
-#endif
-                // TODO: Windows?
-               ) {
+            if (Utility::IsSTLIterator(realType)) {
                 static STLIteratorConverter c;
                 result = &c;
             } else
