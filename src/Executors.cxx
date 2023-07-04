@@ -508,34 +508,34 @@ PyObject* CPyCppyy::VoidArrayExecutor::Execute(
 }
 
 //----------------------------------------------------------------------------
-#define CPPYY_IMPL_ARRAY_EXEC(name, type)                                    \
+#define CPPYY_IMPL_ARRAY_EXEC(name, type, suffix)                            \
 PyObject* CPyCppyy::name##ArrayExecutor::Execute(                            \
     Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt) \
 {                                                                            \
-    return CreateLowLevelView((type*)GILCallR(method, self, ctxt), fShape);  \
+    return CreateLowLevelView##suffix((type*)GILCallR(method, self, ctxt), fShape);  \
 }
 
-CPPYY_IMPL_ARRAY_EXEC(Bool,     bool)
-CPPYY_IMPL_ARRAY_EXEC(UChar,    unsigned char)
+CPPYY_IMPL_ARRAY_EXEC(Bool,     bool,                    )
+CPPYY_IMPL_ARRAY_EXEC(UChar,    unsigned char,           )
 #if __cplusplus > 201402L
-CPPYY_IMPL_ARRAY_EXEC(Byte,     std::byte)
+CPPYY_IMPL_ARRAY_EXEC(Byte,     std::byte,               )
 #endif
-CPPYY_IMPL_ARRAY_EXEC(Int8,     int8_t)
-CPPYY_IMPL_ARRAY_EXEC(UInt8,    uint8_t)
-CPPYY_IMPL_ARRAY_EXEC(Short,    short)
-CPPYY_IMPL_ARRAY_EXEC(UShort,   unsigned short)
-CPPYY_IMPL_ARRAY_EXEC(Int,      int)
-CPPYY_IMPL_ARRAY_EXEC(UInt,     unsigned int)
-CPPYY_IMPL_ARRAY_EXEC(Long,     long)
-CPPYY_IMPL_ARRAY_EXEC(ULong,    unsigned long)
-CPPYY_IMPL_ARRAY_EXEC(LLong,    long long)
-CPPYY_IMPL_ARRAY_EXEC(ULLong,   unsigned long long)
-CPPYY_IMPL_ARRAY_EXEC(Float,    float)
-CPPYY_IMPL_ARRAY_EXEC(Double,   double)
-CPPYY_IMPL_ARRAY_EXEC(ComplexF, std::complex<float>)
-CPPYY_IMPL_ARRAY_EXEC(ComplexD, std::complex<double>)
-CPPYY_IMPL_ARRAY_EXEC(ComplexI, std::complex<int>)
-CPPYY_IMPL_ARRAY_EXEC(ComplexL, std::complex<long>)
+CPPYY_IMPL_ARRAY_EXEC(Int8,     int8_t,               _i8)
+CPPYY_IMPL_ARRAY_EXEC(UInt8,    uint8_t,              _i8)
+CPPYY_IMPL_ARRAY_EXEC(Short,    short,                   )
+CPPYY_IMPL_ARRAY_EXEC(UShort,   unsigned short,          )
+CPPYY_IMPL_ARRAY_EXEC(Int,      int,                     )
+CPPYY_IMPL_ARRAY_EXEC(UInt,     unsigned int,            )
+CPPYY_IMPL_ARRAY_EXEC(Long,     long,                    )
+CPPYY_IMPL_ARRAY_EXEC(ULong,    unsigned long,           )
+CPPYY_IMPL_ARRAY_EXEC(LLong,    long long,               )
+CPPYY_IMPL_ARRAY_EXEC(ULLong,   unsigned long long,      )
+CPPYY_IMPL_ARRAY_EXEC(Float,    float,                   )
+CPPYY_IMPL_ARRAY_EXEC(Double,   double,                  )
+CPPYY_IMPL_ARRAY_EXEC(ComplexF, std::complex<float>,     )
+CPPYY_IMPL_ARRAY_EXEC(ComplexD, std::complex<double>,    )
+CPPYY_IMPL_ARRAY_EXEC(ComplexI, std::complex<int>,       )
+CPPYY_IMPL_ARRAY_EXEC(ComplexL, std::complex<long>,      )
 
 
 //- special cases ------------------------------------------------------------

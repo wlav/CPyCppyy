@@ -1574,7 +1574,7 @@ bool CPyCppyy::VoidArrayConverter::ToMemory(PyObject* value, void* address, PyOb
 
 
 //----------------------------------------------------------------------------
-#define CPPYY_IMPL_ARRAY_CONVERTER(name, ctype, type, code)                  \
+#define CPPYY_IMPL_ARRAY_CONVERTER(name, ctype, type, code, suffix)          \
 CPyCppyy::name##ArrayConverter::name##ArrayConverter(cdims_t dims) :         \
         fShape(dims) {                                                       \
     fIsFixed = dims ? fShape[0] != UNKNOWN_SIZE : false;                     \
@@ -1642,8 +1642,8 @@ bool CPyCppyy::name##ArrayConverter::SetArg(                                 \
 PyObject* CPyCppyy::name##ArrayConverter::FromMemory(void* address)          \
 {                                                                            \
     if (!fIsFixed)                                                           \
-        return CreateLowLevelView((type**)address, fShape);                  \
-    return CreateLowLevelView(*(type**)address, fShape);                     \
+        return CreateLowLevelView##suffix((type**)address, fShape);          \
+    return CreateLowLevelView##suffix(*(type**)address, fShape);             \
 }                                                                            \
                                                                              \
 bool CPyCppyy::name##ArrayConverter::ToMemory(                               \
@@ -1689,25 +1689,27 @@ bool CPyCppyy::name##ArrayConverter::ToMemory(                               \
 
 
 //----------------------------------------------------------------------------
-CPPYY_IMPL_ARRAY_CONVERTER(Bool,     c_bool,       bool,                 '?')
-CPPYY_IMPL_ARRAY_CONVERTER(SChar,    c_char,       signed char,          'b')
-CPPYY_IMPL_ARRAY_CONVERTER(UChar,    c_ubyte,      unsigned char,        'B')
+CPPYY_IMPL_ARRAY_CONVERTER(Bool,     c_bool,       bool,                 '?', )
+CPPYY_IMPL_ARRAY_CONVERTER(SChar,    c_char,       signed char,          'b', )
+CPPYY_IMPL_ARRAY_CONVERTER(UChar,    c_ubyte,      unsigned char,        'B', )
 #if __cplusplus > 201402L
-CPPYY_IMPL_ARRAY_CONVERTER(Byte,     c_ubyte,      std::byte,            'B')
+CPPYY_IMPL_ARRAY_CONVERTER(Byte,     c_ubyte,      std::byte,            'B', )
 #endif
-CPPYY_IMPL_ARRAY_CONVERTER(Short,    c_short,      short,                'h')
-CPPYY_IMPL_ARRAY_CONVERTER(UShort,   c_ushort,     unsigned short,       'H')
-CPPYY_IMPL_ARRAY_CONVERTER(Int,      c_int,        int,                  'i')
-CPPYY_IMPL_ARRAY_CONVERTER(UInt,     c_uint,       unsigned int,         'I')
-CPPYY_IMPL_ARRAY_CONVERTER(Long,     c_long,       long,                 'l')
-CPPYY_IMPL_ARRAY_CONVERTER(ULong,    c_ulong,      unsigned long,        'L')
-CPPYY_IMPL_ARRAY_CONVERTER(LLong,    c_longlong,   long long,            'q')
-CPPYY_IMPL_ARRAY_CONVERTER(ULLong,   c_ulonglong,  unsigned long long,   'Q')
-CPPYY_IMPL_ARRAY_CONVERTER(Float,    c_float,      float,                'f')
-CPPYY_IMPL_ARRAY_CONVERTER(Double,   c_double,     double,               'd')
-CPPYY_IMPL_ARRAY_CONVERTER(LDouble,  c_longdouble, long double,          'g')
-CPPYY_IMPL_ARRAY_CONVERTER(ComplexF, c_fcomplex,   std::complex<float>,  'z')
-CPPYY_IMPL_ARRAY_CONVERTER(ComplexD, c_complex,    std::complex<double>, 'Z')
+CPPYY_IMPL_ARRAY_CONVERTER(Int8,     c_byte,       int8_t,               'b', _i8)
+CPPYY_IMPL_ARRAY_CONVERTER(UInt8,    c_ubyte,      uint8_t,              'B', _i8)
+CPPYY_IMPL_ARRAY_CONVERTER(Short,    c_short,      short,                'h', )
+CPPYY_IMPL_ARRAY_CONVERTER(UShort,   c_ushort,     unsigned short,       'H', )
+CPPYY_IMPL_ARRAY_CONVERTER(Int,      c_int,        int,                  'i', )
+CPPYY_IMPL_ARRAY_CONVERTER(UInt,     c_uint,       unsigned int,         'I', )
+CPPYY_IMPL_ARRAY_CONVERTER(Long,     c_long,       long,                 'l', )
+CPPYY_IMPL_ARRAY_CONVERTER(ULong,    c_ulong,      unsigned long,        'L', )
+CPPYY_IMPL_ARRAY_CONVERTER(LLong,    c_longlong,   long long,            'q', )
+CPPYY_IMPL_ARRAY_CONVERTER(ULLong,   c_ulonglong,  unsigned long long,   'Q', )
+CPPYY_IMPL_ARRAY_CONVERTER(Float,    c_float,      float,                'f', )
+CPPYY_IMPL_ARRAY_CONVERTER(Double,   c_double,     double,               'd', )
+CPPYY_IMPL_ARRAY_CONVERTER(LDouble,  c_longdouble, long double,          'g', )
+CPPYY_IMPL_ARRAY_CONVERTER(ComplexF, c_fcomplex,   std::complex<float>,  'z', )
+CPPYY_IMPL_ARRAY_CONVERTER(ComplexD, c_complex,    std::complex<double>, 'Z', )
 
 
 //----------------------------------------------------------------------------
@@ -3318,6 +3320,8 @@ public:
 #if __cplusplus > 201402L
         gf["std::byte ptr"] =               (cf_t)+[](cdims_t d) { return new ByteArrayConverter{d}; };
 #endif
+        gf["int8_t ptr"] =                  (cf_t)+[](cdims_t d) { return new Int8ArrayConverter{d}; };
+        gf["uint8_t ptr"] =                 (cf_t)+[](cdims_t d) { return new UInt8ArrayConverter{d}; };
         gf["short ptr"] =                   (cf_t)+[](cdims_t d) { return new ShortArrayConverter{d}; };
         gf["unsigned short ptr"] =          (cf_t)+[](cdims_t d) { return new UShortArrayConverter{d}; };
         gf["int ptr"] =                     (cf_t)+[](cdims_t d) { return new IntArrayConverter{d}; };

@@ -961,7 +961,8 @@ template<> struct typecode_traits<std::complex<long>> {
 
 //---------------------------------------------------------------------------
 template<typename T>
-static inline PyObject* CreateLowLevelViewT(T* address, CPyCppyy::cdims_t shape)
+static inline PyObject* CreateLowLevelViewT(
+    T* address, CPyCppyy::cdims_t shape, const char* format = nullptr, const char* name = nullptr)
 {
     using namespace CPyCppyy;
     Py_ssize_t nx = (shape.ndim() != UNKNOWN_SIZE) ? shape[0] : INT_MAX/sizeof(T);
@@ -975,7 +976,7 @@ static inline PyObject* CreateLowLevelViewT(T* address, CPyCppyy::cdims_t shape)
     view.buf            = address;
     view.obj            = nullptr;
     view.readonly       = 0;
-    view.format         = (char*)typecode_traits<T>::format;
+    view.format         = (char*)(format ? format : typecode_traits<T>::format);
     view.ndim           = int(shape.ndim() != UNKNOWN_SIZE ? shape.ndim() : 1);
     view.shape          = (Py_ssize_t*)PyMem_Malloc(view.ndim * sizeof(Py_ssize_t));
     view.shape[0]       = nx;      // view.len / view.itemsize
@@ -989,7 +990,7 @@ static inline PyObject* CreateLowLevelViewT(T* address, CPyCppyy::cdims_t shape)
         if (isfix) (intptr_t&)view.internal |= CPyCppyy::LowLevelView::kIsFixed;
     }
 
-    llp->fElemCnv = CreateConverter(typecode_traits<T>::name);
+    llp->fElemCnv = CreateConverter(name ? name : typecode_traits<T>::name);
     if (view.ndim == 1) {
     // simple 1-dim array of the declared type
         view.len        = nx * sizeof(T);
@@ -1003,7 +1004,7 @@ static inline PyObject* CreateLowLevelViewT(T* address, CPyCppyy::cdims_t shape)
             view.shape[idim] = shape[idim];
 
     // peel off one dimension and create a new LLView converter
-        std::string tname{typecode_traits<T>::name};
+        std::string tname{name ? name : typecode_traits<T>::name};
         tname.append("*");        // make sure to ask for another array
     // TODO: although this will work, it means that "naive" loops are expensive
         llp->fConverter = CreateConverter(tname, shape.sub());
@@ -1016,10 +1017,11 @@ static inline PyObject* CreateLowLevelViewT(T* address, CPyCppyy::cdims_t shape)
 
 //---------------------------------------------------------------------------
 template<typename T>
-static inline PyObject* CreateLowLevelViewT(T** address, CPyCppyy::cdims_t shape)
+static inline PyObject* CreateLowLevelViewT(
+    T** address, CPyCppyy::cdims_t shape, const char* format = nullptr, const char* name = nullptr)
 {
     using namespace CPyCppyy;
-    LowLevelView* llp = (LowLevelView*)CreateLowLevelViewT((T*)address, shape);
+    LowLevelView* llp = (LowLevelView*)CreateLowLevelViewT((T*)address, shape, format, name);
     llp->set_buf((void**)address);
     return (PyObject*)llp;
 }
@@ -1061,4 +1063,20 @@ PyObject* CPyCppyy::CreateLowLevelView(char** address, cdims_t shape) {
 
 PyObject* CPyCppyy::CreateLowLevelView(const char** address, cdims_t shape) {
     return CreateLowLevelViewT<const char*>(address, shape);
+}
+
+PyObject* CPyCppyy::CreateLowLevelView_i8(int8_t* address,  cdims_t shape) {
+    return CreateLowLevelViewT<int8_t>(address, shape, "b", "int8_t");
+}
+
+PyObject* CPyCppyy::CreateLowLevelView_i8(int8_t** address, cdims_t shape) {
+    return CreateLowLevelViewT<int8_t>(address, shape, "b", "int8_t");
+}
+
+PyObject* CPyCppyy::CreateLowLevelView_i8(uint8_t* address,  cdims_t shape) {
+    return CreateLowLevelViewT<uint8_t>(address, shape, "B", "uint8_t");
+}
+
+PyObject* CPyCppyy::CreateLowLevelView_i8(uint8_t** address, cdims_t shape) {
+    return CreateLowLevelViewT<uint8_t>(address, shape, "B", "uint8_t");
 }
