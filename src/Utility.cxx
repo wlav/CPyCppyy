@@ -386,7 +386,12 @@ CPyCppyy::PyCallable* CPyCppyy::Utility::FindBinaryOperator(
 static inline std::string AnnotationAsText(PyObject* pyobj)
 {
     if (!CPyCppyy_PyText_Check(pyobj)) {
-        PyObject* pystr = PyObject_Str(pyobj);
+        PyObject* pystr = PyObject_GetAttr(pyobj, CPyCppyy::PyStrings::gName);
+        if (!pystr) {
+            PyErr_Clear();
+            pystr = PyObject_Str(pyobj);
+        }
+
         std::string str = CPyCppyy_PyText_AsString(pystr);
         Py_DECREF(pystr);
         return str;
