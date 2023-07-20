@@ -383,6 +383,17 @@ CPyCppyy::PyCallable* CPyCppyy::Utility::FindBinaryOperator(
 }
 
 //----------------------------------------------------------------------------
+static inline std::string AnnotationAsText(PyObject* pyobj)
+{
+    if (!CPyCppyy_PyText_Check(pyobj)) {
+        PyObject* pystr = PyObject_Str(pyobj);
+        std::string str = CPyCppyy_PyText_AsString(pystr);
+        Py_DECREF(pystr);
+        return str;
+    }
+    return CPyCppyy_PyText_AsString(pyobj);
+}
+
 static bool AddTypeName(std::string& tmpl_name, PyObject* tn, PyObject* arg,
     CPyCppyy::Utility::ArgPreference pref, int* pcnt = nullptr)
 {
@@ -506,14 +517,14 @@ static bool AddTypeName(std::string& tmpl_name, PyObject* tn, PyObject* arg,
                 if (ret) {
                 // dict is ordered, with the last value being the return type
                     std::ostringstream tpn;
-                    tpn << (CPPScope_Check(ret) ? ClassName(ret) : CPyCppyy_PyText_AsString(ret))
+                    tpn << (CPPScope_Check(ret) ? ClassName(ret) : AnnotationAsText(ret))
                         << " (*)(";
 
                     PyObject* values = PyDict_Values(annot);
                     for (Py_ssize_t i = 0; i < (PyList_GET_SIZE(values)-1); ++i) {
                         if (i) tpn << ", ";
                         PyObject* item = PyList_GET_ITEM(values, i);
-                        tpn << (CPPScope_Check(item) ?  ClassName(item) : CPyCppyy_PyText_AsString(item));
+                        tpn << (CPPScope_Check(item) ?  ClassName(item) : AnnotationAsText(item));
                     }
                     Py_DECREF(values);
 
