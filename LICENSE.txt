@@ -53,4 +53,5 @@ source code):
   Simone Bacchio
   Niko Fink
   Mac Kolin
+  Baidyanath Kundu
   Toby StClere-Smithe
