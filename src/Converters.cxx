@@ -2939,6 +2939,10 @@ bool CPyCppyy::InitializerListConverter::SetArg(
                     // need not be a C++ object
                         memloc = (void*)Cppyy::Construct(fValueType, memloc);
                         if (memloc) entries += 1;
+                        else {
+                           PyErr_SetString(PyExc_TypeError,
+                              "default ctor needed for initializer list of objects");
+                        }
                     }
                     if (memloc) convert_ok = fConverter->ToMemory(item, memloc);
                 }
