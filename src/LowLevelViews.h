@@ -34,6 +34,8 @@ public:
 public:
     void* get_buf() { return fBuf ? *fBuf : fBufInfo.buf; }
     void  set_buf(void** buf) { fBuf = buf; fBufInfo.buf = get_buf(); }
+
+    bool resize(size_t sz);
 };
 
 #define CPPYY_DECL_VIEW_CREATOR(type)                                        \

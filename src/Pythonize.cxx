@@ -492,7 +492,8 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 PyObject* VectorData(PyObject* self, PyObject*)
 {
     PyObject* pydata = CallPyObjMethod(self, "__real_data");
-    if (!LowLevelView_Check(pydata)) return pydata;
+    if (!LowLevelView_Check(pydata) && !CPPInstance_Check(pydata))
+        return pydata;
 
     PyObject* pylen = PyObject_CallMethodNoArgs(self, PyStrings::gSize);
     if (!pylen) {
@@ -503,12 +504,12 @@ PyObject* VectorData(PyObject* self, PyObject*)
     long clen = PyInt_AsLong(pylen);
     Py_DECREF(pylen);
 
-// TODO: should be a LowLevelView helper
-    Py_buffer& bi = ((LowLevelView*)pydata)->fBufInfo;
-    bi.len = clen * bi.itemsize;
-    if (bi.ndim == 1 && bi.shape)
-        bi.shape[0] = clen;
+    if (CPPInstance_Check(pydata)) {
+        ((CPPInstance*)pydata)->CastToArray(clen);
+        return pydata;
+    }
 
+    ((LowLevelView*)pydata)->resize((size_t)clen);
     return pydata;
 }
 
