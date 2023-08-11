@@ -314,6 +314,12 @@ void CPyCppyy::CPPInstance::CastToArray(Py_ssize_t sz)
     ARRAY_SIZE(this) = sz;
 }
 
+Py_ssize_t CPyCppyy::CPPInstance::ArrayLength() {
+    if (!(fFlags & kIsArray))
+        return -1;
+    return (Py_ssize_t)ARRAY_SIZE(this);
+}
+
 static PyObject* op_reshape(CPPInstance* self, PyObject* shape)
 {
 // Allow the user to fix up the actual (type-strided) size of the buffer.
@@ -323,7 +329,10 @@ static PyObject* op_reshape(CPPInstance* self, PyObject* shape)
     }
 
     long sz = PyLong_AsLong(PyTuple_GET_ITEM(shape, 0));
-    if (sz == -1) return nullptr;
+    if (sz <= 0) {
+        PyErr_SetString(PyExc_ValueError, "array length must be positive");
+        return nullptr;
+    }
 
     self->CastToArray(sz);
 

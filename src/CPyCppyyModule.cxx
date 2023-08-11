@@ -555,7 +555,7 @@ static PyObject* AsCObject(PyObject* /* unused */, PyObject* args, PyObject* kwd
 }
 
 //----------------------------------------------------------------------------
-static PyObject* AsCapsule(PyObject* /* dummy */, PyObject* args, PyObject* kwds)
+static PyObject* AsCapsule(PyObject* /* unused */, PyObject* args, PyObject* kwds)
 {
 // Return object proxy as an opaque PyCapsule.
     void* addr = GetCPPInstanceAddress("as_capsule", args, kwds);
@@ -569,7 +569,7 @@ static PyObject* AsCapsule(PyObject* /* dummy */, PyObject* args, PyObject* kwds
 }
 
 //----------------------------------------------------------------------------
-static PyObject* AsCTypes(PyObject* /* dummy */, PyObject* args, PyObject* kwds)
+static PyObject* AsCTypes(PyObject* /* unused */, PyObject* args, PyObject* kwds)
 {
 // Return object proxy as a ctypes c_void_p
     void* addr = GetCPPInstanceAddress("as_ctypes", args, kwds);
@@ -592,6 +592,43 @@ static PyObject* AsCTypes(PyObject* /* dummy */, PyObject* args, PyObject* kwds)
     *(void**)((CPyCppyy_tagCDataObject*)ref)->b_ptr = addr;
     ((CPyCppyy_tagCDataObject*)ref)->b_needsfree = 0;
     return ref;
+}
+
+//----------------------------------------------------------------------------
+static PyObject* AsMemoryView(PyObject* /* unused */, PyObject* pyobject)
+{
+// Return a raw memory view on arrays of PODs.
+    if (!CPPInstance_Check(pyobject)) {
+        PyErr_SetString(PyExc_TypeError, "C++ object proxy expected");
+        return nullptr;
+    }
+
+    CPPInstance* pyobj = (CPPInstance*)pyobject;
+    Cppyy::TCppType_t klass = ((CPPClass*)Py_TYPE(pyobject))->fCppType;
+
+    Py_ssize_t array_len = pyobj->ArrayLength();
+
+    if (array_len < 0 || !Cppyy::IsAggregate(klass)) {
+        PyErr_SetString(
+            PyExc_TypeError, "object is not a proxy to an array of PODs of known size");
+        return nullptr;
+    }
+
+    Py_buffer view;
+
+    view.obj            = pyobject;
+    view.buf            = pyobj->GetObject();
+    view.itemsize       = Cppyy::SizeOf(klass);
+    view.len            = view.itemsize * array_len;
+    view.readonly       = 0;
+    view.format         = NULL;   // i.e. "B" assumed
+    view.ndim           = 1;
+    view.shape          = NULL;
+    view.strides        = NULL;
+    view.suboffsets     = NULL;
+    view.internal       = NULL;
+
+    return PyMemoryView_FromBuffer(&view);
 }
 
 //----------------------------------------------------------------------------
@@ -933,6 +970,8 @@ static PyMethodDef gCPyCppyyMethods[] = {
       METH_VARARGS | METH_KEYWORDS, (char*)"Retrieve address of proxied object or field in a PyCapsule."},
     {(char*) "as_ctypes", (PyCFunction)AsCTypes,
       METH_VARARGS | METH_KEYWORDS, (char*)"Retrieve address of proxied object or field in a ctypes c_void_p."},
+    {(char*) "as_memoryview", (PyCFunction)AsMemoryView,
+      METH_O, (char*)"Represent an array of objects as raw memory."},
     {(char*)"bind_object", (PyCFunction)BindObject,
       METH_VARARGS | METH_KEYWORDS, (char*) "Create an object of given type, from given address."},
     {(char*) "move", (PyCFunction)Move,

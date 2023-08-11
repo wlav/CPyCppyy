@@ -960,6 +960,19 @@ template<> struct typecode_traits<std::complex<long>> {
 
 
 //---------------------------------------------------------------------------
+bool CPyCppyy::LowLevelView::resize(size_t sz)
+{
+    Py_buffer& bi = this->fBufInfo;
+    if (bi.ndim == 1 && bi.shape) {
+        bi.len = sz * bi.itemsize;
+        bi.shape[0] = sz;
+        return true;
+    }
+
+    return false;
+}
+
+//---------------------------------------------------------------------------
 template<typename T>
 static inline PyObject* CreateLowLevelViewT(
     T* address, CPyCppyy::cdims_t shape, const char* format = nullptr, const char* name = nullptr)
