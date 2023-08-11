@@ -80,6 +80,7 @@ public:
 
 // redefine pointer to object as fixed-size array
     void CastToArray(Py_ssize_t sz);
+    Py_ssize_t ArrayLength();
 
 private:
     void  CreateExtension();
