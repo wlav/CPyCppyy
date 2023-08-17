@@ -10,6 +10,7 @@ namespace PyStrings {
     extern PyObject* gAssign;
     extern PyObject* gBases;
     extern PyObject* gBase;
+    extern PyObject* gCppBool;
     extern PyObject* gCppName;
     extern PyObject* gAnnotations;
     extern PyObject* gCastCpp;
