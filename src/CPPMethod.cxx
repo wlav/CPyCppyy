@@ -676,15 +676,8 @@ int CPyCppyy::CPPMethod::GetArgMatchScore(PyObject* args_tuple)
 
         // Method is not compatible if even one argument does not match
         if (arg_score >= 10) {
-           std::string ref_type = req_type + "&";
-           std::string const_ref_type = "const " + req_type + "&";
-           std::string ptr_type = req_type + "*";
-           arg_score = std::min(Cppyy::CompareMethodArgType(fMethod, i, ptr_type), 
-           std::min(Cppyy::CompareMethodArgType(fMethod, i, ref_type), Cppyy::CompareMethodArgType(fMethod, i, const_ref_type)));
-                if (arg_score >= 10) {
-                    score = INT_MAX;
+          score = INT_MAX;
                     break;
-                }
         }
 
         score += arg_score;

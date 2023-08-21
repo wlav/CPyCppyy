@@ -210,6 +210,8 @@ namespace Cppyy {
     CPPYY_IMPORT
     TCppIndex_t CompareMethodArgType(TCppMethod_t, TCppIndex_t iarg, const std::string &req_type);
     CPPYY_IMPORT
+    TCppIndex_t GetArgScore(void *argqtp, void *reqqtp);
+    CPPYY_IMPORT
     std::string GetMethodArgDefault(TCppMethod_t, TCppIndex_t iarg);
     CPPYY_IMPORT
     std::string GetMethodSignature(TCppMethod_t, bool show_formalargs, TCppIndex_t maxargs = (TCppIndex_t)-1);
