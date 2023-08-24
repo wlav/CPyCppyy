@@ -115,9 +115,9 @@ namespace {
             gC2POperatorMapping["="]   = "__assign__";      // id.
 
 #if PY_VERSION_HEX < 0x03000000
-            gC2POperatorMapping["bool"] = "__nonzero__";
+            gC2POperatorMapping["bool"] = "__cpp_nonzero__";
 #else
-            gC2POperatorMapping["bool"] = "__bool__";
+            gC2POperatorMapping["bool"] = "__cpp_bool__";
 #endif
         }
     } initOperatorMapping_;

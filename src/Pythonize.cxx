@@ -202,6 +202,19 @@ PyObject* FollowGetAttr(PyObject* self, PyObject* name)
     return result;
 }
 
+//- pointer checking bool converter -------------------------------------------
+PyObject* NullCheckBool(PyObject* self)
+{
+    if (!CPPInstance_Check(self)) {
+        PyErr_SetString(PyExc_TypeError, "C++ object proxy expected");
+        return nullptr;
+    }
+
+    if (!((CPPInstance*)self)->GetObject())
+        Py_RETURN_FALSE;
+
+    return PyObject_CallMethodNoArgs(self, PyStrings::gCppBool);
+}
 
 //- vector behavior as primitives ----------------------------------------------
 #if PY_VERSION_HEX < 0x03040000
@@ -1588,6 +1601,10 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         Utility::AddToClass(pyclass, "__getattr__", (PyCFunction)DeRefGetAttr, METH_O);
     else if (HasAttrDirect(pyclass, PyStrings::gFollow) && !Cppyy::IsSmartPtr(klass->fCppType))
         Utility::AddToClass(pyclass, "__getattr__", (PyCFunction)FollowGetAttr, METH_O);
+
+// for pre-check of nullptr for boolean types
+    if (HasAttrDirect(pyclass, PyStrings::gCppBool))
+        Utility::AddToClass(pyclass, "__bool__", (PyCFunction)NullCheckBool, METH_NOARGS);
 
 // for STL containers, and user classes modeled after them
     if (HasAttrDirect(pyclass, PyStrings::gSize))
