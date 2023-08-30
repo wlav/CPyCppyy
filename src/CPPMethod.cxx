@@ -676,13 +676,11 @@ int CPyCppyy::CPPMethod::GetArgMatchScore(PyObject* args_tuple)
 
         // Method is not compatible if even one argument does not match
         if (arg_score >= 10) {
-          score = INT_MAX;
-                    break;
+            score = INT_MAX;
+            break;
         }
-
         score += arg_score;
     }
-
     return score;
 }
 
