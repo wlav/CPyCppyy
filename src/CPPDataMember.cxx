@@ -17,7 +17,6 @@
 #include <limits.h>
 #include <structmember.h>
 
-
 namespace CPyCppyy {
 
 enum ETypeDetails {
@@ -34,7 +33,7 @@ enum ETypeDetails {
 static PyObject* dm_get(CPPDataMember* dm, CPPInstance* pyobj, PyObject* /* kls */)
 {
 // cache lookup for low level views
-    if (dm->fFlags & kIsCachable) {
+    if (pyobj && dm->fFlags & kIsCachable) {
         CPyCppyy::CI_DatamemberCache_t& cache = pyobj->GetDatamemberCache();
         for (auto it = cache.begin(); it != cache.end(); ++it) {
             if (it->first == dm->fOffset) {
