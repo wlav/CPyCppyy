@@ -11,7 +11,11 @@
 PyObject* CPyCppyy::DispatchPtr::Get() const
 {
     if (fPyHardRef) return fPyHardRef;
-    if (fPyWeakRef) return PyWeakref_GetObject(fPyWeakRef);
+    if (fPyWeakRef) {
+        PyObject* disp = PyWeakref_GetObject(fPyWeakRef);
+        if (disp != Py_None)      // dispatcher object disappeared?
+            return disp;
+    }
     return nullptr;
 }
 
@@ -45,7 +49,7 @@ CPyCppyy::DispatchPtr::~DispatchPtr() {
 // continued access
     if (fPyWeakRef) {
         PyObject* pyobj = PyWeakref_GetObject(fPyWeakRef);
-        if (pyobj && ((CPPScope*)Py_TYPE(pyobj))->fFlags & CPPScope::kIsPython)
+        if (pyobj && pyobj != Py_None && ((CPPScope*)Py_TYPE(pyobj))->fFlags & CPPScope::kIsPython)
             ((CPPInstance*)pyobj)->GetObjectRaw() = nullptr;
         Py_DECREF(fPyWeakRef);
     } else if (fPyHardRef) {
@@ -83,6 +87,7 @@ void CPyCppyy::DispatchPtr::CppOwns()
 // C++ maintains the hardref, keeping the PyObject alive w/o outstanding ref
     if (fPyWeakRef) {
         fPyHardRef = PyWeakref_GetObject(fPyWeakRef);
+        if (fPyHardRef == Py_None) fPyHardRef = nullptr;
         Py_XINCREF(fPyHardRef);
         Py_DECREF(fPyWeakRef); fPyWeakRef = nullptr;
     }

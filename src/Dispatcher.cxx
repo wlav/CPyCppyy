@@ -34,7 +34,26 @@ static inline void InjectMethod(Cppyy::TCppMethod_t method, const std::string& m
     if (Cppyy::IsConstMethod(method)) code << "const ";
     code << "{\n";
 
-// start function body
+// on destruction, the Python object may go first, in which case provide a diagnostic
+// warning (raising a PyException may not be possible as this could happen during
+// program shutdown); note that this means that the actual result will be the default
+// and the caller may need to act on that, but that's still an improvement over a
+// possible crash
+    code << "    PyObject* iself = (PyObject*)_internal_self;\n"
+            "    if (!iself || iself == Py_None) {\n"
+            "      PyErr_Warn(PyExc_RuntimeWarning, (char*)\"Call attempted on deleted python-side proxy\");\n"
+            "      return";
+    if (retType != "void") {
+        if (retType.back() != '*')
+            code << " " << CPyCppyy::TypeManip::remove_const(retType) << "{}";
+        else
+            code << " nullptr";
+    }
+    code << ";\n"
+            "    }\n"
+            "    Py_INCREF(iself);\n";
+
+// start actual function body
     Utility::ConstructCallbackPreamble(retType, argtypes, code);
 
 // perform actual method call
@@ -43,10 +62,10 @@ static inline void InjectMethod(Cppyy::TCppMethod_t method, const std::string& m
 #else
     code << "    PyObject* mtPyName = PyUnicode_FromString(\"" << mtCppName << "\");\n"
 #endif
-            "    PyObject* pyresult = PyObject_CallMethodObjArgs((PyObject*)_internal_self, mtPyName";
+            "    PyObject* pyresult = PyObject_CallMethodObjArgs(iself, mtPyName";
     for (Cppyy::TCppIndex_t i = 0; i < nArgs; ++i)
         code << ", pyargs[" << i << "]";
-    code << ", NULL);\n    Py_DECREF(mtPyName);\n";
+    code << ", NULL);\n    Py_DECREF(mtPyName);\n    Py_DECREF(iself);\n";
 
 // close
     Utility::ConstructCallbackReturn(retType, nArgs, code);
@@ -218,9 +237,13 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
 // provided, but only when the Python object goes away)
     if (PyMapping_HasKeyString(dct, (char*)"__destruct__")) {
         code << "  virtual ~" << derivedName << "() {\n"
+                "    PyObject* iself = (PyObject*)_internal_self;\n"
+                "    if (!iself || iself == Py_None)\n"
+                "      return;\n"      // safe, as destructor always returns void
+                "    Py_INCREF(iself);\n"
                 "    PyObject* mtPyName = PyUnicode_FromString(\"__destruct__\");\n"
-                "    PyObject* pyresult = PyObject_CallMethodObjArgs((PyObject*)_internal_self, mtPyName, NULL);\n"
-                "    Py_DECREF(mtPyName);\n";
+                "    PyObject* pyresult = PyObject_CallMethodObjArgs(iself, mtPyName, NULL);\n"
+                "    Py_DECREF(mtPyName);\n    Py_DECREF(iself);\n";
 
     // this being a destructor, print on exception rather than propagate using the
     // magic C++ exception ...
