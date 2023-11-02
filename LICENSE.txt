@@ -52,6 +52,7 @@ source code):
   Torok Attila
   Simone Bacchio
   Niko Fink
+  Aaron Jomy
   Mac Kolin
   Baidyanath Kundu
   Toby StClere-Smithe
