@@ -1155,11 +1155,11 @@ PyObject* CPyCppyy::CPPOverload::FindOverload(const std::string& signature, int 
 PyObject* CPyCppyy::CPPOverload::FindOverload(PyObject *args_tuple, int want_const)
 {
     Py_ssize_t n = PyTuple_Size(args_tuple);
-    
+
     CPPOverload::Methods_t& methods = fMethodInfo->fMethods;
 
     // This value is set based on the maximum penalty in Cppyy::CompareMethodArgType
-    Py_ssize_t min_score = INT_MAX; 
+    Py_ssize_t min_score = INT_MAX;
     bool found = false;
     size_t best_method = 0, method_index = 0;
 
@@ -1198,7 +1198,7 @@ PyObject* CPyCppyy::CPPOverload::FindOverload(PyObject *args_tuple, int want_con
         PyErr_Format(PyExc_LookupError, "signature with arguments \"%s\" not found", sigargs.c_str());
         return (PyObject*) nullptr;
     }
-        
+
     CPPOverload* newmeth = mp_new(nullptr, nullptr, nullptr);
     CPPOverload::Methods_t vec;
     vec.push_back(methods[best_method]->Clone());
@@ -1209,7 +1209,7 @@ PyObject* CPyCppyy::CPPOverload::FindOverload(PyObject *args_tuple, int want_con
         newmeth->fSelf = fSelf;
     }
     newmeth->fMethodInfo->fFlags = fMethodInfo->fFlags;
-        
+
     return (PyObject*) newmeth;
 }
 

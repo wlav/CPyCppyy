@@ -1044,7 +1044,11 @@ PyTypeObject CPPInstance_Type = {
     0,                             // tp_as_buffer
     Py_TPFLAGS_DEFAULT |
         Py_TPFLAGS_BASETYPE |
-        Py_TPFLAGS_CHECKTYPES,     // tp_flags
+        Py_TPFLAGS_CHECKTYPES
+#if PY_VERSION_HEX >= 0x03120000
+        | Py_TPFLAGS_MANAGED_DICT | Py_TPFLAGS_HAVE_GC | Py_TPFLAGS_MANAGED_WEAKREF
+#endif
+        ,                          // tp_flags
     (char*)"cppyy object proxy (internal)", // tp_doc
     0,                             // tp_traverse
     (inquiry)op_clear,             // tp_clear
