@@ -479,7 +479,7 @@ static PyObject* ll_subscript(CPyCppyy::LowLevelView* self, PyObject* key)
             char* buf = (char*)self->get_buf();
             char* slice_buf = new char[slicelen*view.itemsize];
             size_t isize = view.itemsize;
-            for (size_t i=0, cur=0; i < slicelen; cur += step, ++i) {
+            for (size_t i=0, cur=0; i < (size_t)slicelen; cur += step, ++i) {
                 for (size_t j=0; j < isize; ++j)
                     slice_buf[i*isize+j] = buf[(start+cur)*isize + j];
             }
