@@ -17,7 +17,7 @@
 // TODO: this will break functionality
 #define CustomInstanceMethod_GET_CLASS(meth) Py_None
 #else
-#define CustomInstanceMethod_GET_CLASS(meth) CustomInstanceMethod_GET_CLASS(meth)
+#define CustomInstanceMethod_GET_CLASS(meth) PyMethod_GET_CLASS(meth)
 #endif
 
 namespace CPyCppyy {
