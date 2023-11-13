@@ -234,7 +234,8 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
 
 // add a virtual destructor for good measure, which is allowed to be "overridden" by
 // the conventional __destruct__ method (note that __del__ is always called, too, if
-// provided, but only when the Python object goes away)
+// provided, but only when the Python object goes away; furthermore, if the Python
+// object goes before the C++ one, only __del__ is called)
     if (PyMapping_HasKeyString(dct, (char*)"__destruct__")) {
         code << "  virtual ~" << derivedName << "() {\n"
                 "    PyObject* iself = (PyObject*)_internal_self;\n"
@@ -247,8 +248,8 @@ bool CPyCppyy::InsertDispatcher(CPPScope* klass, PyObject* bases, PyObject* dct,
 
     // this being a destructor, print on exception rather than propagate using the
     // magic C++ exception ...
-        code << "    if (!pyresult) PyErr_Print();\n"
-                "    else { Py_DECREF(pyresult); }\n"
+        code << "      if (!pyresult) PyErr_Print();\n"
+                "      else { Py_DECREF(pyresult); }\n"
                 "  }\n";
     } else
         code << "  virtual ~" << derivedName << "() {}\n";

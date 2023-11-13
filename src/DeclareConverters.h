@@ -223,6 +223,9 @@ CPPYY_DECLARE_ARRAY_CONVERTER(ComplexD);
 
 class CStringArrayConverter : public SCharArrayConverter {
 public:
+    CStringArrayConverter(cdims_t dims, bool fixed) : SCharArrayConverter(dims) {
+        fIsFixed = fixed;    // overrides SCharArrayConverter decision
+    }
     using SCharArrayConverter::SCharArrayConverter;
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
     virtual PyObject* FromMemory(void* address);

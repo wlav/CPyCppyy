@@ -31,6 +31,9 @@ public:
     Converter*  fConverter;
     Converter*  fElemCnv;
 
+    typedef LowLevelView* (*Creator_t)(void*, cdims_t);
+    Creator_t   fCreator;    // for slicing, which requires copying
+
 public:
     void* get_buf() { return fBuf ? *fBuf : fBufInfo.buf; }
     void  set_buf(void** buf) { fBuf = buf; fBufInfo.buf = get_buf(); }
@@ -69,8 +72,8 @@ CPPYY_DECL_VIEW_CREATOR(std::complex<double>);
 CPPYY_DECL_VIEW_CREATOR(std::complex<int>);
 CPPYY_DECL_VIEW_CREATOR(std::complex<long>);
 
-PyObject* CreateLowLevelView(char**, cdims_t shape = 0);
-PyObject* CreateLowLevelView(const char**, cdims_t shape = 0);
+PyObject* CreateLowLevelViewString(char**, cdims_t shape);
+PyObject* CreateLowLevelViewString(const char**, cdims_t shape);
 
 inline PyObject* CreatePointerView(void* ptr, cdims_t shape = 0) {
     return CreateLowLevelView((uintptr_t*)ptr, shape);
