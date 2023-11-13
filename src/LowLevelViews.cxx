@@ -1026,7 +1026,7 @@ bool CPyCppyy::LowLevelView::resize(size_t sz)
 //---------------------------------------------------------------------------
 template<typename T>
 static inline CPyCppyy::LowLevelView* CreateLowLevelViewT(
-    T* address, CPyCppyy::cdims_t shape, const char* format = nullptr, const char* name = nullptr, ssize_t itemsize = -1)
+    T* address, CPyCppyy::cdims_t shape, const char* format = nullptr, const char* name = nullptr, Py_ssize_t itemsize = -1)
 {
     using namespace CPyCppyy;
     Py_ssize_t nx = (shape.ndim() != UNKNOWN_SIZE) ? shape[0] : INT_MAX/sizeof(T);
