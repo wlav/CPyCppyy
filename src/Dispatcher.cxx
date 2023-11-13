@@ -68,7 +68,7 @@ static inline void InjectMethod(Cppyy::TCppMethod_t method, const std::string& m
     code << ", NULL);\n    Py_DECREF(mtPyName);\n    Py_DECREF(iself);\n";
 
 // close
-    Utility::ConstructCallbackReturn(retType, nArgs, code);
+    Utility::ConstructCallbackReturn(retType, (int)nArgs, code);
 }
 
 //----------------------------------------------------------------------------
