@@ -1603,8 +1603,14 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         Utility::AddToClass(pyclass, "__getattr__", (PyCFunction)FollowGetAttr, METH_O);
 
 // for pre-check of nullptr for boolean types
-    if (HasAttrDirect(pyclass, PyStrings::gCppBool))
-        Utility::AddToClass(pyclass, "__bool__", (PyCFunction)NullCheckBool, METH_NOARGS);
+    if (HasAttrDirect(pyclass, PyStrings::gCppBool)) {
+#if PY_VERSION_HEX >= 0x03000000
+        const char* pybool_name = "__bool__";
+#else
+        const char* pybool_name = "__nonzero__";
+#endif
+        Utility::AddToClass(pyclass, pybool_name, (PyCFunction)NullCheckBool, METH_NOARGS);
+    }
 
 // for STL containers, and user classes modeled after them
     if (HasAttrDirect(pyclass, PyStrings::gSize))
