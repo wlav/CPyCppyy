@@ -558,7 +558,7 @@ CPPYY_IMPL_BASIC_CONVERTER_METHODS(name, type, stype, ctype, F1, F2)
 
 #define CPPYY_IMPL_BASIC_CONVERTER_NB(name, type, stype, ctype, F1, F2, tc)  \
 bool CPyCppyy::name##Converter::SetArg(                                      \
-    PyObject* pyobject, Parameter& para, CallContext* ctxt)                  \
+    PyObject* pyobject, Parameter& para, CallContext* /*ctxt*/)              \
 {                                                                            \
     if (PyBool_Check(pyobject))                                              \
         return false;                                                        \

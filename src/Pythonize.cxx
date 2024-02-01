@@ -1250,7 +1250,7 @@ PyObject* STLStringContains(CPPInstance* self, PyObject* pyobj)
     Py_RETURN_FALSE;
 }
 
-PyObject* STLStringReplace(CPPInstance* self, PyObject* args, PyObject* kwds)
+PyObject* STLStringReplace(CPPInstance* self, PyObject* args, PyObject* /*kwds*/)
 {
     std::string* obj = GetSTLString(self);
     if (!obj)
@@ -1281,7 +1281,7 @@ PyObject* STLStringReplace(CPPInstance* self, PyObject* args, PyObject* kwds)
 }
 
 #define CPYCPPYY_STRING_FINDMETHOD(name, cppname, pyname)                    \
-PyObject* STLString##name(CPPInstance* self, PyObject* args, PyObject* kwds) \
+PyObject* STLString##name(CPPInstance* self, PyObject* args, PyObject* /*kwds*/) \
 {                                                                            \
     std::string* obj = GetSTLString(self);                                   \
     if (!obj)                                                                \
