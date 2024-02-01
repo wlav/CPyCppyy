@@ -93,7 +93,7 @@ class Dimensions {      // Windows note: NOT exported/imported
     dim_t* fDims;
 
 public:
-    Dimensions(dim_t ndim = 0, dim_t* dims = nullptr) : fDims(nullptr) {}
+    Dimensions(dim_t /*ndim*/ = 0, dim_t* /*dims*/ = nullptr) : fDims(nullptr) {}
     ~Dimensions() { delete [] fDims; }
 
 public:
