@@ -811,7 +811,7 @@ static PyObject* tpp_overload(TemplateProxy* pytmpl, PyObject* args)
         if (ol) return ol;
 
         proto = Utility::ConstructTemplateArgs(nullptr, args);
-        
+
         scope = ((CPPClass*)pytmpl->fTI->fPyClass)->fCppType;
         cppmeth = Cppyy::GetMethodTemplate(
             scope, pytmpl->fTI->fCppName, proto.substr(1, proto.size()-2));
@@ -855,8 +855,6 @@ static PyObject* tpp_overload(TemplateProxy* pytmpl, PyObject* args)
 // else attempt instantiation
     PyObject* pytype = 0, *pyvalue = 0, *pytrace = 0;
     PyErr_Fetch(&pytype, &pyvalue, &pytrace);
-
-    
 
     if (!cppmeth) {
         PyErr_Restore(pytype, pyvalue, pytrace);
