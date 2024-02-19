@@ -1833,8 +1833,8 @@ CPyCppyy::name##Converter::name##Converter(bool keepControl) :               \
 bool CPyCppyy::name##Converter::SetArg(                                      \
     PyObject* pyobject, Parameter& para, CallContext* ctxt)                  \
 {                                                                            \
-    if (CPyCppyy_PyUnicodeAsBytes2Buffer(pyobject, fBuffer)) {               \
-        para.fValue.fVoidp = &fBuffer;                                       \
+    if (CPyCppyy_PyUnicodeAsBytes2Buffer(pyobject, fStringBuffer)) {         \
+        para.fValue.fVoidp = &fStringBuffer;                                 \
         para.fTypeCode = 'V';                                                \
         return true;                                                         \
     }                                                                        \
@@ -1871,8 +1871,14 @@ CPPYY_IMPL_STRING_AS_PRIMITIVE_CONVERTER(STLStringViewBase, std::string_view, da
 bool CPyCppyy::STLStringViewConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* ctxt)
 {
-    if (this->STLStringViewBaseConverter::SetArg(pyobject, para, ctxt))
+    if (this->STLStringViewBaseConverter::SetArg(pyobject, para, ctxt)) {
+        // One extra step compared to the regular std::string converter:
+        // Create a corresponding std::string_view and set the parameter value
+        // accordingly.
+        fStringView = *reinterpret_cast<std::string*>(para.fValue.fVoidp);
+        para.fValue.fVoidp = &fStringView;
         return true;
+    }
 
     if (!CPPInstance_Check(pyobject))
         return false;
@@ -1884,13 +1890,27 @@ bool CPyCppyy::STLStringViewConverter::SetArg(
         if (!ptr)
             return false;
 
-        fBuffer = *((std::string*)ptr);
-        para.fValue.fVoidp = &fBuffer;
+        // Copy the string to ensure the lifetime of the string_view and the
+        // underlying string is identical.
+        fStringBuffer = *((std::string*)ptr);
+        // Create the string_view on the copy
+        fStringView = fStringBuffer;
+        para.fValue.fVoidp = &fStringView;
         para.fTypeCode = 'V';
         return true;
     }
 
     return false;
+}
+bool CPyCppyy::STLStringViewConverter::ToMemory(
+    PyObject* value, void* address, PyObject* ctxt)
+{
+    if (CPyCppyy_PyUnicodeAsBytes2Buffer(value, fStringBuffer)) {
+        fStringView = fStringBuffer;
+        *reinterpret_cast<std::string_view*>(address) = fStringView;
+        return true;
+    }
+    return InstanceConverter::ToMemory(value, address, ctxt);
 }
 #endif
 
@@ -1902,9 +1922,9 @@ bool CPyCppyy::STLWStringConverter::SetArg(
 {
     if (PyUnicode_Check(pyobject)) {
         Py_ssize_t len = CPyCppyy_PyUnicode_GET_SIZE(pyobject);
-        fBuffer.resize(len);
-        CPyCppyy_PyUnicode_AsWideChar(pyobject, &fBuffer[0], len);
-        para.fValue.fVoidp = &fBuffer;
+        fStringBuffer.resize(len);
+        CPyCppyy_PyUnicode_AsWideChar(pyobject, &fStringBuffer[0], len);
+        para.fValue.fVoidp = &fStringBuffer;
         para.fTypeCode = 'V';
         return true;
     }
