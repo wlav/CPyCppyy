@@ -449,9 +449,7 @@ protected:
 // initializer lists
 class InitializerListConverter : public InstanceConverter {
 public:
-    InitializerListConverter(Cppyy::TCppType_t klass,
-            Converter* cnv, Cppyy::TCppType_t valuetype, size_t sz) : InstanceConverter(klass),
-        fBuffer(nullptr), fConverter(cnv), fValueType(valuetype), fValueSize(sz) {}
+    InitializerListConverter(Cppyy::TCppType_t klass, std::string const& value_type);
     InitializerListConverter(const InitializerListConverter&) = delete;
     InitializerListConverter& operator=(const InitializerListConverter&) = delete;
     virtual ~InitializerListConverter();
@@ -464,8 +462,9 @@ protected:
     void Clear();
 
 protected:
-    void*             fBuffer;
-    Converter*        fConverter;
+    void*             fBuffer = nullptr;
+    std::vector<Converter*> fConverters;
+    std::string       fValueTypeName;
     Cppyy::TCppType_t fValueType;
     size_t            fValueSize;
 };
