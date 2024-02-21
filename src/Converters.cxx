@@ -2913,6 +2913,12 @@ bool CPyCppyy::InitializerListConverter::SetArg(
         fake->_Last = fake->_M_array+buflen*fValueSize;
 #endif
     } else if (fValueSize) {
+    // Remove any errors set by GetBuffer(); note that if the argument was an array
+    // that failed to extract because of a type mismatch, the following will perform
+    // a (rather inefficient) copy. No warning is issued b/c e.g. numpy doesn't do
+    // so either.
+        PyErr_Clear();
+
     // can only construct empty lists, so use a fake initializer list
         size_t len = (size_t)PySequence_Size(pyobject);
         fake = (faux_initlist*)malloc(sizeof(faux_initlist)+fValueSize*len);

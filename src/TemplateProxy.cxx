@@ -654,13 +654,13 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
     result = SelectAndForward(pytmpl, pytmpl->fTI->fNonTemplated, args, nargsf, kwds,
         true /* implicitOkay */, false /* use_targs */, sighash, errors);
     if (result)
-        return result;
+        TPPCALL_RETURN;
 
 // case 3: select known template overload
     result = SelectAndForward(pytmpl, pytmpl->fTI->fTemplated, args, nargsf, kwds,
         false /* implicitOkay */, true /* use_targs */, sighash, errors);
     if (result)
-        return result;
+        TPPCALL_RETURN;
 
 // case 4: auto-instantiation from types of arguments
     for (auto pref : {Utility::kReference, Utility::kPointer, Utility::kValue}) {
@@ -681,7 +681,7 @@ static PyObject* tpp_call(TemplateProxy* pytmpl, PyObject* args, PyObject* kwds)
     result = SelectAndForward(pytmpl, pytmpl->fTI->fLowPriority, args, nargsf, kwds,
         false /* implicitOkay */, false /* use_targs */, sighash, errors);
     if (result)
-        return result;
+        TPPCALL_RETURN;
 
 // error reporting is fraud, given the numerous steps taken, but more details seems better
     if (!errors.empty()) {
