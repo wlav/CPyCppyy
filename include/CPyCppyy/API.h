@@ -25,7 +25,7 @@
 #endif
 #include "Python.h"
 
-#define CPYCPPYY_VERSION_HEX 0x011200
+#define CPYCPPYY_VERSION_HEX 0x010c10
 
 // Cppyy types
 namespace Cppyy {
