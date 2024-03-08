@@ -351,21 +351,26 @@ CPPYY_DECLARE_BASIC_CONVERTER(PyObject);
 class name##Converter : public InstanceConverter {                           \
 public:                                                                      \
     name##Converter(bool keepControl = true);                                \
-public:                                                                      \
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);      \
     virtual PyObject* FromMemory(void* address);                             \
     virtual bool ToMemory(PyObject*, void*, PyObject* = nullptr);            \
     virtual bool HasState() { return true; }                                 \
 protected:                                                                   \
-    strtype fBuffer;                                                         \
+    strtype fStringBuffer;                                                   \
 }
 
 CPPYY_DECLARE_STRING_CONVERTER(STLString, std::string);
 #if __cplusplus > 201402L
-CPPYY_DECLARE_STRING_CONVERTER(STLStringViewBase, std::string_view);
+// The buffer type needs to be std::string also in the string_view case,
+// otherwise the pointed-to string might not live long enough. See also:
+// https://github.com/wlav/CPyCppyy/issues/13
+CPPYY_DECLARE_STRING_CONVERTER(STLStringViewBase, std::string);
 class STLStringViewConverter : public STLStringViewBaseConverter {
 public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
+    virtual bool ToMemory(PyObject*, void*, PyObject* = nullptr);
+private:
+    std::string_view fStringView;
 };
 #endif
 CPPYY_DECLARE_STRING_CONVERTER(STLWString, std::wstring);
@@ -444,9 +449,7 @@ protected:
 // initializer lists
 class InitializerListConverter : public InstanceConverter {
 public:
-    InitializerListConverter(Cppyy::TCppType_t klass,
-            Converter* cnv, Cppyy::TCppType_t valuetype, size_t sz) : InstanceConverter(klass),
-        fBuffer(nullptr), fConverter(cnv), fValueType(valuetype), fValueSize(sz) {}
+    InitializerListConverter(Cppyy::TCppType_t klass, std::string const& value_type);
     InitializerListConverter(const InitializerListConverter&) = delete;
     InitializerListConverter& operator=(const InitializerListConverter&) = delete;
     virtual ~InitializerListConverter();
@@ -459,8 +462,9 @@ protected:
     void Clear();
 
 protected:
-    void*             fBuffer;
-    Converter*        fConverter;
+    void*             fBuffer = nullptr;
+    std::vector<Converter*> fConverters;
+    std::string       fValueTypeName;
     Cppyy::TCppType_t fValueType;
     size_t            fValueSize;
 };

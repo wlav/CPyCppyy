@@ -17,6 +17,13 @@ class CPYCPPYY_CLASS_EXPORT Converter {
 public:
     virtual ~Converter();
 
+    Converter() = default;
+
+    Converter(Converter const& other) = delete;
+    Converter(Converter && other) = delete;
+    Converter& operator=(Converter const& other) = delete;
+    Converter& operator=(Converter && other) = delete;
+
 public:
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) = 0;
     virtual PyObject* FromMemory(void* address);
