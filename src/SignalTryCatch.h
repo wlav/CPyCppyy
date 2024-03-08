@@ -18,7 +18,13 @@
 #define NEED_SIGJMP 1
 #endif
 
+// By default, the ExceptionContext_t class is expected in the namespace
+// CppyyLegacy, If it is expected in no namespace, one can explicitly define
+// NO_CPPYY_LEGACY_NAMESPACE at build time (e.g. if one wants to use ROOT).
+
+#ifndef NO_CPPYY_LEGACY_NAMESPACE
 namespace CppyyLegacy {
+#endif
 struct ExceptionContext_t {
 #ifdef NEED_SIGJMP
     sigjmp_buf fBuf;
@@ -26,7 +32,13 @@ struct ExceptionContext_t {
     jmp_buf fBuf;
 #endif
 };
+#ifndef NO_CPPYY_LEGACY_NAMESPACE
 }
+
+using CppyyExceptionContext_t = CppyyLegacy::ExceptionContext_t;
+#else
+using CppyyExceptionContext_t = ExceptionContext_t;
+#endif
 
 #ifdef NEED_SIGJMP
 # define CLING_EXCEPTION_SETJMP(buf) sigsetjmp(buf,1)
@@ -36,14 +48,14 @@ struct ExceptionContext_t {
 
 #define CLING_EXCEPTION_RETRY \
     { \
-        static CppyyLegacy::ExceptionContext_t R__curr, *R__old = gException; \
+        static CppyyExceptionContext_t R__curr, *R__old = gException; \
         int R__code; \
         gException = &R__curr; \
         R__code = CLING_EXCEPTION_SETJMP(gException->fBuf); if (R__code) { }; {
 
 #define CLING_EXCEPTION_TRY \
     { \
-        static CppyyLegacy::ExceptionContext_t R__curr, *R__old = gException; \
+        static CppyyExceptionContext_t R__curr, *R__old = gException; \
         int R__code; \
         gException = &R__curr; \
         if ((R__code = CLING_EXCEPTION_SETJMP(gException->fBuf)) == 0) {
@@ -59,6 +71,6 @@ struct ExceptionContext_t {
         gException = R__old; \
     }
 
-CPYCPPYY_IMPORT CppyyLegacy::ExceptionContext_t *gException;
+CPYCPPYY_IMPORT CppyyExceptionContext_t *gException;
 
 #endif
