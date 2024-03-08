@@ -825,9 +825,9 @@ Py_ssize_t CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, v
         memset(&bufinfo, 0, sizeof(Py_buffer));
         if (PyObject_GetBuffer(pyobject, &bufinfo, PyBUF_FORMAT) == 0) {
             if (tc == '*' || strchr(bufinfo.format, tc)
-            // if `long int` and `int` are the same size (on 32-bit Windows and
-            // some Linux), `ctypes` isn't too picky about the type format,
-            // which doesn't matter because of the same size anyway
+            // if `long int` and `int` are the same size (on Windows and 32bit Linux,
+            // for example), `ctypes` isn't too picky about the type format, so make
+            // sure both integer types pass the type check
                 || (sizeof(long int) == sizeof(int) && ((tc == 'I' && strchr(bufinfo.format, 'L')) ||
                                                         (tc == 'i' && strchr(bufinfo.format, 'l'))))
             // complex float is 'Zf' in bufinfo.format, but 'z' in single char
