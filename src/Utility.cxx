@@ -825,10 +825,11 @@ Py_ssize_t CPyCppyy::Utility::GetBuffer(PyObject* pyobject, char tc, int size, v
         memset(&bufinfo, 0, sizeof(Py_buffer));
         if (PyObject_GetBuffer(pyobject, &bufinfo, PyBUF_FORMAT) == 0) {
             if (tc == '*' || strchr(bufinfo.format, tc)
-#ifdef _WIN32
-            // ctypes is inconsistent in format on Windows; either way these types are the same size
-                || (tc == 'I' && strchr(bufinfo.format, 'L')) || (tc == 'i' && strchr(bufinfo.format, 'l'))
-#endif
+            // if `long int` and `int` are the same size (on 32-bit Windows and
+            // some Linux), `ctypes` isn't too picky about the type format,
+            // which doesn't matter because of the same size anyway
+                || (sizeof(long int) == sizeof(int) && ((tc == 'I' && strchr(bufinfo.format, 'L')) ||
+                                                        (tc == 'i' && strchr(bufinfo.format, 'l'))))
             // complex float is 'Zf' in bufinfo.format, but 'z' in single char
                 || (tc == 'z' && strstr(bufinfo.format, "Zf"))
             // allow 'signed char' ('b') from array to pass through '?' (bool as from struct)
