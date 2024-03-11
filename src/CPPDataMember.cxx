@@ -216,7 +216,7 @@ static void dm_dealloc(CPPDataMember* dm)
 static PyMemberDef dm_members[] = {
         {(char*)"__doc__", T_OBJECT, offsetof(CPPDataMember, fDoc), 0,
                 (char*)"writable documentation"},
-        {NULL}  /* Sentinel */
+        {NULL, 0, 0, 0, nullptr}  /* Sentinel */
 };
 
 //= CPyCppyy datamember proxy access to internals ============================
@@ -303,6 +303,9 @@ PyTypeObject CPPDataMember_Type = {
 #endif
 #if PY_VERSION_HEX >= 0x03040000
     , 0                            // tp_finalize
+#endif
+#if PY_VERSION_HEX >= 0x03080000
+    , 0                           // tp_vectorcall
 #endif
 };
 

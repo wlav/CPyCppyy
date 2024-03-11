@@ -99,7 +99,7 @@ CPyCppyy::MemoryRegulator::MemoryRegulator()
 bool CPyCppyy::MemoryRegulator::RecursiveRemove(
     Cppyy::TCppObject_t cppobj, Cppyy::TCppType_t klass)
 {
-// if registerd by the framework, called whenever a cppobj gets destroyed
+// if registered by the framework, called whenever a cppobj gets destroyed
     if (!cppobj)
         return false;
 

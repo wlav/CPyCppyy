@@ -579,7 +579,7 @@ PyObject* CPyCppyy::CreateScopeProxy(const std::string& name, PyObject* parent, 
     }
 
     if (!(bool)klass) {
-    // could be an enum, which are treated seperately in CPPScope (TODO: maybe they
+    // could be an enum, which are treated separately in CPPScope (TODO: maybe they
     // should be handled here instead anyway??)
         if (Cppyy::IsEnum(lookup))
             return nullptr;

@@ -1234,7 +1234,7 @@ bool CPyCppyy::CStringConverter::SetArg(
     // use internal buffer as workaround
         fBuffer = std::string(cstr, len);
         if (fMaxSize != std::string::npos)
-            fBuffer.resize(fMaxSize, '\0');      // padd remainder of buffer as needed
+            fBuffer.resize(fMaxSize, '\0');      // pad remainder of buffer as needed
         cstr = fBuffer.c_str();
     } else
         SetLifeLine(ctxt->fPyContext, pyobject, (intptr_t)this);
@@ -1297,7 +1297,7 @@ bool CPyCppyy::CStringConverter::ToMemory(PyObject* value, void* address, PyObje
 
 // the pointer value is non-zero and not ours: assume byte copy
     if (fMaxSize != std::string::npos)
-        strncpy(*(char**)address, cstr, fMaxSize);    // padds remainder
+        strncpy(*(char**)address, cstr, fMaxSize);    // pads remainder
     else
     // coverity[secure_coding] - can't help it, it's intentional.
         strcpy(*(char**)address, cstr);
@@ -2512,7 +2512,7 @@ static PyObject* WrapperCacheEraser(PyObject*, PyObject* pyref)
     Py_RETURN_NONE;
 }
 static PyMethodDef gWrapperCacheEraserMethodDef = {
-    const_cast<char*>("interal_WrapperCacheEraser"),
+    const_cast<char*>("internal_WrapperCacheEraser"),
     (PyCFunction)WrapperCacheEraser,
     METH_O, nullptr
 };
@@ -2612,7 +2612,7 @@ static void* PyFunction_AsCPointer(PyObject* pyobject,
         // start function body
             Utility::ConstructCallbackPreamble(rettype, argtypes, code);
 
-        // create a referencable pointer
+        // create a referenceable pointer
             PyObject** ref = new PyObject*{pyobject};
 
         // function call itself and cleanup

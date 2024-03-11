@@ -66,7 +66,7 @@ static bool Initialize()
     // try again to see if the interpreter is initialized
         if (!Py_IsInitialized()) {
         // give up ...
-            std::cerr << "Error: python has not been intialized; returning." << std::endl;
+            std::cerr << "Error: python has not been initialized; returning." << std::endl;
             return false;
         }
 
@@ -315,7 +315,7 @@ void CPyCppyy::ExecScript(const std::string& name, const std::vector<std::string
         oldargv = l;
     }
 
-// create and set (add progam name) the new command line
+// create and set (add program name) the new command line
 #if PY_VERSION_HEX < 0x03000000
     int argc = args.size() + 1;
     const char** argv = new const char*[argc];
@@ -386,7 +386,7 @@ const CPyCppyy::PyResult CPyCppyy::Eval(const std::string& expr)
         return PyResult();
     }
 
-// results that require no convserion
+// results that require no conversion
     if (result == Py_None || CPPInstance_Check(result) ||
             PyBytes_Check(result) ||
             PyFloat_Check(result) || PyLong_Check(result) || PyInt_Check(result))

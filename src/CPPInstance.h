@@ -75,7 +75,7 @@ public:
     void* GetSmartObject() { return GetObjectRaw(); }
     Cppyy::TCppType_t GetSmartIsA() const;
 
-// cross-inheritence dispatch
+// cross-inheritance dispatch
     void SetDispatchPtr(void*);
 
 // redefine pointer to object as fixed-size array

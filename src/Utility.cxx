@@ -599,7 +599,7 @@ std::string CPyCppyy::Utility::ConstructTemplateArgs(
         PyObject* tn = justOne ? tpArgs : PyTuple_GET_ITEM(tpArgs, i);
         if (CPyCppyy_PyText_Check(tn)) {
             tmpl_name.append(CPyCppyy_PyText_AsString(tn));
-    // some commmon numeric types (separated out for performance: checking for
+    // some common numeric types (separated out for performance: checking for
     // __cpp_name__ and/or __name__ is rather expensive)
         } else {
             if (!AddTypeName(tmpl_name, tn, (args ? PyTuple_GET_ITEM(args, i) : nullptr), pref, pcnt)) {

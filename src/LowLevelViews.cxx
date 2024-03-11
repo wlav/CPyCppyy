@@ -247,14 +247,14 @@ static char* lookup_dimension(Py_buffer& view, char* ptr, int dim, Py_ssize_t in
             index += nitems;
         else {
             PyErr_Format(PyExc_IndexError,
-                "negative index not supporte on dimension %d with unknown size", dim + 1);
+                "negative index not supported on dimension %d with unknown size", dim + 1);
             return nullptr;
         }
     }
 
     if (view.strides[dim] == CPyCppyy::UNKNOWN_SIZE) {
         PyErr_Format(PyExc_IndexError,
-            "multi index not supporte on dimension %d with unknown stride", dim + 1);
+            "multi index not supported on dimension %d with unknown stride", dim + 1);
         return nullptr;
     }
 
@@ -952,6 +952,9 @@ PyTypeObject LowLevelView_Type = {
 #endif
 #if PY_VERSION_HEX >= 0x03040000
     , 0                            // tp_finalize
+#endif
+#if PY_VERSION_HEX >= 0x03080000
+    , 0                            // tp_vectorcall
 #endif
 };
 

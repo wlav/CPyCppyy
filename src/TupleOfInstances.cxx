@@ -114,6 +114,9 @@ PyTypeObject InstanceArrayIter_Type = {
 #if PY_VERSION_HEX >= 0x03040000
     , 0                           // tp_finalize
 #endif
+#if PY_VERSION_HEX >= 0x03080000
+    , 0                           // tp_vectorcall
+#endif
 };
 
 
@@ -241,6 +244,9 @@ PyTypeObject TupleOfInstances_Type = {
 #endif
 #if PY_VERSION_HEX >= 0x03040000
     , 0                            // tp_finalize
+#endif
+#if PY_VERSION_HEX >= 0x03080000
+    , 0                           // tp_vectorcall
 #endif
 };
 
