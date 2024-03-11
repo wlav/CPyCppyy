@@ -827,7 +827,7 @@ static CPPOverload* mp_descr_get(CPPOverload* pymeth, CPPInstance* pyobj, PyObje
     }
 
 // vector calls don't get here, unless a method is looked up on an instance, for
-// e.g. class mathods (C++ static); notify downstream to expect a 'self'
+// e.g. class methods (C++ static); notify downstream to expect a 'self'
     newPyMeth->fFlags |= CallContext::kFromDescr;
 
 #else

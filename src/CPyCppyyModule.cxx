@@ -212,7 +212,7 @@ PyObject _CPyCppyy_DefaultStruct = {
     1, &PyDefault_t_Type
 };
 
-// TOOD: refactor with Converters.cxx
+// TODO: refactor with Converters.cxx
 struct CPyCppyy_tagCDataObject {       // non-public (but stable)
     PyObject_HEAD
     char* b_ptr;
@@ -483,7 +483,7 @@ static void* GetCPPInstanceAddress(const char* fname, PyObject* args, PyObject* 
             return &((CPPInstance*)pyobj)->GetObjectRaw();
 
         } else if (CPyCppyy_PyText_Check(pyobj)) {
-        // special cases for acces to the CPyCppyy API
+        // special cases for access to the CPyCppyy API
             std::string req = CPyCppyy_PyText_AsString((PyObject*)pyobj);
             if (req == "Instance_AsVoidPtr")
                 return (void*)&Instance_AsVoidPtr;
@@ -1060,7 +1060,7 @@ extern "C" void initlibcppyy()
 #endif
 
 #if PY_VERSION_HEX < 0x030b0000
-// prepare for lazyness (the insert is needed to capture the most generic lookup
+// prepare for laziness (the insert is needed to capture the most generic lookup
 // function, just in case ...)
     PyObject* dict = PyDict_New();
     PyObject* notstring = PyInt_FromLong(5);

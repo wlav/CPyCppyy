@@ -824,7 +824,7 @@ static PyObject* MapFromPairs(PyObject* self, PyObject* pairs)
 PyObject* MapInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 {
 // Specialized map constructor to allow construction from mapping containers and
-// from tuples of pairs ("intializer_list style").
+// from tuples of pairs ("initializer_list style").
 
 // PyMapping_Check is not very discriminatory, as it basically only checks for the
 // existence of  __getitem__, hence the most common cases of tuple and list are
@@ -1026,7 +1026,7 @@ PyObject* CheckedGetItem(PyObject* self, PyObject* obj)
 {
 // Implement a generic python __getitem__ for STL-like classes that are missing the
 // reflection info for their iterators. This is then used for iteration by means of
-// consecutive indeces, it such index is of integer type.
+// consecutive indices, it such index is of integer type.
     Py_ssize_t size = PySequence_Size(self);
     Py_ssize_t idx  = PyInt_AsSsize_t(obj);
     if ((size == (Py_ssize_t)-1 || idx == (Py_ssize_t)-1) && PyErr_Occurred()) {
@@ -1653,7 +1653,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         // Python will iterate over __getitem__ using integers, but C++ operator[] will never raise
         // a StopIteration. A checked getitem (raising IndexError if beyond size()) works in some
         // cases but would mess up if operator[] is meant to implement an associative container. So,
-        // this has to be implemented as an interator protocol.
+        // this has to be implemented as an iterator protocol.
             ((PyTypeObject*)pyclass)->tp_iter = (getiterfunc)index_iter;
             Utility::AddToClass(pyclass, "__iter__", (PyCFunction)index_iter, METH_NOARGS);
         }

@@ -29,7 +29,7 @@ static PyObject* ep_new(PyTypeObject* subtype, PyObject* args, PyObject* kwds)
         PyObject* ulc = PyObject_GetAttr((PyObject*)subtype, PyStrings::gUnderlying);
         excobj->fCppInstance = PyType_Type.tp_call(ulc, args, kwds);
         if (!excobj->fCppInstance) {
-        // if this fails, then the contruction may have been attempted from a string
+        // if this fails, then the construction may have been attempted from a string
         // (e.g. from PyErr_Format); if so, drop the proxy and use fTopMessage instead
             PyErr_Clear();
             if (PyTuple_GET_SIZE(args) == 1) {

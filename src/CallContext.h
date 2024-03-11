@@ -58,7 +58,7 @@ struct CallContext {
         kIsCreator      = 0x000002, // if method creates python-owned objects
         kIsConstructor  = 0x000004, // if method is a C++ constructor
         kHaveImplicit   = 0x000008, // indicate that implicit converters are available
-        kAllowImplicit  = 0x000010, // indicate that implicit coversions are allowed
+        kAllowImplicit  = 0x000010, // indicate that implicit conversions are allowed
         kNoImplicit     = 0x000020, // disable implicit to prevent recursion
         kCallDirect     = 0x000040, // call wrapped method directly, no inheritance
         kFromDescr      = 0x000080, // initiated from a descriptor

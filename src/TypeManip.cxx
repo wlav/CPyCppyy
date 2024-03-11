@@ -164,7 +164,7 @@ std::string CPyCppyy::TypeManip::compound(const std::string& name)
 // for easy identification of fixed size arrays
     if (!cpd.empty() && cpd.back() == ']') {
         if (cpd.front() == '[')
-            return "[]";    // fixed array any; dimensions handled seperately
+            return "[]";    // fixed array any; dimensions handled separately
 
         std::ostringstream scpd;
         scpd << cpd.substr(0, cpd.find('[')) << "[]";
@@ -260,7 +260,7 @@ std::vector<std::string> CPyCppyy::TypeManip::extract_arg_types(const std::strin
 //----------------------------------------------------------------------------
 Py_ssize_t CPyCppyy::TypeManip::array_size(const std::string& name)
 {
-// Extrac the array size from a given type name (assumes 1D arrays)
+// Extract the array size from a given type name (assumes 1D arrays)
     std::string cleanName = remove_const(name);
     if (cleanName[cleanName.size()-1] == ']') {
         std::string::size_type idx = cleanName.rfind('[');
