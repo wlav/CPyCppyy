@@ -342,8 +342,15 @@ static PyObject* mp_func_closure(CPPOverload* /* pymeth */, void*)
     Py_RETURN_NONE;
 }
 
+// To declare a variable as unused only when compiling for Python 3.
+#if PY_VERSION_HEX < 0x03000000
+#define CPyCppyy_Py3_UNUSED(name) name
+#else
+#define CPyCppyy_Py3_UNUSED(name)
+#endif
+
 //----------------------------------------------------------------------------
-static PyObject* mp_func_code(CPPOverload* pymeth, void*)
+static PyObject* mp_func_code(CPPOverload* CPyCppyy_Py3_UNUSED(pymeth), void*)
 {
 // Code details are used in module inspect to fill out interactive help()
 #if PY_VERSION_HEX < 0x03000000
@@ -410,7 +417,6 @@ static PyObject* mp_func_code(CPPOverload* pymeth, void*)
     return code;
 #else
 // not important for functioning of most code, so not implemented for p3 for now (TODO)
-    pymeth = 0;
     Py_RETURN_NONE;
 #endif
 }
@@ -1042,6 +1048,9 @@ PyTypeObject CPPOverload_Type = {
 #endif
 #if PY_VERSION_HEX >= 0x03040000
     , 0                                // tp_finalize
+#endif
+#if PY_VERSION_HEX >= 0x03080000
+    , 0                                // tp_vectorcall
 #endif
 };
 

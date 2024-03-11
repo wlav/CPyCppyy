@@ -1074,9 +1074,9 @@ public:
         gf[CCOMPLEX_D " ptr"] =             gf["std::complex<double> ptr"];
 
     // factories for special cases
-        gf["const char*"] =                 (ef_t)+[]() { static CStringExecutor e{};     return &e; };
+        gf["const char*"] =                 (ef_t)+[](cdims_t) { static CStringExecutor e{};     return &e; };
         gf["char*"] =                       gf["const char*"];
-        gf["const char*&"] =                (ef_t)+[]() { static CStringRefExecutor e{};     return &e; };
+        gf["const char*&"] =                (ef_t)+[](cdims_t) { static CStringRefExecutor e{};     return &e; };
         gf["char*&"] =                      gf["const char*&"];
         gf["const signed char*"] =          gf["const char*"];
         gf["signed char*"] =                gf["char*"];

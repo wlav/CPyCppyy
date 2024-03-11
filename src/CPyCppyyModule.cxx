@@ -158,6 +158,9 @@ static PyTypeObject PyNullPtr_t_Type = {
 #if PY_VERSION_HEX >= 0x03040000
     , 0                  // tp_finalize
 #endif
+#if PY_VERSION_HEX >= 0x03080000
+    , 0                  // tp_vectorcall
+#endif
 };
 
 
@@ -191,6 +194,9 @@ static PyTypeObject PyDefault_t_Type = {
 #endif
 #if PY_VERSION_HEX >= 0x03040000
     , 0                  // tp_finalize
+#endif
+#if PY_VERSION_HEX >= 0x03080000
+    , 0                           // tp_vectorcall
 #endif
 };
 
@@ -516,8 +522,8 @@ static PyObject* addressof(PyObject* /* dummy */, PyObject* args, PyObject* kwds
                 return nullptr;
             }
 
-            Cppyy::TCppFuncAddr_t addr = methods[0]->GetFunctionAddress();
-            return PyLong_FromLongLong((intptr_t)addr);
+            Cppyy::TCppFuncAddr_t caddr = methods[0]->GetFunctionAddress();
+            return PyLong_FromLongLong((intptr_t)caddr);
         }
 
     // C functions (incl. ourselves)
