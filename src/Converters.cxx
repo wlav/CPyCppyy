@@ -3039,7 +3039,7 @@ static inline CPyCppyy::Converter* selectInstanceCnv(Cppyy::TCppScope_t klass,
     else if (cpd == "*&")
         result = new InstancePtrPtrConverter<true>(klass, control);
     else if (cpd == "*" && dims.ndim() == UNKNOWN_SIZE) {
-        if (isConst) result = new InstancePtrConverter<true>(klass);
+        if (isConst) result = new InstancePtrConverter<true>(klass, control);
         else result = new InstancePtrConverter<false>(klass, control);
     }
     else if (cpd == "&")
