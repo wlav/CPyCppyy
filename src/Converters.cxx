@@ -1866,53 +1866,7 @@ bool CPyCppyy::name##Converter::ToMemory(                                    \
 }
 
 CPPYY_IMPL_STRING_AS_PRIMITIVE_CONVERTER(STLString, std::string, c_str, size)
-#if __cplusplus > 201402L
-CPPYY_IMPL_STRING_AS_PRIMITIVE_CONVERTER(STLStringViewBase, std::string_view, data, size)
-bool CPyCppyy::STLStringViewConverter::SetArg(
-    PyObject* pyobject, Parameter& para, CallContext* ctxt)
-{
-    if (this->STLStringViewBaseConverter::SetArg(pyobject, para, ctxt)) {
-        // One extra step compared to the regular std::string converter:
-        // Create a corresponding std::string_view and set the parameter value
-        // accordingly.
-        fStringView = *reinterpret_cast<std::string*>(para.fValue.fVoidp);
-        para.fValue.fVoidp = &fStringView;
-        return true;
-    }
 
-    if (!CPPInstance_Check(pyobject))
-        return false;
-
-    static Cppyy::TCppScope_t sStringID = Cppyy::GetScope("std::string");
-    CPPInstance* pyobj = (CPPInstance*)pyobject;
-    if (pyobj->ObjectIsA() == sStringID) {
-        void* ptr = pyobj->GetObject();
-        if (!ptr)
-            return false;
-
-        // Copy the string to ensure the lifetime of the string_view and the
-        // underlying string is identical.
-        fStringBuffer = *((std::string*)ptr);
-        // Create the string_view on the copy
-        fStringView = fStringBuffer;
-        para.fValue.fVoidp = &fStringView;
-        para.fTypeCode = 'V';
-        return true;
-    }
-
-    return false;
-}
-bool CPyCppyy::STLStringViewConverter::ToMemory(
-    PyObject* value, void* address, PyObject* ctxt)
-{
-    if (CPyCppyy_PyUnicodeAsBytes2Buffer(value, fStringBuffer)) {
-        fStringView = fStringBuffer;
-        *reinterpret_cast<std::string_view*>(address) = fStringView;
-        return true;
-    }
-    return InstanceConverter::ToMemory(value, address, ctxt);
-}
-#endif
 
 CPyCppyy::STLWStringConverter::STLWStringConverter(bool keepControl) :
     InstanceConverter(Cppyy::GetScope("std::wstring"), keepControl) {}
@@ -1975,6 +1929,75 @@ bool CPyCppyy::STLWStringConverter::ToMemory(PyObject* value, void* address, PyO
     }
     return InstanceConverter::ToMemory(value, address, ctxt);
 }
+
+
+#if __cplusplus > 201402L
+CPyCppyy::STLStringViewConverter::STLStringViewConverter(bool keepControl) :
+    InstanceConverter(Cppyy::GetScope("std::string_view"), keepControl) {}
+
+bool CPyCppyy::STLStringViewConverter::SetArg(
+    PyObject* pyobject, Parameter& para, CallContext* ctxt)
+{
+// normal instance convertion (ie. string_view object passed)
+    if (!PyInt_Check(pyobject) && !PyLong_Check(pyobject) && \
+            InstanceConverter::SetArg(pyobject, para, ctxt)) {
+        para.fTypeCode = 'V';
+        return true;
+    }
+    PyErr_Clear();
+
+// for Python str object: convert to single char string in buffer and take a view
+    if (CPyCppyy_PyUnicodeAsBytes2Buffer(pyobject, fStringBuffer)) {
+        fStringViewBuffer = fStringBuffer;
+        para.fValue.fVoidp = &fStringViewBuffer;
+        para.fTypeCode = 'V';
+        return true;
+    }
+
+    if (!CPPInstance_Check(pyobject))
+        return false;
+
+// for C++ std::string object: buffer the string and take a view
+    if (CPPInstance_Check(pyobject)) {
+        static Cppyy::TCppScope_t sStringID = Cppyy::GetScope("std::string");
+        CPPInstance* pyobj = (CPPInstance*)pyobject;
+        if (pyobj->ObjectIsA() == sStringID) {
+            void* ptr = pyobj->GetObject();
+            if (!ptr)
+                return false;     // leaves prior conversion error for report
+
+            PyErr_Clear();
+
+            fStringBuffer = *((std::string*)ptr);
+            fStringViewBuffer = fStringBuffer;
+            para.fValue.fVoidp = &fStringViewBuffer;
+            para.fTypeCode = 'V';
+            return true;
+        }
+    }
+
+    return false;
+}
+
+PyObject* CPyCppyy::STLStringViewConverter::FromMemory(void* address)
+{
+    if (address)
+        return InstanceConverter::FromMemory(address);
+    auto* empty = new std::string_view();
+    return BindCppObjectNoCast(empty, fClass, CPPInstance::kIsOwner);
+}
+
+bool CPyCppyy::STLStringViewConverter::ToMemory(
+    PyObject* value, void* address, PyObject* ctxt)
+{
+    if (CPyCppyy_PyUnicodeAsBytes2Buffer(value, fStringBuffer)) {
+        fStringViewBuffer = fStringBuffer;
+        *reinterpret_cast<std::string_view*>(address) = fStringViewBuffer;
+        return true;
+    }
+    return InstanceConverter::ToMemory(value, address, ctxt);
+}
+#endif
 
 
 bool CPyCppyy::STLStringMoveConverter::SetArg(
