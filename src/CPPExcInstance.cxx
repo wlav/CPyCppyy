@@ -248,7 +248,7 @@ PyTypeObject CPPExcInstance_Type = {
         Py_TPFLAGS_BASE_EXC_SUBCLASS |
         Py_TPFLAGS_HAVE_GC |
         Py_TPFLAGS_CHECKTYPES
-#if PY_VERSION_HEX >= 0x03120000
+#if PY_VERSION_HEX >= 0x030c0000
         | Py_TPFLAGS_MANAGED_DICT
 #endif
         ,                          // tp_flags

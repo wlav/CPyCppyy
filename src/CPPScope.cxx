@@ -666,7 +666,7 @@ PyTypeObject CPPScope_Type = {
 #if PY_VERSION_HEX >= 0x03040000
         | Py_TPFLAGS_TYPE_SUBCLASS
 #endif
-#if PY_VERSION_HEX >= 0x03120000
+#if PY_VERSION_HEX >= 0x030c0000
         | Py_TPFLAGS_MANAGED_DICT | Py_TPFLAGS_HAVE_GC
 #endif
         ,                          // tp_flags
