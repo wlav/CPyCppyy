@@ -1938,13 +1938,15 @@ CPyCppyy::STLStringViewConverter::STLStringViewConverter(bool keepControl) :
 bool CPyCppyy::STLStringViewConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* ctxt)
 {
-// normal instance convertion (ie. string_view object passed)
-    if (!PyInt_Check(pyobject) && !PyLong_Check(pyobject) && \
-            InstanceConverter::SetArg(pyobject, para, ctxt)) {
-        para.fTypeCode = 'V';
-        return true;
+// normal instance convertion (eg. string_view object passed)
+    if (!PyInt_Check(pyobject) && !PyLong_Check(pyobject)) {
+        CallContextRAII<CallContext::kNoImplicit> noimp(ctxt);
+        if (InstanceConverter::SetArg(pyobject, para, ctxt)) {
+            para.fTypeCode = 'V';
+            return true;
+        } else
+            PyErr_Clear();
     }
-    PyErr_Clear();
 
 // for Python str object: convert to single char string in buffer and take a view
     if (CPyCppyy_PyUnicodeAsBytes2Buffer(pyobject, fStringBuffer)) {
@@ -2736,12 +2738,9 @@ bool CPyCppyy::StdFunctionConverter::SetArg(
     PyObject* pyobject, Parameter& para, CallContext* ctxt)
 {
 // prefer normal "object" conversion
-    bool rf = ctxt->fFlags & CallContext::kNoImplicit;
-    ctxt->fFlags |= CallContext::kNoImplicit;
-    if (fConverter->SetArg(pyobject, para, ctxt)) {
-        if (!rf) ctxt->fFlags &= ~CallContext::kNoImplicit;
+    CallContextRAII<CallContext::kNoImplicit> noimp(ctxt);
+    if (fConverter->SetArg(pyobject, para, ctxt))
         return true;
-    }
 
     PyErr_Clear();
 
@@ -2755,12 +2754,10 @@ bool CPyCppyy::StdFunctionConverter::SetArg(
             bool result = fConverter->SetArg(func, para, ctxt);
             if (result) ctxt->AddTemporary(func);
             else Py_DECREF(func);
-            if (!rf) ctxt->fFlags &= ~CallContext::kNoImplicit;
             return result;
         }
     }
 
-    if (!rf) ctxt->fFlags &= ~CallContext::kNoImplicit;
     return false;
 }
 
