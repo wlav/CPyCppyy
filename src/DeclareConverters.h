@@ -361,27 +361,13 @@ public:                                                                      \
     virtual bool HasState() { return true; }                                 \
                                                                              \
 protected:                                                                   \
-    strtype fStringBuffer;                                                   \
+    strtype fBuffer;                                                         \
 }
 
 CPPYY_DECLARE_STRING_CONVERTER(STLString, std::string);
 CPPYY_DECLARE_STRING_CONVERTER(STLWString, std::wstring);
-
 #if __cplusplus > 201402L
-class STLStringViewConverter : public InstanceConverter {
-public:
-    STLStringViewConverter(bool keepControl = true);
-
-public:
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
-    virtual PyObject* FromMemory(void* address);
-    virtual bool ToMemory(PyObject*, void*, PyObject* = nullptr);
-    virtual bool HasState() { return true; }
-
-private:
-    std::string fStringBuffer;              // converted str data
-    std::string_view fStringViewBuffer;     // view on converted data
-};
+CPPYY_DECLARE_STRING_CONVERTER(STLStringView, std::string_view);
 #endif
 
 class STLStringMoveConverter : public STLStringConverter {

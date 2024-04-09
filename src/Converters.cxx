@@ -1833,8 +1833,8 @@ CPyCppyy::name##Converter::name##Converter(bool keepControl) :               \
 bool CPyCppyy::name##Converter::SetArg(                                      \
     PyObject* pyobject, Parameter& para, CallContext* ctxt)                  \
 {                                                                            \
-    if (CPyCppyy_PyUnicodeAsBytes2Buffer(pyobject, fStringBuffer)) {         \
-        para.fValue.fVoidp = &fStringBuffer;                                 \
+    if (CPyCppyy_PyUnicodeAsBytes2Buffer(pyobject, fBuffer)) {               \
+        para.fValue.fVoidp = &fBuffer;                                       \
         para.fTypeCode = 'V';                                                \
         return true;                                                         \
     }                                                                        \
@@ -1876,9 +1876,9 @@ bool CPyCppyy::STLWStringConverter::SetArg(
 {
     if (PyUnicode_Check(pyobject)) {
         Py_ssize_t len = CPyCppyy_PyUnicode_GET_SIZE(pyobject);
-        fStringBuffer.resize(len);
-        CPyCppyy_PyUnicode_AsWideChar(pyobject, &fStringBuffer[0], len);
-        para.fValue.fVoidp = &fStringBuffer;
+        fBuffer.resize(len);
+        CPyCppyy_PyUnicode_AsWideChar(pyobject, &fBuffer[0], len);
+        para.fValue.fVoidp = &fBuffer;
         para.fTypeCode = 'V';
         return true;
     }
@@ -1948,10 +1948,13 @@ bool CPyCppyy::STLStringViewConverter::SetArg(
             PyErr_Clear();
     }
 
-// for Python str object: convert to single char string in buffer and take a view
-    if (CPyCppyy_PyUnicodeAsBytes2Buffer(pyobject, fStringBuffer)) {
-        fStringViewBuffer = fStringBuffer;
-        para.fValue.fVoidp = &fStringViewBuffer;
+// passing of a Python string; buffering done Python-side b/c str is immutable
+    Py_ssize_t len;
+    const char* cstr = CPyCppyy_PyText_AsStringAndSize(pyobject, &len);
+    if (cstr) {
+        SetLifeLine(ctxt->fPyContext, pyobject, (intptr_t)this);
+        fBuffer = std::string_view(cstr, (std::string_view::size_type)len);
+        para.fValue.fVoidp = &fBuffer;
         para.fTypeCode = 'V';
         return true;
     }
@@ -1959,7 +1962,8 @@ bool CPyCppyy::STLStringViewConverter::SetArg(
     if (!CPPInstance_Check(pyobject))
         return false;
 
-// for C++ std::string object: buffer the string and take a view
+// special case of a C++ std::string object; life-time management is left to
+// the caller to ensure any external changes propagate correctly
     if (CPPInstance_Check(pyobject)) {
         static Cppyy::TCppScope_t sStringID = Cppyy::GetScope("std::string");
         CPPInstance* pyobj = (CPPInstance*)pyobject;
@@ -1970,9 +1974,8 @@ bool CPyCppyy::STLStringViewConverter::SetArg(
 
             PyErr_Clear();
 
-            fStringBuffer = *((std::string*)ptr);
-            fStringViewBuffer = fStringBuffer;
-            para.fValue.fVoidp = &fStringViewBuffer;
+            fBuffer = *((std::string*)ptr);
+            para.fValue.fVoidp = &fBuffer;
             para.fTypeCode = 'V';
             return true;
         }
@@ -1992,12 +1995,21 @@ PyObject* CPyCppyy::STLStringViewConverter::FromMemory(void* address)
 bool CPyCppyy::STLStringViewConverter::ToMemory(
     PyObject* value, void* address, PyObject* ctxt)
 {
-    if (CPyCppyy_PyUnicodeAsBytes2Buffer(value, fStringBuffer)) {
-        fStringViewBuffer = fStringBuffer;
-        *reinterpret_cast<std::string_view*>(address) = fStringViewBuffer;
+// common case of simple object assignment
+    if (InstanceConverter::ToMemory(value, address, ctxt))
+        return true;
+
+// assignment of a Python string; buffering done Python-side b/c str is immutable
+    Py_ssize_t len;
+    const char* cstr = CPyCppyy_PyText_AsStringAndSize(value, &len);
+    if (cstr) {
+        SetLifeLine(ctxt, value, (intptr_t)this);
+        *reinterpret_cast<std::string_view*>(address) = \
+            std::string_view(cstr, (std::string_view::size_type)len);
         return true;
     }
-    return InstanceConverter::ToMemory(value, address, ctxt);
+
+    return false;
 }
 #endif
 
