@@ -1401,7 +1401,6 @@ PyObject* StringViewInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 }
 
 
-
 //- STL iterator behavior ----------------------------------------------------
 PyObject* STLIterNext(PyObject* self)
 {
