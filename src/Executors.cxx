@@ -590,7 +590,7 @@ PyObject* CPyCppyy::STLWStringExecutor::Execute(
     }
 
     PyObject* pyresult = PyUnicode_FromWideChar(result->c_str(), result->size());
-    ::operator delete(result); // calls Cppyy::CallO which calls ::operator new
+    delete result; // Cppyy::CallO allocates and constructs a string, so it must be properly destroyed
 
     return pyresult;
 }
