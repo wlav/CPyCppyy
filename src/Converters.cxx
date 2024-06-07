@@ -3286,6 +3286,23 @@ bool CPyCppyy::RegisterConverter(const std::string& name, cf_t fac)
 
 //----------------------------------------------------------------------------
 CPYCPPYY_EXPORT
+bool CPyCppyy::RegisterConverterAlias(const std::string& name, const std::string& target)
+{
+// register a custom converter that is a reference to an existing converter
+    auto f = gConvFactories.find(name);
+    if (f != gConvFactories.end())
+        return false;
+
+    auto t = gConvFactories.find(target);
+    if (t == gConvFactories.end())
+        return false;
+
+    gConvFactories[name] = t->second;
+    return true;
+}
+
+//----------------------------------------------------------------------------
+CPYCPPYY_EXPORT
 bool CPyCppyy::UnregisterConverter(const std::string& name)
 {
 // remove a custom converter
