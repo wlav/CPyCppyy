@@ -924,6 +924,23 @@ bool CPyCppyy::RegisterExecutor(const std::string& name, ef_t fac)
 
 //----------------------------------------------------------------------------
 CPYCPPYY_EXPORT
+bool CPyCppyy::RegisterExecutorAlias(const std::string& name, const std::string& target)
+{
+// register a custom executor that is a reference to an existing converter
+    auto f = gExecFactories.find(name);
+    if (f != gExecFactories.end())
+        return false;
+
+    auto t = gExecFactories.find(target);
+    if (t == gExecFactories.end())
+        return false;
+
+    gExecFactories[name] = t->second;
+    return true;
+}
+
+//----------------------------------------------------------------------------
+CPYCPPYY_EXPORT
 bool CPyCppyy::UnregisterExecutor(const std::string& name)
 {
 // remove a custom executor
