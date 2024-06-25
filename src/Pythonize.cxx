@@ -463,16 +463,16 @@ PyObject* VectorIAdd(PyObject* self, PyObject* args, PyObject* /* kwds */)
 
 PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 {
-// Specialized vector constructor to allow construction from containers; allowing
-// such construction from initializer_list instead would possible, but can be
-// error-prone. This use case is common enough for std::vector to implement it
-// directly, except for arrays (which can be passed wholesale) and strings (which
-// won't convert properly as they'll be seen as buffers)
+    // Specialized vector constructor to allow construction from containers; allowing
+    // such construction from initializer_list instead would possible, but can be
+    // error-prone. This use case is common enough for std::vector to implement it
+    // directly, except for arrays (which can be passed wholesale) and strings (which
+    // won't convert properly as they'll be seen as buffers)
 
     ItemGetter* getter = GetGetter(args);
 
     if (getter) {
-    // construct an empty vector, then back-fill it
+        // construct an empty vector, then back-fill it
         PyObject* result = PyObject_CallMethodNoArgs(self, PyStrings::gRealInit);
         if (!result) {
             delete getter;
@@ -490,7 +490,55 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
         return result;
     }
 
-// The given argument wasn't iterable: simply forward to regular constructor
+    // Check if the argument is a numpy array
+    PyObject* numpy_module = PyImport_ImportModule("numpy");
+    if (numpy_module) {
+        PyObject* numpy_array = PyObject_GetAttrString(numpy_module, "ndarray");
+        if (numpy_array && PyArray_Check(args)) {
+            // Convert the numpy array to a vector
+            PyArrayObject* array = reinterpret_cast<PyArrayObject*>(args);
+            npy_intp size = PyArray_SIZE(array);
+            npy_intp* shape = PyArray_SHAPE(array);
+            npy_intp ndim = PyArray_NDIM(array);
+            npy_intp* strides = PyArray_STRIDES(array);
+            npy_intp itemsize = PyArray_ITEMSIZE(array);
+            void* data = PyArray_DATA(array);
+
+            // Create a vector with the same type as the numpy array
+            PyObject* vector_type = PyObject_GetAttrString(self, "__class__");
+            PyObject* vector = PyObject_CallFunctionObjArgs(vector_type, nullptr);
+            Py_DECREF(vector_type);
+
+            // Resize the vector to match the shape of the numpy array
+            PyObject* resize_method = PyObject_GetAttrString(vector, "resize");
+            PyObject* resize_args = PyTuple_New(ndim);
+            for (npy_intp i = 0; i < ndim; ++i) {
+                PyTuple_SetItem(resize_args, i, PyLong_FromLong(shape[i]));
+            }
+            PyObject* resize_result = PyObject_Call(resize_method, resize_args, nullptr);
+            Py_DECREF(resize_method);
+            Py_DECREF(resize_args);
+            Py_DECREF(resize_result);
+
+            // Copy the data from the numpy array to the vector
+            PyObject* assign_method = PyObject_GetAttrString(vector, "assign");
+            PyObject* assign_args = PyTuple_New(1);
+            PyTuple_SetItem(assign_args, 0, PyBytes_FromStringAndSize(static_cast<char*>(data), size * itemsize));
+            PyObject* assign_result = PyObject_Call(assign_method, assign_args, nullptr);
+            Py_DECREF(assign_method);
+            Py_DECREF(assign_args);
+            Py_DECREF(assign_result);
+
+            Py_DECREF(numpy_array);
+            Py_DECREF(numpy_module);
+
+            return vector;
+        }
+        Py_DECREF(numpy_array);
+        Py_DECREF(numpy_module);
+    }
+
+    // The given argument wasn't iterable or a numpy array: simply forward to regular constructor
     PyObject* realInit = PyObject_GetAttr(self, PyStrings::gRealInit);
     if (realInit) {
         PyObject* result = PyObject_Call(realInit, args, nullptr);
@@ -500,7 +548,6 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 
     return nullptr;
 }
-
 //---------------------------------------------------------------------------
 PyObject* VectorData(PyObject* self, PyObject*)
 {
