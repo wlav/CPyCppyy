@@ -93,16 +93,18 @@ CPyCppyy::PyException::PyException()
     if (fMsg.empty())
         fMsg = "python exception";
 
-// only keeping the filename, not the full path
-    if (!locFile.empty())
+    if (!locFile.empty()) {
+
+        // only keeping the filename, not the full path
         locFile = locFile.substr(locFile.find_last_of("/\\") + 1);
 
-    fMsg += " (at " + locFile + ":" + std::to_string(locLine);
+        fMsg += " (at " + locFile + ":" + std::to_string(locLine);
 
-    if (locName != "<module>")
-        fMsg += " in " + locName;
+        if (locName != "<module>")
+            fMsg += " in " + locName;
 
-    fMsg += ")";
+        fMsg += ")";
+    }
 
 #ifdef WITH_THREAD
     PyGILState_Release(state);
