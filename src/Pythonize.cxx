@@ -463,16 +463,16 @@ PyObject* VectorIAdd(PyObject* self, PyObject* args, PyObject* /* kwds */)
 
 PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 {
-// Specialized vector constructor to allow construction from containers; allowing
-// such construction from initializer_list instead would possible, but can be
-// error-prone. This use case is common enough for std::vector to implement it
-// directly, except for arrays (which can be passed wholesale) and strings (which
-// won't convert properly as they'll be seen as buffers)
+    // Specialized vector constructor to allow construction from containers; allowing
+    // such construction from initializer_list instead would possible, but can be
+    // error-prone. This use case is common enough for std::vector to implement it
+    // directly, except for arrays (which can be passed wholesale) and strings (which
+    // won't convert properly as they'll be seen as buffers)
 
     ItemGetter* getter = GetGetter(args);
 
     if (getter) {
-    // construct an empty vector, then back-fill it
+        // construct an empty vector, then back-fill it
         PyObject* result = PyObject_CallMethodNoArgs(self, PyStrings::gRealInit);
         if (!result) {
             delete getter;
@@ -490,7 +490,34 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
         return result;
     }
 
-// The given argument wasn't iterable: simply forward to regular constructor
+// Return 1 if obj supports the buffer interface otherwise 0.
+    if (PyObject_CheckBuffer(args)){
+        PyObject *mview = PyMemoryView_FromObject(args);
+        Py_buffer *buf = PyMemoryView_GET_BUFFER(mview);
+
+        Py_buffer *array_buf = PyObject_GetBuffer(args, buf, PyBUF_FULL);
+
+        if(!array_buf){
+            PyErr_SetString(PyExc_TypeError, "argument is not iterable");
+            return nullptr;
+        }
+        
+        int itemsize = array_buf->itemsize;
+        int len = array_buf->len;
+        int ndim = array_buf->ndim;
+
+        if (ndim == 1 ){
+            PyObject *result = PyObject_CallMethodNoArgs(self, PyStrings::gRealInit);
+            if (!result){
+                PyBuffer_Release(array_buf);
+                return nullptr;
+            }
+        }
+
+        PyBuffer_Release(array_buf);
+    }
+
+    // The given argument wasn't iterable or a numpy array: simply forward to regular constructor
     PyObject* realInit = PyObject_GetAttr(self, PyStrings::gRealInit);
     if (realInit) {
         PyObject* result = PyObject_Call(realInit, args, nullptr);
@@ -500,7 +527,6 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 
     return nullptr;
 }
-
 //---------------------------------------------------------------------------
 PyObject* VectorData(PyObject* self, PyObject*)
 {
