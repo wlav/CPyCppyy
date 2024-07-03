@@ -19,10 +19,12 @@ public:
 
     std::string GetName();
     void* GetAddress(CPPInstance* pyobj /* owner */);
+    intptr_t GetOffset();
 
 public:                 // public, as the python C-API works with C structs
     PyObject_HEAD
     intptr_t           fOffset;
+    Cppyy::TCppIndex_t fIdata;
     long               fFlags;
     Converter*         fConverter;
     Cppyy::TCppScope_t fEnclosingScope;
