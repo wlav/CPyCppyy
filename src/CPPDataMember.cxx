@@ -187,7 +187,6 @@ static CPPDataMember* dm_new(PyTypeObject* pytype, PyObject*, PyObject*)
 // Create and initialize a new property descriptor.
     CPPDataMember* dm = (CPPDataMember*)pytype->tp_alloc(pytype, 0);
 
-    dm->fOffset         = 0;
     dm->fFlags          = 0;
     dm->fConverter      = nullptr;
     dm->fEnclosingScope = 0;
@@ -374,17 +373,6 @@ void CPyCppyy::CPPDataMember::Set(Cppyy::TCppScope_t scope, Cppyy::TCppIndex_t i
 
     if (!(fFlags & kIsEnumPrep))
         fDescription = CPyCppyy_PyText_FromString(name.c_str());
-}
-
-//-----------------------------------------------------------------------------
-void CPyCppyy::CPPDataMember::Set(Cppyy::TCppScope_t scope, const std::string& name, void* address)
-{
-    fEnclosingScope = scope;
-    fDescription    = CPyCppyy_PyText_FromString(name.c_str());
-    fOffset         = (intptr_t)address;
-    fFlags          = kIsStaticData | kIsConstData;
-    fConverter      = CreateConverter("internal_enum_type_t");
-    fFullType       = "unsigned int";
 }
 
 
