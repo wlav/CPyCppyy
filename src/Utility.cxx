@@ -1168,6 +1168,9 @@ bool CPyCppyy::Utility::IncludePython()
         // basic API (converters etc.)
             "#include \"CPyCppyy/API.h\"\n"
 
+        // Python itself
+            "#include \"Python.h\"\n"
+
         // utilities from the CPyCppyy public API
             "#include \"CPyCppyy/DispatchPtr.h\"\n"
             "#include \"CPyCppyy/PyException.h\"\n"

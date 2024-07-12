@@ -1,6 +1,9 @@
 #ifndef CPYCPPYY_API_H
 #define CPYCPPYY_API_H
 
+#include <cstddef>
+#include <cstdint>
+
 //
 // Access to the python interpreter and API onto CPyCppyy.
 //
@@ -23,7 +26,12 @@
 #undef _XOPEN_SOURCE
 #endif
 #endif
-#include "Python.h"
+
+// Forward declare PyObject
+#ifndef PyObject_HEAD
+struct _object;
+typedef _object PyObject;
+#endif
 
 #define CPYCPPYY_VERSION_HEX 0x010c10
 
@@ -87,7 +95,10 @@ struct CallContext;
 // Dimensions class not currently exposed
 #ifndef CPYCPPYY_DIMENSIONS_H
 #define CPYCPPYY_DIMENSIONS_H
-typedef Py_ssize_t dim_t;
+// This Py_ssize_t should be the Py_ssize_t from CPython: a signed size type.
+// This is usually identical to intptr_t, which is verified by a static_assert.
+typedef intptr_t dim_t;
+static_assert(sizeof(dim_t) == sizeof(std::size_t));
 
 class Dimensions {      // Windows note: NOT exported/imported
     dim_t* fDims;
