@@ -6,9 +6,6 @@
 
 #include "CPyCppyy/PyResult.h"
 
-// TODO: not sure if any of this still makes sense ...
-#if 0
-
 // ROOT
 #include "TClass.h"
 #include "TInterpreter.h"
@@ -298,4 +295,3 @@ TClass* TPyClassGenerator::GetClass( const std::type_info& typeinfo, bool load )
 {
    return GetClass( typeinfo.name(), load );
 }
-#endif
