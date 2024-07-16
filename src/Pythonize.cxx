@@ -13,6 +13,10 @@
 #include "TypeManip.h"
 #include "Utility.h"
 
+// Numpy headers
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+#include "numpy/ndarrayobject.h"
+
 // Standard
 #include <algorithm>
 #include <complex>
@@ -490,37 +494,46 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
         return result;
     }
 
-// Return 1 if obj supports the buffer interface otherwise 0.
-    if (PyObject_CheckBuffer(args)){
-        PyObject *mview = PyMemoryView_FromObject(args);
-        Py_buffer *buf = PyMemoryView_GET_BUFFER(mview);
+    PyObject *fi = PyTuple_GET_ITEM(args, 0);
 
-        Py_buffer *array_buf = PyObject_GetBuffer(args, buf, PyBUF_FULL);
+    // check if numpy is passed
+    if (PyObject_CheckBuffer(fi)){
 
-        if(!array_buf){
-            PyErr_SetString(PyExc_TypeError, "argument is not iterable");
-            return nullptr;
-        }
+        PyObject *base = args;
+        Py_buffer *view = NULL;
         
-        int itemsize = array_buf->itemsize;
-        int len = array_buf->len;
-        int ndim = array_buf->ndim;
-
-        if (ndim == 1 ){
-            PyObject *result = PyObject_CallMethodNoArgs(self, PyStrings::gRealInit);
-            if (!result){
-                PyBuffer_Release(array_buf);
+        bool type_check = (CPyCppyy_PyText_Check(fi) || PyBytes_Check(fi));
+        
+        // Return 1 if obj supports the buffer interface otherwise 0.
+        if (!type_check){
+            if (PyObject_GetBuffer(base, &view, PyBUF_WRITABLE | PyBUF_SIMPLE) < 0)
+                PyErr_Clear();
+            if (PyObject_GetBuffer(base, &view, PyBUF_SIMPLE) < 0)
                 return nullptr;
+                       
+            PyObject *vend = PyObject_GetAttr(self, PyStrings::gRealInit);
+
+            if (!PyErr_Occurred())
+                PyErr_SetString(PyExc_BufferError, "exporter cannot provide a buffer of the exact type");
+            if (!vend)
+                PyErr_SetString(PyExc_BufferError, "attempt to access a null-pointer");
+
+            if (vend)
+            {
+                PyObject *result = PyObject_Call(vend, args, nullptr);
+                Py_DECREF(vend);
+                return result;
             }
         }
-
-        PyBuffer_Release(array_buf);
     }
+    if (!PyErr_Occurred())
+        PyErr_SetString(PyExc_TypeError, "argument is not iterable");
 
     // The given argument wasn't iterable or a numpy array: simply forward to regular constructor
-    PyObject* realInit = PyObject_GetAttr(self, PyStrings::gRealInit);
-    if (realInit) {
-        PyObject* result = PyObject_Call(realInit, args, nullptr);
+    PyObject *realInit = PyObject_GetAttr(self, PyStrings::gRealInit);
+    if (realInit)
+    {
+        PyObject *result = PyObject_Call(realInit, args, nullptr);
         Py_DECREF(realInit);
         return result;
     }
