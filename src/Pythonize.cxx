@@ -522,16 +522,44 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
                 PyErr_SetString(PyExc_BufferError, "exporter cannot provide a buffer of the exact type");
 
 
-
-
             // logic to return the PyObject for numpy ndarrays
-            PyObject *si_call = PyObject_GetAttr(self, PyStrings::gSetItem);
 
-            
-            int fillsz = view->len;
-            for (Py_ssize_t i = 0; i < fillsz; ++i){
-                continue;
-            }
+            // Approach 1:
+            // PyObject *si_call = PyObject_GetAttr(self, PyStrings::gSetItem);
+
+            // int fillsz = view->len;
+            // for (Py_ssize_t i = 0; i < fillsz; ++i){
+            //     PyObject* item = PySequence_GetItem(items, i);
+                //     PyObject *index = PyInt_FromSsize_t(i);
+                //     PyObject *sires = PyObject_CallFunctionObjArgs(si_call, index, item, nullptr);
+                //     Py_DECREF(index);
+                //     Py_DECREF(item);
+                //     if (!sires)
+                //     {
+                //         Py_DECREF(si_call);
+                //         Py_DECREF(result);
+                //         return nullptr;
+                //     }
+                //     else
+                //         Py_DECREF(sires);
+                // }
+                // Py_DECREF(si_call);
+
+                // return result;
+             // }
+
+            // Approach 2:
+            // PyArrayObject *ret = (PyArrayObject *)PyArray_NewFromDescrAndBase(
+            //     &PyArray_Type, dtype,
+            //     n, dims, NULL, data,
+            //     dataflags, NULL, base);
+
+            // if (n)
+            //     memcpy(PyArray_STRIDES(ret), strides, n * sizeof(npy_intp));
+
+                
+            // Py_DECREF(base);
+            // return (PyObject *)ret;
 
             // dereference the memoryview buffer
             PyBuffer_Release(view);
