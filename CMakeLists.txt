@@ -23,6 +23,7 @@ if (NOT Python_Development_FOUND)
 endif()
 
 include_directories("${PROJECT_SOURCE_DIR}/include" "${Python_INCLUDE_DIRS}")
+include_directories("/Users/khushiyant/Desktop/Development/gsoc/.venv/lib/python3.10/site-packages/numpy/_core/include")
 
 file (GLOB cppyy_src src/*.cxx)
 
