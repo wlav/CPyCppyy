@@ -499,27 +499,41 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
     // check if numpy is passed
     if (PyObject_CheckBuffer(fi)){
 
-        PyObject *base = PyObject_GetAttr(self, PyStrings::gRealInit);
-        PyObject *memoryview = PyMemoryView_FromObject(base);
+        PyObject* base = PyObject_GetAttr(self, PyStrings::gRealInit);
+        PyObject* memoryview = PyMemoryView_FromObject(base);
+        Py_buffer* view = PyMemoryView_GET_BUFFER(memoryview);
 
-        Py_buffer *view = PyMemoryView_GET_BUFFER(memoryview);
-
-        bool type_check = (CPyCppyy_PyText_Check(fi) || PyBytes_Check(fi));
+        int dataflags = NPY_ARRAY_BEHAVED;
 
         // Return 1 if obj supports the buffer interface otherwise 0.
         if (!base)
             PyErr_SetString(PyExc_BufferError, "attempt to access a null-pointer");
 
-        if (!type_check){
+        if (!(CPyCppyy_PyText_Check(fi) || PyBytes_Check(fi)))
+        {
             if (PyObject_GetBuffer(base, view, PyBUF_WRITABLE | PyBUF_SIMPLE) < 0){
                 PyErr_Clear();
                 if (PyObject_GetBuffer(base, view, PyBUF_SIMPLE) < 0)
                     return nullptr;
+                dataflags &= ~NPY_ARRAY_WRITEABLE;
                 }
 
             if (!PyErr_Occurred())
                 PyErr_SetString(PyExc_BufferError, "exporter cannot provide a buffer of the exact type");
 
+
+
+
+            // logic to return the PyObject for numpy ndarrays
+            PyObject *si_call = PyObject_GetAttr(self, PyStrings::gSetItem);
+
+            
+            int fillsz = view->len;
+            for (Py_ssize_t i = 0; i < fillsz; ++i){
+                continue;
+            }
+
+            // dereference the memoryview buffer
             PyBuffer_Release(view);
         }
     }
