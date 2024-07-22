@@ -503,8 +503,6 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
         PyObject* memoryview = PyMemoryView_FromObject(base);
         Py_buffer* view = PyMemoryView_GET_BUFFER(memoryview);
 
-        int dataflags = NPY_ARRAY_BEHAVED;
-
         // Return 1 if obj supports the buffer interface otherwise 0.
         if (!base)
             PyErr_SetString(PyExc_BufferError, "attempt to access a null-pointer");
@@ -513,58 +511,45 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
         {
             if (PyObject_GetBuffer(base, view, PyBUF_WRITABLE | PyBUF_SIMPLE) < 0){
                 PyErr_Clear();
-                if (PyObject_GetBuffer(base, view, PyBUF_SIMPLE) < 0)
+                if (PyObject_GetBuffer(base, view, PyBUF_SIMPLE) < 0){
                     return nullptr;
-                dataflags &= ~NPY_ARRAY_WRITEABLE;
+                    }
                 }
 
-            if (!PyErr_Occurred())
+            if (!PyErr_Occurred()){
                 PyErr_SetString(PyExc_BufferError, "exporter cannot provide a buffer of the exact type");
-
+            }
 
             // logic to return the PyObject for numpy ndarrays
 
             // Approach 1:
-            // PyObject *si_call = PyObject_GetAttr(self, PyStrings::gSetItem);
+            PyObject *si_call = PyObject_GetAttr(self, PyStrings::gSetItem);
 
-            // int fillsz = view->len;
-            // for (Py_ssize_t i = 0; i < fillsz; ++i){
-            //     PyObject* item = PySequence_GetItem(items, i);
-                //     PyObject *index = PyInt_FromSsize_t(i);
-                //     PyObject *sires = PyObject_CallFunctionObjArgs(si_call, index, item, nullptr);
-                //     Py_DECREF(index);
-                //     Py_DECREF(item);
-                //     if (!sires)
-                //     {
-                //         Py_DECREF(si_call);
-                //         Py_DECREF(result);
-                //         return nullptr;
-                //     }
-                //     else
-                //         Py_DECREF(sires);
-                // }
-                // Py_DECREF(si_call);
+            int fillsz = view->len;
+            
+            for (Py_ssize_t i = 0; i < fillsz; ++i){
+                PyObject* item = PySequence_GetItem(fi, i);
+                PyObject *index = PyInt_FromSsize_t(i);
+                PyObject *sires = PyObject_CallFunctionObjArgs(si_call, index, item, nullptr);
+                Py_DECREF(index);
+                Py_DECREF(item);
+                if (!sires){
+                        Py_DECREF(si_call);
+                        Py_DECREF(base);
+                        return nullptr;
+                    }
+                    else
+                        Py_DECREF(sires);
+                }
+                Py_DECREF(si_call);
 
-                // return result;
-             // }
-
-            // Approach 2:
-            // PyArrayObject *ret = (PyArrayObject *)PyArray_NewFromDescrAndBase(
-            //     &PyArray_Type, dtype,
-            //     n, dims, NULL, data,
-            //     dataflags, NULL, base);
-
-            // if (n)
-            //     memcpy(PyArray_STRIDES(ret), strides, n * sizeof(npy_intp));
-
-                
-            // Py_DECREF(base);
-            // return (PyObject *)ret;
+                return base;
+             }
 
             // dereference the memoryview buffer
             PyBuffer_Release(view);
         }
-    }
+    
 
     if (!PyErr_Occurred())
         PyErr_SetString(PyExc_TypeError, "argument is not iterable");
