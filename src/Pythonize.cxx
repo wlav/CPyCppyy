@@ -13,10 +13,6 @@
 #include "TypeManip.h"
 #include "Utility.h"
 
-// Numpy headers
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
-#include "numpy/ndarrayobject.h"
-
 // Standard
 #include <algorithm>
 #include <complex>
@@ -521,8 +517,6 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
             }
 
             // logic to return the PyObject for numpy ndarrays
-            PyObject *si_call = PyObject_GetAttr(self, PyStrings::gSetItem);
-
             int fillsz = view->len;
             
             for (Py_ssize_t i = 0; i < fillsz; ++i){
@@ -549,8 +543,8 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
              }
             // dereference the memoryview buffer
             PyBuffer_Release(view);
-
         }
+    }
 
     if (!PyErr_Occurred())
         PyErr_SetString(PyExc_TypeError, "argument is not iterable");
@@ -566,7 +560,7 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 
     return nullptr;
 }
-}
+
 //---------------------------------------------------------------------------
 PyObject* VectorData(PyObject* self, PyObject*)
 {
