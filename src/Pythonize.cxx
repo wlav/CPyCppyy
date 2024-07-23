@@ -521,35 +521,36 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
             }
 
             // logic to return the PyObject for numpy ndarrays
-
-            // Approach 1:
             PyObject *si_call = PyObject_GetAttr(self, PyStrings::gSetItem);
 
             int fillsz = view->len;
             
             for (Py_ssize_t i = 0; i < fillsz; ++i){
                 PyObject* item = PySequence_GetItem(fi, i);
-                PyObject *index = PyInt_FromSsize_t(i);
-                PyObject *sires = PyObject_CallFunctionObjArgs(si_call, index, item, nullptr);
-                Py_DECREF(index);
-                Py_DECREF(item);
-                if (!sires){
-                        Py_DECREF(si_call);
-                        Py_DECREF(base);
+                ItemGetter *getter = GetGetter(item);
+
+                if (getter){
+                    // construct an empty vector, then back-fill it
+                    PyObject *result = PyObject_CallMethodNoArgs(item, PyStrings::gRealInit);
+                    if (!result){
+                        delete getter;
                         return nullptr;
                     }
-                    else
-                        Py_DECREF(sires);
+
+                    bool fill_ok = FillVector(self, args, getter);
+                    delete getter;
+
+                    if (!fill_ok){
+                        Py_DECREF(result);
+                        return nullptr;
+                    }
+                    return result;
                 }
-                Py_DECREF(si_call);
-
-                return base;
              }
-
             // dereference the memoryview buffer
             PyBuffer_Release(view);
+
         }
-    
 
     if (!PyErr_Occurred())
         PyErr_SetString(PyExc_TypeError, "argument is not iterable");
@@ -564,6 +565,7 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
     }
 
     return nullptr;
+}
 }
 //---------------------------------------------------------------------------
 PyObject* VectorData(PyObject* self, PyObject*)
