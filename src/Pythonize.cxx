@@ -525,7 +525,7 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 
                 if (getter){
                     // construct an empty vector, then back-fill it
-                    PyObject *result = PyObject_CallMethodNoArgs(item, PyStrings::gRealInit);
+                    PyObject *result = CallPyObjMethod(item, "__array__");
                     if (!result){
                         delete getter;
                         return nullptr;
