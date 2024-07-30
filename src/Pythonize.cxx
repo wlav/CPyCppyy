@@ -541,15 +541,73 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 
             return vector_obj;
         } else {
-            // logic for ND
-            return nullptr;
-        }
+            // Handle multi-dimensional array case
+            PyObject *vector_obj = PyObject_CallMethodNoArgs(self, PyStrings::gRealInit);
+            if (!vector_obj)
+                return nullptr;
 
+            Py_ssize_t size = view->shape[0];
+            for (Py_ssize_t i = 0; i < size; i++)
+            {
+                // Create a new memory view for the sub-array
+                Py_buffer sub_view;
+                sub_view.buf = (char *)view->buf + i * view->strides[0];
+                sub_view.len = view->len - i * view->strides[0];
+                sub_view.ndim = view->ndim - 1;
+                sub_view.shape = view->shape + 1;
+                sub_view.strides = view->strides + 1;
+                sub_view.suboffsets = view->suboffsets + 1;
+                sub_view.readonly = view->readonly;
+
+                // Create a new PyObject for the sub-array
+                PyObject *sub_array = PyMemoryView_FromBuffer(&sub_view);
+                if (!sub_array)
+                {
+                    Py_DECREF(vector_obj);
+                    return nullptr;
+                }
+
+                // Recursively call VectorInit on the sub-array
+                PyObject *sub_vector = VectorInit(self, PyTuple_Pack(1, sub_array), nullptr);
+                if (!sub_vector)
+                {
+                    Py_DECREF(vector_obj);
+                    Py_DECREF(sub_array);
+                    return nullptr;
+                }
+
+                // Push the sub-vector onto the main vector
+                PyObject *pb_call = PyObject_GetAttrString(vector_obj, (char *)"push_back");
+                if (!pb_call)
+                {
+                    Py_DECREF(vector_obj);
+                    Py_DECREF(sub_array);
+                    Py_DECREF(sub_vector);
+                    return nullptr;
+                }
+
+                PyObject *pbres = PyObject_CallFunctionObjArgs(pb_call, sub_vector, nullptr);
+                if (!pbres)
+                {
+                    Py_DECREF(vector_obj);
+                    Py_DECREF(sub_array);
+                    Py_DECREF(sub_vector);
+                    Py_DECREF(pb_call);
+                    return nullptr;
+                }
+
+                Py_DECREF(sub_array);
+                Py_DECREF(sub_vector);
+                Py_DECREF(pb_call);
+            }
+
+            return vector_obj;
+        }
         // dereference the memoryview buffer
         Py_DECREF(memoryview);
         PyBuffer_Release(view);
-}
-Py_DECREF(fi);
+    }
+    Py_DECREF(fi);
     
     
 
