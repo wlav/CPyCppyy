@@ -463,17 +463,17 @@ PyObject* VectorIAdd(PyObject* self, PyObject* args, PyObject* /* kwds */)
 
 PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 {
-    // Specialized vector constructor to allow construction from containers; allowing
-    // such construction from initializer_list instead would possible, but can be
-    // error-prone. This use case is common enough for std::vector to implement it
-    // directly, except for arrays (which can be passed wholesale) and strings (which
-    // won't convert properly as they'll be seen as buffers)
+// Specialized vector constructor to allow construction from containers; allowing
+// such construction from initializer_list instead would possible, but can be
+// error-prone. This use case is common enough for std::vector to implement it
+// directly, except for arrays (which can be passed wholesale) and strings (which
+// won't convert properly as they'll be seen as buffers)
 
     ItemGetter* getter = GetGetter(args);
 
     if (getter) {
-        // construct an empty vector, then back-fill it
-        PyObject* result = PyObject_CallMethodNoArgs(self, PyStrings::gArray);
+    // construct an empty vector, then back-fill it
+        PyObject* result = PyObject_CallMethodNoArgs(self, PyStrings::gRealInit);
         if (!result) {
             delete getter;
             return nullptr;
@@ -1918,8 +1918,8 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
             Utility::AddToClass(pyclass, "__setitem__", (PyCFunction)VectorBoolSetItem);
         } else {
         // constructor that takes python collections
-            Utility::AddToClass(pyclass, "__init__", (PyCFunction)VectorInit, METH_VARARGS | METH_KEYWORDS);
             Utility::AddToClass(pyclass, "__real_init", "__init__");
+            Utility::AddToClass(pyclass, "__init__", (PyCFunction)VectorInit, METH_VARARGS | METH_KEYWORDS);
 
         // data with size
             Utility::AddToClass(pyclass, "__real_data", "data");
