@@ -494,7 +494,6 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
     if (fi == Py_None) {
         // empty vector
         return PyObject_CallMethodNoArgs(self, PyStrings::gRealInit);
-        
         }
 
     // check if numpy is passed
@@ -503,48 +502,50 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
         PyObject* memoryview = PyMemoryView_FromObject(fi);
         Py_buffer* view = PyMemoryView_GET_BUFFER(memoryview);
 
-        if (!view) 
-            return nullptr;
+        if (!view) return nullptr;
         
         // logic to return the PyObject for numpy ndarrays
         if (view->ndim == 1){
             // Create a new vector object
             PyObject *vector_obj = PyObject_CallMethodNoArgs(self, PyStrings::gRealInit);
-            if (!vector_obj)
-            {
-                return nullptr;
-            }
+            if (!vector_obj) return nullptr;
+            
+            // number of elements
             Py_ssize_t fillsz = view->len / view->itemsize;
             std::vector<double> vec(fillsz);
 
+            // push_back attribute
             PyObject *pb_call = PyObject_GetAttrString(vector_obj, (char *)"push_back");
-            for (Py_ssize_t i = 0; i < fillsz; i++)
-            {
+
+            for (Py_ssize_t i = 0; i < fillsz; i++) {
+
+                // accessing item for buffer
                 double *val = (double *)((char *)view->buf + i * view->itemsize);
                 PyObject *item = PyFloat_FromDouble(*val);
-                if (!item)
-                {
+
+                if (!item) {
                     Py_DECREF(vector_obj);
                     return nullptr;
                 }
+                // element push back
                 PyObject *pbres = PyObject_CallFunctionObjArgs(pb_call, item, nullptr);
-                if (!pbres)
-                {
+
+                if (!pbres) {
                     Py_DECREF(vector_obj);
                     break;
                     return nullptr;
-                    }
+                }
+
                 Py_DECREF(item);
             }
+
             return vector_obj;
-        }
-        else
-        {
+        } else {
             // logic for ND
             return nullptr;
         }
 
-      // dereference the memoryview buffer
+        // dereference the memoryview buffer
         Py_DECREF(memoryview);
         PyBuffer_Release(view);
 }
