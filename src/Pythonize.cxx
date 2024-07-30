@@ -473,7 +473,7 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 
     if (getter) {
         // construct an empty vector, then back-fill it
-        PyObject* result = PyObject_CallMethodNoArgs(self, PyStrings::gRealInit);
+        PyObject* result = PyObject_CallMethodNoArgs(self, PyStrings::gArray);
         if (!result) {
             delete getter;
             return nullptr;
@@ -490,64 +490,67 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
         return result;
     }
 
-    PyObject *fi = PyTuple_GET_ITEM(args, 0);
+    PyObject* fi = PyTuple_GET_ITEM(args, 0);
+    if (fi == Py_None) {
+        // empty vector
+        return PyObject_CallMethodNoArgs(self, PyStrings::gRealInit);
+        
+        }
 
     // check if numpy is passed
     if (PyObject_CheckBuffer(fi)){
 
-        PyObject* base = PyObject_GetAttr(self, PyStrings::gRealInit);
-        PyObject* memoryview = PyMemoryView_FromObject(base);
+        PyObject* memoryview = PyMemoryView_FromObject(fi);
         Py_buffer* view = PyMemoryView_GET_BUFFER(memoryview);
 
-        // Return 1 if obj supports the buffer interface otherwise 0.
-        if (!base)
-            PyErr_SetString(PyExc_BufferError, "attempt to access a null-pointer");
+        if (!view) 
+            return nullptr;
+        
+        // logic to return the PyObject for numpy ndarrays
+        if (view->ndim == 1){
+            // Create a new vector object
+            PyObject *vector_obj = PyObject_CallMethodNoArgs(self, PyStrings::gRealInit);
+            if (!vector_obj)
+            {
+                return nullptr;
+            }
+            Py_ssize_t fillsz = view->len / view->itemsize;
+            std::vector<double> vec(fillsz);
 
-        if (!(CPyCppyy_PyText_Check(fi) || PyBytes_Check(fi)))
-        {
-            if (PyObject_GetBuffer(base, view, PyBUF_WRITABLE | PyBUF_SIMPLE) < 0){
-                PyErr_Clear();
-                if (PyObject_GetBuffer(base, view, PyBUF_SIMPLE) < 0){
+            PyObject *pb_call = PyObject_GetAttrString(vector_obj, (char *)"push_back");
+            for (Py_ssize_t i = 0; i < fillsz; i++)
+            {
+                double *val = (double *)((char *)view->buf + i * view->itemsize);
+                PyObject *item = PyFloat_FromDouble(*val);
+                if (!item)
+                {
+                    Py_DECREF(vector_obj);
+                    return nullptr;
+                }
+                PyObject *pbres = PyObject_CallFunctionObjArgs(pb_call, item, nullptr);
+                if (!pbres)
+                {
+                    Py_DECREF(vector_obj);
+                    break;
                     return nullptr;
                     }
-                }
-
-            if (!PyErr_Occurred()){
-                PyErr_SetString(PyExc_BufferError, "exporter cannot provide a buffer of the exact type");
+                Py_DECREF(item);
             }
-
-            // logic to return the PyObject for numpy ndarrays
-            int fillsz = view->len;
-            
-            for (Py_ssize_t i = 0; i < fillsz; ++i){
-                PyObject* item = PySequence_GetItem(fi, i);
-                ItemGetter *getter = GetGetter(item);
-
-                if (getter){
-                    // construct an empty vector, then back-fill it
-                    PyObject *result = CallPyObjMethod(item, "__array__");
-                    if (!result){
-                        delete getter;
-                        return nullptr;
-                    }
-
-                    bool fill_ok = FillVector(self, args, getter);
-                    delete getter;
-
-                    if (!fill_ok){
-                        Py_DECREF(result);
-                        return nullptr;
-                    }
-                    return result;
-                }
-             }
-            // dereference the memoryview buffer
-            PyBuffer_Release(view);
+            return vector_obj;
         }
-    }
+        else
+        {
+            // logic for ND
+            return nullptr;
+        }
 
-    if (!PyErr_Occurred())
-        PyErr_SetString(PyExc_TypeError, "argument is not iterable");
+      // dereference the memoryview buffer
+        Py_DECREF(memoryview);
+        PyBuffer_Release(view);
+}
+Py_DECREF(fi);
+    
+    
 
     // The given argument wasn't iterable or a numpy array: simply forward to regular constructor
     PyObject *realInit = PyObject_GetAttr(self, PyStrings::gRealInit);
@@ -1856,8 +1859,8 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
             Utility::AddToClass(pyclass, "__setitem__", (PyCFunction)VectorBoolSetItem);
         } else {
         // constructor that takes python collections
-            Utility::AddToClass(pyclass, "__real_init", "__init__");
             Utility::AddToClass(pyclass, "__init__", (PyCFunction)VectorInit, METH_VARARGS | METH_KEYWORDS);
+            Utility::AddToClass(pyclass, "__real_init", "__init__");
 
         // data with size
             Utility::AddToClass(pyclass, "__real_data", "data");
