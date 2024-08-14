@@ -507,31 +507,30 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
         // logic to return the PyObject for numpy ndarrays
         if (view->ndim == 1){
             // Create a new vector object
-            PyObject *vector_obj = PyObject_CallMethodNoArgs(self, PyStrings::gRealInit);
-            if (!vector_obj) return nullptr;
+            PyObject *result = PyObject_CallMethodNoArgs(self, PyStrings::gRealInit);
+            if (!result) return nullptr;
             
             // number of elements
             Py_ssize_t fillsz = view->len / view->itemsize;
-            std::vector<double> vec(fillsz);
 
             // push_back attribute
-            PyObject *pb_call = PyObject_GetAttrString(vector_obj, (char *)"push_back");
+            PyObject *pb_call = PyObject_GetAttrString(self, (char *)"push_back");
 
             for (Py_ssize_t i = 0; i < fillsz; i++) {
 
                 // accessing item for buffer
                 double *val = (double *)((char *)view->buf + i * view->itemsize);
-                PyObject *item = PyFloat_FromDouble(*val);
+                PyObject *item = PyLong_FromLong(*val);
 
                 if (!item) {
-                    Py_DECREF(vector_obj);
+                    Py_DECREF(result);
                     return nullptr;
                 }
                 // element push back
                 PyObject *pbres = PyObject_CallFunctionObjArgs(pb_call, item, nullptr);
 
                 if (!pbres) {
-                    Py_DECREF(vector_obj);
+                    Py_DECREF(result);
                     break;
                     return nullptr;
                 }
@@ -539,7 +538,7 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
                 Py_DECREF(item);
             }
 
-            return vector_obj;
+            return result;
         } else {
             // Handle multi-dimensional array case
             PyObject *vector_obj = PyObject_CallMethodNoArgs(self, PyStrings::gRealInit);
