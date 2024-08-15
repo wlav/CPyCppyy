@@ -518,48 +518,52 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
         return result;
     }
 
+    // get the first argument
     PyObject* fi = PyTuple_GET_ITEM(args, 0);
-    if (fi == Py_None) {
+    if (fi == Py_None) 
+    {
         // empty vector
         return PyObject_CallMethodNoArgs(self, PyStrings::gRealInit);
-        }
+    }
 
     // check if numpy is passed
-
     if (PyObject_CheckBuffer(fi)){
+        // create a memoryview
         PyObject* memoryview = PyMemoryView_FromObject(fi);
         Py_buffer* view = PyMemoryView_GET_BUFFER(memoryview);
 
+        // check if memoryview is valid
         if (view->buf == NULL) return nullptr;
 
-        // print elements of buffer here
-        
-        // logic to return the PyObject for numpy ndarrays
-        if (view->ndim == 1){
+        // logic to handle 1-dim buffer (i.e. numpy array)
+        if (view->ndim == 1)
+        {
             // Create a new vector object
             PyObject *result = PyObject_CallMethodNoArgs(self, PyStrings::gRealInit);
             if (!result) return nullptr;
             
-            // number of elements
+            // number of elements in the buffer
             Py_ssize_t fillsz = view->len / view->itemsize;
 
             // push_back attribute
             PyObject *pb_call = PyObject_GetAttrString(self, (char *)"push_back");
             
-            for (Py_ssize_t i = 0; i < fillsz; i++) {
-
+            for (Py_ssize_t i = 0; i < fillsz; i++) 
+            {
                 // accessing item for buffer
                 double val = Get_IndexValue(view, i);
                 PyObject *item = PyLong_FromDouble(val);
 
-                if (!item) {
+                if (!item) 
+                {
                     Py_DECREF(result);
                     return nullptr;
                 }
                 // element push back
                 PyObject *pbres = PyObject_CallFunctionObjArgs(pb_call, item, nullptr);
 
-                if (!pbres) {
+                if (!pbres) 
+                {
                     Py_DECREF(result);
                     break;
                     return nullptr;
@@ -568,75 +572,72 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
                 Py_DECREF(item);
             }
 
+            // dereference the memoryview buffer
+            Py_DECREF(memoryview);
+            PyBuffer_Release(view);
+            Py_DECREF(fi);
+
             return result;
-        } else {
-            // Handle multi-dimensional array case
-            PyObject *vector_obj = PyObject_CallMethodNoArgs(self, PyStrings::gRealInit);
-            if (!vector_obj)
-                return nullptr;
+        }
+        // logic to handle n-dim buffer (i.e. numpy array of arrays)
+        else
+        {
+            PyObject *result = PyObject_CallMethodNoArgs(self, PyStrings::gRealInit);
+            PyObject *pb_call = PyObject_GetAttrString(self, (char *)"push_back");
 
-            Py_ssize_t size = view->shape[0];
-            for (Py_ssize_t i = 0; i < size; i++)
+            if (!result)
             {
-                // Create a new memory view for the sub-array
-        Py_buffer sub_view;
-                sub_view.buf = (char *)view->buf + i * view->strides[0];
-                sub_view.len = view->len - i * view->strides[0];
-                sub_view.ndim = view->ndim - 1;
-                sub_view.shape = view->shape + 1;
-                sub_view.strides = view->strides + 1;
-                sub_view.suboffsets = view->suboffsets + 1;
-        sub_view.readonly = view->readonly;
+                Py_DECREF(memoryview);
+                PyBuffer_Release(view);
+                Py_DECREF(fi);
+                return nullptr;
+            }
 
-                // Create a new PyObject for the sub-array
-                PyObject *sub_array = PyMemoryView_FromBuffer(&sub_view);
-                if (!sub_array)
-                {
-                    Py_DECREF(vector_obj);
-                    return nullptr;
-        }
+            for (Py_ssize_t i = 0; i < view->ndim; i++) {
+                // creating a tmp list for each dimension to pass to push_back
+                PyObject *item_vec = PyList_New(view->shape[1]);
 
-        // Recursively call VectorInit on the sub-array
-                PyObject *sub_vector = VectorInit(self, PyTuple_Pack(1, sub_array), nullptr);
-                if (!sub_vector)
-                {
-                    Py_DECREF(vector_obj);
-                    Py_DECREF(sub_array);
-            return nullptr;
-        }
-
-                // Push the sub-vector onto the main vector
-                PyObject *pb_call = PyObject_GetAttrString(vector_obj, (char *)"push_back");
-                if (!pb_call)
-                {
-                    Py_DECREF(vector_obj);
-                    Py_DECREF(sub_array);
-                    Py_DECREF(sub_vector);
+                if (!item_vec) {
+                    Py_DECREF(result);
+                    Py_DECREF(memoryview);
+                    PyBuffer_Release(view);
+                    Py_DECREF(fi);
                     return nullptr;
                 }
 
-                PyObject *pbres = PyObject_CallFunctionObjArgs(pb_call, sub_vector, nullptr);
-                if (!pbres)
-                {
-                    Py_DECREF(vector_obj);
-                    Py_DECREF(sub_array);
-                    Py_DECREF(sub_vector);
-                    Py_DECREF(pb_call);
+                // accessing item for buffer
+                for (Py_ssize_t j = 0; j < view->shape[1]; j++) {
+
+                    int idx = i * view->shape[1] + j;
+                    double val = Get_IndexValue(view, idx);
+                    PyObject *item = PyLong_FromDouble(val);
+
+                    if (!item) {
+                        Py_DECREF(result);
+                        Py_DECREF(item_vec);
+                        return nullptr;
+                    }
+                    PyList_SetItem(item_vec, j, item);
+                    Py_DECREF(item);
+                }
+
+                // element push back
+                PyObject *pbres = PyObject_CallFunctionObjArgs(pb_call, item_vec, nullptr);
+                if (!pbres) {
+                    Py_DECREF(result);
+                    Py_DECREF(item_vec);
+                    break;
                     return nullptr;
+                }
+            }
+            // dereference the memoryview buffer
+            Py_DECREF(memoryview);
+            PyBuffer_Release(view);
+            Py_DECREF(fi);
+            
+            return result;
         }
-
-                Py_DECREF(sub_array);
-                Py_DECREF(sub_vector);
-                Py_DECREF(pb_call);
     }
-
-            return vector_obj;
-}
-        // dereference the memoryview buffer
-        Py_DECREF(memoryview);
-        PyBuffer_Release(view);
-        }
-    Py_DECREF(fi);
     
     
 
