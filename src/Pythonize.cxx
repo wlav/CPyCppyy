@@ -51,33 +51,23 @@ bool HasAttrDirect(PyObject* pyclass, PyObject* pyname, bool mustBeCPyCppyy = fa
     PyErr_Clear();
     return false;
 }
-double Get_IndexValue(Py_buffer *view, Py_ssize_t i)
+
+template <typename T>
+T Get_IndexValue(Py_buffer *view, int i)
 {
-    // Check if the index is within bounds
+    if (!view || !view->buf)
+    {
+        // Handle the error, e.g., throw an exception or return a default value
+        PyErr_SetString(PyExc_RuntimeError, "Buffer is not valid");
+    }
+
     if (i < 0 || i >= view->len / view->itemsize)
     {
-        fprintf(stderr, "Index out of bounds.\n");
-        return 0.0; // Return an error value or handle as appropriate
+        // Handle the error, e.g., throw an exception or return a default value
+        PyErr_SetString(PyExc_IndexError, "Index out of range");
     }
-
-    // Calculate the pointer to the i-th element
-    char *element_ptr;
-
-    if (view->strides == NULL)
-    {
-        // For contiguous arrays, compute the address directly
-        element_ptr = (char *)view->buf + i * view->itemsize;
-    }
-    else
-    {
-        // For non-contiguous arrays, use the stride
-        element_ptr = (char *)view->buf + i * view->strides[0];
-    }
-
-    // Cast the pointer to the appropriate type (double in this case)
-    double value = *(double *)element_ptr;
-
-    return value;
+    // get the value at index i in the view
+    return *(T *)((char *)view->buf + i * view->strides[0]);
 }
 
 PyObject* GetAttrDirect(PyObject* pyclass, PyObject* pyname) {
@@ -487,7 +477,101 @@ PyObject* VectorIAdd(PyObject* self, PyObject* args, PyObject* /* kwds */)
         PyErr_SetString(PyExc_TypeError, "argument is not iterable");
     return nullptr;               // error already set
 }
+PyObject *recursive_vector_init(PyObject *self, Py_buffer *view, PyObject *result, int ndim)
+{
+    // PyObject *tmp_result = PyList_New(0);
+    if (ndim == 1)
+    {
+        if (!result)
+            return nullptr;
 
+        Py_ssize_t fillsz = view->len / view->itemsize;
+        PyObject *pb_call = PyObject_GetAttrString(self, "push_back");
+
+        for (Py_ssize_t i = 0; i < fillsz; i++)
+        {
+            int val = Get_IndexValue<int>(view, i);
+            PyObject *item = PyLong_FromLong(val);
+
+            if (!item)
+            {
+                Py_DECREF(result);
+                Py_XDECREF(pb_call);
+                return nullptr;
+            }
+
+            PyObject *pbres = PyObject_CallFunctionObjArgs(pb_call, item, nullptr);
+            Py_DECREF(item);
+
+            if (!pbres)
+            {
+                Py_DECREF(result);
+                Py_XDECREF(pb_call);
+                return nullptr;
+            }
+
+            Py_DECREF(pbres);
+        }
+
+        Py_XDECREF(pb_call);
+        return result;
+    }
+
+    if (!result)
+        return nullptr;
+
+    Py_ssize_t *shape = (Py_ssize_t *)view->shape;
+    Py_ssize_t *strides = (Py_ssize_t *)view->strides;
+    Py_ssize_t *subshape = shape + 1;
+    Py_ssize_t *substrides = strides + 1;
+
+    for (Py_ssize_t i = 0; i < view->ndim; i++)
+    {
+        Py_buffer subview;
+        subview.buf = (void *)((char *)view->buf + i * strides[0]);
+        subview.obj = NULL;
+        subview.len = subshape[0] * substrides[0];
+        subview.readonly = view->readonly;
+        subview.itemsize = view->itemsize;
+        subview.format = view->format;
+        subview.ndim = ndim - 1;
+        subview.shape = subshape;
+        subview.strides = substrides;
+        subview.suboffsets = view->suboffsets;
+        subview.internal = view->internal;
+
+        printf("ndim: %d\n", view->ndim);
+        printf("shape: %ld, %ld\n", shape[0], shape[1]);
+        printf("strides: %ld, %ld\n", strides[0], strides[1]);
+        printf("itemsize: %ld\n", view->itemsize);
+
+        PyObject *subresult = recursive_vector_init(self, &subview, result, ndim - 1);
+        if (!subresult)
+        {
+            Py_DECREF(result);
+            return nullptr;
+        }
+        PyObject *pb_call = PyObject_GetAttrString(self, "push_back");
+
+
+        PyObject *pbres = PyObject_CallFunctionObjArgs(pb_call, subresult, nullptr);
+
+        if (!pbres)
+        {
+            Py_DECREF(result);
+            Py_XDECREF(pb_call);
+            return nullptr;
+        }
+
+
+        Py_DECREF(pbres);
+        Py_DECREF(pb_call);
+
+        Py_DECREF(subresult);
+    }
+
+    return result;
+}
 
 PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 {
@@ -534,112 +618,19 @@ PyObject* VectorInit(PyObject* self, PyObject* args, PyObject* /* kwds */)
 
         // check if memoryview is valid
         if (view->buf == NULL) return nullptr;
+        
+        PyObject *result = PyObject_CallMethodNoArgs(self, PyStrings::gRealInit);
 
-        // logic to handle 1-dim buffer (i.e. numpy array)
-        if (view->ndim == 1)
-        {
-            // Create a new vector object
-            PyObject *result = PyObject_CallMethodNoArgs(self, PyStrings::gRealInit);
-            if (!result) return nullptr;
-            
-            // number of elements in the buffer
-            Py_ssize_t fillsz = view->len / view->itemsize;
+        result = recursive_vector_init(self, view, result, view->ndim);
 
-            // push_back attribute
-            PyObject *pb_call = PyObject_GetAttrString(self, (char *)"push_back");
-            
-            for (Py_ssize_t i = 0; i < fillsz; i++) 
-            {
-                // accessing item for buffer
-                double val = Get_IndexValue(view, i);
-                PyObject *item = PyLong_FromDouble(val);
-
-                if (!item) 
-                {
-                    Py_DECREF(result);
-                    return nullptr;
-                }
-                // element push back
-                PyObject *pbres = PyObject_CallFunctionObjArgs(pb_call, item, nullptr);
-
-                if (!pbres) 
-                {
-                    Py_DECREF(result);
-                    break;
-                    return nullptr;
-                }
-
-                Py_DECREF(item);
-            }
-
-            // dereference the memoryview buffer
-            Py_DECREF(memoryview);
-            PyBuffer_Release(view);
-            Py_DECREF(fi);
-
-            return result;
-        }
-        // logic to handle n-dim buffer (i.e. numpy array of arrays)
-        else
-        {
-            PyObject *result = PyObject_CallMethodNoArgs(self, PyStrings::gRealInit);
-            PyObject *pb_call = PyObject_GetAttrString(self, (char *)"push_back");
-
-            if (!result)
-            {
-                Py_DECREF(memoryview);
-                PyBuffer_Release(view);
-                Py_DECREF(fi);
-                return nullptr;
-            }
-
-            for (Py_ssize_t i = 0; i < view->ndim; i++) {
-                // creating a tmp list for each dimension to pass to push_back
-                PyObject *item_vec = PyList_New(view->shape[1]);
-
-                if (!item_vec) {
-                    Py_DECREF(result);
-                    Py_DECREF(memoryview);
-                    PyBuffer_Release(view);
-                    Py_DECREF(fi);
-                    return nullptr;
-                }
-
-                // accessing item for buffer
-                for (Py_ssize_t j = 0; j < view->shape[1]; j++) {
-
-                    int idx = i * view->shape[1] + j;
-                    double val = Get_IndexValue(view, idx);
-                    PyObject *item = PyLong_FromDouble(val);
-
-                    if (!item) {
-                        Py_DECREF(result);
-                        Py_DECREF(item_vec);
-                        return nullptr;
-                    }
-                    PyList_SetItem(item_vec, j, item);
-                    Py_DECREF(item);
-                }
-
-                // element push back
-                PyObject *pbres = PyObject_CallFunctionObjArgs(pb_call, item_vec, nullptr);
-                if (!pbres) {
-                    Py_DECREF(result);
-                    Py_DECREF(item_vec);
-                    break;
-                    return nullptr;
-                }
-            }
-            // dereference the memoryview buffer
-            Py_DECREF(memoryview);
-            PyBuffer_Release(view);
-            Py_DECREF(fi);
-            
-            return result;
-        }
+        // dereference the memoryview buffer
+        PyBuffer_Release(view);
+        Py_DECREF(memoryview);
+        Py_DECREF(fi);
+        
+        return result;
+        
     }
-    
-    
 
     // The given argument wasn't iterable or a numpy array: simply forward to regular constructor
     PyObject *realInit = PyObject_GetAttr(self, PyStrings::gRealInit);
