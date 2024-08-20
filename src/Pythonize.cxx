@@ -540,11 +540,6 @@ PyObject *recursive_vector_init(PyObject *self, Py_buffer *view, PyObject *resul
         subview.suboffsets = view->suboffsets;
         subview.internal = view->internal;
 
-        printf("ndim: %d\n", view->ndim);
-        printf("shape: %ld, %ld\n", shape[0], shape[1]);
-        printf("strides: %ld, %ld\n", strides[0], strides[1]);
-        printf("itemsize: %ld\n", view->itemsize);
-
         PyObject *subresult = recursive_vector_init(self, &subview, result, ndim - 1);
         if (!subresult)
         {
