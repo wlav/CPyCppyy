@@ -164,7 +164,7 @@ public:
     CallContextRAII(const CallContextRAII&) = delete;
     CallContextRAII& operator=(const CallContextRAII&) = delete;
     ~CallContextRAII() {
-        if (fPrior) fCtxt->fFlags &= ~F;
+        if (!fPrior) fCtxt->fFlags &= ~F;
     }
 
 private:
