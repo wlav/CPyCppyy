@@ -317,6 +317,106 @@ static ItemGetter* GetGetter(PyObject* args)
     return getter;
 }
 
+bool FillMatrix(PyObject* self, PyObject* args, ItemGetter* getter) {
+    // Get the matrix dimensions
+    int rows = 0;
+    int cols = 0;
+    if (!PyArg_ParseTuple(args, "ii", &rows, &cols)) {
+        PyErr_SetString(PyExc_TypeError, "Expected two integers for matrix dimensions");
+        return false;
+    }
+
+    // Get the matrix data
+    PyObject* data = PyTuple_GetItem(args, 2);
+    if (!data) {
+        PyErr_SetString(PyExc_TypeError, "Expected matrix data");
+        return false;
+    }
+
+    // Check if the data is a sequence
+    if (!PySequence_Check(data)) {
+        PyErr_SetString(PyExc_TypeError, "Expected a sequence for matrix data");
+        return false;
+    }
+
+    // Get the matrix type
+    PyTypeObject* matrix_type = Py_TYPE(self);
+    if (!matrix_type) {
+        PyErr_SetString(PyExc_TypeError, "Expected a matrix type");
+        return false;
+    }
+
+    // Create a new matrix
+    PyObject* matrix = PyObject_CallMethod(self, "new", "ii", rows, cols);
+    if (!matrix) {
+        PyErr_SetString(PyExc_TypeError, "Failed to create new matrix");
+        return false;
+    }
+
+    // Fill the matrix with data
+    Py_ssize_t data_len = PySequence_Size(data);
+    for (Py_ssize_t i = 0; i < data_len; ++i) {
+        PyObject* row = PySequence_GetItem(data, i);
+        if (!row) {
+            PyErr_SetString(PyExc_TypeError, "Failed to get row from data");
+            Py_DECREF(matrix);
+            return false;
+        }
+
+        Py_ssize_t row_len = PySequence_Size(row);
+        for (Py_ssize_t j = 0; j < row_len; ++j) {
+            PyObject* value = PySequence_GetItem(row, j);
+            if (!value) {
+                PyErr_SetString(PyExc_TypeError, "Failed to get value from row");
+                Py_DECREF(matrix);
+                Py_DECREF(row);
+                return false;
+            }
+
+            // Set the value in the matrix
+            PyObject_CallMethod(matrix, "set", "iiiO", i, j, value);
+            Py_DECREF(value);
+        }
+        Py_DECREF(row);
+    }
+
+    Py_DECREF(matrix);
+    return true;
+}
+
+PyObject* EigenMatrixInit(PyObject* self, PyObject* args, PyObject* /* kwds */) {
+    // Get the getter for the arguments
+    ItemGetter* getter = GetGetter(args);
+
+    if (getter) {
+        // Construct an empty matrix, then back-fill it
+        PyObject* result = PyObject_CallMethodNoArgs(self, PyStrings::gRealInit);
+        if (!result) {
+            delete getter;
+            return nullptr;
+        }
+
+        bool fill_ok = FillMatrix(self, args, getter);
+        delete getter;
+
+        if (!fill_ok) {
+            Py_DECREF(result);
+            return nullptr;
+        }
+
+        return result;
+    }
+
+    // The given argument wasn't iterable: simply forward to regular constructor
+    PyObject* realInit = PyObject_GetAttr(self, PyStrings::gRealInit);
+    if (realInit) {
+        PyObject* result = PyObject_Call(realInit, args, nullptr);
+        Py_DECREF(realInit);
+        return result;
+    }
+
+    return nullptr;
+}
 static bool FillVector(PyObject* vecin, PyObject* args, ItemGetter* getter)
 {
     Py_ssize_t sz = getter->size();
@@ -1926,6 +2026,10 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
         PyObject_SetAttrString(pyclass, "imag", PyDescr_NewGetSet((PyTypeObject*)pyclass, &imagComplex));
         Utility::AddToClass(pyclass, "__complex__", (PyCFunction)ComplexComplex, METH_NOARGS);
         Utility::AddToClass(pyclass, "__repr__", (PyCFunction)ComplexRepr, METH_NOARGS);
+    }
+    // eigen types
+    else if (name == "Eigen::MatrixXd") {
+        Utility::AddToClass(pyclass, "__init__", (PyCFunction)EigenMatrixInit, METH_NOARGS);
     }
 
 // direct user access; there are two calls here:
