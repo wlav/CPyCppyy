@@ -234,16 +234,6 @@ typedef struct {
     PyTypeObject *PyCStructType_Type;
     PyTypeObject *UnionType_Type;
     PyTypeObject *PyCPointerType_Type;
-    PyTypeObject *PyCArrayType_Type;
-    PyTypeObject *PyCSimpleType_Type;
-    PyTypeObject *PyCFuncPtrType_Type;
-    PyTypeObject *PyCData_Type;
-    PyTypeObject *Struct_Type;
-    PyTypeObject *Union_Type;
-    PyTypeObject *PyCArray_Type;
-    PyTypeObject *Simple_Type;
-    PyTypeObject *PyCPointer_Type;
-    PyTypeObject *PyCFuncPtr_Type;
 // ... unused fields omitted ...
 } _cppyy_ctypes_state;
 
