@@ -115,8 +115,6 @@ protected:
 class IteratorExecutor : public InstanceExecutor {
 public:
     IteratorExecutor(Cppyy::TCppType_t klass);
-    virtual PyObject* Execute(
-        Cppyy::TCppMethod_t, Cppyy::TCppObject_t, CallContext*);
 };
 
 CPPYY_DECL_EXEC(Constructor);

@@ -641,21 +641,6 @@ CPyCppyy::IteratorExecutor::IteratorExecutor(Cppyy::TCppType_t klass) :
     fFlags |= CPPInstance::kNoWrapConv;     // adds to flags from base class
 }
 
-//----------------------------------------------------------------------------
-PyObject* CPyCppyy::IteratorExecutor::Execute(
-    Cppyy::TCppMethod_t method, Cppyy::TCppObject_t self, CallContext* ctxt)
-{
-    PyObject* iter = this->InstanceExecutor::Execute(method, self, ctxt);
-    if (iter && ctxt->fPyContext) {
-    // set life line to tie iterator life time to the container (which may
-    // be a temporary)
-        std::ostringstream attr_name;
-        attr_name << "__" << (intptr_t)iter;
-        if (PyObject_SetAttrString(ctxt->fPyContext, (char*)attr_name.str().c_str(), iter))
-            PyErr_Clear();
-    }
-    return iter;
-}
 
 //----------------------------------------------------------------------------
 PyObject* CPyCppyy::InstanceRefExecutor::Execute(
