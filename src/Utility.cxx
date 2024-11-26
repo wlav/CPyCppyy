@@ -1017,7 +1017,11 @@ std::string CPyCppyy::Utility::ClassName(PyObject* pyobj)
 static std::set<std::string> sIteratorTypes;
 bool CPyCppyy::Utility::IsSTLIterator(const std::string& classname)
 {
-// attempt to recognize STL iterators (TODO: probably belongs in the backend)
+// attempt to recognize STL iterators (TODO: probably belongs in the backend), using
+// a couple of common container classes with different iterator protocols (note that
+// mapping iterators are handled separately in the pythonizations) as exemplars (the
+// actual, resolved, names will be compiler-specific) that are picked b/c they are
+// baked into the CoreLegacy dictionary
     if (sIteratorTypes.empty()) {
         std::string tt = "<int>::";
         for (auto c : {"std::vector", "std::list", "std::deque"}) {
