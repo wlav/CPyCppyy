@@ -973,13 +973,6 @@ PyObject* CPyCppyy::CPPMethod::Execute(void* self, ptrdiff_t offset, CallContext
         result = ExecuteProtected(self, offset, ctxt);
     }
 
-// TODO: the following is dreadfully slow and dead-locks on Apache: revisit
-// raising exceptions through callbacks by using magic returns
-//    if (result && Utility::PyErr_Occurred_WithGIL()) {
-//    // can happen in the case of a CINT error: trigger exception processing
-//        Py_DECREF(result);
-//        result = 0;
-//    } else if (!result && PyErr_Occurred())
     if (!result && PyErr_Occurred())
         SetPyError_(0);
 
