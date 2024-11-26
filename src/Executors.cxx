@@ -516,6 +516,7 @@ PyObject* CPyCppyy::name##ArrayExecutor::Execute(                            \
 }
 
 CPPYY_IMPL_ARRAY_EXEC(Bool,     bool,                    )
+CPPYY_IMPL_ARRAY_EXEC(SChar,    signed char,             )
 CPPYY_IMPL_ARRAY_EXEC(UChar,    unsigned char,           )
 #if __cplusplus > 201402L
 CPPYY_IMPL_ARRAY_EXEC(Byte,     std::byte,               )
@@ -1081,7 +1082,8 @@ public:
         gf["const char*&"] =                (ef_t)+[](cdims_t) { static CStringRefExecutor e{};     return &e; };
         gf["char*&"] =                      gf["const char*&"];
         gf["const signed char*"] =          gf["const char*"];
-        gf["signed char*"] =                gf["char*"];
+        //gf["signed char*"] =                gf["char*"];
+        gf["signed char ptr"] =             (ef_t)+[](cdims_t d) { return new SCharArrayExecutor{d};    };
         gf["wchar_t*"] =                    (ef_t)+[](cdims_t) { static WCStringExecutor e{};    return &e;};
         gf["char16_t*"] =                   (ef_t)+[](cdims_t) { static CString16Executor e{};   return &e;};
         gf["char32_t*"] =                   (ef_t)+[](cdims_t) { static CString32Executor e{};   return &e;};

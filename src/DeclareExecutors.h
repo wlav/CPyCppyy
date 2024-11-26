@@ -63,6 +63,7 @@ public:                                                                      \
 }
 CPPYY_ARRAY_DECL_EXEC(Void);
 CPPYY_ARRAY_DECL_EXEC(Bool);
+CPPYY_ARRAY_DECL_EXEC(SChar);
 CPPYY_ARRAY_DECL_EXEC(UChar);
 #if __cplusplus > 201402L
 CPPYY_ARRAY_DECL_EXEC(Byte);
