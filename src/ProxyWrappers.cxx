@@ -836,7 +836,7 @@ PyObject* CPyCppyy::BindCppObjectNoCast(Cppyy::TCppObject_t address,
 
     bool noReg      = flags & (CPPInstance::kNoMemReg|CPPInstance::kNoWrapConv);
     bool isRef      = flags & CPPInstance::kIsReference;
-    void* r_address = isRef ? *(void**)address : address;
+    void* r_address = isRef ? (address ? *(void**)address : nullptr) : address;
 
 // check whether the object to be bound is a smart pointer that needs embedding
     PyObject* smart_type = (!(flags & CPPInstance::kNoWrapConv) && \
