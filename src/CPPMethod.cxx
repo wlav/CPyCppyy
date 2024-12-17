@@ -611,8 +611,6 @@ PyObject* CPyCppyy::CPPMethod::GetArgDefault(int iarg, bool silent)
         PyObject* gdct = *dctptr;
         PyObject* scope = nullptr;
 
-        std::string possible_scope = defvalue.substr(0, defvalue.rfind('('));
-
         if (defvalue.rfind('(') != std::string::npos) {    // constructor-style call
         // try to tickle scope creation, just in case, first look in the scope where
         // the function lives, then in the global scope
