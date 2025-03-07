@@ -58,7 +58,7 @@ namespace CPyCppyy {
     extern PyObject* gDefaultObject;
 
 // regular expression for matching function pointer
-    static std::regex s_fnptr("\\(:*\\*&*\\)");
+    static std::regex s_fnptr("\\((\\w*:*)*\\*&*\\)");
 }
 
 #if PY_VERSION_HEX < 0x03000000
