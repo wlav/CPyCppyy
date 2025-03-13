@@ -2213,7 +2213,11 @@ bool CPyCppyy::InstanceConverter::ToMemory(PyObject* value, void* address, PyObj
 {
 // assign value to C++ instance living at <address> through assignment operator
     PyObject* pyobj = BindCppObjectNoCast(address, fClass);
+#if PY_VERSION_HEX >= 0x03080000
+    PyObject* result = PyObject_CallMethodOneArg(pyobj, PyStrings::gAssign, value);
+#else
     PyObject* result = PyObject_CallMethod(pyobj, (char*)"__assign__", (char*)"O", value);
+#endif
     Py_DECREF(pyobj);
 
     if (result) {
@@ -2921,6 +2925,25 @@ PyObject* CPyCppyy::SmartPtrConverter::FromMemory(void* address)
         return nullptr;
 
     return BindCppObjectNoCast(address, fSmartPtrType);
+}
+
+bool CPyCppyy::SmartPtrConverter::ToMemory(PyObject* value, void* address, PyObject*)
+{
+// assign value to C++ instance living at <address> through assignment operator (this
+// is similar to InstanceConverter::ToMemory, but prevents wrapping the smart ptr)
+    PyObject* pyobj = BindCppObjectNoCast(address, fSmartPtrType, CPPInstance::kNoWrapConv);
+#if PY_VERSION_HEX >= 0x03080000
+    PyObject* result = PyObject_CallMethodOneArg(pyobj, PyStrings::gAssign, value);
+#else
+    PyObject* result = PyObject_CallMethod(pyobj, (char*)"__assign__", (char*)"O", value);
+#endif
+    Py_DECREF(pyobj);
+
+    if (result) {
+        Py_DECREF(result);
+        return true;
+    }
+    return false;
 }
 
 
