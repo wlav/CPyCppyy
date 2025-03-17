@@ -646,6 +646,10 @@ PyObject* CPyCppyy::CPPMethod::GetArgDefault(int iarg, bool silent)
                 if (2 < defvalue.size() && defvalue[defvalue.size()-2] == 'U')
                     offset = 2;
                 defvalue = defvalue.substr(0, defvalue.size()-offset);
+            } else if (defvalue == "true") {
+                defvalue = "True";
+            } else if (defvalue == "false") {
+                defvalue = "False";
             }
         }
 
