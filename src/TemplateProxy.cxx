@@ -127,7 +127,18 @@ PyObject* TemplateProxy::Instantiate(const std::string& fname,
         // special case for arrays
             PyObject* pytc = PyObject_GetAttr(itemi, PyStrings::gTypeCode);
             if (pytc) {
-                PyObject* pyptrname = TC2CppName(pytc, "*", true);
+                Py_buffer bufinfo;
+                memset(&bufinfo, 0, sizeof(Py_buffer));
+                std::string ptrdef;
+                if (PyObject_GetBuffer(itemi, &bufinfo, PyBUF_FORMAT) == 0) {
+                    for (int i = 0; i < bufinfo.ndim; ++i) ptrdef += "*";
+                    CPyCppyy_PyBuffer_Release(itemi, &bufinfo);
+                } else {
+                    ptrdef += "*";
+                    PyErr_Clear();
+                }
+
+                PyObject* pyptrname = TC2CppName(pytc, ptrdef.c_str(), true);
                 if (pyptrname) {
                     PyTuple_SET_ITEM(tpArgs, i, pyptrname);
                     bArgSet = true;
