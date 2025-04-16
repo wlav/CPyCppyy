@@ -76,9 +76,11 @@ PyObject* TemplateProxy::Instantiate(const std::string& fname,
     std::string proto = "";
 
 #if PY_VERSION_HEX >= 0x03080000
-// adjust arguments for self if this is a rebound global function
+// adjust arguments for self if this is a rebound (global) function
     bool isNS = (((CPPScope*)fTI->fPyClass)->fFlags & CPPScope::kIsNamespace);
-    if (!isNS && !fSelf && CPyCppyy_PyArgs_GET_SIZE(args, nargsf)) {
+    if (!isNS && CPyCppyy_PyArgs_GET_SIZE(args, nargsf) && \
+            (!fSelf ||
+            (fSelf == Py_None && !Cppyy::IsStaticTemplate(((CPPScope*)fTI->fPyClass)->fCppType, fname)))) {
         args   += 1;
         nargsf -= 1;
     }
