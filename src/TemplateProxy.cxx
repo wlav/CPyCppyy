@@ -16,39 +16,6 @@
 
 namespace CPyCppyy {
 
-//- helper for ctypes conversions --------------------------------------------
-static PyObject* TC2CppName(PyObject* pytc, const char* cpd, bool allow_voidp)
-{
-    const char* name = nullptr;
-    if (CPyCppyy_PyText_Check(pytc)) {
-        char tc = ((char*)CPyCppyy_PyText_AsString(pytc))[0];
-        switch (tc) {
-            case '?': name = "bool";               break;
-            case 'c': name = "char";               break;
-            case 'b': name = "char";               break;
-            case 'B': name = "unsigned char";      break;
-            case 'h': name = "short";              break;
-            case 'H': name = "unsigned short";     break;
-            case 'i': name = "int";                break;
-            case 'I': name = "unsigned int";       break;
-            case 'l': name = "long";               break;
-            case 'L': name = "unsigned long";      break;
-            case 'q': name = "long long";          break;
-            case 'Q': name = "unsigned long long"; break;
-            case 'f': name = "float";              break;
-            case 'd': name = "double";             break;
-            case 'g': name = "long double";        break;
-            case 'z':   // special case for C strings, ignore cpd
-                return CPyCppyy_PyText_FromString(std::string{"const char*"}.c_str());
-            default:  name = (allow_voidp ? "void*" : nullptr); break;
-        }
-    }
-
-    if (name)
-        return CPyCppyy_PyText_FromString((std::string{name}+cpd).c_str());
-    return nullptr;
-}
-
 //----------------------------------------------------------------------------
 TemplateInfo::TemplateInfo() : fPyClass(nullptr), fNonTemplated(nullptr),
     fTemplated(nullptr), fLowPriority(nullptr), fDoc(nullptr)
@@ -109,6 +76,7 @@ PyObject* TemplateProxy::Instantiate(const std::string& fname,
     std::string proto = "";
 
 #if PY_VERSION_HEX >= 0x03080000
+// adjust arguments for self if this is a rebound global function
     bool isNS = (((CPPScope*)fTI->fPyClass)->fFlags & CPPScope::kIsNamespace);
     if (!isNS && !fSelf && CPyCppyy_PyArgs_GET_SIZE(args, nargsf)) {
         args   += 1;
@@ -138,7 +106,7 @@ PyObject* TemplateProxy::Instantiate(const std::string& fname,
                     PyErr_Clear();
                 }
 
-                PyObject* pyptrname = TC2CppName(pytc, ptrdef.c_str(), true);
+                PyObject* pyptrname = Utility::CT2CppName(pytc, ptrdef.c_str(), true);
                 if (pyptrname) {
                     PyTuple_SET_ITEM(tpArgs, i, pyptrname);
                     bArgSet = true;
@@ -152,14 +120,14 @@ PyObject* TemplateProxy::Instantiate(const std::string& fname,
             if (!bArgSet) pytc = PyObject_GetAttr(itemi, PyStrings::gCTypesType);
 
             if (!bArgSet && pytc) {
-                PyObject* pyactname = TC2CppName(pytc, "&", false);
+                PyObject* pyactname = Utility::CT2CppName(pytc, "&", false);
                 if (!pyactname) {
                 // _type_ of a pointer to c_type is that type, which will have a type
                     PyObject* newpytc = PyObject_GetAttr(pytc, PyStrings::gCTypesType);
                     Py_DECREF(pytc);
                     pytc = newpytc;
                     if (pytc) {
-                        pyactname = TC2CppName(pytc, "*", false);
+                        pyactname = Utility::CT2CppName(pytc, "*", false);
                     } else
                         PyErr_Clear();
                 }
