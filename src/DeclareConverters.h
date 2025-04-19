@@ -234,6 +234,7 @@ public:
     using SCharArrayConverter::SCharArrayConverter;
     virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
     virtual PyObject* FromMemory(void* address);
+    virtual bool ToMemory(PyObject*, void*, PyObject* = nullptr);
 
 private:
     std::vector<const char*> fBuffer;
