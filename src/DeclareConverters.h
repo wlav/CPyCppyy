@@ -17,36 +17,36 @@ namespace {
 #define CPPYY_DECLARE_BASIC_CONVERTER(name)                                  \
 class name##Converter : public Converter {                                   \
 public:                                                                      \
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);      \
-    virtual PyObject* FromMemory(void*);                                     \
-    virtual bool ToMemory(PyObject*, void*, PyObject* = nullptr);            \
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;     \
+    PyObject* FromMemory(void*) override;                                    \
+    bool ToMemory(PyObject*, void*, PyObject* = nullptr) override;           \
 };                                                                           \
                                                                              \
 class Const##name##RefConverter : public Converter {                         \
 public:                                                                      \
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);      \
-    virtual PyObject* FromMemory(void*);                                     \
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;     \
+    PyObject* FromMemory(void*) override;                                    \
 }
 
 
 #define CPPYY_DECLARE_BASIC_CONVERTER2(name, base)                           \
 class name##Converter : public base##Converter {                             \
 public:                                                                      \
-    virtual PyObject* FromMemory(void*);                                     \
-    virtual bool ToMemory(PyObject*, void*, PyObject* = nullptr);            \
+    PyObject* FromMemory(void*) override;                                    \
+    bool ToMemory(PyObject*, void*, PyObject* = nullptr) override;           \
 };                                                                           \
                                                                              \
 class Const##name##RefConverter : public Converter {                         \
 public:                                                                      \
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);      \
-    virtual PyObject* FromMemory(void*);                                     \
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;     \
+    PyObject* FromMemory(void*) override;                                    \
 }
 
 #define CPPYY_DECLARE_REFCONVERTER(name)                                     \
 class name##RefConverter : public Converter {                                \
 public:                                                                      \
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);      \
-    virtual PyObject* FromMemory(void*);                                     \
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;     \
+    PyObject* FromMemory(void*) override;                                    \
 };
 
 #define CPPYY_DECLARE_ARRAY_CONVERTER(name)                                  \
@@ -55,10 +55,10 @@ public:                                                                      \
     name##ArrayConverter(cdims_t dims);                                      \
     name##ArrayConverter(const name##ArrayConverter&) = delete;              \
     name##ArrayConverter& operator=(const name##ArrayConverter&) = delete;   \
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);      \
-    virtual PyObject* FromMemory(void*);                                     \
-    virtual bool ToMemory(PyObject*, void*, PyObject* = nullptr);            \
-    virtual bool HasState() { return true; }                                 \
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;     \
+    PyObject* FromMemory(void*) override;                                    \
+    bool ToMemory(PyObject*, void*, PyObject* = nullptr) override;           \
+    bool HasState() override { return true; }                                \
 protected:                                                                   \
     dims_t fShape;                                                           \
     bool fIsFixed;                                                           \
@@ -72,13 +72,13 @@ CPPYY_DECLARE_BASIC_CONVERTER(Char);
 class SCharAsIntConverter : public CharConverter {
 public:
     using CharConverter::CharConverter;
-    virtual PyObject* FromMemory(void*);
+    PyObject* FromMemory(void*) override;
 };
 CPPYY_DECLARE_BASIC_CONVERTER(UChar);
 class UCharAsIntConverter : public UCharConverter {
 public:
     using UCharConverter::UCharConverter;
-    virtual PyObject* FromMemory(void*);
+    PyObject* FromMemory(void*) override;
 };
 CPPYY_DECLARE_BASIC_CONVERTER(WChar);
 CPPYY_DECLARE_BASIC_CONVERTER(Char16);
@@ -119,7 +119,7 @@ CPPYY_DECLARE_REFCONVERTER(LDouble);
 
 class VoidConverter : public Converter {
 public:
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;
 };
 
 class CStringConverter : public Converter {
@@ -127,10 +127,10 @@ public:
     CStringConverter(std::string::size_type maxSize = std::string::npos) : fMaxSize(maxSize) {}
 
 public:
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
-    virtual PyObject* FromMemory(void* address);
-    virtual bool ToMemory(PyObject* value, void* address, PyObject* = nullptr);
-    virtual bool HasState() { return true; }
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;
+    PyObject* FromMemory(void* address) override;
+    bool ToMemory(PyObject* value, void* address, PyObject* = nullptr) override;
+    bool HasState() override { return true; }
 
 protected:
     std::string fBuffer;
@@ -142,8 +142,8 @@ public:
     using CStringConverter::CStringConverter;
 
 public:
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
-    virtual PyObject* FromMemory(void* address);
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;
+    PyObject* FromMemory(void* address) override;
 };
 
 class WCStringConverter : public Converter {
@@ -155,10 +155,10 @@ public:
     virtual ~WCStringConverter() { free(fBuffer); }
 
 public:
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
-    virtual PyObject* FromMemory(void* address);
-    virtual bool ToMemory(PyObject* value, void* address, PyObject* = nullptr);
-    virtual bool HasState() { return true; }
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;
+    PyObject* FromMemory(void* address) override;
+    bool ToMemory(PyObject* value, void* address, PyObject* = nullptr) override;
+    bool HasState() override { return true; }
 
 protected:
     wchar_t* fBuffer;
@@ -174,10 +174,10 @@ public:
     virtual ~CString16Converter() { free(fBuffer); }
 
 public:
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
-    virtual PyObject* FromMemory(void* address);
-    virtual bool ToMemory(PyObject* value, void* address, PyObject* = nullptr);
-    virtual bool HasState() { return true; }
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;
+    PyObject* FromMemory(void* address) override;
+    bool ToMemory(PyObject* value, void* address, PyObject* = nullptr) override;
+    bool HasState() override { return true; }
 
 protected:
     char16_t* fBuffer;
@@ -193,10 +193,10 @@ public:
     virtual ~CString32Converter() { free(fBuffer); }
 
 public:
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
-    virtual PyObject* FromMemory(void* address);
-    virtual bool ToMemory(PyObject* value, void* address, PyObject* = nullptr);
-    virtual bool HasState() { return true; }
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;
+    PyObject* FromMemory(void* address) override;
+    bool ToMemory(PyObject* value, void* address, PyObject* = nullptr) override;
+    bool HasState() override { return true; }
 
 protected:
     char32_t* fBuffer;
@@ -232,8 +232,8 @@ public:
         fIsFixed = fixed;    // overrides SCharArrayConverter decision
     }
     using SCharArrayConverter::SCharArrayConverter;
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
-    virtual PyObject* FromMemory(void* address);
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;
+    PyObject* FromMemory(void* address) override;
 
 private:
     std::vector<const char*> fBuffer;
@@ -242,21 +242,21 @@ private:
 class NonConstCStringArrayConverter : public CStringArrayConverter {
 public:
     using CStringArrayConverter::CStringArrayConverter;
-    virtual PyObject* FromMemory(void* address);
+    PyObject* FromMemory(void* address) override;
 };
 
 // converters for special cases
 class NullptrConverter : public Converter {
 public:
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;
 };
 
 class InstanceConverter : public StrictInstancePtrConverter {
 public:
     using StrictInstancePtrConverter::StrictInstancePtrConverter;
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
-    virtual PyObject* FromMemory(void*);
-    virtual bool ToMemory(PyObject*, void*, PyObject* = nullptr);
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;
+    PyObject* FromMemory(void*) override;
+    bool ToMemory(PyObject*, void*, PyObject* = nullptr) override;
 };
 
 class InstanceRefConverter : public Converter  {
@@ -265,9 +265,9 @@ public:
         fClass(klass), fIsConst(isConst) {}
 
 public:
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
-    virtual PyObject* FromMemory(void* address);
-    virtual bool HasState() { return true; }
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;
+    PyObject* FromMemory(void* address) override;
+    bool HasState() override { return true; }
 
 protected:
     Cppyy::TCppType_t fClass;
@@ -277,7 +277,7 @@ protected:
 class InstanceMoveConverter : public InstanceRefConverter  {
 public:
     InstanceMoveConverter(Cppyy::TCppType_t klass) : InstanceRefConverter(klass, true) {}
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;
 };
 
 template <bool ISREFERENCE>
@@ -286,9 +286,9 @@ public:
     using InstancePtrConverter::InstancePtrConverter;
 
 public:
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
-    virtual PyObject* FromMemory(void* address);
-    virtual bool ToMemory(PyObject* value, void* address, PyObject* = nullptr);
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;
+    PyObject* FromMemory(void* address) override;
+    bool ToMemory(PyObject* value, void* address, PyObject* = nullptr) override;
 };
 
 class InstanceArrayConverter : public InstancePtrConverter<false> {
@@ -299,9 +299,9 @@ public:
     InstanceArrayConverter& operator=(const InstanceArrayConverter&) = delete;
 
 public:
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
-    virtual PyObject* FromMemory(void* address);
-    virtual bool ToMemory(PyObject* value, void* address, PyObject* = nullptr);
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;
+    PyObject* FromMemory(void* address) override;
+    bool ToMemory(PyObject* value, void* address, PyObject* = nullptr) override;
 
 protected:
     dims_t fShape;
@@ -313,10 +313,10 @@ public:
     ComplexDConverter(bool keepControl = false);
 
 public:
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
-    virtual PyObject* FromMemory(void* address);
-    virtual bool ToMemory(PyObject* value, void* address, PyObject* = nullptr);
-    virtual bool HasState() { return true; }
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;
+    PyObject* FromMemory(void* address) override;
+    bool ToMemory(PyObject* value, void* address, PyObject* = nullptr) override;
+    bool HasState() override { return true; }
 
 private:
     std::complex<double> fBuffer;
@@ -327,14 +327,14 @@ private:
 // they come in a bazillion different guises, so just do whatever
 class STLIteratorConverter : public Converter {
 public:
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;
 };
 // -- END CLING WORKAROUND
 
 
 class VoidPtrRefConverter : public Converter {
 public:
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;
 };
 
 class VoidPtrPtrConverter : public Converter {
@@ -342,9 +342,9 @@ public:
     VoidPtrPtrConverter(cdims_t dims);
 
 public:
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
-    virtual PyObject* FromMemory(void* address);
-    virtual bool HasState() { return true; }
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;
+    PyObject* FromMemory(void* address) override;
+    bool HasState() override { return true; }
 
 protected:
     dims_t fShape;
@@ -360,10 +360,10 @@ public:                                                                      \
     name##Converter(bool keepControl = true);                                \
                                                                              \
 public:                                                                      \
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);      \
-    virtual PyObject* FromMemory(void* address);                             \
-    virtual bool ToMemory(PyObject*, void*, PyObject* = nullptr);            \
-    virtual bool HasState() { return true; }                                 \
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;     \
+    PyObject* FromMemory(void* address) override;                            \
+    bool ToMemory(PyObject*, void*, PyObject* = nullptr) override;           \
+    bool HasState() override { return true; }                                \
                                                                              \
 protected:                                                                   \
     strtype fBuffer;                                                         \
@@ -380,7 +380,7 @@ public:
     using STLStringConverter::STLStringConverter;
 
 public:
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;
 };
 
 
@@ -391,10 +391,10 @@ public:
         fRetType(ret), fSignature(sig) {}
 
 public:
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
-    virtual PyObject* FromMemory(void* address);
-    virtual bool ToMemory(PyObject*, void*, PyObject* = nullptr);
-    virtual bool HasState() { return true; }
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;
+    PyObject* FromMemory(void* address) override;
+    bool ToMemory(PyObject*, void*, PyObject* = nullptr) override;
+    bool HasState() override { return true; }
 
 protected:
     std::string fRetType;
@@ -411,9 +411,9 @@ public:
     virtual ~StdFunctionConverter() { delete fConverter; }
 
 public:
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
-    virtual PyObject* FromMemory(void* address);
-    virtual bool ToMemory(PyObject* value, void* address, PyObject* = nullptr);
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;
+    PyObject* FromMemory(void* address) override;
+    bool ToMemory(PyObject* value, void* address, PyObject* = nullptr) override;
 
 protected:
     Converter* fConverter;
@@ -431,10 +431,10 @@ public:
           fKeepControl(keepControl), fIsRef(isRef) {}
 
 public:
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
-    virtual PyObject* FromMemory(void* address);
-    virtual bool ToMemory(PyObject*, void*, PyObject* = nullptr);
-    virtual bool HasState() { return true; }
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;
+    PyObject* FromMemory(void* address) override;
+    bool ToMemory(PyObject*, void*, PyObject* = nullptr) override;
+    bool HasState() override { return true; }
 
 protected:
     virtual bool GetAddressSpecialCase(PyObject*, void*&) { return false; }
@@ -455,8 +455,8 @@ public:
     virtual ~InitializerListConverter();
 
 public:
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
-    virtual bool HasState() { return true; }
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;
+    bool HasState() override { return true; }
 
 protected:
     void Clear();
@@ -473,7 +473,7 @@ protected:
 // raising converter to take out overloads
 class NotImplementedConverter : public Converter {
 public:
-    virtual bool SetArg(PyObject*, Parameter&, CallContext* = nullptr);
+    bool SetArg(PyObject*, Parameter&, CallContext* = nullptr) override;
 };
 
 } // unnamed namespace
