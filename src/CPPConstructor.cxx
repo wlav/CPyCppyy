@@ -77,6 +77,15 @@ PyObject* CPyCppyy::CPPConstructor::Call(CPPInstance*& self,
         return nullptr;
     }
 
+    const auto cppScopeFlags = ((CPPScope*)Py_TYPE(self))->fFlags;
+
+// Do nothing if the constructor is explicit and we are in an implicit
+// conversion context. We recognize this by checking the CPPScope::kNoImplicit
+// flag, as further implicit conversions are disabled to prevent infinite
+// recursion. See also the ConvertImplicit() helper in Converters.cxx.
+    if((cppScopeFlags & CPPScope::kNoImplicit) && Cppyy::IsExplicit(GetMethod()))
+        return nullptr;
+
 // self provides the python context for lifelines
     if (!ctxt->fPyContext)
         ctxt->fPyContext = (PyObject*)cargs.fSelf;    // no Py_INCREF as no ownership
@@ -125,7 +134,7 @@ PyObject* CPyCppyy::CPPConstructor::Call(CPPInstance*& self,
 
     } else {
     // translate the arguments
-        if (((CPPClass*)Py_TYPE(self))->fFlags & CPPScope::kNoImplicit)
+        if (cppScopeFlags & CPPScope::kNoImplicit)
             ctxt->fFlags |= CallContext::kNoImplicit;
         if (!this->ConvertAndSetArgs(cargs.fArgs, cargs.fNArgsf, ctxt))
             return nullptr;
