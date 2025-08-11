@@ -482,14 +482,14 @@ static inline CPyCppyy::CPPInstance* ConvertImplicit(Cppyy::TCppType_t klass,
     PyObject* args = PyTuple_New(1);
     Py_INCREF(pyobject); PyTuple_SET_ITEM(args, 0, pyobject);
 
-    ((CPPScope*)pyscope)->fFlags |= CPPScope::kNoImplicit;
+    ((CPPScope*)pyscope)->fFlags |= CPPScope::kActiveImplicitCall;
     CPPInstance* pytmp = (CPPInstance*)PyObject_Call(pyscope, args, NULL);
     if (!pytmp && PyTuple_CheckExact(pyobject)) {
     // special case: allow implicit conversion from given set of arguments in tuple
         PyErr_Clear();
         pytmp = (CPPInstance*)PyObject_Call(pyscope, pyobject, NULL);
     }
-    ((CPPScope*)pyscope)->fFlags &= ~CPPScope::kNoImplicit;
+    ((CPPScope*)pyscope)->fFlags &= ~CPPScope::kActiveImplicitCall;
 
     Py_DECREF(args);
     Py_DECREF(pyscope);
