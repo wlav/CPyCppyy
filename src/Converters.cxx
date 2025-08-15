@@ -1523,13 +1523,13 @@ bool CPyCppyy::VoidArrayConverter::GetAddressSpecialCase(PyObject* pyobject, voi
 
 //----------------------------------------------------------------------------
 bool CPyCppyy::VoidArrayConverter::SetArg(
-    PyObject* pyobject, Parameter& para, CallContext* ctxt)
+    PyObject* pyobject, Parameter& para, CallContext* /*ctxt*/)
 {
 // just convert pointer if it is a C++ object
     CPPInstance* pyobj = GetCppInstance(pyobject);
     if (pyobj) {
     // depending on memory policy, some objects are no longer owned when passed to C++
-        if (!fKeepControl && !UseStrictOwnership(ctxt))
+        if (!fKeepControl && !UseStrictOwnership())
             pyobj->CppOwns();
 
    // set pointer (may be null) and declare success
@@ -1594,7 +1594,7 @@ bool CPyCppyy::VoidArrayConverter::ToMemory(PyObject* value, void* address, PyOb
     CPPInstance* pyobj = GetCppInstance(value);
     if (pyobj) {
     // depending on memory policy, some objects are no longer owned when passed to C++
-        if (!fKeepControl && CallContext::sMemoryPolicy != CallContext::kUseStrict)
+        if (!fKeepControl && !UseStrictOwnership())
             pyobj->CppOwns();
 
     // set pointer (may be null) and declare success
@@ -2114,7 +2114,7 @@ bool CPyCppyy::InstancePtrConverter<ISCONST>::SetArg(
     Cppyy::TCppType_t oisa = pyobj->ObjectIsA();
     if (oisa && (oisa == fClass || Cppyy::IsSubtype(oisa, fClass))) {
     // depending on memory policy, some objects need releasing when passed into functions
-        if (!KeepControl() && !UseStrictOwnership(ctxt))
+        if (!KeepControl() && !UseStrictOwnership())
             pyobj->CppOwns();
 
     // calculate offset between formal and actual arguments
@@ -2161,7 +2161,7 @@ bool CPyCppyy::InstancePtrConverter<ISCONST>::ToMemory(PyObject* value, void* ad
 
     if (Cppyy::IsSubtype(pyobj->ObjectIsA(), fClass)) {
     // depending on memory policy, some objects need releasing when passed into functions
-        if (!KeepControl() && CallContext::sMemoryPolicy != CallContext::kUseStrict)
+        if (!KeepControl() && !UseStrictOwnership())
             ((CPPInstance*)value)->CppOwns();
 
         *(void**)address = pyobj->GetObject();
@@ -2342,7 +2342,7 @@ bool CPyCppyy::InstancePtrPtrConverter<ISREFERENCE>::SetArg(
 
     if (Cppyy::IsSubtype(pyobj->ObjectIsA(), fClass)) {
     // depending on memory policy, some objects need releasing when passed into functions
-        if (!KeepControl() && !UseStrictOwnership(ctxt))
+        if (!KeepControl() && !UseStrictOwnership())
             pyobj->CppOwns();
 
     // set pointer (may be null) and declare success
@@ -2383,7 +2383,7 @@ bool CPyCppyy::InstancePtrPtrConverter<ISREFERENCE>::ToMemory(
 
     if (Cppyy::IsSubtype(pyobj->ObjectIsA(), fClass)) {
     // depending on memory policy, some objects need releasing when passed into functions
-        if (!KeepControl() && CallContext::sMemoryPolicy != CallContext::kUseStrict)
+        if (!KeepControl() && !UseStrictOwnership())
             pyobj->CppOwns();
 
     // register the value for potential recycling
@@ -2868,7 +2868,7 @@ bool CPyCppyy::SmartPtrConverter::SetArg(
     if (Cppyy::TCppType_t tsmart = pyobj->GetSmartIsA()) {
         if (Cppyy::IsSubtype(tsmart, fSmartPtrType)) {
         // depending on memory policy, some objects need releasing when passed into functions
-            if (!fKeepControl && !UseStrictOwnership(ctxt))
+            if (!fKeepControl && !UseStrictOwnership())
                 ((CPPInstance*)pyobject)->CppOwns();
 
         // calculate offset between formal and actual arguments
