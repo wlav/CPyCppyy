@@ -922,6 +922,7 @@ static PyObject* name(PyObject*, PyObject* args)                                
 
 DEFINE_CALL_POLICY_TOGGLE(SetHeuristicMemoryPolicy, kUseHeuristics);
 DEFINE_CALL_POLICY_TOGGLE(SetGlobalSignalPolicy, kProtected);
+DEFINE_CALL_POLICY_TOGGLE(SetImplicitSmartPointerConversion, kImplicitSmartPtrConversion);
 
 //----------------------------------------------------------------------------
 static PyObject* SetOwnership(PyObject*, PyObject* args)
@@ -1013,6 +1014,8 @@ static PyMethodDef gCPyCppyyMethods[] = {
     {(char *)"SetGlobalSignalPolicy", (PyCFunction)SetGlobalSignalPolicy, METH_VARARGS,
      (char *)"Set the global signal policy, which determines whether a jmp address should be saved to return to after a "
              "C++ segfault. In practical terms: trap signals in safe mode to prevent interpreter abort."},
+    {(char*) "SetImplicitSmartPointerConversion", (PyCFunction)SetImplicitSmartPointerConversion,
+      METH_VARARGS, (char*)"Enable or disable the implicit conversion to smart pointers in function calls (on by default)."},
     {(char*) "SetOwnership", (PyCFunction)SetOwnership,
       METH_VARARGS, (char*)"Modify held C++ object ownership."},
     {(char*) "AddSmartPtrType", (PyCFunction)AddSmartPtrType,
