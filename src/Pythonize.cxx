@@ -1112,15 +1112,15 @@ static int PyObject_Compare(PyObject* one, PyObject* other) {
 }
 #endif
 static inline
-PyObject* CPyCppyy_PyString_FromCppString(std::string* s, bool native=true) {
+PyObject* CPyCppyy_PyString_FromCppString(std::string_view s, bool native=true) {
     if (native)
-        return PyBytes_FromStringAndSize(s->data(), s->size());
-    return CPyCppyy_PyText_FromStringAndSize(s->data(), s->size());
+        return PyBytes_FromStringAndSize(s.data(), s.size());
+    return CPyCppyy_PyText_FromStringAndSize(s.data(), s.size());
 }
 
 static inline
-PyObject* CPyCppyy_PyString_FromCppString(std::wstring* s, bool native=true) {
-    PyObject* pyobj = PyUnicode_FromWideChar(s->data(), s->size());
+PyObject* CPyCppyy_PyString_FromCppString(std::wstring_view s, bool native=true) {
+    PyObject* pyobj = PyUnicode_FromWideChar(s.data(), s.size());
     if (pyobj && native) {
         PyObject* pybytes = PyUnicode_AsEncodedString(pyobj, "UTF-8", "strict");
         Py_DECREF(pyobj);
@@ -1135,7 +1135,7 @@ PyObject* name##StringGetData(PyObject* self, bool native=true)              \
 {                                                                            \
     if (CPyCppyy::CPPInstance_Check(self)) {                                 \
         type* obj = ((type*)((CPPInstance*)self)->GetObject());              \
-        if (obj) return CPyCppyy_PyString_FromCppString(obj, native);        \
+        if (obj) return CPyCppyy_PyString_FromCppString(*obj, native);        \
     }                                                                        \
     PyErr_Format(PyExc_TypeError, "object mismatch (%s expected)", #type);   \
     return nullptr;                                                          \
@@ -1212,6 +1212,7 @@ PyObject* name##StringCompare(PyObject* self, PyObject* obj)                 \
 
 CPPYY_IMPL_STRING_PYTHONIZATION_CMP(std::string, STL)
 CPPYY_IMPL_STRING_PYTHONIZATION_CMP(std::wstring, STLW)
+CPPYY_IMPL_STRING_PYTHONIZATION_CMP(std::string_view, STLView)
 
 static inline std::string* GetSTLString(CPPInstance* self) {
     if (!CPPInstance_Check(self)) {
@@ -1900,7 +1901,13 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
 
     else if (name == "std::basic_string_view<char>") {
         Utility::AddToClass(pyclass, "__real_init", "__init__");
-        Utility::AddToClass(pyclass, "__init__", (PyCFunction)StringViewInit, METH_VARARGS | METH_KEYWORDS);
+        Utility::AddToClass(pyclass, "__init__",  (PyCFunction)StringViewInit, METH_VARARGS | METH_KEYWORDS);
+        Utility::AddToClass(pyclass, "__bytes__", (PyCFunction)STLViewStringBytes,      METH_NOARGS);
+        Utility::AddToClass(pyclass, "__cmp__",   (PyCFunction)STLViewStringCompare,    METH_O);
+        Utility::AddToClass(pyclass, "__eq__",    (PyCFunction)STLViewStringIsEqual,    METH_O);
+        Utility::AddToClass(pyclass, "__ne__",    (PyCFunction)STLViewStringIsNotEqual, METH_O);
+        Utility::AddToClass(pyclass, "__repr__",  (PyCFunction)STLViewStringRepr,       METH_NOARGS);
+        Utility::AddToClass(pyclass, "__str__",   (PyCFunction)STLViewStringStr,        METH_NOARGS);
     }
 
     else if (name == "std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >") {
