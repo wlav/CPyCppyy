@@ -1803,6 +1803,7 @@ bool CPyCppyy::Pythonize(PyObject* pyclass, const std::string& name)
 
         // data with size
             Utility::AddToClass(pyclass, "__real_data", "data");
+            PyErr_Clear(); // AddToClass might have failed for data
             Utility::AddToClass(pyclass, "data", (PyCFunction)VectorData);
 
         // numpy array conversion
