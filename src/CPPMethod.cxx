@@ -952,8 +952,10 @@ bool CPyCppyy::CPPMethod::ConvertAndSetArgs(CPyCppyy_PyArgs_t args, size_t nargs
     bool isOK = true;
     Parameter* cppArgs = ctxt->GetArgs(argc);
     for (int i = 0; i < (int)argc; ++i) {
-        if (!fConverters[i]->SetArg(CPyCppyy_PyArgs_GET_ITEM(args, i), cppArgs[i], ctxt)) {
-            SetPyError_(CPyCppyy_PyText_FromFormat("could not convert argument %d", i+1));
+        PyObject *item = CPyCppyy_PyArgs_GET_ITEM(args, i);
+        if (!fConverters[i]->SetArg(item, cppArgs[i], ctxt)) {
+            std::string s = Utility::ClassName(item);
+            SetPyError_(CPyCppyy_PyText_FromFormat("could not convert argument %d of type %s", i+1, s.c_str()));
             isOK = false;
             break;
         }
