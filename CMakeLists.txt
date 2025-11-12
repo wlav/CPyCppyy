@@ -24,7 +24,41 @@ endif()
 
 include_directories("${PROJECT_SOURCE_DIR}/include" "${Python_INCLUDE_DIRS}")
 
-file (GLOB cppyy_src src/*.cxx)
+set(cppyy_src
+    src/API.cxx
+    src/CPPClassMethod.cxx
+    src/CPPConstructor.cxx
+    src/CPPDataMember.cxx
+    src/CPPEnum.cxx
+    src/CPPExcInstance.cxx
+    src/CPPFunction.cxx
+    src/CPPGetSetItem.cxx
+    src/CPPInstance.cxx
+    src/CPPMethod.cxx
+    src/CPPOperator.cxx
+    src/CPPOverload.cxx
+    src/CPPScope.cxx
+    src/CPyCppyyModule.cxx
+    src/CallContext.cxx
+    src/Converters.cxx
+    src/CustomPyTypes.cxx
+    src/DispatchPtr.cxx
+    src/Dispatcher.cxx
+    src/Executors.cxx
+    src/LowLevelViews.cxx
+    src/MemoryRegulator.cxx
+    src/ProxyWrappers.cxx
+    src/PyException.cxx
+    src/PyResult.cxx
+    src/PyStrings.cxx
+    src/Pythonize.cxx
+    src/TPyArg.cxx
+    # src/TPyClassGenerator.cxx # TODO: not sure if this still makes sense
+    src/TemplateProxy.cxx
+    src/TupleOfInstances.cxx
+    src/TypeManip.cxx
+    src/Utility.cxx
+)
 
 add_library(cppyy SHARED ${cppyy_src})
 
